@@ -1,0 +1,19 @@
+name: spike-test
+base_url: http://localhost:8080
+load_profile:
+  type: spike
+  users: 100
+  spike_users: 50000
+  spike_warmup: 5
+  spike_hold: 15
+  timeout: 5
+  keep_alive: true
+
+steps:
+  - name: health
+    method: GET
+    url: /health
+
+  - name: data
+    method: GET
+    url: /api/data

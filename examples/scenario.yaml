@@ -1,0 +1,53 @@
+name: ecommerce-checkout
+base_url: http://localhost:8080
+load_profile:
+  type: linear-ramp
+  users: 1000
+  duration: 120
+  ramp_up: 30
+  rps: 0
+  timeout: 5
+  keep_alive: true
+
+# Optional extra template variables. Built-in per-virtual-user vars:
+# {{user}}, {{pass}}, {{email}}, {{item}}, {{id}}
+variables:
+  tenant: demo
+
+steps:
+  - name: login
+    method: POST
+    url: /api/login
+    headers:
+      Content-Type: application/json
+    body: '{"username":"{{user}}","password":"{{pass}}","tenant":"{{tenant}}"}'
+    extract:
+      - name: token
+        from: json
+        path: data.token
+
+  - name: profile
+    method: GET
+    url: /api/profile
+    headers:
+      Authorization: "Bearer {{token}}"
+
+  - name: add_to_cart
+    method: POST
+    url: /api/cart
+    headers:
+      Authorization: "Bearer {{token}}"
+      Content-Type: application/json
+    body: '{"item":"{{item}}","qty":1}'
+    extract:
+      - name: cart_id
+        from: json
+        path: data.cart_id
+
+  - name: checkout
+    method: POST
+    url: /api/checkout
+    headers:
+      Authorization: "Bearer {{token}}"
+      Content-Type: application/json
+    body: '{"cart_id":"{{cart_id}}"}'

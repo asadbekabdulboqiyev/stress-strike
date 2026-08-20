@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"stress-strike/internal/config"
 	"stress-strike/internal/metrics"
 )
@@ -186,5 +188,63 @@ func TestEngineRPSCap(t *testing.T) {
 	measured := tel.TotalRequests()
 	if measured < 100 || measured > 400 {
 		t.Errorf("requests %d over %.1fs, expected ~200 (100 rps cap)", measured, elapsed)
+	}
+}
+
+func TestEngineWebSocketStep(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		_, msg, err := c.ReadMessage()
+		if err != nil {
+			return
+		}
+		_ = c.WriteMessage(websocket.TextMessage, []byte("echo:"+string(msg)))
+	}))
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	sc := &config.Scenario{
+		Name:    "ws",
+		Profile: config.Profile{Type: config.ProfileSteady, Users: 3, Duration: 1, Timeout: 5},
+		Steps: []config.Step{
+			{Name: "ws-echo", Type: "ws", URL: wsURL, Body: "hello {{user}}",
+				Assertions: []config.Assertion{{Type: "regex", Value: "echo:hello"}}},
+		},
+	}
+	if err := sc.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	tel := runScenario(t, sc, time.Second)
+	if tel.TotalRequests() == 0 {
+		t.Error("no ws requests recorded")
+	}
+	if tel.TotalErrors() != 0 {
+		t.Errorf("errors = %d, want 0: %v", tel.TotalErrors(), tel.Errors())
+	}
+}
+
+func TestEngineAssertionFailure(t *testing.T) {
+	srv, _ := newTestServer()
+	defer srv.Close()
+	sc := &config.Scenario{
+		Name:    "assert",
+		BaseURL: srv.URL,
+		Profile: config.Profile{Type: config.ProfileSteady, Users: 2, Duration: 1, Timeout: 5},
+		Steps: []config.Step{
+			{Name: "health", URL: "/health", Assertions: []config.Assertion{{Type: "status", Value: "204"}}},
+		},
+	}
+	if err := sc.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	tel := runScenario(t, sc, time.Second)
+	errs := tel.Errors()
+	if errs["assert_failed"] == 0 {
+		t.Errorf("expected assert_failed errors, got %v", errs)
 	}
 }

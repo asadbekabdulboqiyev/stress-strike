@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"stress-strike/internal/config"
@@ -83,10 +84,36 @@ func (p *spikeProfile) Duration() time.Duration {
 	return p.warmup + p.hold
 }
 
+// waveProfile ramps virtual users up and down following a sine wave with the
+// configured period, oscillating between a low and the full user count.
+type waveProfile struct {
+	users  int
+	period time.Duration
+	dur    time.Duration
+}
+
+// ConcurrencyAt returns the number of active users at the given elapsed time.
+func (p *waveProfile) ConcurrencyAt(elapsed time.Duration) int {
+	phase := 2 * math.Pi * float64(elapsed) / float64(p.period)
+	n := int(float64(p.users) * (0.5 + 0.5*math.Sin(phase)))
+	if n < 1 {
+		n = 1
+	}
+	return n
+}
+
+func (p *waveProfile) MaxConcurrency() int {
+	return p.users
+}
+
+func (p *waveProfile) Duration() time.Duration {
+	return p.dur
+}
+
 func buildProfile(profile config.Profile) (LoadProfile, error) {
 	dur := time.Duration(profile.Duration) * time.Second
 	switch profile.Type {
-	case config.ProfileSteady:
+	case config.ProfileSteady, config.ProfileSoak:
 		return &steadyProfile{users: profile.Users, dur: dur}, nil
 	case config.ProfileLinearRamp:
 		return &rampProfile{
@@ -100,6 +127,12 @@ func buildProfile(profile config.Profile) (LoadProfile, error) {
 			spikeUsers: profile.SpikeUsers,
 			warmup:     time.Duration(profile.SpikeWarmup) * time.Second,
 			hold:       time.Duration(profile.SpikeHold) * time.Second,
+		}, nil
+	case config.ProfileWave:
+		return &waveProfile{
+			users:  profile.Users,
+			period: time.Duration(profile.WavePeriod) * time.Second,
+			dur:    dur,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported load profile %q", profile.Type)

@@ -1,5 +1,11 @@
 bin/
 reports/
+dist/
 *.test
 *.out
+coverage.html
 .DS_Store
+
+# Secrets
+.env
+*.env

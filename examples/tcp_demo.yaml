@@ -1,0 +1,20 @@
+name: tcp-raw-demo
+load_profile:
+  type: soak
+  users: 20
+  duration: 120
+  timeout: 5
+
+steps:
+  - name: ping
+    type: tcp
+    url: localhost:6379
+    body: "PING\r\n"
+    assertions:
+      - type: regex
+        value: "PONG"
+
+  - name: metrics_datagram
+    type: udp
+    url: localhost:8125
+    body: 'stress.test:1|c'

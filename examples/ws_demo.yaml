@@ -1,0 +1,17 @@
+name: websocket-chat-demo
+load_profile:
+  type: wave
+  users: 50
+  duration: 60
+  wave_period: 20
+  timeout: 5
+  keep_alive: true
+
+steps:
+  - name: connect_and_echo
+    type: ws
+    url: wss://echo.websocket.events
+    body: '{"user":"{{user}}","msg":"hello"}'
+    assertions:
+      - type: status
+        value: "101"

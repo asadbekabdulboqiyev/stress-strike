@@ -92,43 +92,112 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 	return r
 }
 
+// Render writes a premium, colorized report to w.
+// Colors are only used when w is a terminal (detected via isTerminal).
 func (r Report) Render(w io.Writer) {
-	fmt.Fprintf(w, "Stress Test Report: %s\n", r.Name)
-	fmt.Fprintf(w, "Target: %s\n", r.BaseURL)
-	fmt.Fprintf(w, "Profile: %s | Active users (peak): %d\n", r.LoadProfile, r.ActiveUsers)
-	fmt.Fprintf(w, "Duration: %s | Started: %s\n", r.Duration.Round(time.Millisecond), r.StartedAt.Format(time.RFC3339))
+	c := isTerminal(w) // color enabled?
+	rc := rateColor(r.ErrorRatePct)
+	health, hColor := healthLabel(r.ErrorRatePct)
+
+	sep := colorize(colorBold, c, "═══════════════════════════════════════════════════════════════════════════════════════")
+
+	// ── Header ──────────────────────────────────────────────────────────
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, sep)
+	title := colorize(colorBold, c, fmt.Sprintf("  STRESS TEST REPORT: %s", r.Name))
+	fmt.Fprintln(w, title)
+	fmt.Fprintln(w, sep)
 	fmt.Fprintln(w)
 
+	// ── Target & Config ─────────────────────────────────────────────────
+	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Target:     %s", r.BaseURL)))
+	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Profile:    %s | Peak users: %d", r.LoadProfile, r.ActiveUsers)))
+	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Duration:   %s | Started: %s",
+		r.Duration.Round(time.Millisecond), r.StartedAt.Format(time.RFC3339))))
+	fmt.Fprintln(w)
+
+	// ── Overall ─────────────────────────────────────────────────────────
 	overall := r.Overall
-	fmt.Fprintf(w, "Overall:\n")
-	fmt.Fprintf(w, "  Requests: %d | Errors: %d (%.2f%%) | RPS: %.1f\n", r.TotalRequests, r.TotalErrors, r.ErrorRatePct, r.RPS)
-	fmt.Fprintf(w, "  Latency: avg=%s p50=%s p95=%s p99=%s max=%s\n",
+	fmt.Fprintln(w, colorize(colorBold, c, "  ┌──────────────────────────────────────────────────────────────┐"))
+	fmt.Fprintf(w, "  │  %-58s │\n", colorize(colorBold, c, "OVERALL RESULTS"))
+	fmt.Fprintln(w, colorize(colorBold, c, "  ├──────────────────────────────────────────────────────────────┤"))
+
+	reqLine := fmt.Sprintf("  Requests: %s | Errors: %s | RPS: %s",
+		formatCount(r.TotalRequests),
+		colorize(rc, c, fmt.Sprintf("%s (%.2f%%)", formatCount(r.TotalErrors), r.ErrorRatePct)),
+		formatRPS(r.RPS))
+	fmt.Fprintf(w, "  │  %-58s │\n", reqLine)
+
+	latLine := fmt.Sprintf("  Latency:  avg=%s  p50=%s  p95=%s  p99=%s  max=%s",
 		overall.Avg, overall.P50, overall.P95, overall.P99, overall.Max)
+	fmt.Fprintf(w, "  │  %-58s │\n", latLine)
+
+	healthLine := fmt.Sprintf("  Server health: %s", colorize(hColor, c, health))
+	fmt.Fprintf(w, "  │  %-58s │\n", healthLine)
+
+	fmt.Fprintln(w, colorize(colorBold, c, "  └──────────────────────────────────────────────────────────────┘"))
 	fmt.Fprintln(w)
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "STEP\tREQUESTS\tERRORS\tAVG\tP50\tP95\tP99\tMAX")
-	for _, s := range r.Steps {
-		fmt.Fprintf(tw, "%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n",
-			s.Name, s.Requests, s.Errors, s.Avg, s.P50, s.P95, s.P99, s.Max)
+	// ── Steps table ─────────────────────────────────────────────────────
+	if len(r.Steps) > 0 {
+		fmt.Fprintln(w, colorize(colorBold, c, "  STEP BREAKDOWN"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
+
+		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		header := colorize(colorBold, c, "STEP\tREQUESTS\tERRORS\tAVG\tP50\tP95\tP99\tMAX")
+		fmt.Fprintln(tw, header)
+		for _, s := range r.Steps {
+			stepErrPct := 0.0
+			if s.Requests > 0 {
+				stepErrPct = float64(s.Errors) / float64(s.Requests) * 100
+			}
+			stepRC := rateColor(stepErrPct)
+			errDisplay := colorize(stepRC, c, fmt.Sprintf("%d", s.Errors))
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				s.Name, formatCount(s.Requests), errDisplay, s.Avg, s.P50, s.P95, s.P99, s.Max)
+		}
+		tw.Flush()
+		fmt.Fprintln(w)
 	}
-	tw.Flush()
-	fmt.Fprintln(w)
 
+	// ── Status codes ────────────────────────────────────────────────────
 	if len(r.Status) > 0 {
-		fmt.Fprintf(w, "Status codes: ")
+		fmt.Fprintln(w, colorize(colorBold, c, "  STATUS CODES"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
 		for _, code := range metrics.SortedStatusCodes(r.Status) {
-			fmt.Fprintf(w, "%d=%d ", code, r.Status[code])
+			sc := statusColor(code)
+			label := colorize(sc, c, fmt.Sprintf("%d", code))
+			fmt.Fprintf(w, "    %s  %s\n", label, formatCount(r.Status[code]))
 		}
 		fmt.Fprintln(w)
 	}
+
+	// ── Errors ──────────────────────────────────────────────────────────
 	if len(r.Errors) > 0 {
-		fmt.Fprintf(w, "Errors: ")
+		fmt.Fprintln(w, colorize(colorBold, c, "  ERRORS"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
 		for _, name := range metrics.SortedErrors(r.Errors) {
-			fmt.Fprintf(w, "%s=%d ", name, r.Errors[name])
+			fmt.Fprintf(w, "    %s  %s\n",
+				colorize(colorRed, c, name), formatCount(r.Errors[name]))
 		}
 		fmt.Fprintln(w)
 	}
+
+	// ── Summary ─────────────────────────────────────────────────────────
+	fmt.Fprintln(w, colorize(colorBold, c, "  SUMMARY"))
+	fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
+	fmt.Fprintf(w, "    Total requests:  %s\n", formatCount(r.TotalRequests))
+	fmt.Fprintf(w, "    Total errors:    %s (%.2f%%)\n", formatCount(r.TotalErrors), r.ErrorRatePct)
+	fmt.Fprintf(w, "    Requests/sec:    %s\n", formatRPS(r.RPS))
+	fmt.Fprintf(w, "    Latency range:   %s — %s\n", overall.Min, overall.Max)
+	fmt.Fprintf(w, "    Duration:        %s\n", r.Duration.Round(time.Millisecond))
+	fmt.Fprintln(w)
+
+	fmt.Fprintln(w, sep)
+	verdict := colorize(hColor, c, fmt.Sprintf("  VERDICT: %s", health))
+	fmt.Fprintln(w, verdict)
+	fmt.Fprintln(w, sep)
+	fmt.Fprintln(w)
 }
 
 func (r Report) SaveJSON(dir string) (string, error) {

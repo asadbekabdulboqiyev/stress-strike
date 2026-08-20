@@ -14,7 +14,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 type headerFlags map[string]string
 
@@ -44,6 +44,7 @@ func main() {
 		spikeUsers  int
 		spikeWarmup int
 		spikeHold   int
+		wavePeriod  int
 		rps         int
 		timeout     int
 		keepAlive   bool
@@ -59,13 +60,14 @@ func main() {
 	flag.StringVar(&data, "data", "", "request body (quick mode)")
 	flag.Var(headers, "header", "request header in Key=Value form (repeatable)")
 	flag.StringVar(&name, "name", "quick-test", "report/test name")
-	flag.StringVar(&profile, "profile", "steady", "load profile: steady, linear-ramp, spike")
+	flag.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave")
 	flag.IntVar(&users, "users", 10, "concurrent virtual users")
 	flag.IntVar(&duration, "duration", 30, "test duration in seconds")
 	flag.IntVar(&rampUp, "ramp-up", 0, "ramp-up duration in seconds (linear-ramp)")
 	flag.IntVar(&spikeUsers, "spike-users", 0, "target users for spike burst")
 	flag.IntVar(&spikeWarmup, "spike-warmup", 5, "baseline warmup seconds before spike")
 	flag.IntVar(&spikeHold, "spike-hold", 10, "spike burst duration in seconds")
+	flag.IntVar(&wavePeriod, "wave-period", 0, "oscillation period in seconds (wave)")
 	flag.IntVar(&rps, "rps", 0, "global pacing cap (requests per second, 0 = unlimited)")
 	flag.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
 	flag.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections (connection pooling)")
@@ -108,7 +110,7 @@ func main() {
 		if url == "" {
 			fatal(fmt.Errorf("either --config or --url is required"))
 		}
-		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, rps, timeout, keepAlive)
+		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout, keepAlive)
 		if err != nil {
 			fatal(err)
 		}
@@ -158,7 +160,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "\nReports written:\n  %s\n  %s\n", jsonPath, txtPath)
 }
 
-func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, rps, timeout int, keepAlive bool) (*config.Scenario, error) {
+func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {
 	sc := &config.Scenario{
 		Name: name,
 		Profile: config.Profile{
@@ -169,6 +171,7 @@ func quickScenario(name, url, method, data string, headers headerFlags, profile 
 			SpikeUsers:  spikeUsers,
 			SpikeWarmup: spikeWarmup,
 			SpikeHold:   spikeHold,
+			WavePeriod:  wavePeriod,
 			RPS:         rps,
 			Timeout:     timeout,
 			KeepAlive:   &keepAlive,
@@ -199,19 +202,8 @@ func targetDisplay(scenario *config.Scenario) string {
 	return "n/a"
 }
 
-func warnLowFileLimit(profile config.Profile) {
-	var lim syscall.Rlimit
-	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim); err != nil {
-		return
-	}
-	need := uint64(profile.Users * 4)
-	if profile.SpikeUsers > profile.Users {
-		need = uint64(profile.SpikeUsers * 4)
-	}
-	if lim.Cur < need {
-		fmt.Fprintf(os.Stderr, "warning: open-file limit is %d but the test may need ~%d sockets (raise with 'ulimit -n')\n", lim.Cur, need)
-	}
-}
+// warnLowFileLimit is platform-specific (Unix: rlimit check; Windows: no-op),
+// implemented in limit_unix.go / limit_windows.go.
 
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)

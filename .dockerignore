@@ -1,0 +1,23 @@
+# Build context is copied into the Docker image; keep it lean and secret-free.
+
+# Build & test artifacts
+bin/
+dist/
+reports/
+coverage.out
+coverage.html
+*.test
+
+# VCS & CI
+.git/
+.gitignore
+.github/
+
+# Secrets
+.env
+*.env
+
+# Editor / temporary files
+.DS_Store
+*.swp
+*.tmp

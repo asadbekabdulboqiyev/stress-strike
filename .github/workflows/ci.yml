@@ -128,11 +128,27 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        if: github.event_name == 'push' && secrets.DOCKER_USERNAME != ''
+        if: github.event_name == 'push' && env.DOCKER_USERNAME != ''
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+
+      - name: Push decision
+        id: push-decision
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "$DOCKER_USERNAME" ]; then
+            echo "should_push=true" >> "$GITHUB_OUTPUT"
+            echo "registry=$DOCKER_USERNAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_push=false" >> "$GITHUB_OUTPUT"
+            echo "registry=stress-strike" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -141,10 +157,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             VERSION=${{ github.ref_name }}
-          # Push only on push events AND when registry credentials exist;
-          # on PRs / without credentials this still builds (validation).
-          push: ${{ github.event_name == 'push' && secrets.DOCKER_USERNAME != '' }}
+          push: ${{ steps.push-decision.outputs.should_push }}
           # Image name resolves to either the secret owner or "stress-strike".
           tags: |
-            ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_USERNAME || 'stress-strike' }}/stress-strike:latest
-            ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_USERNAME || 'stress-strike' }}/stress-strike:${{ github.sha }}
+            ${{ steps.push-decision.outputs.registry }}/stress-strike:latest
+            ${{ steps.push-decision.outputs.registry }}/stress-strike:${{ github.sha }}

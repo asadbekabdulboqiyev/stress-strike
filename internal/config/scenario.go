@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -32,12 +33,22 @@ type Profile struct {
 	RPS         int    `yaml:"rps" json:"rps"`
 	Timeout     int    `yaml:"timeout" json:"timeout"`
 	KeepAlive   *bool  `yaml:"keep_alive" json:"keep_alive"`
+	WAFEnabled  bool   `yaml:"waf_enabled" json:"waf_enabled"`
+	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
 
 type Extract struct {
 	Name string `yaml:"name" json:"name"`
 	From string `yaml:"from" json:"from"`
 	Path string `yaml:"path" json:"path"`
+}
+
+type RateLimitConfig struct {
+	DefaultRPS   int        `yaml:"default_rps" json:"default_rps"`
+	MaxBurst     int        `yaml:"max_burst" json:"max_burst"`
+	IPRPS        int        `yaml:"ip_rps" json:"ip_rps"`
+	IPBurst      int        `yaml:"ip_burst" json:"ip_burst"`
+	SeenCacheTTL time.Duration `yaml:"seen_cache_ttl" json:"seen_cache_ttl"`
 }
 
 // Assertion validates a single property of a step response. Type is one of

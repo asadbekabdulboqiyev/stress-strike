@@ -19,7 +19,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.8.0"
+const version = "0.9.0"
 
 const maxCaptureEntries = 100
 
@@ -64,6 +64,8 @@ func main() {
 		jsonOut     bool
 		wizardGate  bool
 		wizardRan   bool
+		poolPath    string
+		maxErrRate  float64
 	)
 
 	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
@@ -94,6 +96,8 @@ func main() {
 	flag.BoolVar(&jsonOut, "json", false, "print the full machine-readable JSON report to stdout")
 	gateMode := flag.Bool("gate", false, "race-condition strike: all users fire ONE simultaneous request when the gate opens (authorized targets only)")
 	beastPreset := flag.Bool("beast", false, "BEAST preset: 100k-user linear ramp with unlimited RPS over 300s (authorized stress tests only)")
+	flag.StringVar(&poolPath, "pool", "", "file with one payload per line; {{pool}} in body/headers gets a unique value per request")
+	flag.Float64Var(&maxErrRate, "max-error-rate", 0, "CI gate: exit with code 2 when error rate exceeds this percent (0 = off)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
@@ -236,6 +240,17 @@ func main() {
 	if capSink != nil {
 		opts.Capture = capSink
 	}
+	if poolPath != "" {
+		pool, perr := loadPool(poolPath)
+		if perr != nil {
+			fatal(perr)
+		}
+		if len(pool) == 0 {
+			fatal(fmt.Errorf("pool file %q has no payloads", poolPath))
+		}
+		opts.Pool = pool
+		fmt.Fprintf(os.Stderr, "payload pool: %d unique values for {{pool}}\n", len(pool))
+	}
 	telemetry, err := eng.Run(ctx, opts)
 	if err != nil {
 		fatal(err)
@@ -263,6 +278,11 @@ func main() {
 	}
 	fmt.Fprintf(os.Stderr, "\nReports written:\n  %s\n  %s\n", jsonPath, txtPath)
 
+	if shouldFailGate(r.ErrorRatePct, maxErrRate) {
+		fmt.Fprintf(os.Stderr, "✗ error rate %.2f%% exceeds gate %.2f%% — failing (exit 2)\n", r.ErrorRatePct, maxErrRate)
+		os.Exit(2)
+	}
+
 	if capSink != nil {
 		if kept, _ := capSink.Count(); kept > 0 {
 			capPath := filepath.Join(reportDir, fmt.Sprintf("%s_%s-capture.txt",
@@ -288,6 +308,31 @@ func sanitizeCaptureName(s string) string {
 		}
 	}
 	return strings.Trim(b.String(), "-")
+}
+
+func shouldFailGate(ratePct, threshold float64) bool {
+	return threshold > 0 && ratePct > threshold
+}
+
+func loadPool(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var pool []string
+	seen := map[string]struct{}{}
+	for _, l := range strings.Split(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if _, dup := seen[l]; dup {
+			continue
+		}
+		seen[l] = struct{}{}
+		pool = append(pool, l)
+	}
+	return pool, nil
 }
 
 func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {

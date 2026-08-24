@@ -37,6 +37,7 @@ type RunOptions struct {
 	Out     io.Writer
 	Quiet   bool
 	Capture ResponseCapture
+	Pool    []string
 }
 
 type stepResult struct {
@@ -110,6 +111,9 @@ type Engine struct {
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
 	capture   ResponseCapture
+
+	pool    []string
+	poolIdx atomic.Int64
 }
 
 func New(scenario *config.Scenario) (*Engine, error) {
@@ -156,6 +160,7 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	defer runCancel()
 
 	e.capture = opts.Capture
+	e.pool = opts.Pool
 
 	e.telemetry = metrics.NewTelemetry()
 	if e.scenario.Profile.Warmup > 0 {
@@ -245,6 +250,10 @@ func (e *Engine) controller(ctx context.Context) {
 
 func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	vars := newVars(e.scenario, userIndex)
+	if len(e.pool) > 0 {
+		idx := e.poolIdx.Add(1) - 1
+		vars["pool"] = e.pool[int(idx%int64(len(e.pool)))]
+	}
 	iterStart := time.Now()
 	record := e.telemetry.Recording()
 	var lastStatus int

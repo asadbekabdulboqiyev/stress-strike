@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -157,5 +159,61 @@ func TestClassifyUnsupportedSchemeIsNotConnectionError(t *testing.T) {
 	res = classifyError(connRefused, 0)
 	if res.errName != errConnection {
 		t.Errorf("errName = %q, want %q", res.errName, errConnection)
+	}
+}
+
+func TestPoolGivesUniqueValues(t *testing.T) {
+	var mu sync.Mutex
+	seen := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		seen[string(body)] = true
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	sc := &config.Scenario{
+		Name: "pool-test",
+		Profile: config.Profile{
+			Type: config.ProfileSteady, Users: 2, Duration: 1, Timeout: 2,
+		},
+		Steps: []config.Step{{
+			Name: "reg", Method: "POST", URL: srv.URL,
+			Body: `{"email":"{{pool}}"}`,
+		}},
+	}
+
+	eng, err := New(sc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := []string{"p1@x.test", "p2@x.test", "p3@x.test"}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if _, err := eng.Run(ctx, RunOptions{Quiet: true, Pool: pool}); err != nil {
+		t.Fatal(err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) == 0 {
+		t.Fatal("no requests captured")
+	}
+	for v := range seen {
+		valid := false
+		for _, p := range pool {
+			if v == `{"email":"`+p+`"}` {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			t.Errorf("unexpected body %q — not from pool", v)
+		}
+	}
+	if len(seen) < 2 {
+		t.Errorf("only %d distinct payloads seen, want >=2 cycling through pool", len(seen))
 	}
 }

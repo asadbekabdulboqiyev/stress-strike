@@ -289,6 +289,8 @@ Controller**.
 | `--capture N` | save first N raw responses for debugging (≤100, private file) |
 | `--gate` | race strike: all users fire one simultaneous request |
 | `--beast` | maximum-aggression preset (100k ramp, unlimited RPS) |
+| `--pool FILE` | one payload per line; `{{pool}}` gets a unique value per request |
+| `--max-error-rate P` | CI gate: exit code 2 when error rate exceeds P percent |
 | `--warmup S` | exclude first S seconds from metrics (load still sent) |
 | `--json` | print machine-readable JSON report to stdout |
 | `--version` | print version and exit |

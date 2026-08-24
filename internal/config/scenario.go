@@ -25,6 +25,7 @@ type Profile struct {
 	Type            string `yaml:"type" json:"type"`
 	Users           int    `yaml:"users" json:"users"`
 	Duration        int    `yaml:"duration" json:"duration"`
+	Warmup          int    `yaml:"warmup" json:"warmup"`
 	RampUp          int    `yaml:"ramp_up" json:"ramp_up"`
 	SpikeUsers      int    `yaml:"spike_users" json:"spike_users"`
 	SpikeWarmup     int    `yaml:"spike_warmup" json:"spike_warmup"`
@@ -98,6 +99,12 @@ func (p *Profile) Normalize() error {
 	}
 	if p.Duration > maxDuration {
 		return fmt.Errorf("duration (%d) exceeds maximum of %d seconds (%d days)", p.Duration, maxDuration, maxDuration/(24*60*60))
+	}
+	if p.Warmup < 0 {
+		p.Warmup = 0
+	}
+	if p.Warmup >= p.Duration {
+		return fmt.Errorf("warmup (%ds) must be smaller than duration (%ds)", p.Warmup, p.Duration)
 	}
 	if p.RampUp <= 0 {
 		p.RampUp = p.Duration / 2

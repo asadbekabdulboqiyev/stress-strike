@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,7 +19,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.5.2"
+const version = "0.6.0"
 
 const maxCaptureEntries = 100
 
@@ -59,6 +60,8 @@ func main() {
 		showVersion bool
 		forceWizard bool
 		captureN    int
+		warmup      int
+		jsonOut     bool
 	)
 
 	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
@@ -85,6 +88,8 @@ func main() {
 	flag.BoolVar(&forceWizard, "interactive", false, "guided setup wizard (auto-starts when --url/--config are omitted in a terminal)")
 	flag.BoolVar(&forceWizard, "i", false, "shorthand for --interactive")
 	flag.IntVar(&captureN, "capture", 0, "save first N raw responses to <report-dir>/ for debugging (max 100; request credentials are never stored)")
+	flag.IntVar(&warmup, "warmup", 0, "exclude the first S seconds from metrics while still sending load (stabilizes percentiles)")
+	flag.BoolVar(&jsonOut, "json", false, "print the full machine-readable JSON report to stdout")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
@@ -96,9 +101,13 @@ func main() {
 	flag.Parse()
 
 	nameSet := false
+	warmupSet := false
 	flag.Visit(func(f *flag.Flag) {
-		if f.Name == "name" {
+		switch f.Name {
+		case "name":
 			nameSet = true
+		case "warmup":
+			warmupSet = true
 		}
 	})
 
@@ -160,6 +169,13 @@ func main() {
 		scenario = sc
 	}
 
+	if warmupSet {
+		scenario.Profile.Warmup = warmup
+		if err := scenario.Profile.Normalize(); err != nil {
+			fatal(err)
+		}
+	}
+
 	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 
@@ -203,6 +219,14 @@ func main() {
 	r := report.Build(telemetry, scenario)
 	fmt.Fprintln(os.Stderr)
 	r.Render(os.Stdout)
+
+	if jsonOut {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(r); err != nil {
+			fatal(err)
+		}
+	}
 
 	jsonPath, err := r.SaveJSON(reportDir)
 	if err != nil {

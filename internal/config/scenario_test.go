@@ -273,3 +273,18 @@ func TestNormalizeAddsSchemeForBareHosts(t *testing.T) {
 		t.Errorf("absolute url changed: %q", sc.Steps[2].URL)
 	}
 }
+
+func TestWarmupValidation(t *testing.T) {
+	p := Profile{Type: ProfileSteady, Users: 5, Duration: 30, Warmup: 40}
+	if err := p.Normalize(); err == nil {
+		t.Error("expected error when warmup >= duration")
+	}
+
+	p = Profile{Type: ProfileSteady, Users: 5, Duration: 30, Warmup: -5}
+	if err := p.Normalize(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.Warmup != 0 {
+		t.Errorf("negative warmup = %d, want clamped to 0", p.Warmup)
+	}
+}

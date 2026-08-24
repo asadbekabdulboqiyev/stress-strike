@@ -174,11 +174,15 @@ func (r Report) Render(w io.Writer) {
 
 	// ── Errors ──────────────────────────────────────────────────────────
 	if len(r.Errors) > 0 {
-		fmt.Fprintln(w, colorize(colorBold, c, "  ERRORS"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ERRORS (top first)"))
 		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
-		for _, name := range metrics.SortedErrors(r.Errors) {
-			fmt.Fprintf(w, "    %s  %s\n",
-				colorize(colorRed, c, name), formatCount(r.Errors[name]))
+		for _, es := range metrics.TopErrors(r.Errors, 0) {
+			share := 0.0
+			if r.TotalErrors > 0 {
+				share = float64(es.Count) / float64(r.TotalErrors) * 100
+			}
+			fmt.Fprintf(w, "    %-18s %10s  %5.1f%%\n",
+				colorize(colorRed, c, es.Name), formatCount(es.Count), share)
 		}
 		fmt.Fprintln(w)
 	}

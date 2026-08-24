@@ -51,6 +51,9 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 				// Build the line with color segments
 				var line strings.Builder
 				line.WriteString("\r")
+				if !t.Recording() {
+					line.WriteString(colorize(colorYellow, true, "[WARMUP]"))
+				}
 				line.WriteString(colorize(rc, true, bar))
 				line.WriteString(fmt.Sprintf(" %5.1f%% ", pct))
 				line.WriteString(colorize(colorCyan, true,
@@ -61,6 +64,12 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 				line.WriteString(fmt.Sprintf("req=%s ", formatCount(reqs)))
 				line.WriteString(colorize(rc, true,
 					fmt.Sprintf("err=%d (%.1f%%)", errs, errPct)))
+				if errs > 0 {
+					for _, es := range metrics.TopErrors(t.Errors(), 2) {
+						line.WriteString(colorize(colorRed, true,
+							fmt.Sprintf(" %s=%s", es.Name, formatCount(es.Count))))
+					}
+				}
 				line.WriteString(fmt.Sprintf(" p50=%s p95=%s p99=%s",
 					snap.Percentile(0.50), snap.Percentile(0.95), snap.Percentile(0.99)))
 

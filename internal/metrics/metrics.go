@@ -87,6 +87,8 @@ type Telemetry struct {
 	Steps       []*StepStats
 	ActiveUsers atomic.Int64
 	PeakUsers   atomic.Int64
+
+	warmupUntil atomic.Int64
 }
 
 func NewTelemetry() *Telemetry {
@@ -94,6 +96,21 @@ func NewTelemetry() *Telemetry {
 		Start:   time.Now(),
 		Overall: NewStepStats("overall"),
 	}
+}
+
+func (t *Telemetry) SetWarmup(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	t.warmupUntil.Store(time.Now().Add(d).UnixNano())
+}
+
+func (t *Telemetry) Recording() bool {
+	until := t.warmupUntil.Load()
+	if until == 0 {
+		return true
+	}
+	return time.Now().UnixNano() >= until
 }
 
 func (t *Telemetry) AddStep(stats *StepStats) {
@@ -171,4 +188,26 @@ func SortedErrors(errs map[string]uint64) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+type ErrorStat struct {
+	Name  string
+	Count uint64
+}
+
+func TopErrors(errs map[string]uint64, n int) []ErrorStat {
+	list := make([]ErrorStat, 0, len(errs))
+	for name, count := range errs {
+		list = append(list, ErrorStat{Name: name, Count: count})
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].Count == list[j].Count {
+			return list[i].Name < list[j].Name
+		}
+		return list[i].Count > list[j].Count
+	})
+	if n > 0 && len(list) > n {
+		list = list[:n]
+	}
+	return list
 }

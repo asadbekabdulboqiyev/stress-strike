@@ -37,8 +37,12 @@ someone else's server is illegal (DDoS).
   (`MaxIdleConnsPerHost`, idle timeouts) so each request reuses a TCP socket.
 - **Global pacing** — optional `rps` cap via a thread-safe token bucket.
 - **Real-time telemetry** — live progress bar (RPS, active users, errors,
-  p50/p95/p99) and a color-coded final report with per-step latency
-  percentiles and status/error distributions.
+  p50/p95/p99, top error types) and a color-coded final report with per-step
+  latency percentiles and status/error distributions.
+- **Warmup period** — `--warmup S` sends load for S seconds without counting it
+  toward metrics, so percentiles reflect the warmed-up steady state.
+- **JSON stdout** — `--json` prints the full machine-readable report for jq,
+  CI gates, and dashboards.
 - **Graceful drain** — in-flight requests at the end of a run are drained
   instead of being spuriously counted as errors.
 - **Reports** — timestamped JSON and TXT files in `./reports/`, written with
@@ -276,6 +280,8 @@ Controller**.
 | `--quiet` | hide the live progress bar |
 | `--report-dir DIR` | report output directory (default `./reports`) |
 | `--capture N` | save first N raw responses for debugging (≤100, private file) |
+| `--warmup S` | exclude first S seconds from metrics (load still sent) |
+| `--json` | print machine-readable JSON report to stdout |
 | `--version` | print version and exit |
 
 ---

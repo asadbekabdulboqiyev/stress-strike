@@ -137,6 +137,9 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	e.capture = opts.Capture
 
 	e.telemetry = metrics.NewTelemetry()
+	if e.scenario.Profile.Warmup > 0 {
+		e.telemetry.SetWarmup(time.Duration(e.scenario.Profile.Warmup) * time.Second)
+	}
 	for _, st := range e.stepStats {
 		e.telemetry.AddStep(st)
 	}
@@ -210,11 +213,14 @@ func (e *Engine) controller(ctx context.Context) {
 func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	vars := newVars(e.scenario, userIndex)
 	iterStart := time.Now()
+	record := e.telemetry.Recording()
 	var lastStatus int
 	var firstErr string
 	for i, step := range e.scenario.Steps {
 		res := e.runStep(reqBase, step, vars)
-		e.stepStats[i].Record(res.latency, res.status, res.errName)
+		if record {
+			e.stepStats[i].Record(res.latency, res.status, res.errName)
+		}
 		if res.errName != "" {
 			if firstErr == "" {
 				firstErr = res.errName
@@ -223,7 +229,9 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 		}
 		lastStatus = res.status
 	}
-	e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+	if record {
+		e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+	}
 }
 
 func (e *Engine) runStep(ctx context.Context, step config.Step, vars map[string]string) stepResult {

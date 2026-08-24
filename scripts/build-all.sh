@@ -1,34 +1,35 @@
 #!/usr/bin/env bash
 #
-# build-all.sh — cross-compile stress-strike for all supported platforms.
+# build-all.sh — cross-compile stress-strike for all supported platforms
+# and package per-platform archives plus sha256 checksums.
 #
 # Output layout:
-#   dist/stress-strike-v{version}-{os}-{arch}/stress-strike[.exe]
+#   dist/stress-strike-v{version}-{os}-{arch}.tar.gz   (unix)
+#   dist/stress-strike-v{version}-windows-amd64.zip    (windows)
+#   dist/sha256sums.txt
 #
 # Requirements:
 #   - go toolchain on PATH (no CGO needed: binaries are static)
+#   - tar, zip, sha256sum (macOS: coreutils' shasum fallback not needed;
+#     use `shasum -a 256` when sha256sum is missing)
 #
 # Usage:
-#   VERSION=0.2.0 ./scripts/build-all.sh     # explicit version
+#   VERSION=0.5.1 ./scripts/build-all.sh     # explicit version
 #   make release                             # uses Makefile's VERSION variable
 #
 # Environment overrides:
-#   VERSION   release version used in the output directory name (default 0.2.0)
+#   VERSION   release version used in the artifact names (default 0.5.1)
 #   DIST_DIR  alternative dist/ root (default: <repo>/dist)
 
 set -euo pipefail
 
-# Resolve version: prefer VERSION env (set by `make release`), else default.
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.5.1}"
 
-# Always resolve paths relative to the repository root, so this script
-# works regardless of the caller's current working directory.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
 
 BIN_NAME="stress-strike"
 
-# Supported platforms: GOOS/GOARCH.
 PLATFORMS=(
   darwin/arm64
   darwin/amd64
@@ -42,35 +43,57 @@ if ! command -v go >/dev/null 2>&1; then
   exit 1
 fi
 
+checksum_cmd() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    echo "sha256sum"
+  else
+    echo "shasum -a 256"
+  fi
+}
+
 echo "==> stress-strike release build v${VERSION}"
 echo "==> output directory: ${DIST_DIR}"
 echo
+
+rm -rf "${DIST_DIR}/pkg"
+mkdir -p "${DIST_DIR}/pkg"
 
 for platform in "${PLATFORMS[@]}"; do
   os="${platform%/*}"
   arch="${platform#*/}"
 
-  # Windows binaries get the classic .exe suffix.
   suffix=""
   if [ "${os}" = "windows" ]; then
     suffix=".exe"
   fi
 
-  out_dir="${DIST_DIR}/stress-strike-v${VERSION}-${os}-${arch}"
-  out_bin="${out_dir}/${BIN_NAME}${suffix}"
+  name="stress-strike-v${VERSION}-${os}-${arch}"
+  build_tmp="${DIST_DIR}/pkg/${BIN_NAME}${suffix}"
 
-  mkdir -p "${out_dir}"
-
-  echo "==> building ${os}/${arch} -> ${out_bin}"
+  echo "==> building ${os}/${arch}"
   (
     cd "${REPO_ROOT}"
     CGO_ENABLED=0 \
       GOOS="${os}" \
       GOARCH="${arch}" \
-      go build -trimpath -buildvcs=false -o "${out_bin}" ./cmd/stress-strike
+      go build -trimpath -buildvcs=false -o "${build_tmp}" ./cmd/stress-strike
   )
+
+  if [ "${os}" = "windows" ]; then
+    (cd "${DIST_DIR}/pkg" && zip -q "../${name}.zip" "${BIN_NAME}${suffix}")
+  else
+    tar -czf "${DIST_DIR}/${name}.tar.gz" -C "${DIST_DIR}/pkg" "${BIN_NAME}"
+  fi
+  rm -f "${build_tmp}"
 done
+
+(
+  cd "${DIST_DIR}"
+  # shellcheck disable=SC2046
+  $(checksum_cmd) ./*.tar.gz ./*.zip > sha256sums.txt
+  rm -rf pkg
+)
 
 echo
 echo "==> done. artifacts:"
-find "${DIST_DIR}" -maxdepth 2 -type f -name "${BIN_NAME}*" | sort
+ls -l "${DIST_DIR}"

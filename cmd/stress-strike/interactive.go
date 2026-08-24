@@ -70,6 +70,7 @@ type wizardAnswers struct {
 	timeout     int
 	keepAlive   bool
 	capture     int
+	gate        bool
 }
 
 type lastRun struct {
@@ -281,15 +282,25 @@ func parseProfileChoice(sel string) (string, error) {
 	return "", fmt.Errorf("unknown profile %q (enter 1-5 or a profile name)", sel)
 }
 
-func parseModeChoice(sel string) (bool, error) {
+type setupMode int
+
+const (
+	modeGuided setupMode = iota
+	modeExpert
+	modeBeast
+)
+
+func parseModeChoice(sel string) (setupMode, error) {
 	sel = strings.ToLower(strings.TrimSpace(sel))
 	switch sel {
 	case "", "1", "guided":
-		return true, nil
+		return modeGuided, nil
 	case "2", "expert":
-		return false, nil
+		return modeExpert, nil
+	case "3", "beast":
+		return modeBeast, nil
 	default:
-		return false, fmt.Errorf("unknown mode %q (enter 1 or 2)", sel)
+		return modeGuided, fmt.Errorf("unknown mode %q (enter 1-3)", sel)
 	}
 }
 
@@ -325,6 +336,21 @@ func autoTune(target string) wizardAnswers {
 		ans.rps = 0
 	}
 	return ans
+}
+
+func autoTuneBeast(target string) wizardAnswers {
+	return wizardAnswers{
+		url:       target,
+		method:    "GET",
+		headers:   headerFlags{},
+		profile:   config.ProfileLinearRamp,
+		users:     maxTotalUsers,
+		duration:  300,
+		rampUp:    240,
+		timeout:   3,
+		keepAlive: true,
+		rps:       0,
+	}
 }
 
 func stdinIsTerminal() bool {
@@ -367,22 +393,23 @@ func (w *wizard) askTargetURL(def lastRun) (string, error) {
 	}
 }
 
-func (w *wizard) askSetupMode() (bool, error) {
+func (w *wizard) askSetupMode() (setupMode, error) {
 	w.printf("%s\n", w.paint(ansiBold, "Setup mode"))
 	w.printf("  %s) %-8s %s%s\n", "1", w.paint(ansiGreen, "guided"), w.paint(ansiDim, "just give a URL — everything else auto-tuned"), w.paint(ansiCyan, "  ← recommended"))
 	w.printf("  %s) %-8s %s\n", "2", w.paint(ansiGreen, "expert"), w.paint(ansiDim, "control every option yourself"))
+	w.printf("  %s) %-8s %s\n", "3", w.paint(ansiRed, "beast"), w.paint(ansiDim, "maximum aggression — all limits pushed"))
 
 	for {
 		sel, err := w.ask("Select mode", "1", "recommended")
 		if err != nil {
-			return false, err
+			return modeGuided, err
 		}
-		guided, perr := parseModeChoice(sel)
+		mode, perr := parseModeChoice(sel)
 		if perr != nil {
 			w.errorf("%v", perr)
 			continue
 		}
-		return guided, nil
+		return mode, nil
 	}
 }
 
@@ -515,6 +542,12 @@ func (w *wizard) expertFlow(ans *wizardAnswers) error {
 	}
 	ans.capture = capN
 
+	gateStrike, err := w.askBool("Gate strike — simultaneous race shot", false, "advanced")
+	if err != nil {
+		return err
+	}
+	ans.gate = gateStrike
+
 	name, err := w.ask("Test name", defaultTestName(ans.url), "")
 	if err != nil {
 		return err
@@ -523,17 +556,20 @@ func (w *wizard) expertFlow(ans *wizardAnswers) error {
 	return nil
 }
 
-func (w *wizard) renderSummary(ans *wizardAnswers, guided bool) {
+func (w *wizard) renderSummary(ans *wizardAnswers, mode setupMode) {
 	w.printf("\n%s\n", w.paint(ansiBold, "Summary"))
 	setup := "expert"
 	tunedFor := ""
-	if guided {
+	switch mode {
+	case modeGuided:
 		setup = "guided (auto-tuned)"
 		tunedFor = "a public API (polite limits)"
 		u, err := url.Parse(ans.url)
 		if err == nil && isLocalHost(u.Hostname()) {
 			tunedFor = "local development (full power)"
 		}
+	case modeBeast:
+		setup = "BEAST (maximum aggression)"
 	}
 	rows := [][2]string{
 		{"Setup", setup},
@@ -567,9 +603,13 @@ func (w *wizard) renderSummary(ans *wizardAnswers, guided bool) {
 	for _, row := range rows {
 		w.printf("  %-*s %s\n", 14, w.paint(ansiDim, row[0]), row[1])
 	}
-	if guided {
+	if mode == modeGuided {
 		w.printf("\n%s\n", w.paint(ansiDim, "Settings chosen automatically for "+tunedFor+"."))
 		w.printf("%s\n", w.paint(ansiDim, "Want full control? Re-run and pick 'expert'."))
+	}
+	if mode == modeBeast {
+		w.printf("\n%s\n", w.paint(ansiRed, "⚠  BEAST MODE: maximum load generation."))
+		w.printf("%s\n", w.paint(ansiRed, "   Run ONLY against systems you own or have written permission to test."))
 	}
 }
 
@@ -582,7 +622,7 @@ func runWizard(in io.Reader, out io.Writer, color bool) (*wizardAnswers, error) 
 
 	last := loadLastRun()
 
-	guided, err := w.askSetupMode()
+	mode, err := w.askSetupMode()
 	if err != nil {
 		return nil, err
 	}
@@ -595,19 +635,29 @@ func runWizard(in io.Reader, out io.Writer, color bool) (*wizardAnswers, error) 
 		return nil, err
 	}
 
-	if guided {
+	switch mode {
+	case modeGuided:
 		ans = autoTune(ans.url)
 		ans.headers = headerFlags{}
 		ans.name = defaultTestName(ans.url)
-	} else {
+	case modeBeast:
+		ans = autoTuneBeast(ans.url)
+		ans.name = "beast-" + defaultTestName(ans.url)
+	default:
 		if err := w.expertFlow(&ans); err != nil {
 			return nil, err
 		}
 	}
 
-	w.renderSummary(&ans, guided)
+	w.renderSummary(&ans, mode)
 
-	confirmed, err := w.askBool("\nStart test", true, "recommended")
+	confirmDef := true
+	confirmNote := "recommended"
+	if mode == modeBeast {
+		confirmDef = false
+		confirmNote = "type y deliberately — this is maximum load"
+	}
+	confirmed, err := w.askBool("\nStart test", confirmDef, confirmNote)
 	if err != nil {
 		return nil, err
 	}

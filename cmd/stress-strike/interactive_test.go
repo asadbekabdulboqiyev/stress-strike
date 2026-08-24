@@ -127,6 +127,7 @@ func TestRunWizardDefaults(t *testing.T) {
 		"",
 		"",
 		"",
+		"",
 		"y",
 	)), &strings.Builder{}, false)
 	if err != nil {
@@ -172,6 +173,7 @@ func TestRunWizardFullSpike(t *testing.T) {
 		"2000",
 		"10",
 		"n",
+		"",
 		"",
 		"black-friday",
 		"y",
@@ -231,6 +233,7 @@ func TestRunWizardRecoversFromInvalidURL(t *testing.T) {
 		"",
 		"",
 		"",
+		"",
 		"y",
 	)
 
@@ -256,6 +259,7 @@ func TestRunWizardInvalidProfileReprompts(t *testing.T) {
 		"banana",
 		"3",
 		"20",
+		"",
 		"",
 		"",
 		"",
@@ -290,6 +294,7 @@ func TestRunWizardDeclinedConfirm(t *testing.T) {
 		"",
 		"",
 		"",
+		"",
 		"n",
 	)
 
@@ -310,6 +315,7 @@ func TestRunWizardRejectsOversizedUsers(t *testing.T) {
 		"50",
 		"",
 		"1",
+		"",
 		"",
 		"",
 		"",
@@ -341,6 +347,7 @@ func TestRunWizardCaptureDebug(t *testing.T) {
 		"",
 		"",
 		"5",
+		"",
 		"my-debug",
 		"y",
 	)
@@ -366,18 +373,21 @@ func TestRunWizardEOFOnRequiredURL(t *testing.T) {
 
 func TestParseModeChoice(t *testing.T) {
 	tests := []struct {
-		input    string
-		wantGuid bool
-		wantErr  bool
+		input   string
+		want    setupMode
+		wantErr bool
 	}{
-		{"", true, false},
-		{"1", true, false},
-		{"guided", true, false},
-		{"GUIDED", true, false},
-		{"2", false, false},
-		{"expert", false, false},
-		{"3", false, true},
-		{"wizard", false, true},
+		{"", modeGuided, false},
+		{"1", modeGuided, false},
+		{"guided", modeGuided, false},
+		{"GUIDED", modeGuided, false},
+		{"2", modeExpert, false},
+		{"expert", modeExpert, false},
+		{"3", modeBeast, false},
+		{"beast", modeBeast, false},
+		{"BEAST", modeBeast, false},
+		{"4", modeGuided, true},
+		{"wizard", modeGuided, true},
 	}
 
 	for _, tt := range tests {
@@ -392,10 +402,53 @@ func TestParseModeChoice(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.wantGuid {
-				t.Errorf("parseModeChoice(%q) = %v, want %v", tt.input, got, tt.wantGuid)
+			if got != tt.want {
+				t.Errorf("parseModeChoice(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestAutoTuneBeast(t *testing.T) {
+	b := autoTuneBeast("http://localhost:9000")
+	if b.profile != "linear-ramp" || b.users != maxTotalUsers || b.duration != 300 {
+		t.Errorf("beast profile/users/duration = %s/%d/%d", b.profile, b.users, b.duration)
+	}
+	if b.rampUp != 240 || b.timeout != 3 || b.rps != 0 || !b.keepAlive {
+		t.Errorf("beast rampup/timeout/rps/keepalive wrong: %+v", b)
+	}
+}
+
+func TestRunWizardBeastDeclinedByDefault(t *testing.T) {
+	withTempHistory(t)
+
+	ans, err := runWizard(strings.NewReader(wizardInput(
+		"3",
+		"localhost:9000",
+		"",
+	)), &strings.Builder{}, false)
+	if !errors.Is(err, errCanceled) {
+		t.Fatalf("err = %v, want errCanceled (Enter must NOT start BEAST)", err)
+	}
+	_ = ans
+}
+
+func TestRunWizardBeastConfirmed(t *testing.T) {
+	withTempHistory(t)
+
+	ans, err := runWizard(strings.NewReader(wizardInput(
+		"3",
+		"localhost:9000",
+		"y",
+	)), &strings.Builder{}, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ans.users != maxTotalUsers || ans.profile != "linear-ramp" || ans.duration != 300 {
+		t.Errorf("beast answers wrong: users=%d profile=%s duration=%d", ans.users, ans.profile, ans.duration)
+	}
+	if ans.name != "beast-localhost" {
+		t.Errorf("name = %q, want beast-localhost", ans.name)
 	}
 }
 
@@ -536,6 +589,7 @@ func TestRunWizardWavePeriod(t *testing.T) {
 		"",
 		"5",
 		"45",
+		"",
 		"",
 		"",
 		"",

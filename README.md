@@ -43,6 +43,9 @@ someone else's server is illegal (DDoS).
   barrier and fires ONE request per user the instant it opens, maximizing the
   chance of exploiting check-then-act windows (double-spend, coupon reuse,
   OTP races). For authorized bug-bounty targets only.
+- **BEAST preset** — `--beast` (or wizard mode 3): 100k-user linear ramp with
+  unlimited RPS over 300s, auto-tuned to find breaking points on systems you
+  own or have written permission to test. Confirmation is opt-in by default.
 - **Warmup period** — `--warmup S` sends load for S seconds without counting it
   toward metrics, so percentiles reflect the warmed-up steady state.
 - **JSON stdout** — `--json` prints the full machine-readable report for jq,
@@ -285,6 +288,7 @@ Controller**.
 | `--report-dir DIR` | report output directory (default `./reports`) |
 | `--capture N` | save first N raw responses for debugging (≤100, private file) |
 | `--gate` | race strike: all users fire one simultaneous request |
+| `--beast` | maximum-aggression preset (100k ramp, unlimited RPS) |
 | `--warmup S` | exclude first S seconds from metrics (load still sent) |
 | `--json` | print machine-readable JSON report to stdout |
 | `--version` | print version and exit |

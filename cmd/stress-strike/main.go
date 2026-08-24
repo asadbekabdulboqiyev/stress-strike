@@ -19,7 +19,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.7.0"
+const version = "0.8.0"
 
 const maxCaptureEntries = 100
 
@@ -62,6 +62,8 @@ func main() {
 		captureN    int
 		warmup      int
 		jsonOut     bool
+		wizardGate  bool
+		wizardRan   bool
 	)
 
 	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
@@ -91,6 +93,7 @@ func main() {
 	flag.IntVar(&warmup, "warmup", 0, "exclude the first S seconds from metrics while still sending load (stabilizes percentiles)")
 	flag.BoolVar(&jsonOut, "json", false, "print the full machine-readable JSON report to stdout")
 	gateMode := flag.Bool("gate", false, "race-condition strike: all users fire ONE simultaneous request when the gate opens (authorized targets only)")
+	beastPreset := flag.Bool("beast", false, "BEAST preset: 100k-user linear ramp with unlimited RPS over 300s (authorized stress tests only)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
@@ -148,6 +151,8 @@ func main() {
 		timeout = ans.timeout
 		keepAlive = ans.keepAlive
 		captureN = ans.capture
+		wizardGate = ans.gate
+		wizardRan = true
 	} else if configPath != "" && url != "" {
 		fmt.Fprintln(os.Stderr, "note: both --config and --url given; --config takes precedence")
 	}
@@ -175,8 +180,22 @@ func main() {
 	}
 	if *gateMode {
 		scenario.Profile.Gate = true
+	} else if wizardRan {
+		scenario.Profile.Gate = wizardGate
 	}
-	if warmupSet || *gateMode {
+	if *beastPreset {
+		p := &scenario.Profile
+		p.Type = config.ProfileLinearRamp
+		p.Users = 100_000
+		p.Duration = 300
+		p.RampUp = 240
+		p.Warmup = 0
+		p.RPS = 0
+		p.Timeout = 3
+		p.Gate = false
+		fmt.Fprintln(os.Stderr, "⚠  BEAST preset engaged: 100k-user linear ramp, unlimited RPS.")
+	}
+	if warmupSet || *gateMode || (wizardRan && wizardGate) || *beastPreset {
 		if err := scenario.Profile.Normalize(); err != nil {
 			fatal(err)
 		}

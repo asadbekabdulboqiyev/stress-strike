@@ -1,0 +1,46 @@
+# Multi-protocol showcase: every protocol weapon at full power.
+#
+#   - ws      : persistent socket session per virtual user (chat-like flow)
+#   - grpc    : generic unary method invoke with metadata + payload
+#   - tcp     : pooled persistent connection (e.g. Redis-style exchange)
+#   - udp     : request-response datagram probe with RTT measurement
+#
+# Run: ./bin/stress-strike --config examples/multi_protocol.yaml
+name: multi-protocol-power
+base_url: http://localhost:8080
+load_profile:
+  type: steady
+  users: 50
+  duration: 30
+  timeout: 5
+
+steps:
+  - name: ws_chat_session
+    type: ws
+    url: ws://localhost:8080/ws
+    body: '{"user":"{{user}}","msg":"ping"}'
+    frame_type: text
+    session: true              # one live socket per user, reused every iteration
+
+  - name: grpc_invoke
+    type: grpc
+    url: grpc://localhost:50051
+    grpc_method: /demo.DemoService/GetStatus
+    headers:
+      x-client: stress-strike
+    body: '{"id": "{{id}}"}'
+
+  - name: tcp_redis_ping
+    type: tcp
+    url: localhost:6379
+    body: "PING\r\n"
+    session: true              # persistent TCP connection, self-healing on drop
+    assertions:
+      - type: regex
+        value: "PONG"
+
+  - name: udp_stats_probe
+    type: udp
+    url: localhost:8125
+    body: 'stress.probe:1|c'
+    await_response: true       # wait for the reply and measure true RTT

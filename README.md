@@ -36,9 +36,10 @@ someone else's server is illegal (DDoS).
 - **Connection pooling** — keep-alive + tuned `http.Transport`
   (`MaxIdleConnsPerHost`, idle timeouts) so each request reuses a TCP socket.
 - **Global pacing** — optional `rps` cap via a thread-safe token bucket.
-- **Real-time telemetry** — live progress bar (RPS, active users, errors,
-  p50/p95/p99) and a color-coded final report with per-step latency
-  percentiles and status/error distributions.
+- **Real-time telemetry** — live multi-line panel (progress bar, RPS sparkline,
+  request/error counters, p50/p95/p99, active users) and a color-coded final
+  report with per-step latency percentiles, a latency-distribution chart and
+  status/error distributions.
 - **Graceful drain** — in-flight requests at the end of a run are drained
   instead of being spuriously counted as errors.
 - **Reports** — timestamped JSON and TXT files in `./reports/`, written with
@@ -156,18 +157,26 @@ steps:
     type: ws
     url: wss://echo.websocket.events
     body: '{"user":"{{user}}"}'
+    frame_type: text       # text (default) | binary
+    session: true          # keep one persistent socket per virtual user
+                           # (each iteration = one message round trip)
     assertions:
       - type: status
         value: "101"
 
-  - name: grpc_health       # gRPC Health/Check (grpcs:// enables TLS)
+  - name: grpc_method      # Generic unary invoke of any method
     type: grpc
-    url: grpc://localhost:50051
+    url: grpcs://api.example.com:443   # grpc:// plaintext / grpcs:// TLS
+    grpc_method: /pkg.Service/Method   # omit to use standard health check
+    headers:                           # sent as gRPC metadata
+      authorization: "Bearer {{token}}"
+    body: '{"id": "{{id}}"}'           # raw request payload
 
   - name: redis_ping        # Raw TCP: write bytes, read response
     type: tcp
     url: localhost:6379
     body: "PING\r\n"
+    session: true           # reuse one persistent connection per user
     assertions:
       - type: regex
         value: "PONG"
@@ -176,7 +185,26 @@ steps:
     type: udp
     url: localhost:8125
     body: 'stress.test:1|c'
+
+  - name: dns_probe         # UDP request-response mode
+    type: udp
+    url: 1.1.1.1:53
+    body: '{{dns_query}}'
+    await_response: true    # wait for a reply and measure the RTT
+    assertions:
+      - type: regex
+        value: ".+"
 ```
+
+Protocol upgrades at a glance:
+
+| Protocol | Default behavior | Enhanced options |
+| --- | --- | --- |
+| HTTP/HTTPS | Connection pooling + HTTP/2 | TLS session resumption, tuned buffers |
+| WebSocket | Fresh dial per iteration | `session: true` — persistent sockets with ping/pong liveness, clean close handshake, binary frames |
+| gRPC | Health check per call | Shared HTTP/2 conn pool, keepalive probes, custom methods via `grpc_method`, metadata headers |
+| TCP | Fresh dial per iteration | `session: true` — persistent connections, self-healing on drop |
+| UDP | Fire-and-forget | `await_response: true` — measure real RTT with assertions |
 
 ### Assertions
 

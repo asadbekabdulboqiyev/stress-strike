@@ -32,8 +32,15 @@ func newClient(timeout time.Duration, keepAlive bool, maxConnsPerHost int) *http
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
+		ReadBufferSize:        16 << 10, // fewer syscalls on large responses
 		DisableKeepAlives:     !keepAlive,
-		TLSClientConfig:       &tls.Config{MinVersion: tls.VersionTLS12},
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			// Reuse TLS sessions across connections: resumed handshakes skip
+			// most of the round trips, cutting per-connection CPU and latency
+			// under heavy churn. Security posture is unchanged (TLS >= 1.2).
+			ClientSessionCache: tls.NewLRUClientSessionCache(0),
+		},
 	}
 	return &http.Client{
 		Transport: transport,

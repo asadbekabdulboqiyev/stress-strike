@@ -22,18 +22,18 @@ const (
 )
 
 type Profile struct {
-	Type        string `yaml:"type" json:"type"`
-	Users       int    `yaml:"users" json:"users"`
-	Duration    int    `yaml:"duration" json:"duration"`
-	RampUp      int    `yaml:"ramp_up" json:"ramp_up"`
-	SpikeUsers  int    `yaml:"spike_users" json:"spike_users"`
-	SpikeWarmup int    `yaml:"spike_warmup" json:"spike_warmup"`
-	SpikeHold   int    `yaml:"spike_hold" json:"spike_hold"`
-	WavePeriod  int    `yaml:"wave_period" json:"wave_period"`
-	RPS         int    `yaml:"rps" json:"rps"`
-	Timeout     int    `yaml:"timeout" json:"timeout"`
-	KeepAlive   *bool  `yaml:"keep_alive" json:"keep_alive"`
-	WAFEnabled  bool   `yaml:"waf_enabled" json:"waf_enabled"`
+	Type            string `yaml:"type" json:"type"`
+	Users           int    `yaml:"users" json:"users"`
+	Duration        int    `yaml:"duration" json:"duration"`
+	RampUp          int    `yaml:"ramp_up" json:"ramp_up"`
+	SpikeUsers      int    `yaml:"spike_users" json:"spike_users"`
+	SpikeWarmup     int    `yaml:"spike_warmup" json:"spike_warmup"`
+	SpikeHold       int    `yaml:"spike_hold" json:"spike_hold"`
+	WavePeriod      int    `yaml:"wave_period" json:"wave_period"`
+	RPS             int    `yaml:"rps" json:"rps"`
+	Timeout         int    `yaml:"timeout" json:"timeout"`
+	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
+	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
 	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
 
@@ -44,10 +44,10 @@ type Extract struct {
 }
 
 type RateLimitConfig struct {
-	DefaultRPS   int        `yaml:"default_rps" json:"default_rps"`
-	MaxBurst     int        `yaml:"max_burst" json:"max_burst"`
-	IPRPS        int        `yaml:"ip_rps" json:"ip_rps"`
-	IPBurst      int        `yaml:"ip_burst" json:"ip_burst"`
+	DefaultRPS   int           `yaml:"default_rps" json:"default_rps"`
+	MaxBurst     int           `yaml:"max_burst" json:"max_burst"`
+	IPRPS        int           `yaml:"ip_rps" json:"ip_rps"`
+	IPBurst      int           `yaml:"ip_burst" json:"ip_burst"`
 	SeenCacheTTL time.Duration `yaml:"seen_cache_ttl" json:"seen_cache_ttl"`
 }
 
@@ -68,6 +68,12 @@ type Step struct {
 	Extract    []Extract         `yaml:"extract" json:"extract"`
 	Assertions []Assertion       `yaml:"assertions" json:"assertions"`
 	Timeout    int               `yaml:"timeout" json:"timeout"`
+
+	// Protocol-specific options (all optional; empty keeps protocol defaults).
+	FrameType     string `yaml:"frame_type" json:"frame_type"`         // ws: text (default) | binary
+	GrpcMethod    string `yaml:"grpc_method" json:"grpc_method"`       // grpc: "/pkg.Service/Method"; empty = health check
+	AwaitResponse bool   `yaml:"await_response" json:"await_response"` // udp: wait for a reply and measure RTT
+	Session       bool   `yaml:"session" json:"session"`               // ws|tcp: keep one persistent connection per virtual user
 }
 
 type Scenario struct {
@@ -184,6 +190,17 @@ func (s *Scenario) Normalize() error {
 		}
 		if st.URL == "" {
 			return fmt.Errorf("step %q: url is required", st.Name)
+		}
+		if st.FrameType != "" {
+			st.FrameType = strings.ToLower(strings.TrimSpace(st.FrameType))
+			switch st.FrameType {
+			case "text", "binary":
+			default:
+				return fmt.Errorf("step %q: unsupported frame_type %q (use text, binary)", st.Name, st.FrameType)
+			}
+		}
+		if st.GrpcMethod != "" && !strings.HasPrefix(st.GrpcMethod, "/") {
+			return fmt.Errorf("step %q: grpc_method must look like \"/package.Service/Method\"", st.Name)
 		}
 		if st.Timeout > maxTimeout {
 			return fmt.Errorf("step %q: timeout (%d) exceeds maximum of %d seconds (%d minutes)", st.Name, st.Timeout, maxTimeout, maxTimeout/60)

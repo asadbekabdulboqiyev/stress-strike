@@ -11,6 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"google.golang.org/grpc"
+
 	"stress-strike/internal/config"
 	"stress-strike/internal/metrics"
 	"stress-strike/internal/report"
@@ -87,6 +90,16 @@ type Engine struct {
 	signal    *broadcast
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
+
+	// Per-virtual-user persistent protocol sessions (guarded by sessMu).
+	// Each worker goroutine exclusively touches its own index during the run;
+	// the mutex protects the teardown path in closeSessions.
+	sessMu   sync.Mutex
+	wsConns  map[int]*websocket.Conn
+	wsURLs   map[int]string
+	tcpConns map[int]net.Conn
+	// grpcConns holds shared ClientConns keyed by target (all workers).
+	grpcConns map[string]*grpc.ClientConn
 }
 
 func New(scenario *config.Scenario) (*Engine, error) {
@@ -175,6 +188,7 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	if stopLive != nil {
 		stopLive()
 	}
+	e.closeSessions()
 	e.telemetry.Finish()
 	return e.telemetry, nil
 }
@@ -207,7 +221,7 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	var lastStatus int
 	var firstErr string
 	for i, step := range e.scenario.Steps {
-		res := e.runStep(reqBase, step, vars)
+		res := e.runStepForUser(reqBase, step, vars, userIndex)
 		e.stepStats[i].Record(res.latency, res.status, res.errName)
 		if res.errName != "" {
 			if firstErr == "" {
@@ -220,7 +234,13 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
 }
 
+// runStep dispatches one step to the matching protocol client. It is kept for
+// library compatibility and runs without per-user session pooling.
 func (e *Engine) runStep(ctx context.Context, step config.Step, vars map[string]string) stepResult {
+	return e.runStepForUser(ctx, step, vars, -1)
+}
+
+func (e *Engine) runStepForUser(ctx context.Context, step config.Step, vars map[string]string, userIndex int) stepResult {
 	fullURL := step.URL
 	if step.Type == "http" && e.scenario.BaseURL != "" {
 		fullURL = strings.TrimRight(e.scenario.BaseURL, "/") + "/" + strings.TrimLeft(step.URL, "/")
@@ -236,11 +256,15 @@ func (e *Engine) runStep(ctx context.Context, step config.Step, vars map[string]
 	var body []byte
 	switch step.Type {
 	case "ws":
-		res, body = e.wsClient(ctx, fullURL, step, vars, timeout)
+		res, body = e.wsClientForUser(userIndex, ctx, fullURL, step, vars, timeout)
 	case "grpc":
-		res, body = e.grpcClient(ctx, fullURL, timeout)
+		if step.GrpcMethod != "" {
+			res, body = e.grpcMethodClient(ctx, fullURL, step, vars, timeout)
+		} else {
+			res, body = e.grpcClient(ctx, fullURL, timeout)
+		}
 	case "tcp", "udp":
-		res, body = e.rawClient(ctx, step.Type, fullURL, step, vars, timeout)
+		res, body = e.rawClientForUser(userIndex, ctx, step.Type, fullURL, step, vars, timeout)
 	default:
 		res, body = e.httpClient(ctx, fullURL, step, vars, timeout)
 	}

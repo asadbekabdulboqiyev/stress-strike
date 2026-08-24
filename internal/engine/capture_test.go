@@ -3,14 +3,48 @@ package engine
 import (
 	"bytes"
 	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"stress-strike/internal/config"
 )
+
+func TestRunWithTypedNilCaptureDoesNotPanic(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	sc := &config.Scenario{
+		Name: "typed-nil-capture",
+		Profile: config.Profile{
+			Type:     config.ProfileSteady,
+			Users:    1,
+			Duration: 1,
+			Timeout:  2,
+		},
+		Steps: []config.Step{{Name: "health", Method: "GET", URL: srv.URL}},
+	}
+
+	eng, err := New(sc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var typedNil *BufferCapture
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if _, err := eng.Run(ctx, RunOptions{Quiet: true, Capture: typedNil}); err != nil {
+		t.Fatalf("run with typed-nil capture failed: %v", err)
+	}
+}
 
 func TestBufferCaptureCapsEntries(t *testing.T) {
 	b := NewBufferCapture(3, DefaultCaptureBodyBytes)
@@ -102,5 +136,26 @@ func TestEngineRunWithCapture(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "step=health") {
 		t.Errorf("step name missing:\n%s", out.String())
+	}
+}
+
+func TestClassifyUnsupportedSchemeIsNotConnectionError(t *testing.T) {
+	uerr := &url.Error{
+		Op:  "Get",
+		URL: "localhost:9000",
+		Err: errors.New(`unsupported protocol scheme ""`),
+	}
+	res := classifyError(uerr, 0)
+	if res.errName != errOther {
+		t.Errorf("errName = %q, want %q", res.errName, errOther)
+	}
+
+	connRefused := &url.Error{Op: "Get", URL: "http://x", Err: &net.OpError{
+		Op:  "dial",
+		Err: syscall.ECONNREFUSED,
+	}}
+	res = classifyError(connRefused, 0)
+	if res.errName != errConnection {
+		t.Errorf("errName = %q, want %q", res.errName, errConnection)
 	}
 }

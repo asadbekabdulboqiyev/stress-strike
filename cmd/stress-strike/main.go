@@ -18,7 +18,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.5.1"
+const version = "0.5.2"
 
 const maxCaptureEntries = 100
 
@@ -191,7 +191,11 @@ func main() {
 		capSink = engine.NewBufferCapture(captureN, engine.DefaultCaptureBodyBytes)
 	}
 
-	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet, Capture: capSink})
+	opts := engine.RunOptions{Out: os.Stderr, Quiet: quiet}
+	if capSink != nil {
+		opts.Capture = capSink
+	}
+	telemetry, err := eng.Run(ctx, opts)
 	if err != nil {
 		fatal(err)
 	}

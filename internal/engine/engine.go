@@ -6,9 +6,11 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"stress-strike/internal/config"
@@ -334,8 +336,14 @@ func classifyError(err error, elapsed time.Duration) stepResult {
 	if errors.Is(err, errRedirectLimitReached) {
 		return stepResult{latency: elapsed, errName: errRedirectLimit}
 	}
+
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
+		err = uerr.Unwrap()
+	}
 	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if errors.As(err, &netErr) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
 		return stepResult{latency: elapsed, errName: errConnection}
 	}
 	return stepResult{latency: elapsed, errName: errOther}

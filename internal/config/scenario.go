@@ -185,6 +185,9 @@ func (s *Scenario) Normalize() error {
 		if st.URL == "" {
 			return fmt.Errorf("step %q: url is required", st.Name)
 		}
+		if st.Type == "http" && !strings.Contains(st.URL, "://") && !strings.HasPrefix(st.URL, "/") {
+			st.URL = "http://" + st.URL
+		}
 		if st.Timeout > maxTimeout {
 			return fmt.Errorf("step %q: timeout (%d) exceeds maximum of %d seconds (%d minutes)", st.Name, st.Timeout, maxTimeout, maxTimeout/60)
 		}

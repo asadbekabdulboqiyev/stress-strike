@@ -244,3 +244,32 @@ func TestNormalizeAssertions(t *testing.T) {
 		t.Error("expected error for empty assertion value")
 	}
 }
+
+func TestNormalizeAddsSchemeForBareHosts(t *testing.T) {
+	sc := &Scenario{
+		Name: "scheme-test",
+		Profile: Profile{
+			Type:     ProfileSteady,
+			Users:    2,
+			Duration: 2,
+			Timeout:  5,
+		},
+		Steps: []Step{
+			{Method: "GET", URL: "localhost:9000"},
+			{Method: "GET", URL: "/api/health"},
+			{Method: "GET", URL: "https://secure.example.com"},
+		},
+	}
+	if err := sc.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if sc.Steps[0].URL != "http://localhost:9000" {
+		t.Errorf("bare host url = %q, want http://localhost:9000", sc.Steps[0].URL)
+	}
+	if sc.Steps[1].URL != "/api/health" {
+		t.Errorf("relative url changed: %q", sc.Steps[1].URL)
+	}
+	if sc.Steps[2].URL != "https://secure.example.com" {
+		t.Errorf("absolute url changed: %q", sc.Steps[2].URL)
+	}
+}

@@ -44,6 +44,9 @@ func NewBufferCapture(maxEntries, maxBodyBytes int) *BufferCapture {
 }
 
 func (b *BufferCapture) Record(r CapturedResponse) {
+	if b == nil {
+		return
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if len(b.entries) >= b.maxEntries {
@@ -57,12 +60,18 @@ func (b *BufferCapture) Record(r CapturedResponse) {
 }
 
 func (b *BufferCapture) Count() (kept, dropped int) {
+	if b == nil {
+		return 0, 0
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return len(b.entries), b.dropped
 }
 
 func (b *BufferCapture) Render(w io.Writer) error {
+	if b == nil {
+		return nil
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

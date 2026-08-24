@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,39 @@ type Report struct {
 	Errors        map[string]uint64 `json:"errors"`
 	Overall       StepReport        `json:"overall"`
 	Steps         []StepReport      `json:"steps"`
+}
+
+// renderLatencyBars builds ASCII bar rows for key latency percentiles. Bar
+// width scales logarithmically against p99 so heavy tails stay visible while
+// fast percentiles do not vanish.
+func renderLatencyBars(o StepReport) []string {
+	points := []struct {
+		label string
+		value time.Duration
+	}{
+		{"p50", o.P50},
+		{"p95", o.P95},
+		{"p99", o.P99},
+	}
+	maxV := float64(o.P99)
+	if maxV <= 0 {
+		return nil
+	}
+	const maxBar = 34
+	var out []string
+	for _, pt := range points {
+		v := float64(pt.value)
+		width := int(math.Log1p(v/maxV*(math.E-1)) * maxBar)
+		if width < 1 {
+			width = 1
+		}
+		if width > maxBar {
+			width = maxBar
+		}
+		bar := strings.Repeat("█", width) + strings.Repeat("░", maxBar-width)
+		out = append(out, fmt.Sprintf("%-4s %-10s %s", pt.label, pt.value, bar))
+	}
+	return out
 }
 
 func fromStepStats(name string, s *metrics.StepStats) StepReport {
@@ -138,6 +172,15 @@ func (r Report) Render(w io.Writer) {
 	fmt.Fprintln(w, colorize(colorBold, c, "  └──────────────────────────────────────────────────────────────┘"))
 	fmt.Fprintln(w)
 
+	// ── Latency distribution ────────────────────────────────────────────
+	if overall.Requests > 0 {
+		fmt.Fprintln(w, colorize(colorBold, c, "  LATENCY DISTRIBUTION"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
+		for _, pt := range renderLatencyBars(overall) {
+			fmt.Fprintf(w, "    %s\n", pt)
+		}
+		fmt.Fprintln(w)
+	}
 	// ── Steps table ─────────────────────────────────────────────────────
 	if len(r.Steps) > 0 {
 		fmt.Fprintln(w, colorize(colorBold, c, "  STEP BREAKDOWN"))

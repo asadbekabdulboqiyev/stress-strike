@@ -3,12 +3,20 @@ package report
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"time"
 
 	"stress-strike/internal/metrics"
 )
+
+// liveLines tracks how many terminal rows the panel occupies so it can be
+// redrawn in place with ANSI cursor movement.
+const liveLines = 3
+
+// sparklineChars renders RPS history; ordered from lowest to highest bar.
+const sparklineChars = "▁▁▂▂▃▃▄▄▅▅▆▆▇▇█"
 
 func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() {
 	if !isTerminal(out) {
@@ -20,9 +28,12 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 		defer close(done)
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
+		var rpsHistory []float64
+		first := true
 		for {
 			select {
 			case <-stop:
+				fmt.Fprintf(out, "\r\x1b[%dA\x1b[J", liveLines)
 				fmt.Fprintf(out, "\r%s\r", strings.Repeat(" ", 120))
 				return
 			case <-ticker.C:
@@ -45,26 +56,46 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 					}
 				}
 
+				rps := t.RPS()
+				rpsHistory = append(rpsHistory, rps)
+				const maxHistory = 24
+				if len(rpsHistory) > maxHistory {
+					rpsHistory = rpsHistory[len(rpsHistory)-maxHistory:]
+				}
+
 				bar := renderProgressBar(pct, 20)
 				rc := rateColor(errPct)
 
-				// Build the line with color segments
-				var line strings.Builder
-				line.WriteString("\r")
-				line.WriteString(colorize(rc, true, bar))
-				line.WriteString(fmt.Sprintf(" %5.1f%% ", pct))
-				line.WriteString(colorize(colorCyan, true,
-					fmt.Sprintf("[%s/%s]", formatDuration(elapsed), formatDuration(total))))
-				line.WriteString(" ")
-				line.WriteString(fmt.Sprintf("rps=%s ", formatRPS(t.RPS())))
-				line.WriteString(fmt.Sprintf("active=%d ", t.ActiveUsers.Load()))
-				line.WriteString(fmt.Sprintf("req=%s ", formatCount(reqs)))
-				line.WriteString(colorize(rc, true,
-					fmt.Sprintf("err=%d (%.1f%%)", errs, errPct)))
-				line.WriteString(fmt.Sprintf(" p50=%s p95=%s p99=%s",
-					snap.Percentile(0.50), snap.Percentile(0.95), snap.Percentile(0.99)))
+				// Redraw the panel in place: move cursor to its top-left and
+				// clear everything below before painting fresh content.
+				if first {
+					first = false
+				} else {
+					fmt.Fprintf(out, "\r\x1b[%dA\x1b[J", liveLines)
+				}
 
-				fmt.Fprint(out, line.String())
+				// Line 1 — headline progress.
+				fmt.Fprint(out, "\r")
+				fmt.Fprint(out, colorize(colorCyan, true, "⚡ "))
+				fmt.Fprint(out, colorize(rc, true, bar))
+				fmt.Fprintf(out, " %5.1f%% ", pct)
+				fmt.Fprintln(out, colorize(colorCyan, true,
+					fmt.Sprintf("[%s/%s]", formatDuration(elapsed), formatDuration(total))))
+
+				// Line 2 — throughput and errors, with an RPS sparkline.
+				fmt.Fprint(out, "\r")
+				fmt.Fprintf(out, "  rps=%s ", colorize(colorBold, true, formatRPS(rps)))
+				fmt.Fprintf(out, "%s │ ", sparkline(rpsHistory))
+				fmt.Fprintf(out, "req=%s ", formatCount(reqs))
+				fmt.Fprintln(out, colorize(rc, true,
+					fmt.Sprintf("err=%d (%.2f%%)", errs, errPct)))
+
+				// Line 3 — latency percentiles and active users.
+				fmt.Fprint(out, "\r")
+				fmt.Fprintf(out, "  p50=%s p95=%s p99=%s",
+					snap.Percentile(0.50), snap.Percentile(0.95), snap.Percentile(0.99))
+				fmt.Fprintln(out, colorize(colorCyan, true,
+					fmt.Sprintf(" │ active=%d", t.ActiveUsers.Load())))
 			}
 		}
 	}()
@@ -72,6 +103,33 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 		close(stop)
 		<-done
 	}
+}
+
+// sparkline renders a compact bar-chart of recent throughput samples using
+// block glyphs; an empty history yields a placeholder dash.
+func sparkline(history []float64) string {
+	if len(history) == 0 {
+		return "—"
+	}
+	minV, maxV := math.Inf(1), math.Inf(-1)
+	for _, v := range history {
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+	}
+	span := maxV - minV
+	if span <= 0 {
+		span = 1
+	}
+	var b strings.Builder
+	for _, v := range history {
+		idx := int((v - minV) / span * float64(len(sparklineChars)-1))
+		b.WriteByte(sparklineChars[idx])
+	}
+	return b.String()
 }
 
 // renderProgressBar renders a text progress bar like [████████░░░░░░░░░░░░]

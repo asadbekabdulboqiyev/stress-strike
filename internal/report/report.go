@@ -42,6 +42,7 @@ type Report struct {
 	RPS           float64           `json:"rps"`
 	Status        map[int]uint64    `json:"status_codes"`
 	Errors        map[string]uint64 `json:"errors"`
+	Gate          bool              `json:"gate"`
 	Overall       StepReport        `json:"overall"`
 	Steps         []StepReport      `json:"steps"`
 }
@@ -74,6 +75,7 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 		Name:          scenario.Name,
 		BaseURL:       target(scenario),
 		LoadProfile:   scenario.Profile.Type,
+		Gate:          scenario.Profile.Gate,
 		StartedAt:     t.Start,
 		EndedAt:       t.End,
 		Duration:      t.Elapsed(),
@@ -195,6 +197,9 @@ func (r Report) Render(w io.Writer) {
 	fmt.Fprintf(w, "    Requests/sec:    %s\n", formatRPS(r.RPS))
 	fmt.Fprintf(w, "    Latency range:   %s — %s\n", overall.Min, overall.Max)
 	fmt.Fprintf(w, "    Duration:        %s\n", r.Duration.Round(time.Millisecond))
+	if r.Gate {
+		fmt.Fprintln(w, colorize(colorYellow, c, "    Mode:            simultaneous strike (race window)"))
+	}
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w, sep)

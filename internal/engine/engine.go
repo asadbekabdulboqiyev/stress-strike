@@ -60,6 +60,10 @@ type loadWorker struct {
 
 // Run implements the Worker load loop for a single virtual user.
 func (w *loadWorker) Run(runCtx, reqBase context.Context, index int) {
+	if w.e.gate {
+		w.runGatedOnce(runCtx, reqBase, index)
+		return
+	}
 	for {
 		if runCtx.Err() != nil {
 			return
@@ -79,6 +83,19 @@ func (w *loadWorker) Run(runCtx, reqBase context.Context, index int) {
 	}
 }
 
+// runGatedOnce parks the virtual user on the start gate and fires exactly
+// one iteration the instant the gate opens — the race-condition primitive:
+// N requests hit the target as close to simultaneously as the scheduler
+// allows, maximizing the chance of exploiting check-then-act windows.
+func (w *loadWorker) runGatedOnce(runCtx, reqBase context.Context, index int) {
+	select {
+	case <-runCtx.Done():
+		return
+	case <-w.e.startGate:
+	}
+	w.e.runIteration(reqBase, index)
+}
+
 type Engine struct {
 	scenario  *config.Scenario
 	profile   LoadProfile
@@ -88,6 +105,8 @@ type Engine struct {
 	limiter   *tokenBucket
 	target    atomic.Int64
 	signal    *broadcast
+	startGate chan struct{}
+	gate      bool
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
 	capture   ResponseCapture
@@ -114,6 +133,8 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		keepAlive: keepAlive,
 		limiter:   newTokenBucket(scenario.Profile.RPS),
 		signal:    newBroadcast(),
+		startGate: make(chan struct{}),
+		gate:      scenario.Profile.Gate,
 	}
 	e.stepStats = make([]*metrics.StepStats, len(scenario.Steps))
 	for i, step := range scenario.Steps {
@@ -164,21 +185,33 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 		}(i)
 	}
 
-	go e.controller(runCtx)
-
-	<-runCtx.Done()
-	runCancel()
+	if e.gate {
+		go func() {
+			time.Sleep(150 * time.Millisecond)
+			close(e.startGate)
+		}()
+	} else {
+		go e.controller(runCtx)
+	}
 
 	drained := make(chan struct{})
 	go func() {
 		wg.Wait()
 		close(drained)
 	}()
-	select {
-	case <-drained:
-	case <-time.After(e.timeout):
-		reqCancel()
+
+	if e.gate {
 		<-drained
+		runCancel()
+	} else {
+		<-runCtx.Done()
+		runCancel()
+		select {
+		case <-drained:
+		case <-time.After(e.timeout):
+			reqCancel()
+			<-drained
+		}
 	}
 
 	if stopLive != nil {

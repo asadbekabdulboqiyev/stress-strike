@@ -34,6 +34,7 @@ type Profile struct {
 	RPS             int    `yaml:"rps" json:"rps"`
 	Timeout         int    `yaml:"timeout" json:"timeout"`
 	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
+	Gate            bool   `yaml:"gate" json:"gate"`
 	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
 	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
@@ -105,6 +106,9 @@ func (p *Profile) Normalize() error {
 	}
 	if p.Warmup >= p.Duration {
 		return fmt.Errorf("warmup (%ds) must be smaller than duration (%ds)", p.Warmup, p.Duration)
+	}
+	if p.Gate && p.Users < 2 {
+		return fmt.Errorf("gate mode (race attack) requires at least 2 users firing simultaneously")
 	}
 	if p.RampUp <= 0 {
 		p.RampUp = p.Duration / 2

@@ -39,6 +39,10 @@ someone else's server is illegal (DDoS).
 - **Real-time telemetry** — live progress bar (RPS, active users, errors,
   p50/p95/p99, top error types) and a color-coded final report with per-step
   latency percentiles and status/error distributions.
+- **Race-condition strikes** — `--gate` parks every virtual user on a start
+  barrier and fires ONE request per user the instant it opens, maximizing the
+  chance of exploiting check-then-act windows (double-spend, coupon reuse,
+  OTP races). For authorized bug-bounty targets only.
 - **Warmup period** — `--warmup S` sends load for S seconds without counting it
   toward metrics, so percentiles reflect the warmed-up steady state.
 - **JSON stdout** — `--json` prints the full machine-readable report for jq,
@@ -280,6 +284,7 @@ Controller**.
 | `--quiet` | hide the live progress bar |
 | `--report-dir DIR` | report output directory (default `./reports`) |
 | `--capture N` | save first N raw responses for debugging (≤100, private file) |
+| `--gate` | race strike: all users fire one simultaneous request |
 | `--warmup S` | exclude first S seconds from metrics (load still sent) |
 | `--json` | print machine-readable JSON report to stdout |
 | `--version` | print version and exit |

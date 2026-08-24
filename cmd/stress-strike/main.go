@@ -19,7 +19,7 @@ import (
 	"stress-strike/internal/report"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 const maxCaptureEntries = 100
 
@@ -90,6 +90,7 @@ func main() {
 	flag.IntVar(&captureN, "capture", 0, "save first N raw responses to <report-dir>/ for debugging (max 100; request credentials are never stored)")
 	flag.IntVar(&warmup, "warmup", 0, "exclude the first S seconds from metrics while still sending load (stabilizes percentiles)")
 	flag.BoolVar(&jsonOut, "json", false, "print the full machine-readable JSON report to stdout")
+	gateMode := flag.Bool("gate", false, "race-condition strike: all users fire ONE simultaneous request when the gate opens (authorized targets only)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
@@ -171,6 +172,11 @@ func main() {
 
 	if warmupSet {
 		scenario.Profile.Warmup = warmup
+	}
+	if *gateMode {
+		scenario.Profile.Gate = true
+	}
+	if warmupSet || *gateMode {
 		if err := scenario.Profile.Normalize(); err != nil {
 			fatal(err)
 		}

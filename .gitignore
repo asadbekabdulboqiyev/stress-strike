@@ -1,6 +1,7 @@
 bin/
 reports/
 dist/
+/stress-strike
 *.test
 *.out
 coverage.html

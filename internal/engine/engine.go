@@ -32,8 +32,9 @@ const (
 )
 
 type RunOptions struct {
-	Out   io.Writer
-	Quiet bool
+	Out     io.Writer
+	Quiet   bool
+	Capture ResponseCapture
 }
 
 type stepResult struct {
@@ -87,6 +88,7 @@ type Engine struct {
 	signal    *broadcast
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
+	capture   ResponseCapture
 }
 
 func New(scenario *config.Scenario) (*Engine, error) {
@@ -129,6 +131,8 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 
 	runCtx, runCancel := context.WithTimeout(ctx, e.profile.Duration())
 	defer runCancel()
+
+	e.capture = opts.Capture
 
 	e.telemetry = metrics.NewTelemetry()
 	for _, st := range e.stepStats {
@@ -248,6 +252,16 @@ func (e *Engine) runStep(ctx context.Context, step config.Step, vars map[string]
 		if err := checkAssertions(step.Assertions, res.status, body); err != nil {
 			res.errName = errAssert
 		}
+	}
+	if e.capture != nil && res.errName != errCanceled {
+		e.capture.Record(CapturedResponse{
+			Step:   step.Name,
+			Method: step.Method,
+			URL:    fullURL,
+			Status: res.status,
+			Err:    res.errName,
+			Body:   body,
+		})
 	}
 	return res
 }

@@ -43,6 +43,10 @@ someone else's server is illegal (DDoS).
   instead of being spuriously counted as errors.
 - **Reports** — timestamped JSON and TXT files in `./reports/`, written with
   private (`0600`) permissions.
+- **Debug capture** — opt-in `--capture N` (or expert-wizard prompt) saves the
+  first N raw responses (≤100, bodies ≤2KB each) to a private capture file for
+  diagnosing what the target actually returns. Request credentials are never
+  captured; off by default.
 - **Safety rails** — concurrency caps, OS limit guard, sane defaults, and a
   legal notice on every run.
 
@@ -271,6 +275,7 @@ Controller**.
 | `--keep-alive` | connection pooling on (default) |
 | `--quiet` | hide the live progress bar |
 | `--report-dir DIR` | report output directory (default `./reports`) |
+| `--capture N` | save first N raw responses for debugging (≤100, private file) |
 | `--version` | print version and exit |
 
 ---

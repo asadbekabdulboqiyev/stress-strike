@@ -1,20 +1,26 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"stress-strike/internal/config"
 	"stress-strike/internal/engine"
 	"stress-strike/internal/report"
 )
 
-const version = "0.2.0"
+const version = "0.5.0"
+
+const maxCaptureEntries = 100
 
 type headerFlags map[string]string
 
@@ -51,6 +57,8 @@ func main() {
 		quiet       bool
 		reportDir   string
 		showVersion bool
+		forceWizard bool
+		captureN    int
 	)
 
 	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
@@ -74,10 +82,13 @@ func main() {
 	flag.BoolVar(&quiet, "quiet", false, "disable live progress line")
 	flag.StringVar(&reportDir, "report-dir", "./reports", "directory for generated reports")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
+	flag.BoolVar(&forceWizard, "interactive", false, "guided setup wizard (auto-starts when --url/--config are omitted in a terminal)")
+	flag.BoolVar(&forceWizard, "i", false, "shorthand for --interactive")
+	flag.IntVar(&captureN, "capture", 0, "save first N raw responses to <report-dir>/ for debugging (max 100; request credentials are never stored)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
-		fmt.Fprintf(os.Stderr, "Usage:\n  stress-strike --config scenario.yaml\n  stress-strike --url https://api.example.com --users 1000 --duration 60\n\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n  stress-strike --config scenario.yaml\n  stress-strike --url https://api.example.com --users 1000 --duration 60\n  stress-strike            (interactive setup in a terminal)\n\n")
 		fmt.Fprintf(os.Stderr, "WARNING: Only run against systems you own or have explicit permission to test.\n\n")
 		flag.PrintDefaults()
 	}
@@ -96,6 +107,41 @@ func main() {
 		return
 	}
 
+	if configPath == "" && url == "" {
+		if !forceWizard && !stdinIsTerminal() {
+			fatal(fmt.Errorf("either --config or --url is required (run inside a terminal or pass --interactive for guided setup)"))
+		}
+		ans, err := runWizard(os.Stdin, os.Stderr, stdoutIsColorable())
+		if err != nil {
+			if errors.Is(err, errCanceled) {
+				fmt.Fprintln(os.Stderr, "Setup canceled.")
+				return
+			}
+			fatal(err)
+		}
+		if !nameSet {
+			name = ans.name
+		}
+		url = ans.url
+		method = ans.method
+		data = ans.data
+		headers = ans.headers
+		profile = ans.profile
+		users = ans.users
+		duration = ans.duration
+		rampUp = ans.rampUp
+		spikeUsers = ans.spikeUsers
+		spikeWarmup = ans.spikeWarmup
+		spikeHold = ans.spikeHold
+		wavePeriod = ans.wavePeriod
+		rps = ans.rps
+		timeout = ans.timeout
+		keepAlive = ans.keepAlive
+		captureN = ans.capture
+	} else if configPath != "" && url != "" {
+		fmt.Fprintln(os.Stderr, "note: both --config and --url given; --config takes precedence")
+	}
+
 	var scenario *config.Scenario
 	if configPath != "" {
 		sc, err := config.Load(configPath)
@@ -107,9 +153,6 @@ func main() {
 		}
 		scenario = sc
 	} else {
-		if url == "" {
-			fatal(fmt.Errorf("either --config or --url is required"))
-		}
 		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout, keepAlive)
 		if err != nil {
 			fatal(err)
@@ -140,7 +183,15 @@ func main() {
 	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
 		version, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
 
-	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet})
+	var capSink *engine.BufferCapture
+	if captureN > 0 {
+		if captureN > maxCaptureEntries {
+			captureN = maxCaptureEntries
+		}
+		capSink = engine.NewBufferCapture(captureN, engine.DefaultCaptureBodyBytes)
+	}
+
+	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet, Capture: capSink})
 	if err != nil {
 		fatal(err)
 	}
@@ -158,6 +209,32 @@ func main() {
 		fatal(err)
 	}
 	fmt.Fprintf(os.Stderr, "\nReports written:\n  %s\n  %s\n", jsonPath, txtPath)
+
+	if capSink != nil {
+		if kept, _ := capSink.Count(); kept > 0 {
+			capPath := filepath.Join(reportDir, fmt.Sprintf("%s_%s-capture.txt",
+				sanitizeCaptureName(scenario.Name), time.Now().Format("20060102-150405")))
+			var buf bytes.Buffer
+			if err := capSink.Render(&buf); err == nil {
+				if err := os.WriteFile(capPath, buf.Bytes(), 0o600); err == nil {
+					fmt.Fprintf(os.Stderr, "  %s (debug capture)\n", capPath)
+				}
+			}
+		}
+	}
+}
+
+func sanitizeCaptureName(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('-')
+		}
+	}
+	return strings.Trim(b.String(), "-")
 }
 
 func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {

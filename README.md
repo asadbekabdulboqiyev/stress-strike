@@ -31,6 +31,15 @@ someone else's server is illegal (DDoS).
   (sinusoidal load oscillation).
 - **Assertions** — per-step pass/fail checks on status families (`2xx`), JSON
   paths, or regex matches; failures surface as `assert_failed` errors.
+- **Cookie sessions** — per-virtual-user cookie jars replay `Set-Cookie` across
+  scenario steps, enabling realistic multi-step authenticated flows.
+- **SLA gate (CI/CD)** — declare latency/error/throughput thresholds in the
+  scenario (`sla:`) or via `--expect-*` flags; violations exit with code 2 so
+  pipelines fail automatically on performance regressions.
+- **Baseline comparison** — `--compare baseline.json` prints a delta table
+  (RPS, p50/p95/p99, errors) and flags regressions beyond `--regress-pct`.
+- **Timeline export** — `--timeline` writes a per-second CSV (requests, errors,
+  active users) for spreadsheets, notebooks, or Grafana.
 - **Go library API** — `import "stress-strike/api"` to embed load tests in
   your own programs, test suites, and CI tooling.
 - **Connection pooling** — keep-alive + tuned `http.Transport`
@@ -249,6 +258,20 @@ if result.ErrorRatePct > 2 {
 }
 ```
 
+With an SLA gate:
+
+```go
+res, _ := api.Run(ctx, api.Config{
+    URL:      "http://localhost:8080/health",
+    Users:    300,
+    Duration: 30 * time.Second,
+    SLA:      &config.SLA{MaxP99Ms: 250, MaxErrorRatePct: 1},
+})
+if !res.SLAPassed {
+    log.Fatalf("SLA violated: %+v", res.SLAResults)
+}
+```
+
 `Result` exposes `TotalRequests`, `RPS`, `ErrorRatePct`, `P50/P95/P99`
 latency, and full `StatusCodes` / `Errors` maps.
 
@@ -297,9 +320,18 @@ Controller**.
 | `--rps N` | global pacing cap, `0` = unlimited |
 | `--timeout S` | per-request timeout (default `5`) |
 | `--keep-alive` | connection pooling on (default) |
+| `--expect-p99-ms N` | SLA gate: fail the run if p99 exceeds this (exit code 2) |
+| `--expect-avg-ms N` | SLA gate: avg latency ceiling in ms |
+| `--expect-error-rate N` | SLA gate: max error rate in % |
+| `--expect-min-rps N` | SLA gate: minimum throughput |
+| `--compare FILE` | compare against a baseline JSON report (regression detection) |
+| `--regress-pct N` | degradation % that counts as a regression (default 20) |
+| `--timeline` | also write a per-second CSV timeline for analysis |
 | `--quiet` | hide the live progress bar |
 | `--report-dir DIR` | report output directory (default `./reports`) |
 | `--version` | print version and exit |
+
+**Exit codes:** `0` success · `1` setup error · `2` SLA/regression gate failed — perfect for CI/CD gates.
 
 ---
 
@@ -333,6 +365,120 @@ Controller**.
 - Report files are written private (`0600`); filenames are sanitized.
 - A legal notice is printed on every run; `Ctrl+C` stops gracefully, a second
   `Ctrl+C` exits immediately.
+
+---
+
+## 🎓 Cybersecurity Lab Playbook
+
+This section is the instruction manual for students and engineers using
+stress-strike in security & reliability coursework: what the tool is for,
+what you may and may not do, and hands-on labs that build real skills.
+
+### ⚖️ The rules (read first)
+
+```
+1. Load test ONLY systems you own or have explicit WRITTEN permission to test.
+2. An unsanctioned load flood against someone else's server is a crime (DDoS).
+3. University lab? Test ONLY lab targets (localhost, lab VMs, provided ranges).
+4. Never use this tool to disrupt, extort, or "test" third parties "for fun".
+5. Document every engagement: target, scope, time window, permission.
+```
+
+Breaking these rules turns an educational tool into an attack — and you into
+a defendant. Every professional pentester signs scope agreements first.
+
+### 🧪 What stress-strike is FOR (legitimate uses)
+
+| Skill | How stress-strike trains it |
+| --- | --- |
+| **Capacity planning** | Find the breaking point: ramp users until p99 explodes (`linear-ramp`) |
+| **DoS mitigation validation** | Prove YOUR rate limiter / WAF / autoscaler holds under load (see `rate_limit` config) |
+| **Resilience engineering** | `spike` + `wave` profiles simulate traffic bursts; verify graceful degradation, not collapse |
+| **Endurance / memory leaks** | 1-hour `soak` runs expose connection leaks, GC death spirals, log disk exhaustion |
+| **CI/CD performance gates** | SLA thresholds fail the pipeline when latency/error budgets are violated (exit code 2) |
+| **Regression detection** | `--compare` against yesterday's baseline catches silent slowdowns before users do |
+| **Protocol mastery** | Multi-protocol scenarios teach HTTP/2, WebSocket lifecycle, gRPC streaming, raw sockets |
+
+### 🥋 Lab drills (run against ./bin/demo-server)
+
+**Lab 0 — Baseline (5 min)**
+```sh
+make build && ./bin/demo-server &
+./bin/stress-strike --url http://localhost:8080/health --users 50 --duration 10 \
+  --expect-p99-ms 100 --expect-error-rate 0
+# Study the report: RPS, percentiles, status codes.
+```
+
+**Lab 1 — Find the breaking point (15 min)**
+```sh
+for n in 500 2000 8000; do
+  ./bin/stress-strike --url http://localhost:8080/health \
+    --users $n --duration 15 --name "capacity-$n" --quiet
+done
+# Compare reports/ capacity-* files: where does p99 bend? Where do errors start?
+```
+
+**Lab 2 — Spike resilience (10 min)**
+```sh
+./bin/stress-strike --url http://localhost:8080/health --profile spike \
+  --users 100 --spike-users 5000 --spike-warmup 5 --spike-hold 20
+# Question: does the server recover after the spike, or does error rate stay high?
+```
+
+**Lab 3 — Regression gate (10 min)** *(the DevSecOps workflow)*
+```sh
+# Day 1: save a healthy baseline.
+./bin/stress-strike --url http://localhost:8080/health --users 200 --duration 10 \
+  --name baseline-v1
+# Day 2: after a code change, gate the deployment on it.
+./bin/stress-strike --url http://localhost:8080/health --users 200 --duration 10 \
+  --name release-candidate --compare "$(ls -t reports/baseline-v1_*.json | head -1)" \
+  --regress-pct 25   # exit code 2 if p99/errors degrade >25%
+```
+
+**Lab 4 — Timeline forensics (10 min)**
+```sh
+./bin/stress-strike --url http://localhost:8080/health --profile wave \
+  --users 1000 --duration 60 --timeline
+python3 - <<'EOF'
+import csv, glob
+path = sorted(glob.glob('reports/*.csv'))[-1]
+rows = list(csv.DictReader(open(path)))
+peak = max(int(r['requests_delta']) for r in rows)
+print(f"peak second throughput: {peak} req/s")
+EOF
+# Plot requests_delta over time — correlate dips with GC pauses or errors.
+```
+
+### 🔐 CI/CD integration example
+
+```yaml
+# .github/workflows/perf-gate.yml
+jobs:
+  perf-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - run: go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+      # Start your service here, then:
+      - run: |
+          stress-strike --url http://localhost:8080/health \
+            --users 300 --duration 30 \
+            --expect-p99-ms 250 --expect-error-rate 1 --expect-min-rps 800
+      # Exit code 2 fails the job automatically when the SLA is violated.
+```
+
+Scenario files support the same gates declaratively:
+
+```yaml
+name: api-slo-check
+sla:                      # evaluated after the run; failure => exit code 2
+  max_p99_ms: 250
+  max_error_rate_pct: 1
+  min_rps: 800
+load_profile: { type: steady, users: 300, duration: 30 }
+steps:
+  - { name: health, url: /health }
+```
 
 ---
 

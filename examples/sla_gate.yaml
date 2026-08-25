@@ -1,0 +1,24 @@
+# SLA gate demo: the run FAILS (exit code 2) when thresholds are violated.
+#
+# Use this as a CI/CD performance gate: deploy pipelines call stress-strike
+# and only proceed when the service meets its SLOs.
+#
+# Run: ./bin/stress-strike --config examples/sla_gate.yaml
+name: api-slo-check
+base_url: http://localhost:8080
+load_profile:
+  type: steady
+  users: 300
+  duration: 15
+  timeout: 5
+
+sla:
+  max_p99_ms: 250          # tail latency budget
+  max_avg_ms: 100          # average latency budget
+  max_error_rate_pct: 1    # availability budget
+  min_rps: 800             # capacity floor
+
+steps:
+  - name: health
+    method: GET
+    url: /health

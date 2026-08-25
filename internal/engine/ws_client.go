@@ -246,4 +246,5 @@ func (e *Engine) closeSessions() {
 		}
 	}
 	e.grpcConns = nil
+	e.cookieJars = nil
 }

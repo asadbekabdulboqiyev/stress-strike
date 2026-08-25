@@ -12,6 +12,7 @@ import (
 	"stress-strike/internal/config"
 	"stress-strike/internal/engine"
 	"stress-strike/internal/metrics"
+	"stress-strike/internal/report"
 )
 
 // Config describes a single load test to run against one HTTP endpoint.
@@ -24,6 +25,9 @@ type Config struct {
 	Timeout   time.Duration
 	KeepAlive bool
 	Profile   string
+	// SLA optionally defines pass/fail thresholds; Result.SLAPassed reports
+	// the verdict so callers can fail builds or deployment gates.
+	SLA *config.SLA
 }
 
 // Result summarizes a completed load test.
@@ -34,6 +38,10 @@ type Result struct {
 	P50, P95, P99 time.Duration
 	StatusCodes   map[int]uint64
 	Errors        map[string]uint64
+	// SLAResults holds per-threshold outcomes (nil when no SLA configured).
+	SLAResults []report.SLAResult
+	// SLAPassed is true when every SLA check passed.
+	SLAPassed bool
 }
 
 // Run executes a load test described by cfg and blocks until it completes or
@@ -88,7 +96,11 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("api: run: %w", err)
 	}
-	return resultFrom(tel), nil
+	rep := report.Build(tel, sc)
+	res := resultFrom(tel)
+	res.SLAResults = rep.SLA
+	res.SLAPassed = report.SLAPassed(rep.SLA)
+	return res, nil
 }
 
 // resultFrom converts engine telemetry into a public Result.

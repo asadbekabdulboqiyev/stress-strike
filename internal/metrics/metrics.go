@@ -87,6 +87,7 @@ type Telemetry struct {
 	Steps       []*StepStats
 	ActiveUsers atomic.Int64
 	PeakUsers   atomic.Int64
+	Timeline    Timeline
 }
 
 func NewTelemetry() *Telemetry {

@@ -76,12 +76,46 @@ type Step struct {
 	Session       bool   `yaml:"session" json:"session"`               // ws|tcp: keep one persistent connection per virtual user
 }
 
+// SLA defines pass/fail thresholds evaluated against aggregate results after
+// a completed run. Any zero field disables that specific check. When an SLA
+// is present and any check fails, the CLI exits with code 2 so CI/CD jobs can
+// fail the pipeline on performance regressions.
+type SLA struct {
+	MaxP99Ms        float64 `yaml:"max_p99_ms" json:"max_p99_ms"`
+	MaxAvgMs        float64 `yaml:"max_avg_ms" json:"max_avg_ms"`
+	MaxErrorRatePct float64 `yaml:"max_error_rate_pct" json:"max_error_rate_pct"`
+	MinRPS          float64 `yaml:"min_rps" json:"min_rps"`
+}
+
+func (s *SLA) Normalize() error {
+	if s == nil {
+		return nil
+	}
+	for name, v := range map[string]float64{
+		"max_p99_ms":         s.MaxP99Ms,
+		"max_avg_ms":         s.MaxAvgMs,
+		"max_error_rate_pct": s.MaxErrorRatePct,
+		"min_rps":            s.MinRPS,
+	} {
+		if v < 0 {
+			return fmt.Errorf("sla.%s must be non-negative, got %v", name, v)
+		}
+	}
+	return nil
+}
+
+// Empty reports whether no threshold is configured at all.
+func (s *SLA) Empty() bool {
+	return s == nil || (s.MaxP99Ms <= 0 && s.MaxAvgMs <= 0 && s.MaxErrorRatePct <= 0 && s.MinRPS <= 0)
+}
+
 type Scenario struct {
 	Name      string            `yaml:"name" json:"name"`
 	BaseURL   string            `yaml:"base_url" json:"base_url"`
 	Profile   Profile           `yaml:"load_profile" json:"load_profile"`
 	Steps     []Step            `yaml:"steps" json:"steps"`
 	Variables map[string]string `yaml:"variables" json:"variables"`
+	SLA       *SLA              `yaml:"sla" json:"sla,omitempty"`
 }
 
 func (p *Profile) Normalize() error {
@@ -165,6 +199,9 @@ func (s *Scenario) Normalize() error {
 		s.Name = "unnamed"
 	}
 	if err := s.Profile.Normalize(); err != nil {
+		return err
+	}
+	if err := s.SLA.Normalize(); err != nil {
 		return err
 	}
 	if len(s.Steps) == 0 {

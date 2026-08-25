@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -83,6 +84,7 @@ type Engine struct {
 	scenario  *config.Scenario
 	profile   LoadProfile
 	client    *http.Client
+	transport *http.Transport
 	timeout   time.Duration
 	keepAlive bool
 	limiter   *tokenBucket
@@ -94,10 +96,11 @@ type Engine struct {
 	// Per-virtual-user persistent protocol sessions (guarded by sessMu).
 	// Each worker goroutine exclusively touches its own index during the run;
 	// the mutex protects the teardown path in closeSessions.
-	sessMu   sync.Mutex
-	wsConns  map[int]*websocket.Conn
-	wsURLs   map[int]string
-	tcpConns map[int]net.Conn
+	sessMu     sync.Mutex
+	wsConns    map[int]*websocket.Conn
+	wsURLs     map[int]string
+	tcpConns   map[int]net.Conn
+	cookieJars map[int]http.CookieJar
 	// grpcConns holds shared ClientConns keyed by target (all workers).
 	grpcConns map[string]*grpc.ClientConn
 }
@@ -115,10 +118,16 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		keepAlive = *scenario.Profile.KeepAlive
 	}
 	maxConns := profile.MaxConcurrency() * 2
+	transport := newTransport(keepAlive, maxConns)
 	e := &Engine{
-		scenario:  scenario,
-		profile:   profile,
-		client:    newClient(time.Duration(scenario.Profile.Timeout)*time.Second, keepAlive, maxConns),
+		scenario: scenario,
+		profile:  profile,
+		client: &http.Client{
+			Transport:     transport,
+			Timeout:       time.Duration(scenario.Profile.Timeout) * time.Second,
+			CheckRedirect: checkRedirect,
+		},
+		transport: transport,
 		timeout:   time.Duration(scenario.Profile.Timeout) * time.Second,
 		keepAlive: keepAlive,
 		limiter:   newTokenBucket(scenario.Profile.RPS),
@@ -157,6 +166,10 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 		stopLive = report.StartLive(e.telemetry, e.profile.Duration(), out)
 	}
 
+	// Per-second timeline sampling (used for CSV export and trend analysis).
+	samplerDone := make(chan struct{})
+	metrics.StartSampling(e.telemetry, &e.telemetry.Timeline, samplerDone)
+
 	var wg sync.WaitGroup
 	maxUsers := e.profile.MaxConcurrency()
 	w := &loadWorker{e: e}
@@ -188,6 +201,14 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	if stopLive != nil {
 		stopLive()
 	}
+	close(samplerDone)
+	// Capture the final partial second so short runs are not empty.
+	e.telemetry.Timeline.Record(metrics.TimelineSample{
+		Second:      int(e.telemetry.Elapsed().Seconds()) + 1,
+		Requests:    e.telemetry.TotalRequests(),
+		Errors:      e.telemetry.TotalErrors(),
+		ActiveUsers: e.telemetry.ActiveUsers.Load(),
+	})
 	e.closeSessions()
 	e.telemetry.Finish()
 	return e.telemetry, nil
@@ -266,7 +287,7 @@ func (e *Engine) runStepForUser(ctx context.Context, step config.Step, vars map[
 	case "tcp", "udp":
 		res, body = e.rawClientForUser(userIndex, ctx, step.Type, fullURL, step, vars, timeout)
 	default:
-		res, body = e.httpClient(ctx, fullURL, step, vars, timeout)
+		res, body = e.httpClientForUser(userIndex, ctx, fullURL, step, vars, timeout)
 	}
 	if res.errName == "" && len(step.Assertions) > 0 {
 		if err := checkAssertions(step.Assertions, res.status, body); err != nil {
@@ -277,6 +298,43 @@ func (e *Engine) runStepForUser(ctx context.Context, step config.Step, vars map[
 }
 
 func (e *Engine) httpClient(ctx context.Context, fullURL string, step config.Step, vars map[string]string, timeout time.Duration) (stepResult, []byte) {
+	return e.httpClientForUser(-1, ctx, fullURL, step, vars, timeout)
+}
+
+// cookieJarFor returns (lazily creating) the per-virtual-user cookie jar used
+// to carry login sessions across scenario steps. Jars only exist when
+// keep-alive is enabled; without it every request is a fresh session.
+func (e *Engine) cookieJarFor(userIndex int) http.CookieJar {
+	if userIndex < 0 || !e.keepAlive {
+		return nil
+	}
+	e.sessMu.Lock()
+	defer e.sessMu.Unlock()
+	if e.cookieJars == nil {
+		e.cookieJars = make(map[int]http.CookieJar)
+	}
+	if jar, ok := e.cookieJars[userIndex]; ok {
+		return jar
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil
+	}
+	e.cookieJars[userIndex] = jar
+	return jar
+}
+
+// dropCookieJar discards the session cookies of one virtual user.
+func (e *Engine) dropCookieJar(userIndex int) {
+	e.sessMu.Lock()
+	defer e.sessMu.Unlock()
+	delete(e.cookieJars, userIndex)
+}
+
+// httpClientForUser performs one HTTP exchange. When a per-user cookie jar is
+// active, Set-Cookie responses are stored and replayed on later requests,
+// enabling realistic multi-step authenticated flows.
+func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL string, step config.Step, vars map[string]string, timeout time.Duration) (stepResult, []byte) {
 	stepCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -298,7 +356,8 @@ func (e *Engine) httpClient(ctx context.Context, fullURL string, step config.Ste
 	}
 
 	start := time.Now()
-	resp, err := e.client.Do(req)
+	client := e.clientForJar(e.cookieJarFor(userIndex), timeout)
+	resp, err := client.Do(req)
 	if err != nil {
 		res := classifyError(err, time.Since(start))
 		return res, nil

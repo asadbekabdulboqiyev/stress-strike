@@ -30,21 +30,23 @@ type StepReport struct {
 }
 
 type Report struct {
-	Name          string            `json:"name"`
-	BaseURL       string            `json:"base_url"`
-	LoadProfile   string            `json:"load_profile"`
-	StartedAt     time.Time         `json:"started_at"`
-	EndedAt       time.Time         `json:"ended_at"`
-	Duration      time.Duration     `json:"duration"`
-	ActiveUsers   int64             `json:"active_users"`
-	TotalRequests uint64            `json:"total_requests"`
-	TotalErrors   uint64            `json:"total_errors"`
-	ErrorRatePct  float64           `json:"error_rate_pct"`
-	RPS           float64           `json:"rps"`
-	Status        map[int]uint64    `json:"status_codes"`
-	Errors        map[string]uint64 `json:"errors"`
-	Overall       StepReport        `json:"overall"`
-	Steps         []StepReport      `json:"steps"`
+	Name          string                   `json:"name"`
+	BaseURL       string                   `json:"base_url"`
+	LoadProfile   string                   `json:"load_profile"`
+	StartedAt     time.Time                `json:"started_at"`
+	EndedAt       time.Time                `json:"ended_at"`
+	Duration      time.Duration            `json:"duration"`
+	ActiveUsers   int64                    `json:"active_users"`
+	TotalRequests uint64                   `json:"total_requests"`
+	TotalErrors   uint64                   `json:"total_errors"`
+	ErrorRatePct  float64                  `json:"error_rate_pct"`
+	RPS           float64                  `json:"rps"`
+	Status        map[int]uint64           `json:"status_codes"`
+	Errors        map[string]uint64        `json:"errors"`
+	Overall       StepReport               `json:"overall"`
+	Steps         []StepReport             `json:"steps"`
+	SLA           []SLAResult              `json:"sla,omitempty"`
+	Timeline      []metrics.TimelineSample `json:"timeline,omitempty"`
 }
 
 // renderLatencyBars builds ASCII bar rows for key latency percentiles. Bar
@@ -119,10 +121,12 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 		Status:        t.StatusCodes(),
 		Errors:        t.Errors(),
 		Overall:       fromStepStats("overall", t.Overall),
+		Timeline:      t.Timeline.Snapshot(),
 	}
 	for _, s := range t.Steps {
 		r.Steps = append(r.Steps, fromStepStats(s.Name, s))
 	}
+	r.SLA = EvaluateSLA(&r, scenario.SLA)
 	return r
 }
 
@@ -226,6 +230,20 @@ func (r Report) Render(w io.Writer) {
 		fmt.Fprintln(w)
 	}
 
+	// ── SLA gate ────────────────────────────────────────────────────────
+	if len(r.SLA) > 0 {
+		fmt.Fprintln(w, colorize(colorBold, c, "  SLA GATE"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
+		for _, res := range r.SLA {
+			badge := colorize(colorGreen, c, "PASS")
+			if !res.Pass {
+				badge = colorize(colorRed, true, "FAIL")
+			}
+			fmt.Fprintf(w, "    %s  %-14s target %-12s actual %s\n", badge, res.Metric, res.Target, res.Actual)
+		}
+		fmt.Fprintln(w)
+	}
+
 	// ── Summary ─────────────────────────────────────────────────────────
 	fmt.Fprintln(w, colorize(colorBold, c, "  SUMMARY"))
 	fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
@@ -238,6 +256,13 @@ func (r Report) Render(w io.Writer) {
 
 	fmt.Fprintln(w, sep)
 	verdict := colorize(hColor, c, fmt.Sprintf("  VERDICT: %s", health))
+	if len(r.SLA) > 0 {
+		if SLAPassed(r.SLA) {
+			verdict += colorize(colorGreen, c, " | SLA PASSED")
+		} else {
+			verdict += colorize(colorRed, true, " | SLA FAILED")
+		}
+	}
 	fmt.Fprintln(w, verdict)
 	fmt.Fprintln(w, sep)
 	fmt.Fprintln(w)
@@ -269,6 +294,56 @@ func (r Report) SaveTXT(dir string) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+// SaveCSV writes the per-second timeline as CSV for external analysis
+// (spreadsheets, Grafana annotations, Python notebooks).
+func (r Report) SaveCSV(dir string) (string, error) {
+	if len(r.Timeline) == 0 {
+		return "", nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	path := uniquePath(dir, reportFilename(r.Name, "csv"))
+	var sb strings.Builder
+	sb.WriteString("second,requests_total,requests_delta,errors_total,errors_delta,active_users\n")
+	var prevReq, prevErr uint64
+	for _, s := range r.Timeline {
+		fmt.Fprintf(&sb, "%d,%d,%d,%d,%d,%d\n",
+			s.Second, s.Requests, s.Requests-prevReq, s.Errors, s.Errors-prevErr, s.ActiveUsers)
+		prevReq = s.Requests
+		prevErr = s.Errors
+	}
+	if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// LoadReport reads a previously saved JSON report (used by --compare).
+func LoadReport(path string) (*Report, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	r := &Report{}
+	if err := json.Unmarshal(data, r); err != nil {
+		return nil, fmt.Errorf("parse baseline %s: %w", path, err)
+	}
+	return r, nil
+}
+
+// msDuration renders milliseconds as a Duration string.
+func msDuration(ms float64) time.Duration {
+	return time.Duration(ms * float64(time.Millisecond)).Round(time.Millisecond)
+}
+
+// timeMillis renders a millisecond count compactly for comparison tables.
+func timeMillis(ms int64) string {
+	d := time.Duration(ms) * time.Millisecond
+	s := d.String()
+	return s
 }
 
 func uniquePath(dir, filename string) string {

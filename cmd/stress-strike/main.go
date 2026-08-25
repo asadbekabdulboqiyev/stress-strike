@@ -31,26 +31,33 @@ func (h headerFlags) Set(value string) error {
 
 func main() {
 	var (
-		configPath  string
-		url         string
-		method      string
-		data        string
-		headers     = headerFlags{}
-		name        string
-		profile     string
-		users       int
-		duration    int
-		rampUp      int
-		spikeUsers  int
-		spikeWarmup int
-		spikeHold   int
-		wavePeriod  int
-		rps         int
-		timeout     int
-		keepAlive   bool
-		quiet       bool
-		reportDir   string
-		showVersion bool
+		configPath    string
+		url           string
+		method        string
+		data          string
+		headers       = headerFlags{}
+		name          string
+		profile       string
+		users         int
+		duration      int
+		rampUp        int
+		spikeUsers    int
+		spikeWarmup   int
+		spikeHold     int
+		wavePeriod    int
+		rps           int
+		timeout       int
+		keepAlive     bool
+		quiet         bool
+		reportDir     string
+		showVersion   bool
+		expectP99     float64
+		expectAvg     float64
+		expectErrRate float64
+		expectMinRPS  float64
+		comparePath   string
+		regressPct    float64
+		timelineCSV   bool
 	)
 
 	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
@@ -71,6 +78,13 @@ func main() {
 	flag.IntVar(&rps, "rps", 0, "global pacing cap (requests per second, 0 = unlimited)")
 	flag.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
 	flag.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections (connection pooling)")
+	flag.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA gate: fail the run if p99 latency exceeds this (ms)")
+	flag.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA gate: fail the run if avg latency exceeds this (ms)")
+	flag.Float64Var(&expectErrRate, "expect-error-rate", 0, "SLA gate: fail the run if error rate exceeds this (%%)")
+	flag.Float64Var(&expectMinRPS, "expect-min-rps", 0, "SLA gate: fail the run if throughput drops below this")
+	flag.StringVar(&comparePath, "compare", "", "baseline JSON report to compare against (regression detection)")
+	flag.Float64Var(&regressPct, "regress-pct", 20, "degradation percentage that counts as a regression in --compare")
+	flag.BoolVar(&timelineCSV, "timeline", false, "also write a per-second CSV timeline for external analysis")
 	flag.BoolVar(&quiet, "quiet", false, "disable live progress line")
 	flag.StringVar(&reportDir, "report-dir", "./reports", "directory for generated reports")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
@@ -117,6 +131,27 @@ func main() {
 		scenario = sc
 	}
 
+	// CLI SLA flags merge into (and take precedence over) scenario SLA.
+	sla := scenario.SLA
+	if sla == nil {
+		sla = &config.SLA{}
+	}
+	if expectP99 > 0 {
+		sla.MaxP99Ms = expectP99
+	}
+	if expectAvg > 0 {
+		sla.MaxAvgMs = expectAvg
+	}
+	if expectErrRate > 0 {
+		sla.MaxErrorRatePct = expectErrRate
+	}
+	if expectMinRPS > 0 {
+		sla.MinRPS = expectMinRPS
+	}
+	if !sla.Empty() {
+		scenario.SLA = sla
+	}
+
 	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 
@@ -149,6 +184,20 @@ func main() {
 	fmt.Fprintln(os.Stderr)
 	r.Render(os.Stdout)
 
+	// Baseline regression comparison.
+	if comparePath != "" {
+		baseline, err := report.LoadReport(comparePath)
+		if err != nil {
+			fatal(err)
+		}
+		rows, regressed := report.Compare(&r, baseline, regressPct)
+		renderComparison(rows)
+		if regressed {
+			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%)\n", comparePath, regressPct)
+			os.Exit(2)
+		}
+	}
+
 	jsonPath, err := r.SaveJSON(reportDir)
 	if err != nil {
 		fatal(err)
@@ -158,6 +207,43 @@ func main() {
 		fatal(err)
 	}
 	fmt.Fprintf(os.Stderr, "\nReports written:\n  %s\n  %s\n", jsonPath, txtPath)
+
+	if timelineCSV {
+		csvPath, err := r.SaveCSV(reportDir)
+		if err != nil {
+			fatal(err)
+		}
+		if csvPath != "" {
+			fmt.Fprintf(os.Stderr, "  %s\n", csvPath)
+		}
+	}
+
+	// SLA gate: non-zero exit lets CI/CD pipelines fail on regressions.
+	if len(r.SLA) > 0 && !report.SLAPassed(r.SLA) {
+		fmt.Fprintln(os.Stderr, "SLA gate FAILED — exiting with code 2")
+		os.Exit(2)
+	}
+}
+
+// renderComparison prints the baseline comparison table to stdout.
+func renderComparison(rows []report.CompareRow) {
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, colorBold("  BASELINE COMPARISON"))
+	fmt.Fprintln(os.Stdout, colorBold("  ──────────────────────────────────────────────────────────────"))
+	for _, row := range rows {
+		status := row.Status
+		switch status {
+		case "regressed":
+			status = "✗ REGRESSED"
+		case "improved":
+			status = "↑ improved"
+		default:
+			status = "= ok"
+		}
+		fmt.Fprintf(os.Stdout, "    %-12s %-10s → %-10s %-9s %s\n",
+			row.Metric, row.Baseline, row.Current, row.Delta, status)
+	}
+	fmt.Fprintln(os.Stdout)
 }
 
 func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {
@@ -204,6 +290,10 @@ func targetDisplay(scenario *config.Scenario) string {
 
 // warnLowFileLimit is platform-specific (Unix: rlimit check; Windows: no-op),
 // implemented in limit_unix.go / limit_windows.go.
+
+// colorBold wraps text in ANSI bold for stdout tables (safe everywhere since
+// the comparison table is plain text otherwise).
+func colorBold(s string) string { return "\x1b[1m" + s + "\x1b[0m" }
 
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)

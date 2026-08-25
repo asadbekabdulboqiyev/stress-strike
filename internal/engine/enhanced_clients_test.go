@@ -273,11 +273,7 @@ func TestGrpcSharedConnReuse(t *testing.T) {
 // TestHTTP2TransportEnabled asserts the transport still attempts HTTP/2 so
 // h2-capable targets benefit from multiplexing.
 func TestHTTP2TransportEnabled(t *testing.T) {
-	c := newClient(5*time.Second, true, 256)
-	tr, ok := c.Transport.(*http.Transport)
-	if !ok {
-		t.Fatal("transport is not *http.Transport")
-	}
+	tr := newTransport(true, 256)
 	if !tr.ForceAttemptHTTP2 {
 		t.Error("ForceAttemptHTTP2 = false, want true")
 	}

@@ -1,32 +1,25 @@
 # Makefile for stress-strike — build, test, lint, release helpers.
 #
 # Usage:
-#   make build      build stress-strike + demo server into ./bin
-#   make test       run tests with the race detector
-#   make vet        run go vet
-#   make lint       go vet + gofmt formatting check
-#   make coverage   produce a test coverage report (coverage.out)
-#   make bench      run benchmarks
-#   make clean      remove build artifacts (bin/, dist/, coverage)
-#   make install    install stress-strike into PATH (GOBIN/GOPATH/bin)
-#   make release    cross-compile for all platforms into ./dist
-#   make help       list all targets
+#   make build       Build all stress-strike binaries into ./bin
+#   make test        Run tests with the race detector
+#   make lint        go vet + gofmt check
+#   make clean       Remove bin/ and reports/
+#   make release     Cross-compile for all platforms
+#   make docker      Build Docker image
+#   make run         Build and run demo server
+#   make help        List all targets
 
-# Release version used for dist/ naming and Docker image labels.
-# Override on the CLI:  make release VERSION=1.2.3
-VERSION ?= 0.2.0
+VERSION ?= 0.4.0
 
-GO       ?= go
-GOFLAGS  ?=
-BIN_DIR   := bin
-DIST_DIR  := dist
+GO      ?= go
+GOFLAGS ?=
+BIN_DIR  := bin
+DIST_DIR := dist
 
 .PHONY: build
-build: ## Build stress-strike and the demo server into ./bin
-	@mkdir -p $(BIN_DIR)
-	$(GO) build $(GOFLAGS) -o $(BIN_DIR)/stress-strike ./cmd/stress-strike
-	$(GO) build $(GOFLAGS) -o $(BIN_DIR)/demo-server ./examples/demo_server.go
-	@echo "built: $(BIN_DIR)/stress-strike, $(BIN_DIR)/demo-server"
+build: ## Build all binaries into ./bin
+	./scripts/build-all.sh
 
 .PHONY: test
 test: ## Run the full test suite with the race detector
@@ -46,26 +39,25 @@ lint: vet ## go vet + gofmt formatting check (fails on any unformatted file)
 	fi
 	@echo "gofmt: all files formatted"
 
-.PHONY: coverage
-coverage: ## Run tests and write coverage.out (+ overall summary line)
-	$(GO) test -coverprofile=coverage.out ./...
-	@$(GO) tool cover -func=coverage.out | tail -1
-
-.PHONY: bench
-bench: ## Run Go benchmarks (no regular tests)
-	$(GO) test -bench=. -run=^$$ ./...
-
 .PHONY: clean
-clean: ## Remove build artifacts: bin/, dist/, coverage files
-	rm -rf $(BIN_DIR) $(DIST_DIR) coverage.out coverage.html
-
-.PHONY: install
-install: ## Install stress-strike into PATH (defaults to GOBIN/GOPATH/bin)
-	$(GO) install $(GOFLAGS) ./cmd/stress-strike
+clean: ## Remove bin/ and reports/
+	rm -rf $(BIN_DIR) $(DIST_DIR) reports coverage.out coverage.html
 
 .PHONY: release
-release: ## Cross-compile for all platforms into ./dist (static binaries)
-	VERSION=$(VERSION) ./scripts/build-all.sh
+release: ## Cross-compile for all platforms into ./dist
+	VERSION=$(VERSION) ./scripts/release.sh v$(VERSION)
+
+.PHONY: docker
+docker: ## Build Docker image
+	docker build --build-arg VERSION=$(VERSION) -t stress-strike:$(VERSION) .
+	docker tag stress-strike:$(VERSION) stress-strike:latest
+	@echo "docker image built: stress-strike:$(VERSION)"
+
+.PHONY: run
+run: build ## Build and run the demo server
+	$(GO) run ./examples/demo_server.go &
+	@sleep 1
+	$(BIN_DIR)/stress-strike run --url http://localhost:8080 --users 10 --duration 5
 
 .PHONY: help
 help: ## List all available targets

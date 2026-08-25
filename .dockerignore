@@ -7,6 +7,7 @@ reports/
 coverage.out
 coverage.html
 *.test
+*.exe
 
 # VCS & CI
 .git/
@@ -21,3 +22,10 @@ coverage.html
 .DS_Store
 *.swp
 *.tmp
+
+# Docs & meta (not needed at runtime)
+LICENSE
+SECURITY.md
+README.md
+examples/
+scripts/

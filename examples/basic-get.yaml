@@ -1,0 +1,34 @@
+# basic-get.yaml
+# Minimal load test: sends GET requests to a single endpoint using a steady
+# profile with 50 concurrent users for 30 seconds. Ideal for quick health
+# checks or baseline throughput measurements.
+
+name: basic-get
+base_url: http://localhost:8080
+
+load_profile:
+  type: steady
+  users: 50
+  duration: 30
+  timeout: 5
+
+steps:
+  - name: health-check
+    type: http
+    method: GET
+    url: /api/health
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: status
+      - type: regex
+        value: '"ok"\s*:\s*true'
+
+sla:
+  max_p99_ms: 200
+  max_avg_ms: 100
+  max_error_rate_pct: 1
+  min_rps: 200

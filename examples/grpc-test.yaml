@@ -1,0 +1,96 @@
+# grpc-test.yaml
+# gRPC load test: sends unary RPC calls to a gRPC service endpoint.
+# Uses the grpc step type with a fully-qualified method path in the
+# standard "/package.Service/Method" format. The body contains the
+# protobuf JSON-encoded request payload. Good for testing gRPC API
+# throughput and latency under concurrent load.
+
+name: grpc-test
+base_url: http://localhost:8080
+
+load_profile:
+  type: linear-ramp
+  users: 500
+  duration: 180
+  ramp_up: 60
+  timeout: 10
+
+variables:
+  service_name: greeter
+
+steps:
+  # Unary call — Greeter.SayHello
+  - name: say-hello
+    type: grpc
+    method: POST
+    url: http://localhost:50051
+    grpc_method: /greeter.Greeter/SayHello
+    body: '{"name": "load-test-user"}'
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: message
+    timeout: 10
+
+  # Unary call — UserService.GetUser
+  - name: get-user
+    type: grpc
+    method: POST
+    url: http://localhost:50051
+    grpc_method: /user.UserService/GetUser
+    body: '{"user_id": "usr_12345"}'
+    extract:
+      - name: user_name
+        from: json
+        path: name
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: user_id
+    timeout: 10
+
+  # Unary call — OrderService.CreateOrder
+  - name: create-order
+    type: grpc
+    method: POST
+    url: http://localhost:50051
+    grpc_method: /order.OrderService/CreateOrder
+    body: |
+      {
+        "customer_id": "cust_999",
+        "items": [
+          {"product_id": "prod_1", "quantity": 2},
+          {"product_id": "prod_2", "quantity": 1}
+        ],
+        "total_amount": 59.99
+      }
+    extract:
+      - name: order_id
+        from: json
+        path: order_id
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: order_id
+    timeout: 15
+
+  # Health check — empty body
+  - name: grpc-health-check
+    type: grpc
+    method: POST
+    url: http://localhost:50051
+    grpc_method: /grpc.health.v1.Health/Check
+    body: '{}'
+    assertions:
+      - type: status
+        value: "200"
+    timeout: 5
+
+sla:
+  max_p99_ms: 300
+  max_avg_ms: 150
+  max_error_rate_pct: 1
+  min_rps: 500

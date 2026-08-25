@@ -1,74 +1,70 @@
-# ⚡ stress-strike
-
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/asadbekabdulboqiyev/stress-strike/actions/workflows/ci.yml/badge.svg)](https://github.com/asadbekabdulboqiyev/stress-strike/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/asadbekabdulboqiyev/stress-strike)](https://goreportcard.com/report/github.com/asadbekabdulboqiyev/stress-strike)
-
-**stress-strike** is a professional-grade, multi-protocol **load testing &
-network simulator** written in Go. It drives high volumes of realistic
-concurrent traffic at a target system to discover its breaking point, latency
-distribution, and error behavior — an open alternative to Apache JMeter and
-Locust, built on pure Go concurrency.
-
 ```
-This is a load generator. Use it ONLY against systems you own or have
-explicit written permission to test. An unsanctioned load flood against
-someone else's server is illegal (DDoS).
+                  _____ _               _____       _             __
+                 / ____| |             |_   _|     | |           / _|
+                | (___ | |_ __ _ _ __   | |  _ __ | | _____  __| |_ ___  ___
+                 \___ \| __/ _` | '__|  | | | '_ \| |/ / _ \/ __|  _/ _ \/ __|
+                 ____) | || (_| | |     _| |_| | | |   <  __/ (__| ||  __/ (__
+                |_____/ \__\__,_|_|    |_____|_| |_|_|\_\___|\___|_| \___|\___|
 ```
+
+[![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.4.0-green.svg)]()
+
+Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
 ---
 
-## ✨ Features
+## Features
 
-- **Multi-protocol** — stress HTTP/HTTPS, WebSocket (`ws://`/`wss://`),
-  gRPC (`grpc://` plaintext / `grpcs://` TLS), raw TCP, and UDP targets from
-  a single scenario file.
-- **Scenario constructor** — YAML/JSON files define multi-step chains with
-  variable extraction between steps (`POST /login` → extract token →
-  `GET /profile` → `POST /cart` → `POST /checkout`).
-- **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, and `wave`
-  (sinusoidal load oscillation).
-- **Assertions** — per-step pass/fail checks on status families (`2xx`), JSON
-  paths, or regex matches; failures surface as `assert_failed` errors.
-- **Cookie sessions** — per-virtual-user cookie jars replay `Set-Cookie` across
-  scenario steps, enabling realistic multi-step authenticated flows.
-- **SLA gate (CI/CD)** — declare latency/error/throughput thresholds in the
-  scenario (`sla:`) or via `--expect-*` flags; violations exit with code 2 so
-  pipelines fail automatically on performance regressions.
-- **Baseline comparison** — `--compare baseline.json` prints a delta table
-  (RPS, p50/p95/p99, errors) and flags regressions beyond `--regress-pct`.
-- **Timeline export** — `--timeline` writes a per-second CSV (requests, errors,
-  active users) for spreadsheets, notebooks, or Grafana.
-- **Go library API** — `import "stress-strike/api"` to embed load tests in
-  your own programs, test suites, and CI tooling.
-- **Connection pooling** — keep-alive + tuned `http.Transport`
-  (`MaxIdleConnsPerHost`, idle timeouts) so each request reuses a TCP socket.
-- **Global pacing** — optional `rps` cap via a thread-safe token bucket.
-- **Real-time telemetry** — live multi-line panel (progress bar, RPS sparkline,
-  request/error counters, p50/p95/p99, active users) and a color-coded final
-  report with per-step latency percentiles, a latency-distribution chart and
-  status/error distributions.
-- **Graceful drain** — in-flight requests at the end of a run are drained
-  instead of being spuriously counted as errors.
-- **Reports** — timestamped JSON and TXT files in `./reports/`, written with
-  private (`0600`) permissions.
-- **Safety rails** — concurrency caps, OS limit guard, sane defaults, and a
-  legal notice on every run.
+- **Multi-protocol** — HTTP/HTTPS, WebSocket, gRPC, TCP, UDP from a single scenario
+- **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, `wave`
+- **PCAP/HAR replay** — replay real captured traffic at 1x–100x speed
+- **TLS/WAF scanner** — deep cipher suite analysis, WAF fingerprinting, security headers audit
+- **Real-time web dashboard** — live RPS, latency, error charts via WebSocket
+- **Distributed mode** — master/worker architecture over gRPC for multi-machine load
+- **SLA gate** — CI/CD performance gate with exit code 2 on regression
+- **Baseline comparison** — delta reports against a previous run (RPS, p50/p95/p99, errors)
+- **YAML scenarios** — multi-step flows with variable extraction, assertions, and auth chains
+- **Go library API** — `import "stress-strike/api"` for embedding in programs and test suites
+- **Timeline CSV** — per-second export for Grafana, Jupyter, or spreadsheet analysis
+- **Connection pooling** — keep-alive, tuned transports, and graceful drain
 
 ---
 
-## 📦 Installation
+## Quick Start
 
-### From source
-
-Requires Go 1.26+:
+### Install
 
 ```sh
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 ```
 
-### Build locally
+### Your first test
+
+```sh
+# 200 concurrent users hitting /health for 30 seconds
+stress-strike run --url http://localhost:8080/health --users 200 --duration 30
+
+# Ramp to 1000 users over 30s, hold for 60s, capped at 2000 rps
+stress-strike run --url https://api.example.com --profile linear-ramp \
+  --users 1000 --duration 90 --ramp-up 30 --rps 2000
+
+# Instant spike: 100 users baseline, burst to 50K for 15s
+stress-strike run --url https://api.example.com --profile spike \
+  --users 100 --spike-users 50000 --spike-warmup 5 --spike-hold 15
+
+# 1-hour soak test at 500 users
+stress-strike run --url https://api.example.com --profile soak \
+  --users 500 --duration 3600
+
+# Sinusoidal wave with 60s oscillation period
+stress-strike run --url https://api.example.com --profile wave \
+  --users 1000 --duration 180 --wave-period 60
+```
+
+### Build from source
 
 ```sh
 git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
@@ -76,59 +72,198 @@ cd stress-strike
 make build          # produces bin/stress-strike + bin/demo-server
 ```
 
-### Docker
+---
+
+## Commands Reference
+
+```
+stress-strike <command> [flags]
+```
+
+| Command | Description |
+|---------|-------------|
+| `run` | HTTP/gRPC/WebSocket/TCP/UDP load test (default) |
+| `replay` | Replay real traffic from PCAP/HAR captures |
+| `scan` | TLS/WAF deep scanner + fingerprinting |
+| `dashboard` | Real-time web dashboard with WebSocket |
+| `master` | Distributed mode — master coordinator |
+| `worker` | Distributed mode — worker node |
+
+### `stress-strike run`
+
+Core load testing command. Run with `--url` for quick mode or `--config` for YAML scenarios.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config, -c` | | YAML/JSON scenario file |
+| `--url` | | Target URL (quick mode) |
+| `--method` | `GET` | HTTP method |
+| `--data` | | Request body |
+| `--header` | | Header in `Key=Value` form (repeatable) |
+| `--name` | `quick-test` | Report/test name |
+| `--users` | `10` | Concurrent virtual users |
+| `--duration` | `30` | Duration in seconds |
+| `--profile` | `steady` | `steady` \| `soak` \| `linear-ramp` \| `spike` \| `wave` |
+| `--ramp-up` | half of duration | Ramp-up duration (seconds) |
+| `--spike-users` | 10x users | Burst target for spike profile |
+| `--spike-warmup` | `5` | Baseline warmup before spike |
+| `--spike-hold` | `10` | Spike burst hold duration |
+| `--wave-period` | duration/3 | Oscillation period for wave |
+| `--rps` | `0` (unlimited) | Global pacing cap |
+| `--timeout` | `5` | Per-request timeout (seconds) |
+| `--keep-alive` | `true` | Reuse TCP connections |
+| `--expect-p99-ms` | | SLA: max p99 latency (ms) |
+| `--expect-avg-ms` | | SLA: max avg latency (ms) |
+| `--expect-error-rate` | | SLA: max error rate (%) |
+| `--expect-min-rps` | | SLA: minimum throughput |
+| `--compare` | | Baseline JSON for regression detection |
+| `--regress-pct` | `20` | Regression threshold (%) |
+| `--timeline` | | Write per-second CSV timeline |
+| `--quiet` | | Disable live progress bar |
+| `--report-dir` | `./reports` | Report output directory |
+
+**Exit codes:** `0` success · `1` setup error · `2` SLA/regression gate failed
+
+### `stress-strike replay`
+
+Replay captured production traffic at configurable speed. Supports PCAP and HAR formats.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--input` | | PCAP or HAR file (required) |
+| `--rate` | `1x` | Replay speed multiplier (1x–100x) |
+| `--concurrency` | `10` | Concurrent replay workers |
+| `--duration` | | Max replay duration (e.g. `30s`, `5m`) |
+| `--base-url` | | Override target base URL |
+| `--methods` | | Filter by HTTP methods (e.g. `GET,POST`) |
+| `--url-pattern` | | Filter by URL glob pattern |
+| `--status` | | Filter by response status codes |
+| `--validate` | | Run response assertions |
+| `--assert-status` | | Assert response status code |
+| `--assert-regex` | | Assert response body matches regex |
+| `--tls-key` | | TLS private key for decryption |
+| `--tls-cert` | | TLS certificate for decryption |
+| `--output-json` | | Export results to JSON |
+| `--output-csv` | | Export latency data to CSV |
 
 ```sh
-docker build -t stress-strike .
-docker run --rm --cpus=2 --memory=512m \
-  stress-strike --url http://host.docker.internal:8080/health \
-  --users 100 --duration 5
+# Replay HAR at 10x speed
+stress-strike replay --input traffic.har --rate 10x
+
+# Replay PCAP at 50x with 50 workers, only GET requests
+stress-strike replay --input capture.pcap --rate 50x --concurrency 50 --methods GET
+
+# Replay with response validation
+stress-strike replay --input traffic.har --rate 5x --validate --assert-status 200
+
+# Replay to staging server
+stress-strike replay --input traffic.har --base-url https://staging.example.com --rate 5x
 ```
+
+### `stress-strike scan`
+
+TLS/WAF deep scanner with vulnerability detection and risk scoring.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--target` | | Target host (required, e.g. `example.com`) |
+| `--port` | `443` | Target port |
+| `--all` | (default if no filter) | Run all scans |
+| `--tls` | | TLS scan only |
+| `--http` | | HTTP fingerprint only |
+| `--waf` | | WAF detection only |
+| `--security` | | Security headers audit only |
+| `--output-json` | | Export results to JSON file |
+
+Scans include:
+- **TLS** — cipher suites, certificate chain, version vulnerabilities, forward secrecy
+- **HTTP** — server fingerprinting, technology detection, CORS analysis
+- **WAF** — Cloudflare, Akamai, AWS WAF, and 30+ providers detected
+- **Security** — HSTS, CSP, CORS, X-Frame-Options, and 15+ headers audited
+- **Vulnerabilities** — risk-scored findings with remediation guidance
+
+```sh
+# Full scan
+stress-strike scan --target example.com --all
+
+# TLS scan only
+stress-strike scan --target example.com --tls
+
+# Export scan to JSON
+stress-strike scan --target example.com --all --output-json scan.json
+```
+
+### `stress-strike dashboard`
+
+Start a real-time web dashboard with live telemetry over WebSocket.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--listen` | `:8888` | Dashboard listen address |
+
+Features:
+- Live RPS sparkline graph
+- Latency percentiles (p50/p95/p99) in real-time
+- Error rate tracking with history
+- Worker node monitoring in distributed mode
+- Start/stop runs directly from the browser
+
+```sh
+stress-strike dashboard --listen :9090
+# Open http://localhost:9090
+```
+
+### `stress-strike master`
+
+Distributed load testing coordinator. Distributes users across worker nodes.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--listen` | `:50051` | Master listen address |
+| `--workers` | | Comma-separated worker addresses (required) |
+| `--config` | | YAML scenario file |
+| `--url` | | Target URL (quick mode) |
+| `--users` | `100` | Total virtual users (split across workers) |
+| `--duration` | `30` | Duration in seconds |
+| `--profile` | `steady` | Load profile |
+| `--expect-p99-ms` | | SLA: max p99 latency |
+| `--expect-error-rate` | | SLA: max error rate (%) |
+| `--expect-min-rps` | | SLA: minimum throughput |
+| `--compare` | | Baseline for regression detection |
+| `--regress-pct` | `20` | Regression threshold (%) |
+| `--timeline` | | Export CSV timeline |
+
+### `stress-strike worker`
+
+Distributed load testing worker node. Receives commands from master over gRPC.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--listen` | `:0` (random) | Worker listen address |
+| `--master` | | Master address for registration |
+| `--id` | auto-generated | Worker identifier |
+| `--max-users` | `100000` | Max virtual users this worker supports |
 
 ---
 
-## 🚀 Quick start
+## YAML Scenario Files
 
-```sh
-# 200 concurrent users hammering /health for 5 seconds
-./bin/stress-strike --url http://localhost:8080/health --users 200 --duration 5
+Scenarios define multi-step flows that run sequentially per virtual user. Variables extracted from earlier steps are available in later steps via `{{name}}` placeholders.
 
-# Ramp up to 1000 users over 30s, hold for 60s, capped at 2000 rps
-./bin/stress-strike --url https://api.example.com --profile linear-ramp \
-  --users 1000 --duration 90 --ramp-up 30 --rps 2000
+### Template Variables
 
-# Spike: 5s baseline at 100 users, instant burst to 50,000 for 15s
-./bin/stress-strike --url https://api.example.com --profile spike \
-  --users 100 --spike-users 50000 --spike-warmup 5 --spike-hold 15
+Built-in per-virtual-user variables: `{{user}}`, `{{pass}}`, `{{email}}`, `{{item}}`, `{{id}}`
+Custom variables: defined under the `variables:` key
 
-# Soak: 1 hour of constant load at 500 users (endurance/capacity testing)
-./bin/stress-strike --url https://api.example.com --profile soak \
-  --users 500 --duration 3600
-
-# Wave: load oscillating with a 60s period (traffic-pattern simulation)
-./bin/stress-strike --url https://api.example.com --profile wave \
-  --users 1000 --duration 180 --wave-period 60
-```
-
----
-
-## 📄 Scenario files
-
-Run a scripted multi-step scenario:
-
-```sh
-./bin/stress-strike --config examples/scenario.yaml
-```
-
-Scenario steps run **sequentially** per virtual user. Built-in per-user
-template variables: `{{user}}`, `{{pass}}`, `{{email}}`, `{{item}}`, `{{id}}`,
-plus any keys under `variables:`. Use `{{name}}` placeholders inside URLs,
-headers, and bodies. `extract` pulls values from a step response and feeds
-them into later steps:
+### E-commerce Checkout Flow
 
 ```yaml
 name: ecommerce-checkout
 base_url: http://localhost:8080
+
+variables:
+  tenant: demo
+
 load_profile:
   type: linear-ramp
   users: 1000
@@ -141,10 +276,12 @@ steps:
   - name: login
     method: POST
     url: /api/login
-    body: '{"username":"{{user}}","password":"{{pass}}"}'
+    headers:
+      Content-Type: application/json
+    body: '{"username":"{{user}}","password":"{{pass}}","tenant":"{{tenant}}"}'
     extract:
       - name: token
-        from: json        # json (dot path) | header | body (regex)
+        from: json
         path: data.token
 
   - name: profile
@@ -152,305 +289,240 @@ steps:
     url: /api/profile
     headers:
       Authorization: "Bearer {{token}}"
+
+  - name: add_to_cart
+    method: POST
+    url: /api/cart
+    headers:
+      Authorization: "Bearer {{token}}"
+      Content-Type: application/json
+    body: '{"item":"{{item}}","qty":1}'
+    extract:
+      - name: cart_id
+        from: json
+        path: data.cart_id
+
+  - name: checkout
+    method: POST
+    url: /api/checkout
+    headers:
+      Authorization: "Bearer {{token}}"
+      Content-Type: application/json
+    body: '{"cart_id":"{{cart_id}}"}'
 ```
 
-See `examples/scenario.yaml` (full chain) and `examples/spike.yaml`.
+### Multi-Protocol Steps
 
-### Multi-protocol steps
-
-Set `type` on a step to target a non-HTTP protocol (default is `http`):
+Set `type` on a step to target non-HTTP protocols:
 
 ```yaml
 steps:
-  - name: ws_chat          # WebSocket: dial → send body → read first frame
+  - name: ws_chat
     type: ws
     url: wss://echo.websocket.events
     body: '{"user":"{{user}}"}'
-    frame_type: text       # text (default) | binary
-    session: true          # keep one persistent socket per virtual user
-                           # (each iteration = one message round trip)
+    frame_type: text          # text (default) | binary
+    session: true             # persistent socket per virtual user
     assertions:
       - type: status
         value: "101"
 
-  - name: grpc_method      # Generic unary invoke of any method
+  - name: grpc_method
     type: grpc
-    url: grpcs://api.example.com:443   # grpc:// plaintext / grpcs:// TLS
-    grpc_method: /pkg.Service/Method   # omit to use standard health check
-    headers:                           # sent as gRPC metadata
+    url: grpcs://api.example.com:443
+    grpc_method: /pkg.Service/Method
+    headers:
       authorization: "Bearer {{token}}"
-    body: '{"id": "{{id}}"}'           # raw request payload
+    body: '{"id": "{{id}}"}'
 
-  - name: redis_ping        # Raw TCP: write bytes, read response
+  - name: redis_ping
     type: tcp
     url: localhost:6379
     body: "PING\r\n"
-    session: true           # reuse one persistent connection per user
+    session: true             # persistent connection per user
     assertions:
       - type: regex
         value: "PONG"
 
-  - name: stats_datagram    # UDP: fire-and-forget datagram
+  - name: stats_datagram
     type: udp
     url: localhost:8125
     body: 'stress.test:1|c'
 
-  - name: dns_probe         # UDP request-response mode
+  - name: dns_probe
     type: udp
     url: 1.1.1.1:53
     body: '{{dns_query}}'
-    await_response: true    # wait for a reply and measure the RTT
+    await_response: true      # measure real RTT
     assertions:
       - type: regex
         value: ".+"
 ```
 
-Protocol upgrades at a glance:
-
-| Protocol | Default behavior | Enhanced options |
-| --- | --- | --- |
-| HTTP/HTTPS | Connection pooling + HTTP/2 | TLS session resumption, tuned buffers |
-| WebSocket | Fresh dial per iteration | `session: true` — persistent sockets with ping/pong liveness, clean close handshake, binary frames |
-| gRPC | Health check per call | Shared HTTP/2 conn pool, keepalive probes, custom methods via `grpc_method`, metadata headers |
-| TCP | Fresh dial per iteration | `session: true` — persistent connections, self-healing on drop |
-| UDP | Fire-and-forget | `await_response: true` — measure real RTT with assertions |
+| Protocol | `session: true` | Notes |
+|----------|-----------------|-------|
+| HTTP/HTTPS | N/A (always pooled) | HTTP/2, TLS session resumption |
+| WebSocket | Persistent socket | Ping/pong liveness, binary frames |
+| gRPC | Shared HTTP/2 pool | Keepalive probes, custom methods |
+| TCP | Persistent connection | Self-healing on drop |
+| UDP | N/A | `await_response: true` for RTT |
 
 ### Assertions
 
-Each step may carry `assertions` — if any fail, the step is recorded as an
-`assert_failed` error and the iteration stops:
+Each step supports pass/fail assertions. Failed assertions record `assert_error` and stop the iteration.
 
 ```yaml
 assertions:
   - type: status            # exact code or family: 200 | 2xx | 5xx
     value: "2xx"
-  - type: json_path         # the dotted path must exist in the JSON body
+  - type: json_path         # dotted path must exist in JSON body
     value: data.token
-  - type: regex             # regex must match the response body
+  - type: regex             # regex must match response body
     value: "OK"
 ```
 
----
+### Authentication Flow with SLA Gate
 
-## 🔌 Go library API
+```yaml
+name: login-flow
+base_url: http://localhost:8080
 
-Embed load tests directly in your own Go programs and CI tooling:
+variables:
+  username: testuser@example.com
+  password: s3cretP@ss
 
-```go
-import (
-    "context"
-    "time"
+load_profile:
+  type: linear-ramp
+  users: 200
+  duration: 120
+  ramp_up: 60
+  timeout: 10
 
-    "github.com/asadbekabdulboqiyev/stress-strike/api"
-)
+steps:
+  - name: login
+    type: http
+    method: POST
+    url: /api/auth/login
+    headers:
+      Content-Type: application/json
+    body: '{"email": "{{username}}", "password": "{{password}}"}'
+    extract:
+      - name: auth_token
+        from: json
+        path: token
+      - name: refresh_token
+        from: json
+        path: refresh_token
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: token
 
-result, err := api.Run(ctx, api.Config{
-    URL:      "http://localhost:8080/health",
-    Users:    500,
-    Duration: 10 * time.Second,
-    Profile:  "wave",
-})
-if err != nil {
-    // handle setup error
-}
-if result.ErrorRatePct > 2 {
-    // fail the build / deployment gate
-}
+  - name: get-profile
+    type: http
+    method: GET
+    url: /api/users/me
+    headers:
+      Authorization: Bearer {{auth_token}}
+    assertions:
+      - type: status
+        value: "200"
+
+  - name: logout
+    type: http
+    method: POST
+    url: /api/auth/logout
+    headers:
+      Authorization: Bearer {{auth_token}}
+      Content-Type: application/json
+    body: '{"refresh_token": "{{refresh_token}}"}'
+
+sla:
+  max_p99_ms: 500
+  max_avg_ms: 250
+  max_error_rate_pct: 2
+  min_rps: 50
 ```
-
-With an SLA gate:
-
-```go
-res, _ := api.Run(ctx, api.Config{
-    URL:      "http://localhost:8080/health",
-    Users:    300,
-    Duration: 30 * time.Second,
-    SLA:      &config.SLA{MaxP99Ms: 250, MaxErrorRatePct: 1},
-})
-if !res.SLAPassed {
-    log.Fatalf("SLA violated: %+v", res.SLAResults)
-}
-```
-
-`Result` exposes `TotalRequests`, `RPS`, `ErrorRatePct`, `P50/P95/P99`
-latency, and full `StatusCodes` / `Errors` maps.
-
----
-
-## 🏛️ Architecture
-
-```
-[ CLI / API ] --> [ Engine (scheduler + workers) ] --> [ Target ]
-                        |                              (HTTP/WS/gRPC/TCP/UDP)
-                        v
-                  [ Telemetry --> Report (JSON/TXT) ]
-```
-
-- `cmd/stress-strike` — CLI entry point and flag parsing.
-- `api` — stable, public Go library API.
-- `internal/engine` — concurrency, load profiles, protocol clients,
-  assertions, token-bucket pacing.
-- `internal/config` — scenario model and validation.
-- `internal/metrics` — lock-free histogram and telemetry.
-- `internal/report` — live progress bar and JSON/TXT reporting.
-
-The `internal/engine` package is designed to later split into standalone
-**Worker Nodes**; `internal/report` + CLI logic maps to a future **Master
-Controller**.
 
 ---
 
-## ⚙️ CLI reference
+## Distributed Mode
 
-| Flag | Description |
-| --- | --- |
-| `--config/-c FILE` | YAML/JSON scenario file (takes precedence over quick flags) |
-| `--url URL` | target URL (quick mode) |
-| `--method M` | HTTP method (quick mode, default `GET`) |
-| `--data BODY` | request body (quick mode) |
-| `--header K=V` | request header, repeatable |
-| `--users N` | concurrent virtual users |
-| `--duration S` | test duration in seconds |
-| `--profile P` | `steady` \| `soak` \| `linear-ramp` \| `spike` \| `wave` |
-| `--ramp-up S` | ramp-up duration (linear-ramp) |
-| `--spike-users N` | burst target (spike) |
-| `--spike-warmup S` | baseline warmup (spike) |
-| `--spike-hold S` | burst hold (spike) |
-| `--wave-period S` | oscillation period (wave, default duration/3) |
-| `--rps N` | global pacing cap, `0` = unlimited |
-| `--timeout S` | per-request timeout (default `5`) |
-| `--keep-alive` | connection pooling on (default) |
-| `--expect-p99-ms N` | SLA gate: fail the run if p99 exceeds this (exit code 2) |
-| `--expect-avg-ms N` | SLA gate: avg latency ceiling in ms |
-| `--expect-error-rate N` | SLA gate: max error rate in % |
-| `--expect-min-rps N` | SLA gate: minimum throughput |
-| `--compare FILE` | compare against a baseline JSON report (regression detection) |
-| `--regress-pct N` | degradation % that counts as a regression (default 20) |
-| `--timeline` | also write a per-second CSV timeline for analysis |
-| `--quiet` | hide the live progress bar |
-| `--report-dir DIR` | report output directory (default `./reports`) |
-| `--version` | print version and exit |
+Run load tests across multiple machines using the master/worker architecture over gRPC.
 
-**Exit codes:** `0` success · `1` setup error · `2` SLA/regression gate failed — perfect for CI/CD gates.
+### Setup
+
+```sh
+# On machine A (worker)
+stress-strike worker --listen :50052
+
+# On machine B (worker)
+stress-strike worker --listen :50052
+
+# On machine C (master) — distributes 3000 users across 2 workers
+stress-strike master \
+  --workers host-a:50052,host-b:50052 \
+  --url https://api.example.com \
+  --users 3000 \
+  --duration 60 \
+  --profile linear-ramp
+```
+
+### With scenario file
+
+```sh
+stress-strike master \
+  --workers host-a:50052,host-b:50052,host-c:50052 \
+  --config scenario.yaml
+```
+
+The master automatically splits users across workers (e.g. 3000 users / 3 workers = 1000 each), aggregates telemetry in real-time, and produces a unified report.
+
+### Worker with auto-registration
+
+```sh
+stress-strike worker --listen :50052 --master master-host:50051
+```
 
 ---
 
-## 🧠 Engineering notes
+## SLA Gate / CI/CD Integration
 
-- **Coordinated omission** — workers keep firing on the profile schedule
-  rather than waiting for responses before the next request; in-flight
-  requests at test end are drained gracefully (up to the per-request timeout).
-- **OS limits** — run `ulimit -n` before large concurrency tests
-  (e.g. `ulimit -n 65535`). The tool warns when the open-file limit looks low.
-- **Latency reporting** — percentiles come from a fixed histogram with 1 ms
-  resolution capped at 60 s (constant memory for millions of samples). Values
-  at or above the cap are tracked exactly in min/max/avg and counted in a
-  `clamped` counter in the JSON report.
-- **Scenario templates** — `{{var}}` placeholders are substituted raw in URLs
-  and headers; inside JSON bodies, values within quotes are JSON-escaped so
-  extracted server data cannot corrupt the payload.
-- **Error classes** — `timeout`, `connection_error`, `status_4xx`,
-  `status_5xx`, `extract_error`, `redirect_limit`, `assert_failed`,
-  `canceled`.
+Define performance thresholds that fail the run with exit code 2 when violated.
 
-### Safety & boundaries
+### CLI flags
 
-- Concurrency is capped (`users`/`spike_users` ≤ 100,000).
-- Per-host connections are bounded (256–20,000) to prevent resource
-  exhaustion of the test machine.
-- Redirects are followed only within the same host (cross-host redirects are
-  not followed) and limited to 10 hops.
-- Per-request timeout bounds slow servers; response bodies are capped at
-  8 MiB.
-- Report files are written private (`0600`); filenames are sanitized.
-- A legal notice is printed on every run; `Ctrl+C` stops gracefully, a second
-  `Ctrl+C` exits immediately.
-
----
-
-## 🎓 Cybersecurity Lab Playbook
-
-This section is the instruction manual for students and engineers using
-stress-strike in security & reliability coursework: what the tool is for,
-what you may and may not do, and hands-on labs that build real skills.
-
-### ⚖️ The rules (read first)
-
-```
-1. Load test ONLY systems you own or have explicit WRITTEN permission to test.
-2. An unsanctioned load flood against someone else's server is a crime (DDoS).
-3. University lab? Test ONLY lab targets (localhost, lab VMs, provided ranges).
-4. Never use this tool to disrupt, extort, or "test" third parties "for fun".
-5. Document every engagement: target, scope, time window, permission.
-```
-
-Breaking these rules turns an educational tool into an attack — and you into
-a defendant. Every professional pentester signs scope agreements first.
-
-### 🧪 What stress-strike is FOR (legitimate uses)
-
-| Skill | How stress-strike trains it |
-| --- | --- |
-| **Capacity planning** | Find the breaking point: ramp users until p99 explodes (`linear-ramp`) |
-| **DoS mitigation validation** | Prove YOUR rate limiter / WAF / autoscaler holds under load (see `rate_limit` config) |
-| **Resilience engineering** | `spike` + `wave` profiles simulate traffic bursts; verify graceful degradation, not collapse |
-| **Endurance / memory leaks** | 1-hour `soak` runs expose connection leaks, GC death spirals, log disk exhaustion |
-| **CI/CD performance gates** | SLA thresholds fail the pipeline when latency/error budgets are violated (exit code 2) |
-| **Regression detection** | `--compare` against yesterday's baseline catches silent slowdowns before users do |
-| **Protocol mastery** | Multi-protocol scenarios teach HTTP/2, WebSocket lifecycle, gRPC streaming, raw sockets |
-
-### 🥋 Lab drills (run against ./bin/demo-server)
-
-**Lab 0 — Baseline (5 min)**
 ```sh
-make build && ./bin/demo-server &
-./bin/stress-strike --url http://localhost:8080/health --users 50 --duration 10 \
-  --expect-p99-ms 100 --expect-error-rate 0
-# Study the report: RPS, percentiles, status codes.
+stress-strike run --url http://localhost:8080/health \
+  --users 300 --duration 30 \
+  --expect-p99-ms 250 \
+  --expect-error-rate 1 \
+  --expect-min-rps 800
 ```
 
-**Lab 1 — Find the breaking point (15 min)**
-```sh
-for n in 500 2000 8000; do
-  ./bin/stress-strike --url http://localhost:8080/health \
-    --users $n --duration 15 --name "capacity-$n" --quiet
-done
-# Compare reports/ capacity-* files: where does p99 bend? Where do errors start?
+### Scenario-level SLA
+
+```yaml
+name: api-slo-check
+load_profile:
+  type: steady
+  users: 300
+  duration: 30
+
+sla:
+  max_p99_ms: 250
+  max_avg_ms: 100
+  max_error_rate_pct: 1
+  min_rps: 800
+
+steps:
+  - name: health
+    method: GET
+    url: /health
 ```
 
-**Lab 2 — Spike resilience (10 min)**
-```sh
-./bin/stress-strike --url http://localhost:8080/health --profile spike \
-  --users 100 --spike-users 5000 --spike-warmup 5 --spike-hold 20
-# Question: does the server recover after the spike, or does error rate stay high?
-```
-
-**Lab 3 — Regression gate (10 min)** *(the DevSecOps workflow)*
-```sh
-# Day 1: save a healthy baseline.
-./bin/stress-strike --url http://localhost:8080/health --users 200 --duration 10 \
-  --name baseline-v1
-# Day 2: after a code change, gate the deployment on it.
-./bin/stress-strike --url http://localhost:8080/health --users 200 --duration 10 \
-  --name release-candidate --compare "$(ls -t reports/baseline-v1_*.json | head -1)" \
-  --regress-pct 25   # exit code 2 if p99/errors degrade >25%
-```
-
-**Lab 4 — Timeline forensics (10 min)**
-```sh
-./bin/stress-strike --url http://localhost:8080/health --profile wave \
-  --users 1000 --duration 60 --timeline
-python3 - <<'EOF'
-import csv, glob
-path = sorted(glob.glob('reports/*.csv'))[-1]
-rows = list(csv.DictReader(open(path)))
-peak = max(int(r['requests_delta']) for r in rows)
-print(f"peak second throughput: {peak} req/s")
-EOF
-# Plot requests_delta over time — correlate dips with GC pauses or errors.
-```
-
-### 🔐 CI/CD integration example
+### GitHub Actions
 
 ```yaml
 # .github/workflows/perf-gate.yml
@@ -458,114 +530,168 @@ jobs:
   perf-gate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
       - run: go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
-      # Start your service here, then:
-      - run: |
-          stress-strike --url http://localhost:8080/health \
+
+      - name: Start service
+        run: ./your-service &
+
+      - name: Performance gate
+        run: |
+          stress-strike run \
+            --url http://localhost:8080/health \
             --users 300 --duration 30 \
-            --expect-p99-ms 250 --expect-error-rate 1 --expect-min-rps 800
-      # Exit code 2 fails the job automatically when the SLA is violated.
+            --expect-p99-ms 250 \
+            --expect-error-rate 1 \
+            --expect-min-rps 800
+        # Exit code 2 fails the job when SLA is violated
 ```
 
-Scenario files support the same gates declaratively:
-
-```yaml
-name: api-slo-check
-sla:                      # evaluated after the run; failure => exit code 2
-  max_p99_ms: 250
-  max_error_rate_pct: 1
-  min_rps: 800
-load_profile: { type: steady, users: 300, duration: 30 }
-steps:
-  - { name: health, url: /health }
-```
-
----
-
-## 🛡️ Security
-
-See [SECURITY.md](SECURITY.md) for the full threat model and audit report.
-
-Highlights: TLS ≥ 1.2 enforced (no `InsecureSkipVerify`), cross-host redirects
-blocked, concurrency and duration limits enforced, response bodies capped at
-8 MiB, private (`0600`) report files with sanitized filenames — scenario
-variables, headers, bodies, and tokens never appear in report output.
-
----
-
-## 🧪 Testing
-
-The suite is race-safe and covers unit, integration, and benchmark tests:
+### Baseline Comparison
 
 ```sh
-make test        # go test -race ./...
-make coverage    # coverage report (≈85–98% per core package)
-make bench       # benchmarks (histogram, telemetry)
+# Day 1: save a healthy baseline
+stress-strike run --url http://localhost:8080/health \
+  --users 200 --duration 10 --name baseline-v1
+
+# Day 2: gate on regression detection
+stress-strike run --url http://localhost:8080/health \
+  --users 200 --duration 10 --name release-candidate \
+  --compare "$(ls -t reports/baseline-v1_*.json | head -1)" \
+  --regress-pct 25
+# Exit code 2 if p99 or errors degrade > 25%
 ```
 
 ---
 
-## 🛠️ Development & DevOps
+## Library API
 
-The repo ships with a Makefile, a multi-platform build script, a Dockerfile,
-and GitHub Actions workflows, so local development, CI, and releases share
-the same quality gates.
+Embed load tests directly in your Go programs:
 
-### Makefile
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "stress-strike/api"
+)
+
+func main() {
+    result, err := api.Run(context.Background(), api.Config{
+        URL:      "http://localhost:8080/health",
+        Users:    500,
+        Duration: 10 * time.Second,
+        Profile:  "wave",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("RPS: %.0f, p99: %s, errors: %.2f%%",
+        result.RPS, result.P99, result.ErrorRatePct)
+
+    if result.ErrorRatePct > 2 {
+        log.Fatal("error rate too high")
+    }
+}
+```
+
+### With SLA gate
+
+```go
+res, err := api.Run(ctx, api.Config{
+    URL:      "http://localhost:8080/health",
+    Users:    300,
+    Duration: 30 * time.Second,
+    SLA: &config.SLA{
+        MaxP99Ms:        250,
+        MaxErrorRatePct: 1,
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+if !res.SLAPassed {
+    log.Fatalf("SLA violated: %+v", res.SLAResults)
+}
+```
+
+`Result` fields: `TotalRequests`, `RPS`, `ErrorRatePct`, `P50`, `P95`, `P99`, `StatusCodes`, `Errors`, `SLAResults`, `SLAPassed`.
+
+---
+
+## Build from Source
+
+Requires Go 1.26+.
 
 ```sh
-make build      # build bin/stress-strike and bin/demo-server
-make test       # go test -race ./...
-make vet        # go vet ./...
-make lint       # go vet + gofmt enforcement
-make coverage   # run tests, write coverage.out, print coverage
-make bench      # run benchmarks
-make clean      # remove build artifacts
-make install    # go install ./cmd/stress-strike (into PATH)
-make release    # cross-compile all platforms into dist/
+git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
+cd stress-strike
 ```
 
-Release version defaults to `0.2.0`; override with `make release VERSION=1.2.3`.
+### Makefile targets
 
-### Multi-platform builds
+| Target | Description |
+|--------|-------------|
+| `make build` | Build `stress-strike` + `demo-server` into `./bin` |
+| `make test` | Run tests with race detector |
+| `make vet` | Run `go vet` |
+| `make lint` | `go vet` + `gofmt` enforcement |
+| `make coverage` | Test coverage report |
+| `make bench` | Run benchmarks |
+| `make clean` | Remove build artifacts |
+| `make install` | Install into `PATH` |
+| `make release VERSION=0.4.0` | Cross-compile all platforms into `./dist` |
 
-`make release` (or `scripts/build-all.sh`) produces static binaries
-(`CGO_ENABLED=0`) into `dist/` for:
+### Cross-compilation
+
+`make release` produces static binaries (`CGO_ENABLED=0`) for:
 
 ```
-darwin/arm64, darwin/amd64, linux/arm64, linux/amd64, windows/amd64
+darwin/arm64    darwin/amd64    linux/arm64
+linux/amd64     windows/amd64
 ```
 
-### CI/CD
+### Docker
 
-- **ci.yml** — on push to `main` and pull requests: `lint` (vet + gofmt),
-  `test` (race detector + coverage artifact), `build` (multi-platform matrix),
-  and a `docker` job building `linux/amd64` + `linux/arm64` images. Images are
-  pushed only on push events **and** when `secrets.DOCKER_USERNAME` /
-  `secrets.DOCKER_TOKEN` are configured — no credentials are hardcoded.
-- **release.yml** — on `v*` tags: runs the test suite, cross-compiles all
-  five platforms, and attaches the binaries to a GitHub Release.
+```sh
+docker build -t stress-strike .
+docker run --rm --cpus=2 --memory=512m \
+  stress-strike run --url http://host.docker.internal:8080/health \
+  --users 100 --duration 5
+```
 
 ---
 
-## 🗺️ Roadmap
+## Engineering Notes
 
-1. **Distributed mode** — gRPC control plane between a master controller and
-   standalone worker nodes for load generation from multiple machines.
-2. **Web dashboard** — live charts over WebSockets (React) for real-time
-   telemetry.
-3. **Advanced coordinated omission** — pre-scheduled start slots to further
-   reduce measurement bias.
-
----
-
-## 📄 License
-
-[MIT](LICENSE) © Asadbek Abdulboqiyev
+- **Coordinated omission** — workers fire on schedule, not waiting for responses; in-flight requests drain gracefully at test end
+- **OS limits** — run `ulimit -n 65535` before large concurrency tests; the tool warns when the file descriptor limit is low
+- **Latency histogram** — fixed 1 ms resolution capped at 60 s; constant memory for millions of samples
+- **Template escaping** — `{{var}}` placeholders in JSON bodies are JSON-escaped automatically
+- **Error classes** — `timeout`, `connection_error`, `status_4xx`, `status_5xx`, `extract_error`, `redirect_limit`, `assert_failed`, `canceled`
+- **Safety limits** — max 100K users, 256–20K per-host connections, 10 redirect hops, 8 MiB response cap, `0600` report permissions
 
 ---
 
-## 🤝 Contributing
+## License
 
-Contributions are welcome. Please open an issue or pull request and keep the
-quality gates green: `make lint && make test`.
+[MIT](LICENSE) -- Asadbek Abdulboqiyev
+
+---
+
+## WARNING: Authorized Testing Only
+
+```
+stress-strike is a load testing tool. Only use it against systems you own
+or have explicit written permission to test. Unauthorized load floods are
+illegal and constitute a denial-of-service attack (DDoS).
+```
+
+This tool is provided for legitimate performance testing, security auditing of your own infrastructure, and educational purposes. Every run prints a legal notice. The authors assume no liability for misuse.

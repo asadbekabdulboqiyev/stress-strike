@@ -1,40 +1,31 @@
 #!/usr/bin/env bash
 #
-# build-all.sh — cross-compile stress-strike for all supported platforms.
+# build-all.sh — Build all stress-strike binaries for the current platform.
 #
-# Output layout:
-#   dist/stress-strike-v{version}-{os}-{arch}/stress-strike[.exe]
-#
-# Requirements:
-#   - go toolchain on PATH (no CGO needed: binaries are static)
+# Output:
+#   bin/
+#     stress-strike
+#     stress-strike-scan
+#     stress-strike-master
+#     stress-strike-replay       (requires libpcap for CGO; skipped if unavailable)
+#     stress-strike-worker
+#     stress-strike-dashboard
 #
 # Usage:
-#   VERSION=0.2.0 ./scripts/build-all.sh     # explicit version
-#   make release                             # uses Makefile's VERSION variable
-#
-# Environment overrides:
-#   VERSION   release version used in the output directory name (default 0.2.0)
-#   DIST_DIR  alternative dist/ root (default: <repo>/dist)
+#   ./scripts/build-all.sh
 
 set -euo pipefail
 
-# Resolve version: prefer VERSION env (set by `make release`), else default.
-VERSION="${VERSION:-0.2.0}"
-
-# Always resolve paths relative to the repository root, so this script
-# works regardless of the caller's current working directory.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
+BIN_DIR="${REPO_ROOT}/bin"
 
-BIN_NAME="stress-strike"
-
-# Supported platforms: GOOS/GOARCH.
-PLATFORMS=(
-  darwin/arm64
-  darwin/amd64
-  linux/arm64
-  linux/amd64
-  windows/amd64
+BINARIES=(
+  "stress-strike:./cmd/stress-strike"
+  "stress-strike-scan:./cmd/stress-strike-scan"
+  "stress-strike-master:./cmd/stress-strike-master"
+  "stress-strike-replay:./cmd/stress-strike-replay"
+  "stress-strike-worker:./cmd/stress-strike-worker"
+  "stress-strike-dashboard:./cmd/stress-strike-dashboard"
 )
 
 if ! command -v go >/dev/null 2>&1; then
@@ -42,35 +33,44 @@ if ! command -v go >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> stress-strike release build v${VERSION}"
-echo "==> output directory: ${DIST_DIR}"
+mkdir -p "${BIN_DIR}"
+
+echo "==> Building ${#BINARIES[@]} binaries"
 echo
 
-for platform in "${PLATFORMS[@]}"; do
-  os="${platform%/*}"
-  arch="${platform#*/}"
+built=0
+skipped=0
 
-  # Windows binaries get the classic .exe suffix.
-  suffix=""
-  if [ "${os}" = "windows" ]; then
-    suffix=".exe"
+for entry in "${BINARIES[@]}"; do
+  name="${entry%%:*}"
+  pkg="${entry#*:}"
+  out="${BIN_DIR}/${name}"
+
+  # replay binary needs CGO for gopacket/pcap — try CGO=1 first, skip on failure
+  if [ "${name}" = "stress-strike-replay" ]; then
+    if CGO_ENABLED=1 go build -trimpath -buildvcs=false -o "${out}" "${pkg}" 2>/dev/null; then
+      echo "  ${name} (cgo)"
+      built=$((built + 1))
+    else
+      echo "  ${name} -- SKIPPED (libpcap not installed; install with: brew install libpcap)"
+      skipped=$((skipped + 1))
+    fi
+    continue
   fi
 
-  out_dir="${DIST_DIR}/stress-strike-v${VERSION}-${os}-${arch}"
-  out_bin="${out_dir}/${BIN_NAME}${suffix}"
-
-  mkdir -p "${out_dir}"
-
-  echo "==> building ${os}/${arch} -> ${out_bin}"
+  echo "  ${name}"
   (
     cd "${REPO_ROOT}"
-    CGO_ENABLED=0 \
-      GOOS="${os}" \
-      GOARCH="${arch}" \
-      go build -trimpath -buildvcs=false -o "${out_bin}" ./cmd/stress-strike
+    CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "${out}" "${pkg}"
   )
+  built=$((built + 1))
 done
 
 echo
-echo "==> done. artifacts:"
-find "${DIST_DIR}" -maxdepth 2 -type f -name "${BIN_NAME}*" | sort
+echo "==> Build complete: ${built} built, ${skipped} skipped"
+echo
+echo "==> File sizes:"
+echo
+ls -lhS "${BIN_DIR}"/* 2>/dev/null | awk '{printf "  %-30s %s\n", $NF, $5}'
+echo
+echo "==> Binaries in: ${BIN_DIR}"

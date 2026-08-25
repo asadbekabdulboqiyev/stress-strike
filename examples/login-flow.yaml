@@ -1,0 +1,94 @@
+# login-flow.yaml
+# Multi-step authentication flow: logs in with credentials, extracts the JWT
+# token, uses it to call a protected endpoint, then logs out. Demonstrates
+# variable extraction (extract → variables) and chained requests.
+
+name: login-flow
+base_url: http://localhost:8080
+
+variables:
+  username: testuser@example.com
+  password: s3cretP@ss
+
+load_profile:
+  type: linear-ramp
+  users: 200
+  duration: 120
+  ramp_up: 60
+  timeout: 10
+
+steps:
+  # Step 1: Authenticate and capture the JWT token
+  - name: login
+    type: http
+    method: POST
+    url: /api/auth/login
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    body: '{"email": "{{username}}", "password": "{{password}}"}'
+    extract:
+      - name: auth_token
+        from: json
+        path: token
+      - name: refresh_token
+        from: json
+        path: refresh_token
+      - name: auth_header
+        from: header
+        path: Authorization
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: token
+    timeout: 10
+
+  # Step 2: Access a protected resource using the extracted token
+  - name: get-profile
+    type: http
+    method: GET
+    url: /api/users/me
+    headers:
+      Authorization: Bearer {{auth_token}}
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: email
+    timeout: 10
+
+  # Step 3: Update user profile (PUT)
+  - name: update-profile
+    type: http
+    method: PUT
+    url: /api/users/me
+    headers:
+      Authorization: Bearer {{auth_token}}
+      Content-Type: application/json
+    body: '{"display_name": "Load Tester", "timezone": "UTC"}'
+    assertions:
+      - type: status
+        value: "200"
+    timeout: 10
+
+  # Step 4: Logout and invalidate the session
+  - name: logout
+    type: http
+    method: POST
+    url: /api/auth/logout
+    headers:
+      Authorization: Bearer {{auth_token}}
+      Content-Type: application/json
+    body: '{"refresh_token": "{{refresh_token}}"}'
+    assertions:
+      - type: status
+        value: "200"
+    timeout: 5
+
+sla:
+  max_p99_ms: 500
+  max_avg_ms: 250
+  max_error_rate_pct: 2
+  min_rps: 50

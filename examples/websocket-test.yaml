@@ -1,0 +1,80 @@
+# websocket-test.yaml
+# WebSocket load test: opens persistent WebSocket connections to a chat
+# endpoint, sends text frames at regular intervals, and measures RTT.
+# Uses session: true so each virtual user maintains a single long-lived
+# connection (simulating real browser behaviour). Also includes a binary
+# frame example for non-text payloads.
+
+name: websocket-test
+base_url: http://localhost:8080
+
+load_profile:
+  type: wave
+  users: 200
+  duration: 300
+  wave_period: 60
+  timeout: 10
+  keep_alive: true
+
+variables:
+  room_id: load-test-room
+
+steps:
+  # Connect to chat room and send messages over a persistent session
+  - name: chat-send
+    type: ws
+    method: GET
+    url: ws://localhost:8080/ws/chat/{{room_id}}
+    frame_type: text
+    body: '{"type": "message", "content": "Hello from load test", "ts": 1700000000}'
+    session: true
+    assertions:
+      - type: status
+        value: "101"
+    timeout: 10
+
+  # Subscribe to a real-time event stream (persistent session)
+  - name: event-stream
+    type: ws
+    method: GET
+    url: ws://localhost:8080/ws/events
+    frame_type: text
+    body: '{"action": "subscribe", "topics": ["orders", "notifications"]}'
+    session: true
+    extract:
+      - name: stream_id
+        from: json
+        path: stream_id
+    assertions:
+      - type: status
+        value: "101"
+    timeout: 10
+
+  # Binary frame example — send binary payload (e.g. protobuf, msgpack)
+  - name: binary-push
+    type: ws
+    method: GET
+    url: ws://localhost:8080/ws/data
+    frame_type: binary
+    body: '{"payload": "dGVzdCBiaW5hcnkgZGF0YQ=="}'
+    session: false
+    assertions:
+      - type: status
+        value: "101"
+    timeout: 10
+
+  # Authenticated WebSocket — token in query param
+  - name: auth-ws
+    type: ws
+    method: GET
+    url: ws://localhost:8080/ws/notifications?token={{auth_token}}
+    frame_type: text
+    body: '{"action": "ping"}'
+    session: true
+    timeout: 10
+
+sla:
+  max_p99_ms: 500
+  max_avg_ms: 200
+  max_error_rate_pct: 2
+  min_rps: 100

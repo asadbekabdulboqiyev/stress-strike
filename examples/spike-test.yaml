@@ -1,0 +1,79 @@
+# spike-test.yaml
+# Spike load profile: warms up with 100 users for 30 seconds, then suddenly
+# jumps to 2000 users and holds for 60 seconds. Useful for testing how your
+# service handles sudden traffic surges (flash sales, viral moments, DDoS
+# simulation). Includes WAF-enabled flag and rate limit configuration.
+
+name: spike-test
+base_url: http://localhost:8080
+
+load_profile:
+  type: spike
+  users: 100
+  duration: 90
+  timeout: 10
+  spike_users: 2000
+  spike_warmup: 30
+  spike_hold: 60
+  waf_enabled: true
+  rate_limit:
+    default_rps: 500
+    max_burst: 1000
+    ip_rps: 50
+    ip_burst: 100
+    seen_cache_ttl: 5m
+
+steps:
+  - name: homepage
+    type: http
+    method: GET
+    url: /
+    headers:
+      Accept: text/html
+    assertions:
+      - type: status
+        value: "2xx"
+    timeout: 5
+
+  - name: product-list
+    type: http
+    method: GET
+    url: /api/products?page=1&limit=20
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: data
+    timeout: 10
+
+  - name: product-detail
+    type: http
+    method: GET
+    url: /api/products/12345
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "200"
+    timeout: 10
+
+  - name: add-to-cart
+    type: http
+    method: POST
+    url: /api/cart/items
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    body: '{"product_id": "12345", "quantity": 1}'
+    assertions:
+      - type: status
+        value: "2xx"
+    timeout: 10
+
+sla:
+  max_p99_ms: 1000
+  max_avg_ms: 500
+  max_error_rate_pct: 5
+  min_rps: 100

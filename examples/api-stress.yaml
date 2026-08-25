@@ -1,0 +1,156 @@
+# api-stress.yaml
+# Full CRUD stress test: exercises GET, POST, PUT, and DELETE across multiple
+# API endpoints with extraction, variables, and assertions. Simulates a
+# realistic workload that creates resources, reads them back, updates, and
+# finally cleans up. Uses soak profile for extended duration testing.
+
+name: api-stress
+base_url: http://localhost:8080
+
+variables:
+  api_version: v1
+
+load_profile:
+  type: soak
+  users: 300
+  duration: 600
+  ramp_up: 60
+  timeout: 15
+  keep_alive: true
+
+steps:
+  # Create a new resource
+  - name: create-resource
+    type: http
+    method: POST
+    url: /api/{{api_version}}/resources
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+      X-Request-ID: "{{request_id}}"
+    body: |
+      {
+        "name": "stress-test-item",
+        "type": "benchmark",
+        "metadata": {
+          "created_by": "load-test",
+          "tags": ["stress", "performance"]
+        }
+      }
+    extract:
+      - name: resource_id
+        from: json
+        path: id
+      - name: created_at
+        from: json
+        path: created_at
+    assertions:
+      - type: status
+        value: "201"
+      - type: json_path
+        value: id
+      - type: json_path
+        value: name
+    timeout: 15
+
+  # Read the created resource
+  - name: get-resource
+    type: http
+    method: GET
+    url: /api/{{api_version}}/resources/{{resource_id}}
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: name
+      - type: regex
+        value: '"stress-test-item"'
+    timeout: 10
+
+  # List all resources with filtering
+  - name: list-resources
+    type: http
+    method: GET
+    url: /api/{{api_version}}/resources?type=benchmark&limit=50
+    headers:
+      Accept: application/json
+    extract:
+      - name: total_count
+        from: json
+        path: total
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: data
+    timeout: 10
+
+  # Update the resource
+  - name: update-resource
+    type: http
+    method: PUT
+    url: /api/{{api_version}}/resources/{{resource_id}}
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    body: |
+      {
+        "name": "stress-test-item-updated",
+        "type": "benchmark",
+        "metadata": {
+          "updated_by": "load-test",
+          "tags": ["stress", "performance", "updated"]
+        }
+      }
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: name
+    timeout: 10
+
+  # Partial update (PATCH)
+  - name: patch-resource
+    type: http
+    method: PATCH
+    url: /api/{{api_version}}/resources/{{resource_id}}
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    body: '{"status": "archived"}'
+    assertions:
+      - type: status
+        value: "200"
+    timeout: 10
+
+  # Delete the resource
+  - name: delete-resource
+    type: http
+    method: DELETE
+    url: /api/{{api_version}}/resources/{{resource_id}}
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "204"
+    timeout: 10
+
+  # Verify deletion returns 404
+  - name: verify-deleted
+    type: http
+    method: GET
+    url: /api/{{api_version}}/resources/{{resource_id}}
+    headers:
+      Accept: application/json
+    assertions:
+      - type: status
+        value: "404"
+    timeout: 10
+
+sla:
+  max_p99_ms: 800
+  max_avg_ms: 300
+  max_error_rate_pct: 3
+  min_rps: 150

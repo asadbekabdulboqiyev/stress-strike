@@ -405,6 +405,9 @@ func classifyError(err error, elapsed time.Duration) stepResult {
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return stepResult{latency: elapsed, errName: errTimeout}
+		}
 		return stepResult{latency: elapsed, errName: errConnection}
 	}
 	return stepResult{latency: elapsed, errName: errOther}

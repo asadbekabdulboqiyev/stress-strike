@@ -18,6 +18,7 @@ import (
 type Master struct {
 	scenario    *config.Scenario
 	workerAddrs []string
+	listenAddr  string
 	regressPct  float64
 	comparePath string
 	timeline    bool
@@ -29,6 +30,7 @@ type Master struct {
 
 	runID       string
 	doneCh      chan struct{}
+	doneOnce    sync.Once
 	finalReport *report.Report
 	telemetry   *aggregatedTelemetry
 	// Embed for gRPC
@@ -55,10 +57,11 @@ type stepAgg struct {
 	errorsMap   map[string]uint64
 }
 
-func NewMaster(scenario *config.Scenario, workers []string, regressPct float64, comparePath string, timeline bool) *Master {
+func NewMaster(scenario *config.Scenario, workers []string, listenAddr string, regressPct float64, comparePath string, timeline bool) *Master {
 	return &Master{
 		scenario:      scenario,
 		workerAddrs:   workers,
+		listenAddr:    listenAddr,
 		regressPct:    regressPct,
 		comparePath:   comparePath,
 		timeline:      timeline,
@@ -125,7 +128,7 @@ func (m *Master) StartRun(ctx context.Context, runID string) error {
 					Scenario:     protoScen,
 					WorkerIndex:  int32(i),
 					TotalWorkers: int32(len(m.workerAddrs)),
-					MasterAddr:   "localhost:50051",
+					MasterAddr:   m.listenAddr,
 				},
 			},
 		})
@@ -295,11 +298,9 @@ func (m *Master) mergeReport(r *distproto.Report) {
 }
 
 func (m *Master) GetFinalReport() *report.Report {
-	select {
-	case <-m.doneCh:
-	default:
+	m.doneOnce.Do(func() {
 		close(m.doneCh)
-	}
+	})
 	return m.finalReport
 }
 

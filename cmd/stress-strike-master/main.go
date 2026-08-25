@@ -96,7 +96,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	master := NewMaster(scenario, workerList, *regressPct, *comparePath, *timeline)
+	master := NewMaster(scenario, workerList, *listenAddr, *regressPct, *comparePath, *timeline)
 	distproto.RegisterMasterWorkerServer(grpcServer, master)
 
 	go func() {

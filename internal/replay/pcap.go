@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -24,6 +26,7 @@ type PCAPParser struct {
 	factory *tcpStreamFactory
 	pool    *tcpassembly.StreamPool
 	asm     *tcpassembly.Assembler
+	statsMu sync.Mutex
 	stats   PCAPStats
 }
 
@@ -35,6 +38,12 @@ type PCAPStats struct {
 	DecryptedTLS  int
 	Errors        int
 }
+
+// atomics for concurrent stats updates
+var (
+	pcapHTTPRequests atomic.Int64
+	pcapErrors       atomic.Int64
+)
 
 func NewPCAPParser(keys []*TLSKey) *PCAPParser {
 	p := &PCAPParser{
@@ -71,10 +80,10 @@ func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
 
 	p.capture.Metadata = map[string]string{
 		"total_packets":  fmt.Sprintf("%d", p.stats.TotalPackets),
-		"http_requests":  fmt.Sprintf("%d", p.stats.HTTPRequests),
+		"http_requests":  fmt.Sprintf("%d", pcapHTTPRequests.Load()),
 		"http2_requests": fmt.Sprintf("%d", p.stats.HTTP2Requests),
 		"decrypted_tls":  fmt.Sprintf("%d", p.stats.DecryptedTLS),
-		"errors":         fmt.Sprintf("%d", p.stats.Errors),
+		"errors":         fmt.Sprintf("%d", pcapErrors.Load()),
 	}
 
 	return p.capture, nil
@@ -130,7 +139,7 @@ func (s *tcpReplayStream) process() {
 		req, err := http.ReadRequest(r)
 		if err != nil {
 			if err != io.EOF {
-				s.parser.stats.Errors++
+				pcapErrors.Add(1)
 			}
 			return
 		}
@@ -149,7 +158,7 @@ func (s *tcpReplayStream) process() {
 			IsRequest: true,
 		}
 		s.parser.capture.AddPacket(pkt)
-		s.parser.stats.HTTPRequests++
+		pcapHTTPRequests.Add(1)
 	}
 }
 

@@ -236,7 +236,9 @@ Examples:
 
 	// Export JSON
 	if *outputJSON != "" {
-		os.MkdirAll(*reportDir, 0755)
+		if err := os.MkdirAll(*reportDir, 0755); err != nil {
+			log.Printf("Failed to create report directory: %v", err)
+		}
 		jsonPath := *outputJSON
 		if !strings.Contains(jsonPath, "/") {
 			jsonPath = filepath.Join(*reportDir, jsonPath)
@@ -250,7 +252,9 @@ Examples:
 
 	// Export CSV
 	if *outputCSV != "" {
-		os.MkdirAll(*reportDir, 0755)
+		if err := os.MkdirAll(*reportDir, 0755); err != nil {
+			log.Printf("Failed to create report directory: %v", err)
+		}
 		csvPath := *outputCSV
 		if !strings.Contains(csvPath, "/") {
 			csvPath = filepath.Join(*reportDir, csvPath)

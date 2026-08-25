@@ -259,13 +259,28 @@ func (s *Server) broadcast() {
 	}
 	s.mu.RUnlock()
 
-	msg, _ := json.Marshal(map[string]interface{}{
+	msg, err := json.Marshal(map[string]interface{}{
 		"type": "snapshot",
 		"data": snap,
 	})
+	if err != nil {
+		return
+	}
 
+	var dead []*websocket.Conn
 	for _, c := range clients {
-		c.WriteMessage(websocket.TextMessage, msg)
+		if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+			dead = append(dead, c)
+		}
+	}
+
+	if len(dead) > 0 {
+		s.mu.Lock()
+		for _, c := range dead {
+			c.Close()
+			delete(s.clients, c)
+		}
+		s.mu.Unlock()
 	}
 }
 
@@ -278,12 +293,27 @@ func (s *Server) broadcastRunState() {
 	}
 	s.mu.RUnlock()
 
-	msg, _ := json.Marshal(map[string]interface{}{
+	msg, err := json.Marshal(map[string]interface{}{
 		"type": "run_state",
 		"data": state,
 	})
+	if err != nil {
+		return
+	}
 
+	var dead []*websocket.Conn
 	for _, c := range clients {
-		c.WriteMessage(websocket.TextMessage, msg)
+		if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+			dead = append(dead, c)
+		}
+	}
+
+	if len(dead) > 0 {
+		s.mu.Lock()
+		for _, c := range dead {
+			c.Close()
+			delete(s.clients, c)
+		}
+		s.mu.Unlock()
 	}
 }

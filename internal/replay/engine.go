@@ -66,6 +66,9 @@ func (rw *ReplayWorker) Run() error {
 
 	// Calculate delay between requests based on rate multiplier
 	// rate=1.0 means real-time, rate=10.0 means 10x faster
+	if rw.config.RateMultiplier <= 0 {
+		rw.config.RateMultiplier = 1.0
+	}
 	delay := time.Duration(float64(time.Second) / rw.config.RateMultiplier)
 
 	rateTicker := time.NewTicker(delay)

@@ -277,7 +277,7 @@ func (w *Worker) sendStatus(stream distproto.MasterWorker_CoordinateServer) {
 				Healthy:    true,
 				ActiveRuns: int64(active),
 				System: &distproto.SystemMetrics{
-					MemoryBytes: int64(runtime.MemStats{}.Alloc), // placeholder
+					MemoryBytes: int64(m.Alloc),
 					Goroutines:  int64(runtime.NumGoroutine()),
 				},
 			},

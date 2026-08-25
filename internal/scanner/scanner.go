@@ -475,7 +475,7 @@ func ScanHTTP(target string) (*HTTPInfo, error) {
 		Credentials:  resp.Header.Get("Access-Control-Allow-Credentials") == "true",
 		MaxAge:       resp.Header.Get("Access-Control-Max-Age"),
 	}
-	if info.CORS.AllowOrigin == "*" || info.CORS.AllowOrigin != "" {
+	if info.CORS.AllowOrigin == "*" {
 		info.CORS.IsPermissive = true
 	}
 

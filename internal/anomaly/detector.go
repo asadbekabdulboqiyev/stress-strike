@@ -108,12 +108,16 @@ func DetectAnomalies(data *MetricData) []Anomaly {
 	// IQR based detection
 	for i, v := range data.Values {
 		if v < q1-1.5*iqr || v > q3+1.5*iqr {
+			deviation := 0.0
+			if iqr > 0 {
+				deviation = math.Abs(v-median) / iqr
+			}
 			anomalies = append(anomalies, Anomaly{
 				Type:      "outlier",
 				Metric:    data.Name,
 				Value:     v,
 				Baseline:  median,
-				Deviation: math.Abs(v-median) / iqr,
+				Deviation: deviation,
 				Severity:  "medium",
 				Timestamp: data.Timestamps[i],
 			})
@@ -532,7 +536,10 @@ func (c *AIClient) callGemini(prompt string) (string, error) {
 		},
 	}
 
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal Gemini request: %v", err)
+	}
 	resp, err := http.Post(url, "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
 		return "", err
@@ -572,7 +579,10 @@ func (c *AIClient) callOllama(prompt string) (string, error) {
 		"stream": false,
 	}
 
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal Ollama request: %v", err)
+	}
 	resp, err := http.Post(url, "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
 		return "", err
@@ -602,8 +612,14 @@ func (c *AIClient) callOpenAI(prompt string) (string, error) {
 		},
 	}
 
-	jsonBody, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", url, bytes.NewReader(jsonBody))
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal OpenAI request: %v", err)
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create OpenAI request: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.APIKey)
 

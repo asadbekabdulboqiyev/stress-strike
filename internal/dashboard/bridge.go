@@ -11,6 +11,7 @@ type EngineBridge struct {
 	server      *Server
 	snapshotCh  chan *LiveSnapshot
 	stopCh      chan struct{}
+	stopOnce    sync.Once
 	wg          sync.WaitGroup
 	startTime   time.Time
 	config      *RunConfig
@@ -49,10 +50,22 @@ func (b *EngineBridge) StartRun(config *RunConfig) {
 	})
 }
 
-// StopRun stops the current run
+// StopRun stops the current run — safe to call multiple times
 func (b *EngineBridge) StopRun() {
-	close(b.stopCh)
+	b.stopOnce.Do(func() {
+		close(b.stopCh)
+	})
 	b.server.SetRunState(&RunState{Status: "stopped"})
+}
+
+// IsStopped returns true if StopRun was called
+func (b *EngineBridge) IsStopped() bool {
+	select {
+	case <-b.stopCh:
+		return true
+	default:
+		return false
+	}
 }
 
 // PushSnapshot receives a live snapshot from the engine
@@ -78,7 +91,11 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 
 	// Compute live snapshot
 	elapsed := time.Since(b.startTime)
-	rps := float64(b.totalReqs) / elapsed.Seconds()
+	elapsedSec := elapsed.Seconds()
+	if elapsedSec <= 0 {
+		elapsedSec = 0.001 // avoid division by zero
+	}
+	rps := float64(b.totalReqs) / elapsedSec
 
 	var errorRate float64
 	if b.totalReqs > 0 {
@@ -87,7 +104,7 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 
 	progress := float64(0)
 	if b.config != nil && b.config.DurationSeconds > 0 {
-		progress = elapsed.Seconds() / float64(b.config.DurationSeconds) * 100
+		progress = elapsedSec / float64(b.config.DurationSeconds) * 100
 		if progress > 100 {
 			progress = 100
 		}
@@ -118,29 +135,51 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 
 // RunComplete marks the run as completed
 func (b *EngineBridge) RunComplete() {
+	b.mu.Lock()
 	elapsed := time.Since(b.startTime)
-	rps := float64(b.totalReqs) / elapsed.Seconds()
+	elapsedSec := elapsed.Seconds()
+	if elapsedSec <= 0 {
+		elapsedSec = 0.001
+	}
+	rps := float64(b.totalReqs) / elapsedSec
+	config := b.config
+	startTime := b.startTime
+	totalReqs := b.totalReqs
+	totalErrors := b.totalErrors
+	statusCodes := make(map[int]uint64, len(b.statusCodes))
+	for k, v := range b.statusCodes {
+		statusCodes[k] = v
+	}
+	b.mu.Unlock()
+
+	if config == nil {
+		b.server.SetRunState(&RunState{
+			Status:  "completed",
+			EndTime: time.Now(),
+		})
+		return
+	}
 
 	b.server.SetRunState(&RunState{
 		Status:    "completed",
-		Config:    b.config,
-		StartTime: b.startTime,
+		Config:    config,
+		StartTime: startTime,
 		EndTime:   time.Now(),
 		Elapsed:   elapsed,
-		Duration:  time.Duration(b.config.DurationSeconds) * time.Second,
+		Duration:  time.Duration(config.DurationSeconds) * time.Second,
 		Progress:  100,
 	})
 
 	// Add to history
 	entry := HistoryEntry{
-		ID:        fmt.Sprintf("run-%d", b.startTime.UnixMilli()),
-		Timestamp: b.startTime,
-		Config:    *b.config,
+		ID:        fmt.Sprintf("run-%d", startTime.UnixMilli()),
+		Timestamp: startTime,
+		Config:    *config,
 		Result: RunResult{
-			TotalRequests: b.totalReqs,
-			TotalErrors:   b.totalErrors,
+			TotalRequests: totalReqs,
+			TotalErrors:   totalErrors,
 			RPS:           rps,
-			StatusCodes:   b.statusCodes,
+			StatusCodes:   statusCodes,
 		},
 		Duration: elapsed.String(),
 	}
@@ -149,11 +188,16 @@ func (b *EngineBridge) RunComplete() {
 
 // RunFailed marks the run as failed
 func (b *EngineBridge) RunFailed(err error) {
+	b.mu.Lock()
+	config := b.config
+	startTime := b.startTime
+	b.mu.Unlock()
+
 	b.server.SetRunState(&RunState{
 		Status:    "failed",
-		Config:    b.config,
-		StartTime: b.startTime,
+		Config:    config,
+		StartTime: startTime,
 		EndTime:   time.Now(),
-		Elapsed:   time.Since(b.startTime),
+		Elapsed:   time.Since(startTime),
 	})
 }

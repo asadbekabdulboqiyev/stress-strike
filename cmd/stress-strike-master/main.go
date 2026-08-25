@@ -263,24 +263,10 @@ func compareReports(current *report.Report, baselinePath string, regressPct floa
 		log.Printf("Failed to load baseline: %v", err)
 		return
 	}
-	rows, regressed := report.Compare(current, baseline, regressPct)
-	fmt.Println("\n  BASELINE COMPARISON")
-	fmt.Println("  ──────────────────────────────────────────────────────────────")
-	for _, row := range rows {
-		status := row.Status
-		switch status {
-		case "regressed":
-			status = "✗ REGRESSED"
-		case "improved":
-			status = "↑ improved"
-		default:
-			status = "= ok"
-		}
-		fmt.Printf("    %-12s %-10s → %-10s %-9s %s\n",
-			row.Metric, row.Baseline, row.Current, row.Delta, status)
-	}
-	if regressed {
-		fmt.Println("  ⚠ REGRESSION DETECTED")
+	result := report.Compare(current, baseline)
+	fmt.Print(result.Render())
+	if result.Regression && result.RegressionPct > regressPct {
+		fmt.Printf("  REGRESSION DETECTED (threshold %.0f%%)\n", regressPct)
 	}
 }
 

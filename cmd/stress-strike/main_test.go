@@ -202,7 +202,7 @@ func TestQuickScenario(t *testing.T) {
 			if name == "" {
 				name = "quick-test"
 			}
-			sc, err := quickScenario(name, tt.url, tt.method, tt.data, h, tt.profile, tt.users, tt.duration, tt.rampUp, tt.spikeUsers, tt.spikeWarmup, tt.spikeHold, tt.wavePeriod, tt.rps, tt.timeout, tt.keepAlive)
+			sc, err := quickScenario(name, tt.url, tt.method, tt.data, h, tt.profile, tt.users, tt.duration, tt.rampUp, tt.spikeUsers, tt.spikeWarmup, tt.spikeHold, tt.wavePeriod, tt.rps, 0, tt.timeout, tt.keepAlive)
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error for empty URL, got nil")
@@ -325,7 +325,7 @@ func TestWarnLowFileLimit(t *testing.T) {
 
 func TestQuickScenarioNormalizeError(t *testing.T) {
 	// Test that invalid profile type returns error
-	_, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "invalid-profile", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	_, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "invalid-profile", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err == nil {
 		t.Error("expected error for invalid profile type")
 	}
@@ -333,7 +333,7 @@ func TestQuickScenarioNormalizeError(t *testing.T) {
 
 func TestQuickScenarioDefaults(t *testing.T) {
 	// Test that defaults are applied when zero values provided
-	sc, err := quickScenario("test", "https://api.example.com", "", "", headerFlags{}, "", 0, 0, 0, 0, 0, 0, 0, 0, 0, true)
+	sc, err := quickScenario("test", "https://api.example.com", "", "", headerFlags{}, "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +356,7 @@ func TestQuickScenarioDefaults(t *testing.T) {
 
 func TestQuickScenarioRampUpDefault(t *testing.T) {
 	// When rampUp is 0, it should default to duration/2
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "linear-ramp", 100, 60, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "linear-ramp", 100, 60, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +368,7 @@ func TestQuickScenarioRampUpDefault(t *testing.T) {
 
 func TestQuickScenarioSpikeDefaults(t *testing.T) {
 	// When spike params are 0, they should get defaults
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "spike", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "spike", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +384,7 @@ func TestQuickScenarioSpikeDefaults(t *testing.T) {
 }
 
 func TestQuickScenarioWaveDefaults(t *testing.T) {
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "wave", 100, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "wave", 100, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestQuickScenarioWaveDefaults(t *testing.T) {
 
 func TestQuickScenarioWithHeaders(t *testing.T) {
 	h := headerFlags{"X-Custom": "value1", "Authorization": "Bearer token"}
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", h, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", h, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestQuickScenarioWithHeaders(t *testing.T) {
 }
 
 func TestQuickScenarioEmptyBody(t *testing.T) {
-	sc, err := quickScenario("test", "https://api.example.com", "POST", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "POST", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,7 +418,7 @@ func TestQuickScenarioEmptyBody(t *testing.T) {
 }
 
 func TestQuickScenarioBodyWithVariables(t *testing.T) {
-	sc, err := quickScenario("test", "https://api.example.com", "POST", `{"user":"{{user}}"}`, headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "POST", `{"user":"{{user}}"}`, headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestQuickScenarioBodyWithVariables(t *testing.T) {
 }
 
 func TestQuickScenarioKeepAliveFalse(t *testing.T) {
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 5, false)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +438,7 @@ func TestQuickScenarioKeepAliveFalse(t *testing.T) {
 }
 
 func TestQuickScenarioKeepAliveTrue(t *testing.T) {
-	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 5, true)
+	sc, err := quickScenario("test", "https://api.example.com", "GET", "", headerFlags{}, "steady", 10, 30, 0, 0, 0, 0, 0, 0, 0, 5, true)
 	if err != nil {
 		t.Fatal(err)
 	}

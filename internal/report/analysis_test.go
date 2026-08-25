@@ -79,36 +79,25 @@ func TestCompareRegressionAndImprovement(t *testing.T) {
 	base := sampleReport()
 	cur := sampleReport()
 	cur.Overall.P99 = 300 * time.Millisecond // +100% vs baseline 150ms → regressed
-	rows, regressed := Compare(cur, base, 20)
+	result := Compare(cur, base)
 
-	if !regressed {
-		t.Fatal("regressed = false, want true after p99 doubled")
+	if !result.Regression {
+		t.Fatal("Regression = false, want true after p99 doubled")
 	}
-	found := map[string]CompareRow{}
-	for _, row := range rows {
-		found[row.Metric] = row
-	}
-	if found["p99"].Status != "regressed" {
-		t.Errorf("p99 status = %q, want regressed", found["p99"].Status)
-	}
-	if found["error_rate"].Status == "regressed" {
-		t.Errorf("error_rate unchanged but marked regressed")
+	if result.Grade != "F" {
+		t.Errorf("Grade = %q, want F (100%% regression)", result.Grade)
 	}
 
 	// Improvement direction.
 	cur2 := sampleReport()
 	cur2.Overall.P95 = 40 * time.Millisecond // -50% vs 80ms → improved
 	cur2.RPS = 2000                          // +100% → improved
-	rows2, regressed2 := Compare(cur2, base, 20)
-	if regressed2 {
-		t.Error("regressed = true for an improved run")
+	result2 := Compare(cur2, base)
+	if result2.Regression {
+		t.Error("Regression = true for an improved run")
 	}
-	m := map[string]string{}
-	for _, row := range rows2 {
-		m[row.Metric] = row.Status
-	}
-	if m["p95"] != "improved" || m["rps"] != "improved" {
-		t.Errorf("improvement not detected: %v", m)
+	if result2.Grade != "A" {
+		t.Errorf("Grade = %q, want A for improved run", result2.Grade)
 	}
 }
 

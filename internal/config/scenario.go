@@ -11,14 +11,16 @@ import (
 )
 
 const (
-	ProfileSteady     = "steady"
-	ProfileSoak       = "soak"
-	ProfileLinearRamp = "linear-ramp"
-	ProfileSpike      = "spike"
-	ProfileWave       = "wave"
-	maxUsers          = 100_000
-	maxDuration       = 7 * 24 * 60 * 60 // 7 days, in seconds
-	maxTimeout        = 5 * 60           // 5 minutes, in seconds
+	ProfileSteady      = "steady"
+	ProfileSoak        = "soak"
+	ProfileLinearRamp  = "linear-ramp"
+	ProfileSpike       = "spike"
+	ProfileWave        = "wave"
+	ProfileConstantRPS = "constant-rps"
+	maxUsers           = 100_000
+	maxRPS             = 1_000_000
+	maxDuration        = 7 * 24 * 60 * 60 // 7 days, in seconds
+	maxTimeout         = 5 * 60           // 5 minutes, in seconds
 )
 
 type Profile struct {
@@ -31,6 +33,7 @@ type Profile struct {
 	SpikeHold       int    `yaml:"spike_hold" json:"spike_hold"`
 	WavePeriod      int    `yaml:"wave_period" json:"wave_period"`
 	RPS             int    `yaml:"rps" json:"rps"`
+	TargetRPS       int    `yaml:"target_rps" json:"target_rps"`
 	Timeout         int    `yaml:"timeout" json:"timeout"`
 	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
 	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
@@ -110,12 +113,15 @@ func (s *SLA) Empty() bool {
 }
 
 type Scenario struct {
-	Name      string            `yaml:"name" json:"name"`
-	BaseURL   string            `yaml:"base_url" json:"base_url"`
-	Profile   Profile           `yaml:"load_profile" json:"load_profile"`
-	Steps     []Step            `yaml:"steps" json:"steps"`
-	Variables map[string]string `yaml:"variables" json:"variables"`
-	SLA       *SLA              `yaml:"sla" json:"sla,omitempty"`
+	Name               string            `yaml:"name" json:"name"`
+	BaseURL            string            `yaml:"base_url" json:"base_url"`
+	Profile            Profile           `yaml:"load_profile" json:"load_profile"`
+	Steps              []Step            `yaml:"steps" json:"steps"`
+	Variables          map[string]string `yaml:"variables" json:"variables"`
+	SLA                *SLA              `yaml:"sla" json:"sla,omitempty"`
+	PreWarm            bool              `yaml:"pre_warm" json:"pre_warm"`
+	PreWarmConnections int               `yaml:"pre_warm_connections" json:"pre_warm_connections"`
+	PreWarmTime        time.Duration     `yaml:"-" json:"-"`
 }
 
 func (p *Profile) Normalize() error {
@@ -123,15 +129,25 @@ func (p *Profile) Normalize() error {
 		p.Type = ProfileSteady
 	}
 	switch p.Type {
-	case ProfileSteady, ProfileSoak, ProfileLinearRamp, ProfileSpike, ProfileWave:
+	case ProfileSteady, ProfileSoak, ProfileLinearRamp, ProfileSpike, ProfileWave, ProfileConstantRPS:
 	default:
-		return fmt.Errorf("unsupported load profile %q (use: %s, %s, %s, %s, %s)", p.Type, ProfileSteady, ProfileSoak, ProfileLinearRamp, ProfileSpike, ProfileWave)
+		return fmt.Errorf("unsupported load profile %q (use: %s, %s, %s, %s, %s, %s)", p.Type, ProfileSteady, ProfileSoak, ProfileLinearRamp, ProfileSpike, ProfileWave, ProfileConstantRPS)
 	}
-	if p.Users < 1 {
-		p.Users = 10
-	}
-	if p.Users > maxUsers {
-		return fmt.Errorf("users (%d) exceeds maximum of %d", p.Users, maxUsers)
+
+	if p.Type == ProfileConstantRPS {
+		if p.TargetRPS <= 0 {
+			return fmt.Errorf("constant-rps profile requires target_rps > 0")
+		}
+		if p.TargetRPS > maxRPS {
+			return fmt.Errorf("target_rps (%d) exceeds maximum of %d", p.TargetRPS, maxRPS)
+		}
+	} else {
+		if p.Users < 1 {
+			p.Users = 10
+		}
+		if p.Users > maxUsers {
+			return fmt.Errorf("users (%d) exceeds maximum of %d", p.Users, maxUsers)
+		}
 	}
 	if p.Duration <= 0 {
 		p.Duration = 30
@@ -192,6 +208,11 @@ func (p *Profile) TotalDuration() int {
 	default:
 		return p.Duration
 	}
+}
+
+// IsConstantRPS reports whether this profile uses direct RPS targeting.
+func (p *Profile) IsConstantRPS() bool {
+	return p.Type == ProfileConstantRPS
 }
 
 func (s *Scenario) Normalize() error {

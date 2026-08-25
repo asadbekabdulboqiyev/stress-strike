@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"stress-strike/internal/config"
 	"stress-strike/internal/engine"
@@ -28,33 +29,36 @@ func (h headerFlags) Set(value string) error {
 
 func cmdRun() {
 	var (
-		configPath    string
-		url           string
-		method        string
-		data          string
-		headers       = headerFlags{}
-		name          string
-		profile       string
-		users         int
-		duration      int
-		rampUp        int
-		spikeUsers    int
-		spikeWarmup   int
-		spikeHold     int
-		wavePeriod    int
-		rps           int
-		timeout       int
-		keepAlive     bool
-		quiet         bool
-		reportDir     string
-		showVersion   bool
-		expectP99     float64
-		expectAvg     float64
-		expectErrRate float64
-		expectMinRPS  float64
-		comparePath   string
-		regressPct    float64
-		timelineCSV   bool
+		configPath      string
+		url             string
+		method          string
+		data            string
+		headers         = headerFlags{}
+		name            string
+		profile         string
+		users           int
+		duration        int
+		rampUp          int
+		spikeUsers      int
+		spikeWarmup     int
+		spikeHold       int
+		wavePeriod      int
+		rps             int
+		timeout         int
+		keepAlive       bool
+		quiet           bool
+		reportDir       string
+		showVersion     bool
+		expectP99       float64
+		expectAvg       float64
+		expectErrRate   float64
+		expectMinRPS    float64
+		comparePath     string
+		regressPct      float64
+		timelineCSV     bool
+		preWarm         bool
+		preWarmConns    int
+		targetRPS       int
 	)
 
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
@@ -65,7 +69,7 @@ func cmdRun() {
 	fs.StringVar(&data, "data", "", "request body (quick mode)")
 	fs.Var(headers, "header", "request header in Key=Value form (repeatable)")
 	fs.StringVar(&name, "name", "quick-test", "report/test name")
-	fs.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave")
+	fs.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave, constant-rps")
 	fs.IntVar(&users, "users", 10, "concurrent virtual users")
 	fs.IntVar(&duration, "duration", 30, "test duration in seconds")
 	fs.IntVar(&rampUp, "ramp-up", 0, "ramp-up duration in seconds")
@@ -74,6 +78,7 @@ func cmdRun() {
 	fs.IntVar(&spikeHold, "spike-hold", 10, "spike burst duration in seconds")
 	fs.IntVar(&wavePeriod, "wave-period", 0, "oscillation period in seconds (wave)")
 	fs.IntVar(&rps, "rps", 0, "global pacing cap (requests per second)")
+	fs.IntVar(&targetRPS, "target-rps", 0, "target requests per second (constant-rps mode)")
 	fs.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
 	fs.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections")
 	fs.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA: max p99 latency (ms)")
@@ -83,6 +88,8 @@ func cmdRun() {
 	fs.StringVar(&comparePath, "compare", "", "baseline report for comparison")
 	fs.Float64Var(&regressPct, "regress-pct", 20, "regression threshold %%")
 	fs.BoolVar(&timelineCSV, "timeline", false, "write per-second CSV timeline")
+	fs.BoolVar(&preWarm, "pre-warm", false, "pre-establish TCP connections before test start")
+	fs.IntVar(&preWarmConns, "pre-warm-conns", 0, "number of pre-warmed connections (default: users count)")
 	fs.BoolVar(&quiet, "quiet", false, "disable live progress")
 	fs.StringVar(&reportDir, "report-dir", "./reports", "report output directory")
 	fs.BoolVar(&showVersion, "version", false, "print version")
@@ -90,6 +97,7 @@ func cmdRun() {
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n  stress-strike run --url https://api.example.com --users 100 --duration 60\n")
+		fmt.Fprintf(os.Stderr, "  stress-strike run --url https://api.example.com --target-rps 1000 --duration 30\n")
 		fmt.Fprintf(os.Stderr, "  stress-strike run --config scenario.yaml\n\n")
 		fs.PrintDefaults()
 	}
@@ -123,7 +131,11 @@ func cmdRun() {
 		if url == "" {
 			fatal(fmt.Errorf("either --config or --url is required"))
 		}
-		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout, keepAlive)
+		// When --target-rps is set, automatically use constant-rps profile.
+		if targetRPS > 0 && profile == "steady" {
+			profile = "constant-rps"
+		}
+		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, targetRPS, timeout, keepAlive)
 		if err != nil {
 			fatal(err)
 		}
@@ -150,6 +162,13 @@ func cmdRun() {
 		scenario.SLA = sla
 	}
 
+	if preWarm {
+		scenario.PreWarm = true
+		if preWarmConns > 0 {
+			scenario.PreWarmConnections = preWarmConns
+		}
+	}
+
 	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 
@@ -171,9 +190,18 @@ func cmdRun() {
 	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
 		version, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
 
-	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet})
+	var progress *engine.ProgressTracker
+	if !quiet {
+		dur := time.Duration(scenario.Profile.TotalDuration()) * time.Second
+		progress = engine.NewProgressTracker(dur, scenario.Profile.Users)
+	}
+
+	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet, Progress: progress})
 	if err != nil {
 		fatal(err)
+	}
+	if progress != nil {
+		progress.Finish()
 	}
 
 	r := report.Build(telemetry, scenario)
@@ -185,10 +213,11 @@ func cmdRun() {
 		if err != nil {
 			fatal(err)
 		}
-		rows, regressed := report.Compare(&r, baseline, regressPct)
-		renderComparison(rows)
-		if regressed {
-			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%)\n", comparePath, regressPct)
+		result := report.Compare(&r, baseline)
+		fmt.Print(result.Render())
+		if result.Regression && result.RegressionPct > regressPct {
+			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%, actual %.1f%%)\n",
+				comparePath, regressPct, result.RegressionPct)
 			os.Exit(2)
 		}
 	}
@@ -219,7 +248,7 @@ func cmdRun() {
 	}
 }
 
-func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {
+func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, targetRPS, timeout int, keepAlive bool) (*config.Scenario, error) {
 	sc := &config.Scenario{
 		Name: name,
 		Profile: config.Profile{
@@ -232,6 +261,7 @@ func quickScenario(name, url, method, data string, headers headerFlags, profile 
 			SpikeHold:   spikeHold,
 			WavePeriod:  wavePeriod,
 			RPS:         rps,
+			TargetRPS:   targetRPS,
 			Timeout:     timeout,
 			KeepAlive:   &keepAlive,
 		},
@@ -261,25 +291,6 @@ func targetDisplay(scenario *config.Scenario) string {
 	return "n/a"
 }
 
-func renderComparison(rows []report.CompareRow) {
-	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, "\x1b[1m  BASELINE COMPARISON\x1b[0m")
-	fmt.Fprintln(os.Stdout, "\x1b[1m  ──────────────────────────────────────────────────────────────\x1b[0m")
-	for _, row := range rows {
-		status := row.Status
-		switch status {
-		case "regressed":
-			status = "✗ REGRESSED"
-		case "improved":
-			status = "↑ improved"
-		default:
-			status = "= ok"
-		}
-		fmt.Fprintf(os.Stdout, "    %-12s %-10s → %-10s %-9s %s\n",
-			row.Metric, row.Baseline, row.Current, row.Delta, status)
-	}
-	fmt.Fprintln(os.Stdout)
-}
 
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)

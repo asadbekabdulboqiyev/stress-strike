@@ -244,3 +244,38 @@ func TestNormalizeAssertions(t *testing.T) {
 		t.Error("expected error for empty assertion value")
 	}
 }
+
+func TestNormalizeConstantRPS(t *testing.T) {
+	// Valid constant-rps.
+	sc := &Scenario{
+		Profile: Profile{Type: ProfileConstantRPS, TargetRPS: 500, Duration: 60},
+		Steps:   []Step{{URL: "/x"}},
+	}
+	if err := sc.Normalize(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sc.Profile.TargetRPS != 500 {
+		t.Errorf("target_rps = %d, want 500", sc.Profile.TargetRPS)
+	}
+	if !sc.Profile.IsConstantRPS() {
+		t.Error("IsConstantRPS should be true")
+	}
+
+	// Missing target_rps.
+	sc = &Scenario{
+		Profile: Profile{Type: ProfileConstantRPS},
+		Steps:   []Step{{URL: "/x"}},
+	}
+	if err := sc.Normalize(); err == nil {
+		t.Error("expected error for constant-rps without target_rps")
+	}
+
+	// target_rps exceeds max.
+	sc = &Scenario{
+		Profile: Profile{Type: ProfileConstantRPS, TargetRPS: maxRPS + 1},
+		Steps:   []Step{{URL: "/x"}},
+	}
+	if err := sc.Normalize(); err == nil {
+		t.Error("expected error for target_rps above max")
+	}
+}

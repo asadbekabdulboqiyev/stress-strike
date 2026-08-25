@@ -110,6 +110,67 @@ func (p *waveProfile) Duration() time.Duration {
 	return p.dur
 }
 
+// constantRPSProfile drives a fixed number of virtual users whose throughput
+// is gated by a token-bucket rate limiter, not by concurrency scaling.
+// Ramp-up linearly increases the bucket rate from 0 to targetRPS.
+type constantRPSProfile struct {
+	targetRPS int
+	ramp      time.Duration
+	dur       time.Duration
+}
+
+func newConstantRPSProfile(targetRPS int, rampUpSec int, dur time.Duration) *constantRPSProfile {
+	ramp := time.Duration(rampUpSec) * time.Second
+	if ramp <= 0 {
+		ramp = dur / 2
+		if ramp < time.Second {
+			ramp = time.Second
+		}
+	}
+	return &constantRPSProfile{
+		targetRPS: targetRPS,
+		ramp:      ramp,
+		dur:       dur,
+	}
+}
+
+// ConcurrencyAt returns a fixed worker count derived from the target RPS.
+// Workers are plentiful; the token bucket is the actual throttle.
+func (p *constantRPSProfile) ConcurrencyAt(_ time.Duration) int {
+	return p.targetRPS
+}
+
+// TargetRPSAt returns the instantaneous RPS target at the given elapsed time.
+// During ramp-up it scales linearly from 0 to targetRPS.
+func (p *constantRPSProfile) TargetRPSAt(elapsed time.Duration) int {
+	if p.ramp <= 0 || elapsed >= p.ramp {
+		return p.targetRPS
+	}
+	rps := int(float64(p.targetRPS) * elapsed.Seconds() / p.ramp.Seconds())
+	if rps < 1 {
+		rps = 1
+	}
+	return rps
+}
+
+func (p *constantRPSProfile) MaxConcurrency() int {
+	return p.targetRPS
+}
+
+func (p *constantRPSProfile) Duration() time.Duration {
+	return p.dur
+}
+
+// IsConstantRPS reports whether this profile uses RPS-based targeting.
+func (p *constantRPSProfile) IsConstantRPS() bool {
+	return true
+}
+
+// RampDuration returns the ramp-up window.
+func (p *constantRPSProfile) RampDuration() time.Duration {
+	return p.ramp
+}
+
 func buildProfile(profile config.Profile) (LoadProfile, error) {
 	dur := time.Duration(profile.Duration) * time.Second
 	switch profile.Type {
@@ -134,6 +195,8 @@ func buildProfile(profile config.Profile) (LoadProfile, error) {
 			period: time.Duration(profile.WavePeriod) * time.Second,
 			dur:    dur,
 		}, nil
+	case config.ProfileConstantRPS:
+		return newConstantRPSProfile(profile.TargetRPS, profile.RampUp, dur), nil
 	default:
 		return nil, fmt.Errorf("unsupported load profile %q", profile.Type)
 	}

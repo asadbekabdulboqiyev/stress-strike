@@ -2,11 +2,15 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	neturl "net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,7 +21,6 @@ import (
 
 	"stress-strike/internal/config"
 	"stress-strike/internal/metrics"
-	"stress-strike/internal/report"
 )
 
 const (
@@ -36,14 +39,44 @@ const (
 )
 
 type RunOptions struct {
-	Out   io.Writer
-	Quiet bool
+	Out      io.Writer
+	Quiet    bool
+	Progress *ProgressTracker
 }
 
 type stepResult struct {
 	latency time.Duration
 	status  int
 	errName string
+}
+
+// prewarmClient is a single pre-warmed HTTP client bound to its own transport.
+// Each instance holds an established TCP+TLS connection ready for immediate use.
+type prewarmClient struct {
+	client    *http.Client
+	transport *http.Transport
+}
+
+// prewarmRing is a lock-free ring buffer for round-robin distribution of
+// pre-warmed clients across virtual users.
+type prewarmRing struct {
+	clients []*prewarmClient
+	next    atomic.Uint64
+}
+
+func (r *prewarmRing) get() *http.Client {
+	if len(r.clients) == 0 {
+		return nil
+	}
+	idx := r.next.Add(1) - 1
+	return r.clients[idx%uint64(len(r.clients))].client
+}
+
+func (r *prewarmRing) closeAll() {
+	for _, pc := range r.clients {
+		pc.transport.CloseIdleConnections()
+	}
+	r.clients = nil
 }
 
 // Worker is the per-virtual-user execution loop used by the engine. The
@@ -92,6 +125,13 @@ type Engine struct {
 	signal    *broadcast
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
+	targetRPS atomic.Int64
+	progress  *ProgressTracker
+
+	// Pre-warmed connections: round-robin ring of HTTP clients with
+	// established TCP+TLS connections, populated before the test starts.
+	prewarmed  prewarmRing
+	prewarmDur time.Duration
 
 	// Per-virtual-user persistent protocol sessions (guarded by sessMu).
 	// Each worker goroutine exclusively touches its own index during the run;
@@ -119,6 +159,17 @@ func New(scenario *config.Scenario) (*Engine, error) {
 	}
 	maxConns := profile.MaxConcurrency() * 2
 	transport := newTransport(keepAlive, maxConns)
+
+	// For constant-rps mode, the token bucket starts at rate 0 and is
+	// dynamically updated by the controller during ramp-up.
+	var limiter *tokenBucket
+	if crps, ok := profile.(*constantRPSProfile); ok {
+		limiter = newTokenBucket(0)
+		_ = crps // used in Run for ramp calculation
+	} else {
+		limiter = newTokenBucket(scenario.Profile.RPS)
+	}
+
 	e := &Engine{
 		scenario: scenario,
 		profile:  profile,
@@ -130,7 +181,7 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		transport: transport,
 		timeout:   time.Duration(scenario.Profile.Timeout) * time.Second,
 		keepAlive: keepAlive,
-		limiter:   newTokenBucket(scenario.Profile.RPS),
+		limiter:   limiter,
 		signal:    newBroadcast(),
 	}
 	e.stepStats = make([]*metrics.StepStats, len(scenario.Steps))
@@ -138,6 +189,108 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		e.stepStats[i] = metrics.NewStepStats(step.Name)
 	}
 	return e, nil
+}
+
+// preWarmTargetURL returns the resolved URL to use for connection pre-warming.
+// It picks the first HTTP step's full URL.
+func (e *Engine) preWarmTargetURL() string {
+	for _, step := range e.scenario.Steps {
+		if step.Type == "" || step.Type == "http" {
+			u := step.URL
+			if e.scenario.BaseURL != "" {
+				u = strings.TrimRight(e.scenario.BaseURL, "/") + "/" + strings.TrimLeft(u, "/")
+			}
+			return u
+		}
+	}
+	if e.scenario.BaseURL != "" {
+		return e.scenario.BaseURL
+	}
+	return ""
+}
+
+// preWarmConnections opens count TCP+TLS connections to the target before the
+// test starts, eliminating handshake latency from the first request each virtual
+// user sends. Each connection gets its own http.Transport and http.Client stored
+// in a lock-free ring buffer for round-robin distribution.
+func (e *Engine) preWarmConnections(count int) {
+	target := e.preWarmTargetURL()
+	if target == "" || count <= 0 {
+		return
+	}
+
+	// Quick TCP reachability check before spawning goroutines.
+	parsed, err := neturl.Parse(target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Pre-warm: bad URL %s: %v\n", target, err)
+		return
+	}
+	host := parsed.Host
+	conn, err := net.DialTimeout("tcp", host, 10*time.Second)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Pre-warm: cannot reach %s: %v\n", host, err)
+		return
+	}
+	conn.Close()
+
+	ring := &prewarmRing{clients: make([]*prewarmClient, count)}
+	done := make(chan struct{}, count)
+	sem := make(chan struct{}, 64) // limit concurrency
+
+	for i := 0; i < count; i++ {
+		sem <- struct{}{}
+		go func(idx int) {
+			defer func() { <-sem; done <- struct{}{} }()
+
+			transport := &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   10 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          1,
+				MaxIdleConnsPerHost:   1,
+				MaxConnsPerHost:       1,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: time.Second,
+				TLSClientConfig: &tls.Config{
+					MinVersion:         tls.VersionTLS12,
+					ClientSessionCache: tls.NewLRUClientSessionCache(0),
+				},
+			}
+			client := &http.Client{
+				Transport:     transport,
+				Timeout:       e.timeout,
+				CheckRedirect: checkRedirect,
+			}
+			// Trigger the actual TCP+TLS handshake by issuing a HEAD
+			// request. The response is discarded; the connection is what
+			// matters — it will be reused by Go's transport pool.
+			resp, err := client.Head(target)
+			if err != nil {
+				transport.CloseIdleConnections()
+				ring.clients[idx] = nil
+				return
+			}
+			resp.Body.Close()
+			ring.clients[idx] = &prewarmClient{client: client, transport: transport}
+		}(i)
+	}
+	for i := 0; i < count; i++ {
+		<-done
+	}
+
+	// Remove any failed slots.
+	var active []*prewarmClient
+	for _, pc := range ring.clients {
+		if pc != nil {
+			active = append(active, pc)
+		}
+	}
+	ring.clients = active
+	e.prewarmed = *ring
 }
 
 func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, error) {
@@ -161,9 +314,25 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	e.target.Store(int64(initialTarget))
 	e.telemetry.ActiveUsers.Store(int64(initialTarget))
 
-	var stopLive func()
+	// Pre-warm TCP+TLS connections before starting workers so the first
+	// request from each virtual user skips the handshake penalty.
+	if e.scenario.PreWarm {
+		connCount := e.scenario.PreWarmConnections
+		if connCount <= 0 {
+			connCount = e.profile.MaxConcurrency()
+		}
+		fmt.Fprintf(out, "Pre-warming %d connections... ", connCount)
+		pwStart := time.Now()
+		e.preWarmConnections(connCount)
+		e.prewarmDur = time.Since(pwStart)
+		fmt.Fprintf(out, "done (%s)\n", e.prewarmDur.Round(time.Millisecond))
+	}
+
 	if !opts.Quiet {
-		stopLive = report.StartLive(e.telemetry, e.profile.Duration(), out)
+		e.progress = opts.Progress
+		if e.progress == nil {
+			e.progress = newProgressTracker(e.profile.Duration(), e.profile.MaxConcurrency(), out)
+		}
 	}
 
 	// Per-second timeline sampling (used for CSV export and trend analysis).
@@ -198,8 +367,8 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 		<-drained
 	}
 
-	if stopLive != nil {
-		stopLive()
+	if e.progress != nil {
+		e.progress.Finish()
 	}
 	close(samplerDone)
 	// Capture the final partial second so short runs are not empty.
@@ -210,6 +379,7 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 		ActiveUsers: e.telemetry.ActiveUsers.Load(),
 	})
 	e.closeSessions()
+	e.prewarmed.closeAll()
 	e.telemetry.Finish()
 	return e.telemetry, nil
 }
@@ -232,6 +402,15 @@ func (e *Engine) controller(ctx context.Context) {
 			if int64(target) > e.telemetry.PeakUsers.Load() {
 				e.telemetry.PeakUsers.Store(int64(target))
 			}
+
+			// For constant-rps, dynamically adjust the token bucket rate.
+			if crps, ok := e.profile.(*constantRPSProfile); ok {
+				newRPS := crps.TargetRPSAt(elapsed)
+				e.targetRPS.Store(int64(newRPS))
+				if e.limiter != nil {
+					e.limiter.setRate(newRPS)
+				}
+			}
 		}
 	}
 }
@@ -253,6 +432,13 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 		lastStatus = res.status
 	}
 	e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+	if e.progress != nil {
+		e.progress.Update(
+			e.telemetry.TotalRequests(),
+			e.telemetry.TotalErrors(),
+			time.Since(iterStart),
+		)
+	}
 }
 
 // runStep dispatches one step to the matching protocol client. It is kept for
@@ -357,6 +543,13 @@ func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL s
 
 	start := time.Now()
 	client := e.clientForJar(e.cookieJarFor(userIndex), timeout)
+	// Prefer a pre-warmed client (established TCP+TLS) when no per-user
+	// cookie jar is required; the round-robin ring distributes them evenly.
+	if client == e.client {
+		if pw := e.prewarmed.get(); pw != nil {
+			client = pw
+		}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		res := classifyError(err, time.Since(start))

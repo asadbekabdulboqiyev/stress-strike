@@ -33,6 +33,7 @@ type Report struct {
 	Name          string                   `json:"name"`
 	BaseURL       string                   `json:"base_url"`
 	LoadProfile   string                   `json:"load_profile"`
+	TargetRPS     int                      `json:"target_rps,omitempty"`
 	StartedAt     time.Time                `json:"started_at"`
 	EndedAt       time.Time                `json:"ended_at"`
 	Duration      time.Duration            `json:"duration"`
@@ -41,6 +42,7 @@ type Report struct {
 	TotalErrors   uint64                   `json:"total_errors"`
 	ErrorRatePct  float64                  `json:"error_rate_pct"`
 	RPS           float64                  `json:"rps"`
+	PreWarmTime   time.Duration            `json:"pre_warm_time,omitempty"`
 	Status        map[int]uint64           `json:"status_codes"`
 	Errors        map[string]uint64        `json:"errors"`
 	Overall       StepReport               `json:"overall"`
@@ -110,6 +112,7 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 		Name:          scenario.Name,
 		BaseURL:       target(scenario),
 		LoadProfile:   scenario.Profile.Type,
+		TargetRPS:     scenario.Profile.TargetRPS,
 		StartedAt:     t.Start,
 		EndedAt:       t.End,
 		Duration:      t.Elapsed(),
@@ -118,6 +121,7 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 		TotalErrors:   errs,
 		ErrorRatePct:  errPct,
 		RPS:           t.RPS(),
+		PreWarmTime:   scenario.PreWarmTime,
 		Status:        t.StatusCodes(),
 		Errors:        t.Errors(),
 		Overall:       fromStepStats("overall", t.Overall),
@@ -149,9 +153,16 @@ func (r Report) Render(w io.Writer) {
 
 	// ── Target & Config ─────────────────────────────────────────────────
 	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Target:     %s", r.BaseURL)))
-	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Profile:    %s | Peak users: %d", r.LoadProfile, r.ActiveUsers)))
+	if r.TargetRPS > 0 {
+		fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Profile:    %s | Target RPS: %d | Actual RPS: %s", r.LoadProfile, r.TargetRPS, formatRPS(r.RPS))))
+	} else {
+		fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Profile:    %s | Peak users: %d", r.LoadProfile, r.ActiveUsers)))
+	}
 	fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Duration:   %s | Started: %s",
 		r.Duration.Round(time.Millisecond), r.StartedAt.Format(time.RFC3339))))
+	if r.PreWarmTime > 0 {
+		fmt.Fprintf(w, "  %s\n", colorize(colorCyan, c, fmt.Sprintf("Pre-warm:   %s", r.PreWarmTime.Round(time.Millisecond))))
+	}
 	fmt.Fprintln(w)
 
 	// ── Overall ─────────────────────────────────────────────────────────

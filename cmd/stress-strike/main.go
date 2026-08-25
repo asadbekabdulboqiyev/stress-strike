@@ -1,301 +1,98 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-
-	"stress-strike/internal/config"
-	"stress-strike/internal/engine"
-	"stress-strike/internal/report"
 )
 
-const version = "0.2.0"
-
-type headerFlags map[string]string
-
-func (h headerFlags) String() string { return "" }
-
-func (h headerFlags) Set(value string) error {
-	parts := strings.SplitN(value, "=", 2)
-	if len(parts) != 2 || parts[0] == "" {
-		return fmt.Errorf("header must be in Key=Value form, got %q", value)
-	}
-	h[parts[0]] = parts[1]
-	return nil
-}
+const version = "0.3.0"
 
 func main() {
-	var (
-		configPath    string
-		url           string
-		method        string
-		data          string
-		headers       = headerFlags{}
-		name          string
-		profile       string
-		users         int
-		duration      int
-		rampUp        int
-		spikeUsers    int
-		spikeWarmup   int
-		spikeHold     int
-		wavePeriod    int
-		rps           int
-		timeout       int
-		keepAlive     bool
-		quiet         bool
-		reportDir     string
-		showVersion   bool
-		expectP99     float64
-		expectAvg     float64
-		expectErrRate float64
-		expectMinRPS  float64
-		comparePath   string
-		regressPct    float64
-		timelineCSV   bool
-	)
-
-	flag.StringVar(&configPath, "config", "", "YAML/JSON scenario file (see examples/scenario.yaml)")
-	flag.StringVar(&configPath, "c", "", "shorthand for --config")
-	flag.StringVar(&url, "url", "", "target URL (quick mode, used when --config is empty)")
-	flag.StringVar(&method, "method", "GET", "HTTP method (quick mode)")
-	flag.StringVar(&data, "data", "", "request body (quick mode)")
-	flag.Var(headers, "header", "request header in Key=Value form (repeatable)")
-	flag.StringVar(&name, "name", "quick-test", "report/test name")
-	flag.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave")
-	flag.IntVar(&users, "users", 10, "concurrent virtual users")
-	flag.IntVar(&duration, "duration", 30, "test duration in seconds")
-	flag.IntVar(&rampUp, "ramp-up", 0, "ramp-up duration in seconds (linear-ramp)")
-	flag.IntVar(&spikeUsers, "spike-users", 0, "target users for spike burst")
-	flag.IntVar(&spikeWarmup, "spike-warmup", 5, "baseline warmup seconds before spike")
-	flag.IntVar(&spikeHold, "spike-hold", 10, "spike burst duration in seconds")
-	flag.IntVar(&wavePeriod, "wave-period", 0, "oscillation period in seconds (wave)")
-	flag.IntVar(&rps, "rps", 0, "global pacing cap (requests per second, 0 = unlimited)")
-	flag.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
-	flag.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections (connection pooling)")
-	flag.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA gate: fail the run if p99 latency exceeds this (ms)")
-	flag.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA gate: fail the run if avg latency exceeds this (ms)")
-	flag.Float64Var(&expectErrRate, "expect-error-rate", 0, "SLA gate: fail the run if error rate exceeds this (%%)")
-	flag.Float64Var(&expectMinRPS, "expect-min-rps", 0, "SLA gate: fail the run if throughput drops below this")
-	flag.StringVar(&comparePath, "compare", "", "baseline JSON report to compare against (regression detection)")
-	flag.Float64Var(&regressPct, "regress-pct", 20, "degradation percentage that counts as a regression in --compare")
-	flag.BoolVar(&timelineCSV, "timeline", false, "also write a per-second CSV timeline for external analysis")
-	flag.BoolVar(&quiet, "quiet", false, "disable live progress line")
-	flag.StringVar(&reportDir, "report-dir", "./reports", "directory for generated reports")
-	flag.BoolVar(&showVersion, "version", false, "print version and exit")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "stress-strike v%s — load testing & network simulator\n\n", version)
-		fmt.Fprintf(os.Stderr, "Usage:\n  stress-strike --config scenario.yaml\n  stress-strike --url https://api.example.com --users 1000 --duration 60\n\n")
-		fmt.Fprintf(os.Stderr, "WARNING: Only run against systems you own or have explicit permission to test.\n\n")
-		flag.PrintDefaults()
-	}
-
-	flag.Parse()
-
-	nameSet := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == "name" {
-			nameSet = true
-		}
-	})
-
-	if showVersion {
-		fmt.Printf("stress-strike v%s\n", version)
-		return
-	}
-
-	var scenario *config.Scenario
-	if configPath != "" {
-		sc, err := config.Load(configPath)
-		if err != nil {
-			fatal(err)
-		}
-		if nameSet {
-			sc.Name = name
-		}
-		scenario = sc
-	} else {
-		if url == "" {
-			fatal(fmt.Errorf("either --config or --url is required"))
-		}
-		sc, err := quickScenario(name, url, method, data, headers, profile, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout, keepAlive)
-		if err != nil {
-			fatal(err)
-		}
-		scenario = sc
-	}
-
-	// CLI SLA flags merge into (and take precedence over) scenario SLA.
-	sla := scenario.SLA
-	if sla == nil {
-		sla = &config.SLA{}
-	}
-	if expectP99 > 0 {
-		sla.MaxP99Ms = expectP99
-	}
-	if expectAvg > 0 {
-		sla.MaxAvgMs = expectAvg
-	}
-	if expectErrRate > 0 {
-		sla.MaxErrorRatePct = expectErrRate
-	}
-	if expectMinRPS > 0 {
-		sla.MinRPS = expectMinRPS
-	}
-	if !sla.Empty() {
-		scenario.SLA = sla
-	}
-
-	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
-	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
-
-	warnLowFileLimit(scenario.Profile)
-
-	eng, err := engine.New(scenario)
-	if err != nil {
-		fatal(err)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	go func() {
-		<-ctx.Done()
-		second := make(chan os.Signal, 1)
-		signal.Notify(second, os.Interrupt, syscall.SIGTERM)
-		<-second
-		os.Exit(130)
-	}()
-
-	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
-		version, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
-
-	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet})
-	if err != nil {
-		fatal(err)
-	}
-
-	r := report.Build(telemetry, scenario)
-	fmt.Fprintln(os.Stderr)
-	r.Render(os.Stdout)
-
-	// Baseline regression comparison.
-	if comparePath != "" {
-		baseline, err := report.LoadReport(comparePath)
-		if err != nil {
-			fatal(err)
-		}
-		rows, regressed := report.Compare(&r, baseline, regressPct)
-		renderComparison(rows)
-		if regressed {
-			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%)\n", comparePath, regressPct)
-			os.Exit(2)
+	// Check for subcommands
+	if len(os.Args) > 1 {
+		cmd := os.Args[1]
+		switch cmd {
+		case "run":
+			os.Args = os.Args[1:] // keep "run" as [0] for flagset
+			cmdRun()
+			return
+		case "replay":
+			cmdReplay()
+			return
+		case "scan":
+			cmdScan()
+			return
+		case "dashboard":
+			cmdDashboard()
+			return
+		case "ai":
+			cmdAI()
+			return
+		case "master":
+			cmdMaster()
+			return
+		case "worker":
+			cmdWorker()
+			return
+		case "help", "--help", "-h":
+			printFullHelp()
+			return
+		case "version", "--version", "-v":
+			fmt.Printf("stress-strike v%s\n", version)
+			return
 		}
 	}
 
-	jsonPath, err := r.SaveJSON(reportDir)
-	if err != nil {
-		fatal(err)
-	}
-	txtPath, err := r.SaveTXT(reportDir)
-	if err != nil {
-		fatal(err)
-	}
-	fmt.Fprintf(os.Stderr, "\nReports written:\n  %s\n  %s\n", jsonPath, txtPath)
-
-	if timelineCSV {
-		csvPath, err := r.SaveCSV(reportDir)
-		if err != nil {
-			fatal(err)
-		}
-		if csvPath != "" {
-			fmt.Fprintf(os.Stderr, "  %s\n", csvPath)
-		}
-	}
-
-	// SLA gate: non-zero exit lets CI/CD pipelines fail on regressions.
-	if len(r.SLA) > 0 && !report.SLAPassed(r.SLA) {
-		fmt.Fprintln(os.Stderr, "SLA gate FAILED — exiting with code 2")
-		os.Exit(2)
-	}
+	// Default: run (backwards compatible with old flag syntax)
+	cmdRun()
 }
 
-// renderComparison prints the baseline comparison table to stdout.
-func renderComparison(rows []report.CompareRow) {
-	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, colorBold("  BASELINE COMPARISON"))
-	fmt.Fprintln(os.Stdout, colorBold("  ──────────────────────────────────────────────────────────────"))
-	for _, row := range rows {
-		status := row.Status
-		switch status {
-		case "regressed":
-			status = "✗ REGRESSED"
-		case "improved":
-			status = "↑ improved"
-		default:
-			status = "= ok"
-		}
-		fmt.Fprintf(os.Stdout, "    %-12s %-10s → %-10s %-9s %s\n",
-			row.Metric, row.Baseline, row.Current, row.Delta, status)
-	}
-	fmt.Fprintln(os.Stdout)
-}
+func printFullHelp() {
+	fmt.Fprintf(os.Stderr, `
+stress-strike v%s — Professional Load Testing & Security Suite
 
-func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, timeout int, keepAlive bool) (*config.Scenario, error) {
-	sc := &config.Scenario{
-		Name: name,
-		Profile: config.Profile{
-			Type:        profile,
-			Users:       users,
-			Duration:    duration,
-			RampUp:      rampUp,
-			SpikeUsers:  spikeUsers,
-			SpikeWarmup: spikeWarmup,
-			SpikeHold:   spikeHold,
-			WavePeriod:  wavePeriod,
-			RPS:         rps,
-			Timeout:     timeout,
-			KeepAlive:   &keepAlive,
-		},
-		Steps: []config.Step{
-			{
-				Name:    "request",
-				Method:  method,
-				URL:     url,
-				Headers: headers,
-				Body:    data,
-			},
-		},
-	}
-	if err := sc.Normalize(); err != nil {
-		return nil, err
-	}
-	return sc, nil
-}
+ USAGE
+   stress-strike <command> [flags]
 
-func targetDisplay(scenario *config.Scenario) string {
-	if scenario.BaseURL != "" {
-		return scenario.BaseURL
-	}
-	if len(scenario.Steps) > 0 {
-		return scenario.Steps[0].URL
-	}
-	return "n/a"
-}
+ COMMANDS
+   run         HTTP/gRPC/WebSocket load test (default if no command)
+   replay      Replay real traffic from PCAP/HAR captures
+   scan        TLS/WAF deep scanner + fingerprinting
+   dashboard   Real-time web dashboard with WebSocket
+   ai          AI anomaly detector (Gemini/Ollama/OpenAI)
+   master      Distributed mode — master coordinator
+   worker      Distributed mode — worker node
+   help        Show this help
+   version     Show version
 
-// warnLowFileLimit is platform-specific (Unix: rlimit check; Windows: no-op),
-// implemented in limit_unix.go / limit_windows.go.
+ QUICK EXAMPLES
 
-// colorBold wraps text in ANSI bold for stdout tables (safe everywhere since
-// the comparison table is plain text otherwise).
-func colorBold(s string) string { return "\x1b[1m" + s + "\x1b[0m" }
+   # Simple load test
+   stress-strike run --url https://api.example.com --users 100 --duration 60
 
-func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	os.Exit(1)
+   # Load test with SLA gate
+   stress-strike run --url https://api.example.com --users 50 --duration 30 \
+     --expect-p99-ms 200 --expect-error-rate 1
+
+   # Replay production traffic at 10x speed
+   stress-strike replay -input traffic.har -rate 10x -concurrency 20
+
+   # Scan a server for security issues
+   stress-strike scan -target example.com -all
+
+   # Start web dashboard
+   stress-strike dashboard -listen :8888
+
+   # AI anomaly analysis
+   stress-strike ai -input report.json
+
+   # Distributed load test
+   stress-strike master --workers host1:50052,host2:50052 --url URL --users 1000
+   stress-strike worker --listen :50052
+
+   # Use a YAML scenario file
+   stress-strike run --config scenario.yaml
+
+ WARNING: Only run against systems you own or have explicit permission to test.
+`, version)
 }

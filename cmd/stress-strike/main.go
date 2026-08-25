@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-const version = "0.3.0"
+const version = "0.4.0"
 
 func main() {
 	// Check for subcommands
@@ -24,9 +24,6 @@ func main() {
 			return
 		case "dashboard":
 			cmdDashboard()
-			return
-		case "ai":
-			cmdAI()
 			return
 		case "master":
 			cmdMaster()
@@ -49,7 +46,7 @@ func main() {
 
 func printFullHelp() {
 	fmt.Fprintf(os.Stderr, `
-stress-strike v%s — Professional Load Testing & Security Suite
+stress-strike v%s — Ultra-Fast Load Testing & Security Suite
 
  USAGE
    stress-strike <command> [flags]
@@ -59,7 +56,6 @@ stress-strike v%s — Professional Load Testing & Security Suite
    replay      Replay real traffic from PCAP/HAR captures
    scan        TLS/WAF deep scanner + fingerprinting
    dashboard   Real-time web dashboard with WebSocket
-   ai          AI anomaly detector (Gemini/Ollama/OpenAI)
    master      Distributed mode — master coordinator
    worker      Distributed mode — worker node
    help        Show this help
@@ -82,9 +78,6 @@ stress-strike v%s — Professional Load Testing & Security Suite
 
    # Start web dashboard
    stress-strike dashboard -listen :8888
-
-   # AI anomaly analysis
-   stress-strike ai -input report.json
 
    # Distributed load test
    stress-strike master --workers host1:50052,host2:50052 --url URL --users 1000

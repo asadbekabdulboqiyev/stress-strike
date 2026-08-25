@@ -55,7 +55,6 @@ func runSubCommand(name string, args []string) {
 func cmdReplay()    { runSubCommand("stress-strike-replay", os.Args[2:]) }
 func cmdScan()      { runSubCommand("stress-strike-scan", os.Args[2:]) }
 func cmdDashboard() { runSubCommand("stress-strike-dashboard", os.Args[2:]) }
-func cmdAI()        { runSubCommand("stress-strike-ai", os.Args[2:]) }
 func cmdMaster()    { runSubCommand("stress-strike-master", os.Args[2:]) }
 func cmdWorker()    { runSubCommand("stress-strike-worker", os.Args[2:]) }
 

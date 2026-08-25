@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stress-strike Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: #0a0a0f; color: #e0e0e0; }
+    .dashboard { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; color: #00ff88; }
+    .status { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+    .status-idle { background: #333; color: #888; }
+    .status-running { background: #003300; color: #00ff88; animation: pulse 1.5s infinite; }
+    .status-completed { background: #003366; color: #00aaff; }
+    .status-failed { background: #330000; color: #ff4444; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    .card { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 16px; }
+    .card-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+    .card-value { font-size: 32px; font-weight: bold; margin-top: 8px; }
+    .card-value.green { color: #00ff88; }
+    .card-value.blue { color: #00aaff; }
+    .card-value.yellow { color: #ffaa00; }
+    .card-value.red { color: #ff4444; }
+    .card-sub { font-size: 12px; color: #555; margin-top: 4px; }
+    .controls { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+    .controls input, .controls select { background: #1a1a24; border: 1px solid #333; color: #e0e0e0; padding: 8px 12px; border-radius: 4px; font-family: inherit; font-size: 13px; }
+    .controls input:focus, .controls select:focus { outline: none; border-color: #00ff88; }
+    .btn { padding: 8px 20px; border-radius: 4px; border: none; font-family: inherit; font-weight: bold; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .btn-start { background: #00ff88; color: #000; }
+    .btn-start:hover { background: #00cc6a; }
+    .btn-stop { background: #ff4444; color: #fff; }
+    .btn-stop:hover { background: #cc2222; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .chart-container { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .chart-title { font-size: 14px; color: #888; margin-bottom: 12px; }
+    .workers-table { width: 100%; border-collapse: collapse; }
+    .workers-table th { text-align: left; padding: 8px; border-bottom: 1px solid #333; color: #666; font-size: 11px; text-transform: uppercase; }
+    .workers-table td { padding: 8px; border-bottom: 1px solid #1a1a24; font-size: 13px; }
+    .progress-bar { width: 100%; height: 4px; background: #222; border-radius: 2px; overflow: hidden; margin-bottom: 24px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #00ff88, #00aaff); transition: width 0.3s; }
+    .sparkline { display: flex; align-items: flex-end; gap: 1px; height: 40px; }
+    .sparkline-bar { background: #00ff88; min-width: 3px; border-radius: 1px 1px 0 0; opacity: 0.7; }
+    .latency-dist { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .latency-label { font-size: 11px; color: #666; width: 40px; }
+    .latency-bar-bg { flex: 1; height: 16px; background: #1a1a24; border-radius: 3px; overflow: hidden; }
+    .latency-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .latency-val { font-size: 11px; color: #888; width: 50px; text-align: right; }
+    .footer { text-align: center; padding: 20px; color: #444; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="dashboard" id="app">
+    <div class="header">
+      <h1>stress-strike Dashboard</h1>
+      <span class="status status-idle">connecting...</span>
+    </div>
+    <div style="text-align:center;padding:60px;color:#555">Connecting to WebSocket...</div>
+  </div>
+  <script>
+    var API = location.origin;
+    var ws = null;
+    var state = { snapshot: {}, run: { status: 'idle', progress: 0 }, history: [], rpsHistory: [] };
+
+    function connect() {
+      var wsUrl = API.replace('http', 'ws') + '/ws';
+      ws = new WebSocket(wsUrl);
+      ws.onopen = function() { console.log('WS connected'); render(); };
+      ws.onmessage = function(e) {
+        var msg = JSON.parse(e.data);
+        if (msg.type === 'init') {
+          state.run = msg.state || state.run;
+          state.history = msg.history || [];
+        } else if (msg.type === 'snapshot') {
+          state.snapshot = msg.data;
+          state.rpsHistory.push(msg.data.rps || 0);
+          if (state.rpsHistory.length > 60) state.rpsHistory.shift();
+        } else if (msg.type === 'run_state') {
+          state.run = msg.data;
+        }
+        render();
+      };
+      ws.onclose = function() { setTimeout(connect, 2000); };
+      ws.onerror = function() {};
+    }
+
+    function send(type, args) {
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: type, args: args }));
+    }
+
+    function startRun() {
+      var config = {
+        target_url: document.getElementById('url').value || 'http://localhost:8080/health',
+        users: parseInt(document.getElementById('users').value) || 10,
+        duration_seconds: parseInt(document.getElementById('duration').value) || 10,
+        method: document.getElementById('method').value || 'GET'
+      };
+      fetch(API + '/api/run/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+    }
+
+    function stopRun() {
+      fetch(API + '/api/run/stop', { method: 'POST' });
+    }
+
+    function render() {
+      var s = state.snapshot || {};
+      var r = state.run || {};
+      var isRunning = r.status === 'running';
+      var app = document.getElementById('app');
+
+      var sparkBars = state.rpsHistory.map(function(v) {
+        var max = Math.max.apply(null, state.rpsHistory.concat([1]));
+        var h = Math.max(2, (v / max) * 40);
+        return '<div class="sparkline-bar" style="height:' + h + 'px"></div>';
+      }).join('');
+
+      var targetUrl = (r.config && r.config.target_url) || 'http://localhost:8080/health';
+      var users = (r.config && r.config.users) || 10;
+      var duration = (r.config && r.config.duration_seconds) || 10;
+      var progress = r.progress || 0;
+      var elapsed = r.elapsed || '0s';
+
+      var historyRows = state.history.map(function(h) {
+        return '<tr><td>' + h.id + '</td><td>' + new Date(h.timestamp).toLocaleTimeString() + '</td><td>' + h.config.target_url + '</td><td>' + h.config.users + '</td><td>' + h.config.duration_seconds + 's</td><td>' + (h.result.rps || 0).toFixed(0) + '</td><td>' + (h.result.p50_latency || 0) + 'ms</td><td>' + (h.result.p99_latency || 0) + 'ms</td><td>' + (h.result.total_errors || 0) + '</td></tr>';
+      }).join('');
+
+      app.innerHTML =
+        '<div class="header">' +
+          '<h1>stress-strike Dashboard</h1>' +
+          '<span class="status status-' + r.status + '">' + (r.status || 'idle') + '</span>' +
+        '</div>' +
+        '<div class="controls">' +
+          '<input id="url" placeholder="Target URL" value="' + targetUrl + '" style="width:300px">' +
+          '<input id="users" type="number" placeholder="Users" value="' + users + '" style="width:80px">' +
+          '<input id="duration" type="number" placeholder="Seconds" value="' + duration + '" style="width:80px">' +
+          '<select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option><option>PATCH</option></select>' +
+          '<button class="btn btn-start" onclick="startRun()"' + (isRunning ? ' disabled' : '') + '>Start</button>' +
+          '<button class="btn btn-stop" onclick="stopRun()"' + (!isRunning ? ' disabled' : '') + '>Stop</button>' +
+        '</div>' +
+        '<div class="progress-bar"><div class="progress-fill" style="width:' + progress + '%"></div></div>' +
+        '<div class="grid">' +
+          '<div class="card">' +
+            '<div class="card-label">RPS</div>' +
+            '<div class="card-value green">' + (s.rps || 0).toFixed(0) + '</div>' +
+            '<div class="sparkline">' + sparkBars + '</div>' +
+          '</div>' +
+          '<div class="card">' +
+            '<div class="card-label">Latency P50 / P95 / P99</div>' +
+            '<div class="card-value blue">' + (s.p50_latency_ms || 0).toFixed(1) + ' / ' + (s.p95_latency_ms || 0).toFixed(1) + ' / ' + (s.p99_latency_ms || 0).toFixed(1) + ' ms</div>' +
+            '<div class="latency-dist">' +
+              '<span class="latency-label">P50</span>' +
+              '<div class="latency-bar-bg"><div class="latency-bar" style="width:' + Math.min(100, (s.p50_latency_ms || 0) / 2) + '%; background:#00aaff"></div></div>' +
+            '</div>' +
+            '<div class="latency-dist">' +
+              '<span class="latency-label">P95</span>' +
+              '<div class="latency-bar-bg"><div class="latency-bar" style="width:' + Math.min(100, (s.p95_latency_ms || 0) / 2) + '%; background:#ffaa00"></div></div>' +
+            '</div>' +
+            '<div class="latency-dist">' +
+              '<span class="latency-label">P99</span>' +
+              '<div class="latency-bar-bg"><div class="latency-bar" style="width:' + Math.min(100, (s.p99_latency_ms || 0) / 2) + '%; background:#ff4444"></div></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card">' +
+            '<div class="card-label">Error Rate</div>' +
+            '<div class="card-value ' + ((s.error_rate || 0) > 5 ? 'red' : 'green') + '">' + (s.error_rate || 0).toFixed(2) + '%</div>' +
+            '<div class="card-sub">' + (s.total_errors || 0).toLocaleString() + ' errors / ' + (s.total_requests || 0).toLocaleString() + ' total</div>' +
+          '</div>' +
+          '<div class="card">' +
+            '<div class="card-label">Active Users</div>' +
+            '<div class="card-value yellow">' + (s.active_users || 0) + '</div>' +
+            '<div class="card-sub">Elapsed: ' + elapsed + '</div>' +
+          '</div>' +
+        '</div>' +
+        (state.history.length > 0 ?
+          '<div class="chart-container">' +
+            '<div class="chart-title">Run History</div>' +
+            '<table class="workers-table">' +
+              '<tr><th>ID</th><th>Time</th><th>Target</th><th>Users</th><th>Duration</th><th>RPS</th><th>P50</th><th>P99</th><th>Errors</th></tr>' +
+              historyRows +
+            '</table>' +
+          '</div>' : '') +
+        '<div class="footer">stress-strike dashboard | WebSocket real-time monitoring</div>';
+    }
+
+    connect();
+    render();
+    setInterval(function() {
+      if (state.run && state.run.status === 'running') {
+        fetch(API + '/api/snapshot').then(function(r) { return r.json(); }).then(function(d) {
+          state.snapshot = d;
+          state.rpsHistory.push(d.rps || 0);
+          if (state.rpsHistory.length > 60) state.rpsHistory.shift();
+          render();
+        });
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

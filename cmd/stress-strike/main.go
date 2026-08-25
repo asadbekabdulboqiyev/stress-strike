@@ -51,8 +51,10 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
  USAGE
    stress-strike <command> [flags]
 
+═══════════════════════════════════════════════════════════════════════
  COMMANDS
-   run         HTTP/gRPC/WebSocket load test (default if no command)
+═══════════════════════════════════════════════════════════════════════
+   run         HTTP/gRPC/WebSocket load test (default)
    replay      Replay real traffic from PCAP/HAR captures
    scan        TLS/WAF deep scanner + fingerprinting
    dashboard   Real-time web dashboard with WebSocket
@@ -61,31 +63,145 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    help        Show this help
    version     Show version
 
+═══════════════════════════════════════════════════════════════════════
+ RUN FLAGS — Load Test
+═══════════════════════════════════════════════════════════════════════
+   --url string             Target URL (required if no --config)
+   --config string          YAML scenario file (alternative to --url)
+   --users int              Virtual users (default: 10)
+   --duration int           Test duration in seconds (default: 10)
+   --ramp-up int            Ramp-up time in seconds (default: 0)
+   --method string          HTTP method: GET, POST, PUT, DELETE, PATCH
+   --data string            Request body (JSON)
+   --header string          Header: -header "Key: Value" (repeatable)
+   --timeout int            Request timeout in seconds (default: 10)
+   --keep-alive             Reuse TCP connections (default: true)
+   --name string            Report name (default: "stress-test")
+
+   Load Profiles:
+   --profile string         steady|soak|linear-ramp|spike|wave|constant-rps
+   --target-rps int         Target RPS for constant-rps mode
+   --spike-users int        Spike peak users
+   --spike-warmup int       Spike warmup seconds
+   --spike-hold int         Spike hold seconds
+   --wave-period int        Wave period seconds
+
+   Performance:
+   --pre-warm               Pre-establish TCP connections before test
+   --pre-warm-conns int     Number of pre-warmed connections (default: users)
+   --quiet                  Suppress live progress bar
+
+   SLA Gate (CI/CD):
+   --expect-p99-ms float    Max P99 latency in ms (exit 2 if exceeded)
+   --expect-error-rate float Max error rate %% (exit 2 if exceeded)
+   --expect-min-rps float   Min RPS threshold (exit 2 if below)
+
+   Comparison:
+   --compare string         Baseline report JSON for comparison
+   --regress-pct float      Max regression %% before exit 2 (default: 20)
+
+   Output:
+   --timeline               Save per-second CSV timeline
+   --report-dir string      Report output directory (default: "reports")
+
+═══════════════════════════════════════════════════════════════════════
+ REPLAY FLAGS — Traffic Replay
+═══════════════════════════════════════════════════════════════════════
+   -input string            PCAP or HAR capture file (required)
+   -rate float              Speed multiplier: 1.0=realtime, 10.0=10x (default: 1.0)
+   -concurrency int         Parallel workers (default: 5)
+   -tls-key string          TLS private key for HTTPS decryption
+   -base-url string         Override target URL
+   -validate                Enable response assertions
+   -assert-status int       Expected HTTP status code
+   -assert-regex string     Expected response body regex
+   -output-json string      Save results to JSON file
+   -report-dir string       Report output directory
+
+   Filters:
+   -filter-methods string   Comma-separated HTTP methods to include
+   -filter-urls string      URL pattern (regex)
+   -filter-min-status int   Min status code
+   -filter-max-status int   Max status code
+
+═══════════════════════════════════════════════════════════════════════
+ SCAN FLAGS — Security Scanner
+═══════════════════════════════════════════════════════════════════════
+   -target string           Target host:port (required)
+   -tls                     Run TLS scanner
+   -waf                     Run WAF detection
+   -http                    Run HTTP fingerprinting
+   -all                     Run all scanners
+   -json string             Save results to JSON file
+
+═══════════════════════════════════════════════════════════════════════
+ DASHBOARD FLAGS — Web Dashboard
+═══════════════════════════════════════════════════════════════════════
+   -listen string           Address to listen on (default: ":8888")
+
+═══════════════════════════════════════════════════════════════════════
+ MASTER FLAGS — Distributed Coordinator
+═══════════════════════════════════════════════════════════════════════
+   --workers string         Comma-separated worker addresses (required)
+   --url string             Target URL (required)
+   --users int              Total virtual users (default: 10)
+   --duration int           Test duration in seconds (default: 10)
+   --listen string          Master gRPC address (default: ":50051")
+   --compare string         Baseline report for comparison
+   --regress-pct float      Max regression %% (default: 20)
+
+═══════════════════════════════════════════════════════════════════════
+ WORKER FLAGS — Distributed Worker
+═══════════════════════════════════════════════════════════════════════
+   --listen string          Worker gRPC address (default: ":50052")
+
+═══════════════════════════════════════════════════════════════════════
  QUICK EXAMPLES
+═══════════════════════════════════════════════════════════════════════
 
-   # Simple load test
-   stress-strike run --url https://api.example.com --users 100 --duration 60
+  # Simple load test
+  stress-strike run --url https://api.example.com --users 100 --duration 60
 
-   # Load test with SLA gate
-   stress-strike run --url https://api.example.com --users 50 --duration 30 \
-     --expect-p99-ms 200 --expect-error-rate 1
+  # Constant RPS mode (1000 requests/sec)
+  stress-strike run --url https://api.example.com --target-rps 1000 --duration 30
 
-   # Replay production traffic at 10x speed
-   stress-strike replay -input traffic.har -rate 10x -concurrency 20
+  # Pre-warm connections (zero handshake overhead)
+  stress-strike run --url https://api.example.com --users 100 --pre-warm
 
-   # Scan a server for security issues
-   stress-strike scan -target example.com -all
+  # SLA gate for CI/CD (exit code 2 on failure)
+  stress-strike run --url https://api.example.com --users 50 --duration 30 \
+    --expect-p99-ms 200 --expect-error-rate 1
 
-   # Start web dashboard
-   stress-strike dashboard -listen :8888
+  # Compare with baseline (detect regressions)
+  stress-strike run --url https://api.example.com --users 50 --duration 30 \
+    --compare reports/baseline.json --regress-pct 20
 
-   # Distributed load test
-   stress-strike master --workers host1:50052,host2:50052 --url URL --users 1000
-   stress-strike worker --listen :50052
+  # Replay production traffic at 10x speed
+  stress-strike replay -input traffic.har -rate 10x -concurrency 20
 
-   # Use a YAML scenario file
-   stress-strike run --config scenario.yaml
+  # Scan server security
+  stress-strike scan -target example.com -all
 
- WARNING: Only run against systems you own or have explicit permission to test.
+  # Start web dashboard
+  stress-strike dashboard -listen :8888
+
+  # Distributed load test
+  stress-strike master --workers host1:50052,host2:50052 --url URL --users 1000
+  stress-strike worker --listen :50052
+
+  # YAML scenario file
+  stress-strike run --config examples/login-flow.yaml
+
+  # Spike test
+  stress-strike run --url https://api.example.com --users 100 --duration 60 \
+    --profile spike --spike-users 500 --spike-warmup 10 --spike-hold 20
+
+  # Quiet mode (no progress bar, for scripts)
+  stress-strike run --url https://api.example.com --users 100 --duration 60 --quiet
+
+═══════════════════════════════════════════════════════════════════════
+ WARNING: Only test systems you own or have explicit permission to test.
+          Unauthorized load testing is illegal.
+═══════════════════════════════════════════════════════════════════════
 `, version)
 }

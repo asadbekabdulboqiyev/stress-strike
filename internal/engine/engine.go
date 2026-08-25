@@ -162,11 +162,12 @@ func New(scenario *config.Scenario) (*Engine, error) {
 
 	// For constant-rps mode, the token bucket starts at rate 0 and is
 	// dynamically updated by the controller during ramp-up.
+	// For other profiles a non-positive RPS means unlimited throughput:
+	// no limiter is installed so workers never block on the bucket.
 	var limiter *tokenBucket
-	if crps, ok := profile.(*constantRPSProfile); ok {
+	if _, ok := profile.(*constantRPSProfile); ok {
 		limiter = newTokenBucket(0)
-		_ = crps // used in Run for ramp calculation
-	} else {
+	} else if scenario.Profile.RPS > 0 {
 		limiter = newTokenBucket(scenario.Profile.RPS)
 	}
 
@@ -290,7 +291,9 @@ func (e *Engine) preWarmConnections(count int) {
 		}
 	}
 	ring.clients = active
-	e.prewarmed = *ring
+	// Install only the client slice: assigning the whole struct would copy
+	// the atomic counter inside prewarmRing (a lock value).
+	e.prewarmed.clients = ring.clients
 }
 
 func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, error) {

@@ -20,6 +20,7 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 
 - **Multi-protocol** — HTTP/HTTPS, WebSocket, gRPC, TCP, UDP from a single scenario
 - **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, `wave`
+- **1-click pentest** — full security assessment: recon, vuln scan, CVE detection, OWASP Top 10, client-ready PDF report
 - **PCAP/HAR replay** — replay real captured traffic at 1x–100x speed
 - **TLS/WAF scanner** — deep cipher suite analysis, WAF fingerprinting, security headers audit
 - **Real-time web dashboard** — live RPS, latency, error charts via WebSocket
@@ -83,11 +84,54 @@ stress-strike <command> [flags]
 | Command | Description |
 |---------|-------------|
 | `run` | HTTP/gRPC/WebSocket/TCP/UDP load test (default) |
+| `pentest` | 1-click professional security assessment |
 | `replay` | Replay real traffic from PCAP/HAR captures |
 | `scan` | TLS/WAF deep scanner + fingerprinting |
 | `dashboard` | Real-time web dashboard with WebSocket |
 | `master` | Distributed mode — master coordinator |
 | `worker` | Distributed mode — worker node |
+
+### `stress-strike pentest`
+
+Full security assessment in one command — 11 automated phases:
+
+```bash
+# Standard assessment (all report formats)
+stress-strike pentest --target https://example.com
+
+# Deep scan, verbose output, PDF only
+stress-strike pentest --target example.com --depth 3 --verbose --format pdf
+
+# Web-only scope, skip the load test phase
+stress-strike pentest --target https://example.com --scope web --skip-load-test
+```
+
+Phases: technology fingerprint → port scan → subdomain discovery → security
+headers → TLS configuration → WAF detection → vulnerability scan (SQLi, XSS,
+traversal, open redirect, default credentials, CORS, API security, cookies,
+info disclosure) → CVE detection (90+ known CVEs with CVSS/CWE/PoC) → OWASP
+Top 10 → load probe → reports.
+
+Output (default `--format all`) in `reports/pentest-{target}-{ts}/`:
+`pentest.html`, `pentest.json`, `pentest.md` plus client-ready
+`pentest-professional.pdf` (cover page, executive summary, risk gauge,
+detailed findings, OWASP matrix, timeline, disclaimer). Exit codes: `2`
+critical/high findings, `1` medium, `0` clean — CI/CD friendly.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--target` | | Target URL or domain (required) |
+| `--depth` | `2` | Scan depth: 1=quick, 2=standard, 3=deep |
+| `--format` | `all` | `html`, `json`, `markdown`, `pdf`, `professional`, `all` |
+| `--scope` | `full` | `full`, `web`, `network` |
+| `--threads` | `10` | Parallel threads |
+| `--timeout` | `10` | Request timeout (seconds) |
+| `--skip-load-test` | `false` | Skip the load probe phase |
+| `--output` | auto | Output directory |
+| `--verbose` | `false` | Detailed findings in terminal |
+
+> **Ethical use:** only run against systems you own or have written
+> authorization to test.
 
 ### `stress-strike run`
 

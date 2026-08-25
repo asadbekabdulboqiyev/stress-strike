@@ -31,6 +31,9 @@ func main() {
 		case "worker":
 			cmdWorker()
 			return
+		case "pentest":
+			cmdPentest()
+			return
 		case "help", "--help", "-h":
 			printFullHelp()
 			return
@@ -60,6 +63,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    dashboard   Real-time web dashboard with WebSocket
    master      Distributed mode — master coordinator
    worker      Distributed mode — worker node
+   pentest     1-click professional security assessment
    help        Show this help
    version     Show version
 
@@ -156,6 +160,20 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    --listen string          Worker gRPC address (default: ":50052")
 
 ═══════════════════════════════════════════════════════════════════════
+ PENTEST FLAGS — 1-Click Security Assessment
+═══════════════════════════════════════════════════════════════════════
+   --target string        Target URL or domain (required)
+   --depth int            Scan depth: 1=quick, 2=standard, 3=deep (default: 2)
+   --output string        Output directory (default: reports/pentest-{target}-{ts})
+   --format string        Report format: html,json,markdown,pdf,professional,all
+                          (pdf=client-ready PDF, professional=PDF+HTML+MD) (default: all)
+   --scope string         Scope: full,web,network (default: full)
+   --threads int          Parallel threads (default: 10)
+   --timeout int          Request timeout in seconds (default: 10)
+   --skip-load-test       Skip load testing phase
+   --verbose              Show detailed progress
+
+══════════════════════════════════════════════════════════════════════
  QUICK EXAMPLES
 ═══════════════════════════════════════════════════════════════════════
 
@@ -195,6 +213,9 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
   # Spike test
   stress-strike run --url https://api.example.com --users 100 --duration 60 \
     --profile spike --spike-users 500 --spike-warmup 10 --spike-hold 20
+
+  # 1-click security assessment
+  stress-strike pentest --target https://example.com --depth 2 --verbose
 
   # Quiet mode (no progress bar, for scripts)
   stress-strike run --url https://api.example.com --users 100 --duration 60 --quiet

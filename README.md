@@ -93,30 +93,44 @@ stress-strike <command> [flags]
 
 ### `stress-strike pentest`
 
-Full security assessment in one command — 11 automated phases:
+Full security assessment in one command — 14 automated phases:
 
 ```bash
-# Standard assessment (all report formats)
+# Standard assessment (crawl + NVD + compliance, all report formats)
 stress-strike pentest --target https://example.com
 
-# Deep scan, verbose output, PDF only
-stress-strike pentest --target example.com --depth 3 --verbose --format pdf
+# Authenticated scan behind login (where 80% of vulnerabilities live)
+stress-strike pentest --target https://app.example.com \
+  --auth-form https://app.example.com/login \
+  --auth-user admin --auth-pass 'S3cret'
 
-# Web-only scope, skip the load test phase
-stress-strike pentest --target https://example.com --scope web --skip-load-test
+# Session cookie / API token auth
+stress-strike pentest --target https://app.example.com --auth-cookie 'session=abc123'
+stress-strike pentest --target https://api.example.com --auth-header 'Authorization: Bearer eyJ...'
+
+# Deep scan, verbose, PDF only, PCI DSS only
+stress-strike pentest --target example.com --depth 3 --verbose --format pdf --compliance pci-dss
+
+# Web-only scope, no crawling, skip load test
+stress-strike pentest --target https://example.com --crawl=false --skip-load-test
 ```
 
-Phases: technology fingerprint → port scan → subdomain discovery → security
-headers → TLS configuration → WAF detection → vulnerability scan (SQLi, XSS,
+Phases: technology fingerprint → port scan → subdomain discovery →
+**authentication** → **attack-surface crawl** (endpoints + forms) → security
+headers → TLS → WAF detection → **deep vulnerability scan** (SQLi, XSS,
 traversal, open redirect, default credentials, CORS, API security, cookies,
-info disclosure) → CVE detection (90+ known CVEs with CVSS/CWE/PoC) → OWASP
-Top 10 → load probe → reports.
+info disclosure — across crawled endpoints, with **confidence verification**:
+`[VERIFIED]` / `[PROBABLE]` / `[UNVERIFIED]`) → **CVE detection** (90+
+signatures + **live NVD**, 240K+ CVEs, cached) → OWASP Top 10 →
+**compliance mapping** (PCI DSS v4.0, SOC 2, ISO 27001:2022) → load probe →
+reports.
 
 Output (default `--format all`) in `reports/pentest-{target}-{ts}/`:
 `pentest.html`, `pentest.json`, `pentest.md` plus client-ready
 `pentest-professional.pdf` (cover page, executive summary, risk gauge,
-detailed findings, OWASP matrix, timeline, disclaimer). Exit codes: `2`
-critical/high findings, `1` medium, `0` clean — CI/CD friendly.
+detailed findings, OWASP matrix, **compliance impact**, timeline,
+disclaimer). Exit codes: `2` critical/high findings, `1` medium, `0` clean —
+CI/CD friendly.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -127,6 +141,14 @@ critical/high findings, `1` medium, `0` clean — CI/CD friendly.
 | `--threads` | `10` | Parallel threads |
 | `--timeout` | `10` | Request timeout (seconds) |
 | `--skip-load-test` | `false` | Skip the load probe phase |
+| `--crawl` | `true` | Discover endpoints/forms by crawling |
+| `--max-pages` | `50` | Crawl page limit |
+| `--auth-form` | | Login URL for authenticated scanning |
+| `--auth-user` / `--auth-pass` | | Credentials for form login |
+| `--auth-cookie` | | Raw cookie header (session auth) |
+| `--auth-header` | | Static header, e.g. `Authorization: Bearer x` |
+| `--nvd` | `true` | Live NVD lookup (240K+ CVEs; `NVD_API_KEY` env raises rate limit) |
+| `--compliance` | all three | `pci-dss,soc2,iso27001` or `none` |
 | `--output` | auto | Output directory |
 | `--verbose` | `false` | Detailed findings in terminal |
 

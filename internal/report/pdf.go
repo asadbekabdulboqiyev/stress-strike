@@ -39,6 +39,8 @@ type PentestReport struct {
 
 	ScanDuration    time.Duration
 	OWASPCompliance map[string]bool
+
+	Compliance []ComplianceResult
 }
 
 // PentestFinding is a detailed vulnerability finding.
@@ -405,6 +407,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
 		b.WriteString(`</tbody></table></div>`)
 	}
 
+	// ── Compliance Impact ──
+	if report.Compliance != nil && len(report.Compliance) > 0 {
+		complianceHTML(&b, report.Compliance)
+	}
+
 	// ── Timeline ──
 	b.WriteString(`<div class="section" id="timeline"><h2>Timeline</h2>`)
 	b.WriteString(`<ul class="scope-list">`)
@@ -609,7 +616,8 @@ func GenerateMarkdown(report *PentestReport) []byte {
 		}
 		if f.Evidence != "" {
 			b.WriteString("**Evidence:**\n\n```\n")
-			b.WriteString(f.Evidence)
+			// Strip backticks so a hostile target cannot break out of the code fence.
+			b.WriteString(strings.ReplaceAll(f.Evidence, "`", "'"))
 			b.WriteString("\n```\n\n")
 		}
 		if f.Impact != "" {
@@ -643,6 +651,10 @@ func GenerateMarkdown(report *PentestReport) []byte {
 			fmt.Fprintf(&b, "| %s | %s |\n", cat, status)
 		}
 		b.WriteString("\n")
+	}
+
+	if report.Compliance != nil && len(report.Compliance) > 0 {
+		complianceMarkdown(&b, report.Compliance)
 	}
 
 	b.WriteString("## Timeline\n\n")

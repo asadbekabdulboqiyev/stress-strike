@@ -542,6 +542,10 @@ func GeneratePDF(report *PentestReport) []byte {
 		}
 	}
 
+	if r.Compliance != nil && len(r.Compliance) > 0 {
+		pdfCompliance(d, r.Compliance)
+	}
+
 	d.heading("Timeline")
 	d.kvWrap("Assessment Start", r.AssessmentDate.Format("02 Jan 2006 15:04 MST"), 9.5, 0)
 	d.kvWrap("Assessment End", r.AssessmentDate.Add(r.ScanDuration).Format("02 Jan 2006 15:04 MST"), 9.5, 0)

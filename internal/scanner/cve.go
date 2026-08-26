@@ -38,6 +38,7 @@ type CVEMatch struct {
 	Remediation string     `json:"remediation"`
 	PoC         ExploitPoC `json:"poc,omitempty"`
 	References  []string   `json:"references,omitempty"`
+	Source      string     `json:"source,omitempty"` // "signature" | "nvd"
 }
 
 // CVEFinding is an alias for CVEMatch (used in tests)

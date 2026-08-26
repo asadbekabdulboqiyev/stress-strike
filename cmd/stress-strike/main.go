@@ -160,7 +160,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    --listen string          Worker gRPC address (default: ":50052")
 
 ═══════════════════════════════════════════════════════════════════════
- PENTEST FLAGS — 1-Click Security Assessment
+ PENTEST FLAGS — 1-Click Security Assessment (14 phases)
 ═══════════════════════════════════════════════════════════════════════
    --target string        Target URL or domain (required)
    --depth int            Scan depth: 1=quick, 2=standard, 3=deep (default: 2)
@@ -172,6 +172,21 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    --timeout int          Request timeout in seconds (default: 10)
    --skip-load-test       Skip load testing phase
    --verbose              Show detailed progress
+
+ AUTHENTICATED SCANNING — test behind login (where most bugs live)
+   --auth-form URL        Form login URL, e.g. https://site.com/login
+   --auth-user string     Login username
+   --auth-pass string     Login password
+   --auth-user-field      Username field name (default: username)
+   --auth-pass-field      Password field name (default: password)
+   --auth-cookie string   Raw cookie header instead of form login
+   --auth-header string   Static header 'Name: Value' (e.g. Authorization: Bearer x)
+
+ ATTACK SURFACE & INTEL
+   --crawl                Crawl target to discover endpoints/forms (default: true)
+   --max-pages int        Max pages to crawl (default: 50)
+   --nvd                  Query live NVD database, 240K+ CVEs (default: true)
+   --compliance string    Frameworks: pci-dss,soc2,iso27001,none (default: all three)
 
 ══════════════════════════════════════════════════════════════════════
  QUICK EXAMPLES

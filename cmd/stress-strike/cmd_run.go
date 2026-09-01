@@ -29,36 +29,38 @@ func (h headerFlags) Set(value string) error {
 
 func cmdRun() {
 	var (
-		configPath      string
-		url             string
-		method          string
-		data            string
-		headers         = headerFlags{}
-		name            string
-		profile         string
-		users           int
-		duration        int
-		rampUp          int
-		spikeUsers      int
-		spikeWarmup     int
-		spikeHold       int
-		wavePeriod      int
-		rps             int
-		timeout         int
-		keepAlive       bool
-		quiet           bool
-		reportDir       string
-		showVersion     bool
-		expectP99       float64
-		expectAvg       float64
-		expectErrRate   float64
-		expectMinRPS    float64
-		comparePath     string
-		regressPct      float64
-		timelineCSV     bool
-		preWarm         bool
-		preWarmConns    int
-		targetRPS       int
+		configPath    string
+		url           string
+		method        string
+		data          string
+		headers       = headerFlags{}
+		name          string
+		profile       string
+		users         int
+		duration      int
+		rampUp        int
+		spikeUsers    int
+		spikeWarmup   int
+		spikeHold     int
+		wavePeriod    int
+		rps           int
+		timeout       int
+		keepAlive     bool
+		quiet         bool
+		reportDir     string
+		showVersion   bool
+		expectP99     float64
+		expectAvg     float64
+		expectErrRate float64
+		expectMinRPS  float64
+		comparePath   string
+		regressPct    float64
+		timelineCSV   bool
+		preWarm       bool
+		preWarmConns  int
+		targetRPS     int
+		mode          string
+		dashListen    string
 	)
 
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
@@ -93,6 +95,8 @@ func cmdRun() {
 	fs.BoolVar(&quiet, "quiet", false, "disable live progress")
 	fs.StringVar(&reportDir, "report-dir", "./reports", "report output directory")
 	fs.BoolVar(&showVersion, "version", false, "print version")
+	fs.StringVar(&mode, "mode", "cli", "output mode: cli (terminal report) | dashboard (real-time web dashboard)")
+	fs.StringVar(&dashListen, "listen", ":8888", "dashboard listen address (with --mode dashboard)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
@@ -160,6 +164,19 @@ func cmdRun() {
 	}
 	if !sla.Empty() {
 		scenario.SLA = sla
+	}
+
+	// Validate mode
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode != "cli" && mode != "dashboard" {
+		fatal(fmt.Errorf("invalid --mode %q: must be 'cli' or 'dashboard'", mode))
+	}
+
+	// Dashboard mode: open the real-time WebSocket dashboard and drive the
+	// real load engine from the browser. No terminal report is printed.
+	if mode == "dashboard" {
+		runWithDashboard(scenario, dashListen, reportDir)
+		return
 	}
 
 	if preWarm {
@@ -290,7 +307,6 @@ func targetDisplay(scenario *config.Scenario) string {
 	}
 	return "n/a"
 }
-
 
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)

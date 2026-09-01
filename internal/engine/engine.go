@@ -113,6 +113,14 @@ func (w *loadWorker) Run(runCtx, reqBase context.Context, index int) {
 	}
 }
 
+// Telemetry returns the live telemetry for the current run, or nil if no run
+// is in progress. Safe for concurrent reads from the dashboard.
+func (e *Engine) Telemetry() *metrics.Telemetry {
+	e.teleMu.RLock()
+	defer e.teleMu.RUnlock()
+	return e.telemetry
+}
+
 type Engine struct {
 	scenario  *config.Scenario
 	profile   LoadProfile
@@ -125,6 +133,7 @@ type Engine struct {
 	signal    *broadcast
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
+	teleMu    sync.RWMutex
 	targetRPS atomic.Int64
 	progress  *ProgressTracker
 
@@ -308,7 +317,9 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	runCtx, runCancel := context.WithTimeout(ctx, e.profile.Duration())
 	defer runCancel()
 
+	e.teleMu.Lock()
 	e.telemetry = metrics.NewTelemetry()
+	e.teleMu.Unlock()
 	for _, st := range e.stepStats {
 		e.telemetry.AddStep(st)
 	}

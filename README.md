@@ -8,7 +8,7 @@
 ```
 
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 [![Version](https://img.shields.io/badge/Version-0.9.0-green.svg)]()
 
@@ -791,7 +791,11 @@ docker run --rm --cpus=2 --memory=512m \
 
 ## License
 
-[MIT](LICENSE) -- Asadbek Abdulboqiyev
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) -- Asadbek Abdulboqiyev
+
+AGPL-3.0 is a strong copyleft license: if you run a modified/stripped version
+of stress-strike as a network service, you must make your modifications'
+source code available to its users. See [LICENSE](LICENSE) for full terms.
 
 ---
 

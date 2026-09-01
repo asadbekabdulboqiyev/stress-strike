@@ -40,7 +40,7 @@ ARG VERSION=0.9.0
 LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
       org.opencontainers.image.vendor="stress-strike"
 
 # CA certs for HTTPS targets; libpcap for replay at runtime; non-root user.

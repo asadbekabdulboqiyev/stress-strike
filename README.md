@@ -36,22 +36,48 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 
 ## Quick Start
 
-### Install
+### Install (one command)
+
+> By default `stress-strike` installs from the module proxy. Requires **Go 1.26+**.
+> The `replay` binary additionally needs `libpcap` (see note below).
 
 ```sh
+# Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+
+# Or use the convenience installer
+curl -fsSL https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh | bash
 ```
 
-### Your first test
+If `stress-strike` isn't found after installing, add Go's bin directory to your `PATH`:
 
 ```sh
-# Run the binary with no arguments in a terminal → interactive workspace picker
-# (choose "CLI" for a terminal report, or "Web Server" for the real-time dashboard).
-stress-strike
+export PATH="$PATH:$(go env GOPATH)/bin"
+```
 
-# 200 concurrent users hitting /health for 30 seconds
+> **libpcap note:** `stress-strike play`/`replay` needs `libpcap` (CGO). On macOS:
+> `brew install libpcap`. The rest of the suite is pure Go and works without it.
+
+### Your first test in 60 seconds
+
+Use the bundled demo server so you never have to point a generator at a real
+service to try it out — there is nothing to break:
+
+```sh
+# Terminal 1 — start a local demo target (health, auth, slow, and failing endpoints)
+go run github.com/asadbekabdulboqiyev/stress-strike/examples/demo_server.go
+
+# Terminal 2 — 200 concurrent users hitting /health for 30 seconds
 stress-strike run --url http://localhost:8080/health --users 200 --duration 30
+```
 
+You get a live progress bar, then a terminal report with RPS, latency
+distribution, and error counts. Want a prettier view? Press `Ctrl+C` and run
+again with `--mode dashboard`, then open http://localhost:8888 and hit **Start**.
+
+### Load profiles that matter
+
+```sh
 # Ramp to 1000 users over 30s, hold for 60s, capped at 2000 rps
 stress-strike run --url https://api.example.com --profile linear-ramp \
   --users 1000 --duration 90 --ramp-up 30 --rps 2000
@@ -67,6 +93,10 @@ stress-strike run --url https://api.example.com --profile soak \
 # Sinusoidal wave with 60s oscillation period
 stress-strike run --url https://api.example.com --profile wave \
   --users 1000 --duration 180 --wave-period 60
+
+# CI/CD gate — fail (exit 2) if P99 > 200ms or error rate > 1%
+stress-strike run --url https://api.example.com --users 50 --duration 30 \
+  --expect-p99-ms 200 --expect-error-rate 1
 ```
 
 ### Build from source
@@ -74,7 +104,16 @@ stress-strike run --url https://api.example.com --profile wave \
 ```sh
 git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
 cd stress-strike
-make build          # produces bin/stress-strike + bin/demo-server
+make build          # produces bin/stress-strike + all sibling binaries
+make test           # run the full suite with the race detector
+```
+
+When working from the clone (e.g. before a version is published), start the
+demo target locally and run a test against it:
+
+```sh
+go run ./examples/demo_server.go          # terminal 1 — local demo target
+go run ./cmd/stress-strike run --url http://localhost:8080/health --users 100 --duration 20
 ```
 
 ---

@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.4.0-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.9.0-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -45,6 +45,10 @@ go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 ### Your first test
 
 ```sh
+# Run the binary with no arguments in a terminal → interactive workspace picker
+# (choose "CLI" for a terminal report, or "Web Server" for the real-time dashboard).
+stress-strike
+
 # 200 concurrent users hitting /health for 30 seconds
 stress-strike run --url http://localhost:8080/health --users 200 --duration 30
 
@@ -713,7 +717,7 @@ cd stress-strike
 | `make bench` | Run benchmarks |
 | `make clean` | Remove build artifacts |
 | `make install` | Install into `PATH` |
-| `make release VERSION=0.4.0` | Cross-compile all platforms into `./dist` |
+| `make release VERSION=0.9.0` | Cross-compile all platforms into `./dist` |
 
 ### Cross-compilation
 

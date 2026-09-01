@@ -10,7 +10,7 @@
 #   make run         Build and run demo server
 #   make help        List all targets
 
-VERSION ?= 0.4.0
+VERSION ?= 0.9.0
 
 GO      ?= go
 GOFLAGS ?=
@@ -19,7 +19,7 @@ DIST_DIR := dist
 
 .PHONY: build
 build: ## Build all binaries into ./bin
-	./scripts/build-all.sh
+	./scripts/build-all.sh $(VERSION)
 
 .PHONY: test
 test: ## Run the full test suite with the race detector
@@ -52,6 +52,24 @@ docker: ## Build Docker image
 	docker build --build-arg VERSION=$(VERSION) -t stress-strike:$(VERSION) .
 	docker tag stress-strike:$(VERSION) stress-strike:latest
 	@echo "docker image built: stress-strike:$(VERSION)"
+
+.PHONY: coverage
+coverage: ## Run tests with coverage report
+	$(GO) test -coverprofile=coverage.out ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	$(GO) tool cover -func=coverage.out | tail -1
+
+.PHONY: bench
+bench: ## Run all benchmarks
+	$(GO) test -bench=. -benchmem ./...
+
+.PHONY: install
+install: ## Build and install stress-strike into PATH
+	$(GO) build -ldflags="-s -w -X main.version=$(VERSION)" -o $(GOBIN)/stress-strike ./cmd/stress-strike
+
+.PHONY: version
+version: ## Print the current version
+	@echo "stress-strike v$(VERSION)"
 
 .PHONY: run
 run: build ## Build and run the demo server

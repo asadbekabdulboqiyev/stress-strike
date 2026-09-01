@@ -4,9 +4,9 @@
 # Stage 1 — builder: compile all 6 binaries.
 #   replay requires CGO + libpcap (gopacket/pcap); everything else is pure Go.
 ###############################################################################
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
-ARG VERSION=0.2.0
+ARG VERSION=0.9.0
 
 # Build deps for CGO (replay binary needs libpcap for gopacket/pcap).
 RUN apk add --no-cache build-base libpcap-dev
@@ -21,21 +21,21 @@ RUN go mod download
 COPY . .
 
 # Build the 5 pure-Go binaries (no CGO needed).
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/stress-strike           ./cmd/stress-strike && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/stress-strike-dashboard ./cmd/stress-strike-dashboard && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/stress-strike-master    ./cmd/stress-strike-master && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/stress-strike-worker    ./cmd/stress-strike-worker && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/stress-strike-scan      ./cmd/stress-strike-scan
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike           ./cmd/stress-strike && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-dashboard ./cmd/stress-strike-dashboard && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-master    ./cmd/stress-strike-master && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-worker    ./cmd/stress-strike-worker && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-scan      ./cmd/stress-strike-scan
 
 # Build replay with CGO (needs libpcap for gopacket/pcap).
-RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o /out/stress-strike-replay ./cmd/stress-strike-replay
+RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-replay ./cmd/stress-strike-replay
 
 ###############################################################################
 # Stage 2 — runtime: minimal Alpine image with all binaries.
 ###############################################################################
 FROM alpine:latest
 
-ARG VERSION=0.2.0
+ARG VERSION=0.9.0
 
 LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \

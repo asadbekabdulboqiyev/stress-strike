@@ -160,20 +160,20 @@ func (c *Capture) ExportJSON(w io.Writer) error {
 // --- TLS Helpers ------------------------------------------------------------
 
 func TLSConfigFromKeys(keys []*TLSKey, skipVerify bool) *tls.Config {
-	if len(keys) == 0 {
-		return &tls.Config{InsecureSkipVerify: skipVerify}
-	}
-	certs := make([]tls.Certificate, 0, len(keys))
-	for _, k := range keys {
-		if k.Key != nil {
-			certs = append(certs, *k.Key)
-		}
-	}
-	return &tls.Config{
-		Certificates:       certs,
+	cfg := &tls.Config{
 		InsecureSkipVerify: skipVerify,
 		MinVersion:         tls.VersionTLS12,
 	}
+	if len(keys) > 0 {
+		certs := make([]tls.Certificate, 0, len(keys))
+		for _, k := range keys {
+			if k.Key != nil {
+				certs = append(certs, *k.Key)
+			}
+		}
+		cfg.Certificates = certs
+	}
+	return cfg
 }
 
 // --- Filtering Helpers ------------------------------------------------------

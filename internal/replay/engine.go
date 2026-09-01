@@ -32,11 +32,10 @@ type ReplayWorker struct {
 
 // NewReplayWorker creates a new replay worker
 func NewReplayWorker(id int, config *ReplayConfig, capture *Capture, packets []*Packet) *ReplayWorker {
-	tlsCfg := &tls.Config{
-		InsecureSkipVerify: config.SkipTLSVerify,
-	}
-	if len(config.TLSKeys) > 0 {
-		tlsCfg = TLSConfigFromKeys(config.TLSKeys, config.SkipTLSVerify)
+	// Build a TLS config that always enforces a safe minimum TLS version.
+	tlsCfg := TLSConfigFromKeys(config.TLSKeys, config.SkipTLSVerify)
+	if len(config.TLSKeys) == 0 {
+		tlsCfg.MinVersion = tls.VersionTLS12
 	}
 
 	transport := &http.Transport{

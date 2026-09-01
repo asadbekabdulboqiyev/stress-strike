@@ -150,6 +150,16 @@ Examples:
 	fmt.Println("║  stress-strike replay — Loading capture...                   ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 
+	// Security notice: warn loudly when certificate verification is disabled.
+	if *skipTLS {
+		fmt.Println()
+		fmt.Println("  ⚠  TLS certificate verification DISABLED (--skip-tls-verify).")
+		fmt.Println("     Connection is vulnerable to MITM attacks — only use this")
+		fmt.Println("     when replaying captures through a trusted MITM proxy or")
+		fmt.Println("     against hosts with self-signed certificates you control.")
+		fmt.Println()
+	}
+
 	switch ext {
 	case ".har":
 		fmt.Printf("  Loading HAR: %s\n", *inputFile)

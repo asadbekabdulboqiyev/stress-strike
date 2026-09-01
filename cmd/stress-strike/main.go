@@ -5,7 +5,12 @@ import (
 	"os"
 )
 
-const version = "0.4.0"
+// version is overridden at build time via:
+//
+//	go build -ldflags "-X main.version=0.9.0"
+//
+// The default mirrors the latest release tag.
+var version = "0.9.0"
 
 func main() {
 	// Check for subcommands
@@ -43,7 +48,12 @@ func main() {
 		}
 	}
 
-	// Default: run (backwards compatible with old flag syntax)
+	// No subcommand: if a TTY is attached, show the interactive mode picker
+	// (CLI vs Web Server). Otherwise fall back to run for script/CI usage.
+	if isInteractiveTerminal() {
+		interactivePicker()
+		return
+	}
 	cmdRun()
 }
 
@@ -107,6 +117,10 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    Output:
    --timeline               Save per-second CSV timeline
    --report-dir string      Report output directory (default: "reports")
+
+   Mode:
+   --mode string            cli (terminal report, default) | dashboard (real-time web)
+   --listen string          Dashboard listen address, e.g. :8888 (with --mode dashboard)
 
 ═══════════════════════════════════════════════════════════════════════
  REPLAY FLAGS — Traffic Replay
@@ -234,6 +248,9 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
 
   # Quiet mode (no progress bar, for scripts)
   stress-strike run --url https://api.example.com --users 100 --duration 60 --quiet
+
+  # Real-time web dashboard output (open browser, press Start)
+  stress-strike run --url https://api.example.com --users 100 --duration 60 --mode dashboard
 
 ═══════════════════════════════════════════════════════════════════════
  WARNING: Only test systems you own or have explicit permission to test.

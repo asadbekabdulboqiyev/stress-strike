@@ -12,12 +12,17 @@
 #     stress-strike-dashboard
 #
 # Usage:
-#   ./scripts/build-all.sh
+#   ./scripts/build-all.sh [VERSION]
+#
+# VERSION defaults to 0.9.0 and is injected into each binary at build time.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${REPO_ROOT}/bin"
+
+VERSION="${1:-0.9.0}"
+LDFLAGS="-s -w -X main.version=${VERSION}"
 
 BINARIES=(
   "stress-strike:./cmd/stress-strike"
@@ -48,7 +53,7 @@ for entry in "${BINARIES[@]}"; do
 
   # replay binary needs CGO for gopacket/pcap — try CGO=1 first, skip on failure
   if [ "${name}" = "stress-strike-replay" ]; then
-    if CGO_ENABLED=1 go build -trimpath -buildvcs=false -o "${out}" "${pkg}" 2>/dev/null; then
+    if CGO_ENABLED=1 go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${out}" "${pkg}" 2>/dev/null; then
       echo "  ${name} (cgo)"
       built=$((built + 1))
     else
@@ -61,7 +66,7 @@ for entry in "${BINARIES[@]}"; do
   echo "  ${name}"
   (
     cd "${REPO_ROOT}"
-    CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "${out}" "${pkg}"
+    CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${out}" "${pkg}"
   )
   built=$((built + 1))
 done

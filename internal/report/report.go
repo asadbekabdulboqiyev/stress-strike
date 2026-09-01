@@ -45,6 +45,7 @@ type Report struct {
 	PreWarmTime   time.Duration            `json:"pre_warm_time,omitempty"`
 	Status        map[int]uint64           `json:"status_codes"`
 	Errors        map[string]uint64        `json:"errors"`
+	Gate          bool                     `json:"gate"`
 	Overall       StepReport               `json:"overall"`
 	Steps         []StepReport             `json:"steps"`
 	SLA           []SLAResult              `json:"sla,omitempty"`
@@ -113,6 +114,7 @@ func Build(t *metrics.Telemetry, scenario *config.Scenario) Report {
 		BaseURL:       target(scenario),
 		LoadProfile:   scenario.Profile.Type,
 		TargetRPS:     scenario.Profile.TargetRPS,
+		Gate:          scenario.Profile.Gate,
 		StartedAt:     t.Start,
 		EndedAt:       t.End,
 		Duration:      t.Elapsed(),
@@ -232,11 +234,15 @@ func (r Report) Render(w io.Writer) {
 
 	// ── Errors ──────────────────────────────────────────────────────────
 	if len(r.Errors) > 0 {
-		fmt.Fprintln(w, colorize(colorBold, c, "  ERRORS"))
+		fmt.Fprintln(w, colorize(colorBold, c, "  ERRORS (top first)"))
 		fmt.Fprintln(w, colorize(colorBold, c, "  ──────────────────────────────────────────────────────────────"))
-		for _, name := range metrics.SortedErrors(r.Errors) {
-			fmt.Fprintf(w, "    %s  %s\n",
-				colorize(colorRed, c, name), formatCount(r.Errors[name]))
+		for _, es := range metrics.TopErrors(r.Errors, 0) {
+			share := 0.0
+			if r.TotalErrors > 0 {
+				share = float64(es.Count) / float64(r.TotalErrors) * 100
+			}
+			fmt.Fprintf(w, "    %-18s %10s  %5.1f%%\n",
+				colorize(colorRed, c, es.Name), formatCount(es.Count), share)
 		}
 		fmt.Fprintln(w)
 	}
@@ -263,6 +269,9 @@ func (r Report) Render(w io.Writer) {
 	fmt.Fprintf(w, "    Requests/sec:    %s\n", formatRPS(r.RPS))
 	fmt.Fprintf(w, "    Latency range:   %s — %s\n", overall.Min, overall.Max)
 	fmt.Fprintf(w, "    Duration:        %s\n", r.Duration.Round(time.Millisecond))
+	if r.Gate {
+		fmt.Fprintln(w, colorize(colorYellow, c, "    Mode:            simultaneous strike (race window)"))
+	}
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w, sep)

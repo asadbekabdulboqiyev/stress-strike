@@ -57,6 +57,13 @@ func main() {
 	cmdRun()
 }
 
+// shouldFailGate reports whether the measured error rate should trip the SLA
+// gate. A threshold of 0 (or negative) disables the gate. The gate fails only
+// when the rate is strictly greater than the threshold.
+func shouldFailGate(ratePct, threshold float64) bool {
+	return threshold > 0 && ratePct > threshold
+}
+
 func printFullHelp() {
 	fmt.Fprintf(os.Stderr, `
 stress-strike v%s — Ultra-Fast Load Testing & Security Suite
@@ -202,7 +209,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    --nvd                  Query live NVD database, 240K+ CVEs (default: true)
    --compliance string    Frameworks: pci-dss,soc2,iso27001,none (default: all three)
 
-══════════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════
  QUICK EXAMPLES
 ═══════════════════════════════════════════════════════════════════════
 

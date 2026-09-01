@@ -18,8 +18,10 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 
 ## Features
 
-- **Multi-protocol** — HTTP/HTTPS, WebSocket, gRPC, TCP, UDP from a single scenario
-- **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, `wave`
+- **Multi-protocol** — HTTP/HTTPS, WebSocket (`ws://`/`wss://`), gRPC (`grpc://` plaintext / `grpcs://` TLS), TCP, and UDP from a single scenario file
+- **Scenario constructor** — YAML/JSON multi-step chains with variable extraction between steps (`POST /login` → extract token → `GET /profile` → `POST /cart`)
+- **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, `wave` (sinusoidal load oscillation)
+- **Assertions** — per-step pass/fail checks on status families (`2xx`), JSON paths, or regex matches; failures surface as `assert_failed` errors
 - **1-click pentest** — full security assessment: recon, vuln scan, CVE detection, OWASP Top 10, client-ready PDF report
 - **PCAP/HAR replay** — replay real captured traffic at 1x–100x speed
 - **TLS/WAF scanner** — deep cipher suite analysis, WAF fingerprinting, security headers audit
@@ -27,10 +29,19 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 - **Distributed mode** — master/worker architecture over gRPC for multi-machine load
 - **SLA gate** — CI/CD performance gate with exit code 2 on regression
 - **Baseline comparison** — delta reports against a previous run (RPS, p50/p95/p99, errors)
-- **YAML scenarios** — multi-step flows with variable extraction, assertions, and auth chains
 - **Go library API** — `import "stress-strike/api"` for embedding in programs and test suites
 - **Timeline CSV** — per-second export for Grafana, Jupyter, or spreadsheet analysis
-- **Connection pooling** — keep-alive, tuned transports, and graceful drain
+- **Global pacing** — optional `rps` cap via a thread-safe token bucket
+- **Real-time telemetry** — live progress bar (RPS, active users, errors, p50/p95/p99, top error types) and color-coded final report with per-step latency percentiles
+- **Connection pooling** — keep-alive + tuned `http.Transport` (`MaxIdleConnsPerHost`, idle timeouts) and graceful drain
+- **Race-condition strikes** — `--gate` parks every virtual user on a start barrier and fires ONE request per user the instant it opens, maximizing the chance of exploiting check-then-act windows (double-spend, coupon reuse, OTP races). For authorized bug-bounty targets only
+- **BEAST preset** — `--beast` (or wizard mode 3): 100k-user linear ramp with unlimited RPS over 300s, auto-tuned to find breaking points on systems you own or have written permission to test
+- **Warmup period** — `--warmup S` sends load for S seconds without counting it toward metrics, so percentiles reflect the warmed-up steady state
+- **JSON stdout** — `--json` prints the full machine-readable report for jq, CI gates, and dashboards
+- **Debug capture** — opt-in `--capture N` saves the first N raw responses (≤100, bodies ≤2KB each) to a private capture file for diagnosing what the target actually returns. Request credentials are never captured; off by default
+- **Payload pools** — `--pool FILE` loads one payload per line; `{{pool}}` gets a unique value per request
+- **Reports** — timestamped JSON and TXT files in `./reports/`, written with private (`0600`) permissions
+- **Safety rails** — concurrency caps, OS limit guard, sane defaults, and a legal notice on every run
 
 ---
 
@@ -738,6 +749,22 @@ if !res.SLAPassed {
 ## Build from Source
 
 Requires Go 1.26+.
+
+```
+[ CLI / API ] --> [ Engine (scheduler + workers) ] --> [ Target ]
+                        |                              (HTTP/WS/gRPC/TCP/UDP)
+                        v
+                  [ Telemetry --> Report (JSON/TXT) ]
+```
+
+- `cmd/stress-strike` — CLI entry point and flag parsing
+- `api` — stable, public Go library API
+- `internal/engine` — concurrency, load profiles, protocol clients, assertions, token-bucket pacing
+- `internal/config` — scenario model and validation
+- `internal/metrics` — lock-free histogram and telemetry
+- `internal/report` — live progress bar and JSON/TXT reporting
+
+The `internal/engine` package is designed to later split into standalone **Worker Nodes**; `internal/report` + CLI logic maps to a future **Master Controller**.
 
 ```sh
 git clone https://github.com/asadbekabdulboqiyev/stress-strike.git

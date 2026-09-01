@@ -27,6 +27,7 @@ type Profile struct {
 	Type            string `yaml:"type" json:"type"`
 	Users           int    `yaml:"users" json:"users"`
 	Duration        int    `yaml:"duration" json:"duration"`
+	Warmup          int    `yaml:"warmup" json:"warmup"`
 	RampUp          int    `yaml:"ramp_up" json:"ramp_up"`
 	SpikeUsers      int    `yaml:"spike_users" json:"spike_users"`
 	SpikeWarmup     int    `yaml:"spike_warmup" json:"spike_warmup"`
@@ -36,6 +37,7 @@ type Profile struct {
 	TargetRPS       int    `yaml:"target_rps" json:"target_rps"`
 	Timeout         int    `yaml:"timeout" json:"timeout"`
 	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
+	Gate            bool   `yaml:"gate" json:"gate"`
 	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
 	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
@@ -155,6 +157,15 @@ func (p *Profile) Normalize() error {
 	if p.Duration > maxDuration {
 		return fmt.Errorf("duration (%d) exceeds maximum of %d seconds (%d days)", p.Duration, maxDuration, maxDuration/(24*60*60))
 	}
+	if p.Warmup < 0 {
+		p.Warmup = 0
+	}
+	if p.Warmup >= p.Duration {
+		return fmt.Errorf("warmup (%ds) must be smaller than duration (%ds)", p.Warmup, p.Duration)
+	}
+	if p.Gate && p.Users < 2 {
+		return fmt.Errorf("gate mode (race attack) requires at least 2 users firing simultaneously")
+	}
 	if p.RampUp <= 0 {
 		p.RampUp = p.Duration / 2
 		if p.RampUp < 1 {
@@ -259,6 +270,9 @@ func (s *Scenario) Normalize() error {
 		}
 		if st.GrpcMethod != "" && !strings.HasPrefix(st.GrpcMethod, "/") {
 			return fmt.Errorf("step %q: grpc_method must look like \"/package.Service/Method\"", st.Name)
+		}
+		if st.Type == "http" && !strings.Contains(st.URL, "://") && !strings.HasPrefix(st.URL, "/") {
+			st.URL = "http://" + st.URL
 		}
 		if st.Timeout > maxTimeout {
 			return fmt.Errorf("step %q: timeout (%d) exceeds maximum of %d seconds (%d minutes)", st.Name, st.Timeout, maxTimeout, maxTimeout/60)

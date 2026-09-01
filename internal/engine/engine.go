@@ -9,11 +9,12 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
-	neturl "net/url"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -41,6 +42,8 @@ const (
 type RunOptions struct {
 	Out      io.Writer
 	Quiet    bool
+	Capture  ResponseCapture
+	Pool     []string
 	Progress *ProgressTracker
 }
 
@@ -94,6 +97,10 @@ type loadWorker struct {
 
 // Run implements the Worker load loop for a single virtual user.
 func (w *loadWorker) Run(runCtx, reqBase context.Context, index int) {
+	if w.e.gate {
+		w.runGatedOnce(runCtx, reqBase, index)
+		return
+	}
 	for {
 		if runCtx.Err() != nil {
 			return
@@ -121,6 +128,19 @@ func (e *Engine) Telemetry() *metrics.Telemetry {
 	return e.telemetry
 }
 
+// runGatedOnce parks the virtual user on the start gate and fires exactly
+// one iteration the instant the gate opens — the race-condition primitive:
+// N requests hit the target as close to simultaneously as the scheduler
+// allows, maximizing the chance of exploiting check-then-act windows.
+func (w *loadWorker) runGatedOnce(runCtx, reqBase context.Context, index int) {
+	select {
+	case <-runCtx.Done():
+		return
+	case <-w.e.startGate:
+	}
+	w.e.runIteration(reqBase, index)
+}
+
 type Engine struct {
 	scenario  *config.Scenario
 	profile   LoadProfile
@@ -131,6 +151,8 @@ type Engine struct {
 	limiter   *tokenBucket
 	target    atomic.Int64
 	signal    *broadcast
+	startGate chan struct{}
+	gate      bool
 	stepStats []*metrics.StepStats
 	telemetry *metrics.Telemetry
 	teleMu    sync.RWMutex
@@ -152,6 +174,11 @@ type Engine struct {
 	cookieJars map[int]http.CookieJar
 	// grpcConns holds shared ClientConns keyed by target (all workers).
 	grpcConns map[string]*grpc.ClientConn
+
+	capture ResponseCapture
+
+	pool    []string
+	poolIdx atomic.Int64
 }
 
 func New(scenario *config.Scenario) (*Engine, error) {
@@ -193,6 +220,8 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		keepAlive: keepAlive,
 		limiter:   limiter,
 		signal:    newBroadcast(),
+		startGate: make(chan struct{}),
+		gate:      scenario.Profile.Gate,
 	}
 	e.stepStats = make([]*metrics.StepStats, len(scenario.Steps))
 	for i, step := range scenario.Steps {
@@ -230,7 +259,7 @@ func (e *Engine) preWarmConnections(count int) {
 	}
 
 	// Quick TCP reachability check before spawning goroutines.
-	parsed, err := neturl.Parse(target)
+	parsed, err := url.Parse(target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Pre-warm: bad URL %s: %v\n", target, err)
 		return
@@ -317,9 +346,15 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	runCtx, runCancel := context.WithTimeout(ctx, e.profile.Duration())
 	defer runCancel()
 
+	e.capture = opts.Capture
+	e.pool = opts.Pool
+
 	e.teleMu.Lock()
 	e.telemetry = metrics.NewTelemetry()
 	e.teleMu.Unlock()
+	if e.scenario.Profile.Warmup > 0 {
+		e.telemetry.SetWarmup(time.Duration(e.scenario.Profile.Warmup) * time.Second)
+	}
 	for _, st := range e.stepStats {
 		e.telemetry.AddStep(st)
 	}
@@ -364,21 +399,33 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 		}(i)
 	}
 
-	go e.controller(runCtx)
-
-	<-runCtx.Done()
-	runCancel()
+	if e.gate {
+		go func() {
+			time.Sleep(150 * time.Millisecond)
+			close(e.startGate)
+		}()
+	} else {
+		go e.controller(runCtx)
+	}
 
 	drained := make(chan struct{})
 	go func() {
 		wg.Wait()
 		close(drained)
 	}()
-	select {
-	case <-drained:
-	case <-time.After(e.timeout):
-		reqCancel()
+
+	if e.gate {
 		<-drained
+		runCancel()
+	} else {
+		<-runCtx.Done()
+		runCancel()
+		select {
+		case <-drained:
+		case <-time.After(e.timeout):
+			reqCancel()
+			<-drained
+		}
 	}
 
 	if e.progress != nil {
@@ -431,12 +478,19 @@ func (e *Engine) controller(ctx context.Context) {
 
 func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	vars := newVars(e.scenario, userIndex)
+	if len(e.pool) > 0 {
+		idx := e.poolIdx.Add(1) - 1
+		vars["pool"] = e.pool[int(idx%int64(len(e.pool)))]
+	}
 	iterStart := time.Now()
+	record := e.telemetry.Recording()
 	var lastStatus int
 	var firstErr string
 	for i, step := range e.scenario.Steps {
 		res := e.runStepForUser(reqBase, step, vars, userIndex)
-		e.stepStats[i].Record(res.latency, res.status, res.errName)
+		if record {
+			e.stepStats[i].Record(res.latency, res.status, res.errName)
+		}
 		if res.errName != "" {
 			if firstErr == "" {
 				firstErr = res.errName
@@ -445,7 +499,9 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 		}
 		lastStatus = res.status
 	}
-	e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+	if record {
+		e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+	}
 	if e.progress != nil {
 		e.progress.Update(
 			e.telemetry.TotalRequests(),
@@ -493,6 +549,16 @@ func (e *Engine) runStepForUser(ctx context.Context, step config.Step, vars map[
 		if err := checkAssertions(step.Assertions, res.status, body); err != nil {
 			res.errName = errAssert
 		}
+	}
+	if e.capture != nil && res.errName != errCanceled {
+		e.capture.Record(CapturedResponse{
+			Step:   step.Name,
+			Method: step.Method,
+			URL:    fullURL,
+			Status: res.status,
+			Err:    res.errName,
+			Body:   body,
+		})
 	}
 	return res
 }
@@ -610,11 +676,20 @@ func classifyError(err error, elapsed time.Duration) stepResult {
 	if errors.Is(err, errRedirectLimitReached) {
 		return stepResult{latency: elapsed, errName: errRedirectLimit}
 	}
+
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
+		err = uerr.Unwrap()
+	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		if netErr.Timeout() {
 			return stepResult{latency: elapsed, errName: errTimeout}
 		}
+		return stepResult{latency: elapsed, errName: errConnection}
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
 		return stepResult{latency: elapsed, errName: errConnection}
 	}
 	return stepResult{latency: elapsed, errName: errOther}

@@ -500,3 +500,15 @@ steps:
 		t.Errorf("step 1 method = %s, want POST", sc.Steps[1].Method)
 	}
 }
+
+func TestShouldFailGate(t *testing.T) {
+	if shouldFailGate(3.5, 0) {
+		t.Error("threshold 0 must disable the gate")
+	}
+	if !shouldFailGate(3.5, 2.0) {
+		t.Error("rate above threshold must fail")
+	}
+	if shouldFailGate(2.0, 2.0) {
+		t.Error("rate equal to threshold must pass (strictly greater fails)")
+	}
+}

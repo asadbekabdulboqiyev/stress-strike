@@ -3,7 +3,6 @@ package scanner
 import (
 	"bytes"
 	"fmt"
-	"sync/atomic"
 	"io"
 	"net/http"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -218,7 +218,7 @@ func (vs *VulnScanner) scanSQLInjection() {
 	target := normalizeURL(vs.Target)
 	params := []string{"id", "user", "search", "q", "page", "cat", "item", "sort", "order", "filter", "type", "name", "email"}
 	payloads := []struct {
-		payload  string
+		payload   string
 		signature string
 	}{
 		{"' OR 1=1--", "sql"},
@@ -381,7 +381,7 @@ func (vs *VulnScanner) scanDirectoryTraversal() {
 	target := normalizeURL(vs.Target)
 	endpoints := []string{"/", "/view", "/file", "/include", "/page", "/download", "/static", "/images"}
 	payloads := []struct {
-		payload  string
+		payload   string
 		signature string
 	}{
 		{"../../../etc/passwd", "root:"},
@@ -533,10 +533,10 @@ func (vs *VulnScanner) scanSecurityHeaders() {
 	atomic.AddInt64(&vs.Results.URLsChecked, 1)
 
 	type headerCheck struct {
-		name       string
-		required   bool
-		severity   string
-		checkFunc  func(string) string
+		name      string
+		required  bool
+		severity  string
+		checkFunc func(string) string
 	}
 
 	checks := []headerCheck{

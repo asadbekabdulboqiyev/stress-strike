@@ -344,7 +344,7 @@ func ptFmtDur(d time.Duration) string {
 		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
 	m := d / time.Minute
-	s := d%time.Minute / time.Second
+	s := d % time.Minute / time.Second
 	if m > 0 {
 		return fmt.Sprintf("%dm%ds", m, s)
 	}

@@ -579,8 +579,8 @@ func TestVulnScanner_RiskScore_Clean(t *testing.T) {
 
 func TestVulnScanner_Grades(t *testing.T) {
 	tests := []struct {
-		score  int
-		grade  string
+		score int
+		grade string
 	}{
 		{100, "A"},
 		{90, "A"},
@@ -808,7 +808,7 @@ func TestVulnScanner_AddFindingThreadSafety(t *testing.T) {
 			vs.addFinding(Vulnerability{
 				ID:       fmt.Sprintf("T-%d", idx),
 				Severity: []string{"critical", "high", "medium", "low", "info"}[idx%5],
-				CVSS:     float64(idx%10),
+				CVSS:     float64(idx % 10),
 			})
 		}(i)
 	}

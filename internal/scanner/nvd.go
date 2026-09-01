@@ -30,18 +30,18 @@ const (
 	nvdDefaultBaseURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 	nvdUserAgent      = "stress-strike/1.0"
 	nvdAPIKeyHeader   = "apiKey"
-	nvdPageSize       = 2000            // API maximum resultsPerPage
-	nvdMaxPages       = 5               // hard cap: 10K CVEs per search
-	nvdCacheTTL       = 24 * time.Hour  // fresh-cache window
-	nvdMaxBodyBytes   = 64 << 20        // 64 MiB response cap
+	nvdPageSize       = 2000           // API maximum resultsPerPage
+	nvdMaxPages       = 5              // hard cap: 10K CVEs per search
+	nvdCacheTTL       = 24 * time.Hour // fresh-cache window
+	nvdMaxBodyBytes   = 64 << 20       // 64 MiB response cap
 )
 
 // NVDCVE is a single vulnerability returned by the live NVD service.
 type NVDCVE struct {
-	ID           string    `json:"id"`                     // CVE-2024-1234
+	ID           string    `json:"id"` // CVE-2024-1234
 	Description  string    `json:"description"`
-	Severity     string    `json:"severity"`               // critical/high/medium/low (derived from CVSS)
-	CVSS         float64   `json:"cvss"`                   // v3.1 base score preferred
+	Severity     string    `json:"severity"` // critical/high/medium/low (derived from CVSS)
+	CVSS         float64   `json:"cvss"`     // v3.1 base score preferred
 	CWE          string    `json:"cwe,omitempty"`
 	Published    time.Time `json:"published"`
 	LastModified time.Time `json:"last_modified,omitempty"`
@@ -356,9 +356,9 @@ func sanitizeNVDKey(s string) string {
 
 // nvdEnvelope mirrors the top-level NVD API 2.0 JSON shape.
 type nvdEnvelope struct {
-	ResultsPerPage int             `json:"resultsPerPage"`
-	StartIndex     int             `json:"startIndex"`
-	TotalResults   int             `json:"totalResults"`
+	ResultsPerPage  int           `json:"resultsPerPage"`
+	StartIndex      int           `json:"startIndex"`
+	TotalResults    int           `json:"totalResults"`
 	Vulnerabilities []rawItemWrap `json:"vulnerabilities"`
 }
 
@@ -394,8 +394,8 @@ type rawConfiguration struct {
 }
 
 type rawCVE struct {
-	ID           string            `json:"id"`
-	Descriptions []rawDescription  `json:"descriptions"`
+	ID           string           `json:"id"`
+	Descriptions []rawDescription `json:"descriptions"`
 	Metrics      struct {
 		CvssMetricV31 []rawMetric `json:"cvssMetricV31"`
 		CvssMetricV30 []rawMetric `json:"cvssMetricV30"`
@@ -404,9 +404,9 @@ type rawCVE struct {
 	Weaknesses []struct {
 		Description []rawDescription `json:"description"`
 	} `json:"weaknesses"`
-	Published      string            `json:"published"`
-	LastModified   string            `json:"lastModified"`
-	References     []struct {
+	Published    string `json:"published"`
+	LastModified string `json:"lastModified"`
+	References   []struct {
 		URL string `json:"url"`
 	} `json:"references"`
 	Configurations []rawConfiguration `json:"configurations"`

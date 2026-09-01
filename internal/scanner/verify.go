@@ -135,12 +135,12 @@ func ConfidenceBadge(c Confidence) string {
 // ---------------------------------------------------------------------------
 
 const (
-	clsSQLi         = "sqli"
-	clsXSS          = "xss"
-	clsTraversal    = "traversal"
-	clsRedirect     = "redirect"
+	clsSQLi          = "sqli"
+	clsXSS           = "xss"
+	clsTraversal     = "traversal"
+	clsRedirect      = "redirect"
 	clsDeterministic = "deterministic"
-	clsOther        = "other"
+	clsOther         = "other"
 )
 
 var deterministicCWETags = map[string]bool{
@@ -453,8 +453,8 @@ func (v *Verifier) verifyXSS(requestURL string, vuln Vulnerability) Verdict {
 // ---------------------------------------------------------------------------
 
 var traversalSignatures = []string{
-	"root:x:0:0",  // /etc/passwd
-	"root:x:0:",   // /etc/passwd (relaxed field form)
+	"root:x:0:0",   // /etc/passwd
+	"root:x:0:",    // /etc/passwd (relaxed field form)
 	"[extensions]", // win.ini
 	"[fonts]",      // win.ini
 	"[drivers]",    // windows system ini files

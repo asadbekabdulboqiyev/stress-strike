@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	bufSmall   = 4 << 10  // 4KB - headers, small bodies
-	bufMedium  = 64 << 10 // 64KB - typical JSON responses
+	bufSmall   = 4 << 10   // 4KB - headers, small bodies
+	bufMedium  = 64 << 10  // 64KB - typical JSON responses
 	bufLarge   = 256 << 10 // 256KB - large responses
 	bufMaxTier = bufLarge
 )
@@ -37,19 +37,19 @@ type BufferPool struct {
 	medium sync.Pool
 	large  sync.Pool
 
-	totalGets          atomic.Int64
-	totalReleases      atomic.Int64
-	totalAllocations   atomic.Int64
-	savedAllocations   atomic.Int64
-	upgradedBuffers    atomic.Int64
+	totalGets        atomic.Int64
+	totalReleases    atomic.Int64
+	totalAllocations atomic.Int64
+	savedAllocations atomic.Int64
+	upgradedBuffers  atomic.Int64
 }
 
 type PoolStats struct {
-	Gets           int64
-	Releases       int64
-	Allocations    int64
-	Saved          int64
-	Upgrades       int64
+	Gets        int64
+	Releases    int64
+	Allocations int64
+	Saved       int64
+	Upgrades    int64
 }
 
 func NewBufferPool() *BufferPool {
@@ -130,6 +130,6 @@ func (p *BufferPool) Reset() {
 
 var DefaultPool = NewBufferPool()
 
-func GetBuffer() *ReusableBuffer       { return DefaultPool.Get() }
+func GetBuffer() *ReusableBuffer            { return DefaultPool.Get() }
 func GetBufferMin(size int) *ReusableBuffer { return DefaultPool.GetMinSize(size) }
-func ReleaseBuffer(rb *ReusableBuffer) { rb.Release() }
+func ReleaseBuffer(rb *ReusableBuffer)      { rb.Release() }

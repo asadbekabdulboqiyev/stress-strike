@@ -68,5 +68,3 @@ func SLAPassed(results []SLAResult) bool {
 	}
 	return true
 }
-
-

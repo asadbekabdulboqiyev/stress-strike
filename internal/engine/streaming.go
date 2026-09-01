@@ -20,18 +20,18 @@ const (
 // (file downloads, API bulk data) — reduces peak memory by ~80% for
 // bodies > 100 KB.
 type StreamingResponse struct {
-	statusCode  int
-	headers     http.Header
-	body        io.Reader
-	closer      io.Closer
-	bytesRead   int64
-	contentLen  int64
-	done        bool
-	aborted     atomic.Bool
-	pool        *BufferPool
-	currentBuf  *ReusableBuffer
+	statusCode   int
+	headers      http.Header
+	body         io.Reader
+	closer       io.Closer
+	bytesRead    int64
+	contentLen   int64
+	done         bool
+	aborted      atomic.Bool
+	pool         *BufferPool
+	currentBuf   *ReusableBuffer
 	decompressor io.ReadCloser
-	mu          sync.Mutex
+	mu           sync.Mutex
 }
 
 // NewStreamingResponse wraps an *http.Response for chunked reading. The caller
@@ -43,12 +43,12 @@ func NewStreamingResponse(resp *http.Response, pool *BufferPool) *StreamingRespo
 	}
 
 	sr := &StreamingResponse{
-		statusCode:  resp.StatusCode,
-		headers:     resp.Header,
-		body:        resp.Body,
-		closer:      resp.Body,
-		contentLen:  resp.ContentLength,
-		pool:        pool,
+		statusCode: resp.StatusCode,
+		headers:    resp.Header,
+		body:       resp.Body,
+		closer:     resp.Body,
+		contentLen: resp.ContentLength,
+		pool:       pool,
 	}
 
 	sr.body = wrapDecompress(resp.Header.Get("Content-Encoding"), resp.Body, &sr.decompressor)
@@ -236,7 +236,7 @@ func wrapDecompress(encoding string, body io.Reader, out *io.ReadCloser) io.Read
 
 // StreamingResult holds the outcome of a streaming HTTP exchange.
 type StreamingResult struct {
-	Stream *StreamingResponse
+	Stream  *StreamingResponse
 	Latency int64 // nanoseconds from request start to headers received
 }
 

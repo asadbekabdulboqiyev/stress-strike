@@ -161,11 +161,11 @@ func TestProgressTracker_UpdateRace(t *testing.T) {
 
 func TestProgressBar_Build(t *testing.T) {
 	tests := []struct {
-		name     string
-		pct      float64
-		color    bool
-		filled   int
-		empty    int
+		name   string
+		pct    float64
+		color  bool
+		filled int
+		empty  int
 	}{
 		{"zero", 0, false, 0, 30},
 		{"half", 50, false, 15, 15},

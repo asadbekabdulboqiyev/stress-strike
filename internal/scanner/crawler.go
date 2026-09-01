@@ -57,10 +57,10 @@ type Crawler struct {
 	Options  CrawlOptions
 	Client   *http.Client
 
-	queue    []crawlJob
-	visited  map[string]bool
+	queue     []crawlJob
+	visited   map[string]bool
 	endpoints map[string]Endpoint
-	fetched  int
+	fetched   int
 }
 
 type crawlJob struct {

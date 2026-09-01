@@ -23,9 +23,9 @@ import (
 
 func TestVerifConfidenceBadge(t *testing.T) {
 	cases := map[Confidence]string{
-		ConfConfirmed: "[VERIFIED]",
-		ConfProbable:  "[PROBABLE]",
-		ConfPossible:  "[UNVERIFIED]",
+		ConfConfirmed:    "[VERIFIED]",
+		ConfProbable:     "[PROBABLE]",
+		ConfPossible:     "[UNVERIFIED]",
 		Confidence(""):   "[UNVERIFIED]",
 		Confidence("??"): "[UNVERIFIED]",
 	}
@@ -363,9 +363,9 @@ func TestVerifAnnotateDoesNotMutateInput(t *testing.T) {
 			Evidence: "Missing HSTS header - allows HTTP downgrade attacks and SSL stripping",
 		},
 		{
-			CWE: "CWE-999",
-			URL: srv.URL,
-			Title: "Exotic Heuristic Finding",
+			CWE:      "CWE-999",
+			URL:      srv.URL,
+			Title:    "Exotic Heuristic Finding",
 			Evidence: "original evidence text",
 		},
 	}

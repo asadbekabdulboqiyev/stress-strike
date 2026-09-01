@@ -8,7 +8,7 @@ import (
 
 func baseReport() *Report {
 	return &Report{
-		Name:         "baseline",
+		Name:          "baseline",
 		TotalRequests: 50000,
 		TotalErrors:   50,
 		ErrorRatePct:  0.1,
@@ -47,11 +47,11 @@ func TestCompareIdentical(t *testing.T) {
 func TestCompareImproved(t *testing.T) {
 	base := baseReport()
 	cur := baseReport()
-	cur.Overall.P99 = 30 * time.Millisecond  // -33%
-	cur.Overall.P50 = 7 * time.Millisecond   // -30%
-	cur.Overall.Avg = 8 * time.Millisecond   // -33%
-	cur.RPS = 7000                           // +40%
-	cur.TotalErrors = 10                     // -80%
+	cur.Overall.P99 = 30 * time.Millisecond // -33%
+	cur.Overall.P50 = 7 * time.Millisecond  // -30%
+	cur.Overall.Avg = 8 * time.Millisecond  // -33%
+	cur.RPS = 7000                          // +40%
+	cur.TotalErrors = 10                    // -80%
 	cur.ErrorRatePct = 0.02
 
 	result := Compare(cur, base)
@@ -73,9 +73,9 @@ func TestCompareImproved(t *testing.T) {
 func TestCompareRegressed(t *testing.T) {
 	base := baseReport()
 	cur := baseReport()
-	cur.Overall.P99 = 90 * time.Millisecond  // +100%
-	cur.RPS = 2500                           // -50%
-	cur.TotalErrors = 200                    // +300%
+	cur.Overall.P99 = 90 * time.Millisecond // +100%
+	cur.RPS = 2500                          // -50%
+	cur.TotalErrors = 200                   // +300%
 	cur.ErrorRatePct = 0.4
 
 	result := Compare(cur, base)

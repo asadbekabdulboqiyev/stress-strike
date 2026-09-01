@@ -342,7 +342,7 @@ func TestCheckCVE_CleanServer(t *testing.T) {
 
 func TestCheckCVE_NoMatch(t *testing.T) {
 	tech := map[string]string{
-		"server":    "",
+		"server":     "",
 		"powered_by": "",
 		"body":       "<html>hello</html>",
 	}
@@ -774,8 +774,8 @@ func TestPatternMatching_CaseInsensitive(t *testing.T) {
 	det := NewCVEDetector("http://example.com")
 
 	tech := map[string]string{
-		"server":  "APACHE/2.4.49",
-		"body":    "",
+		"server": "APACHE/2.4.49",
+		"body":   "",
 	}
 
 	for _, sig := range cveDatabase {
@@ -794,7 +794,7 @@ func TestPatternMatching_MultiplePatternOR(t *testing.T) {
 
 	// Spring detected via body only (no X-Powered-By)
 	tech := map[string]string{
-		"server":    "Apache-Coyote/1.1",
+		"server":     "Apache-Coyote/1.1",
 		"powered_by": "",
 		"body":       "Whitelabel Error Page",
 	}

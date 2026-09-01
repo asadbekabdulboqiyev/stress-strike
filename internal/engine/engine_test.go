@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 func TestRender(t *testing.T) {

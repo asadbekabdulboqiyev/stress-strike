@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/dashboard"
-	"stress-strike/internal/engine"
-	"stress-strike/internal/metrics"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 // runWithDashboard starts the real-time web dashboard and serves live JSON

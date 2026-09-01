@@ -14,8 +14,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
 type testAPI struct {

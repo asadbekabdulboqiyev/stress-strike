@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"stress-strike/internal/engine"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 // isInteractiveTerminal reports whether stdin is a TTY (interactive user)

@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"stress-strike/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 )
 
 func main() {

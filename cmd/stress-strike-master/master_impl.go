@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"stress-strike/internal/config"
-	distproto "stress-strike/internal/dist/proto"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 type Master struct {

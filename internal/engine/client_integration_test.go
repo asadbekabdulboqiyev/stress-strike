@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // TestWSClientIntegration tests WebSocket client with real server

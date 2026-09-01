@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 type LoadProfile interface {

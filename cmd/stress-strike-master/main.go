@@ -13,9 +13,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"stress-strike/internal/config"
-	distproto "stress-strike/internal/dist/proto"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 var (

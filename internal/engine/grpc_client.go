@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 func init() {

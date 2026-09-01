@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
 // liveLines tracks how many terminal rows the panel occupies so it can be

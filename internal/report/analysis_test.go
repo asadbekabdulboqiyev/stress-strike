@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
 func readFile(t *testing.T, path string) string {

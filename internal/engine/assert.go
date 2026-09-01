@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // checkAssertions validates all configured assertions against a step result.

@@ -19,8 +19,8 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
 const (

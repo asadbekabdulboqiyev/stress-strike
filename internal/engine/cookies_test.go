@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // TestHTTPCookieJarSessionFlow verifies per-virtual-user cookie sessions:

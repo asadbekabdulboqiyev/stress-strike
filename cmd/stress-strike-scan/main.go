@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
 )
 
 func main() {

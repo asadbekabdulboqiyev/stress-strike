@@ -11,8 +11,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
 type StepReport struct {

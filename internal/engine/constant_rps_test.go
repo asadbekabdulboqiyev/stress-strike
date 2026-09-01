@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 func TestConstantRPSProfile(t *testing.T) {

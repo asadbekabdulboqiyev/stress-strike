@@ -7,7 +7,7 @@ import (
 	"os"
 	"syscall"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // warnLowFileLimit warns the user when the open-file limit (ulimit -n) may be

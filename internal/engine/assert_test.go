@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // TestCheckAssertionsDetailed tests the checkAssertions function with various assertions

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 func TestQuickScenario(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"stress-strike/internal/replay"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/replay"
 )
 
 func main() {

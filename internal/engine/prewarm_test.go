@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 func TestPreWarmConnections(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
 
 // rawReadLimit caps how many bytes are read from a raw socket per step.

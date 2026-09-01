@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"stress-strike/internal/config"
-	"stress-strike/internal/engine"
-	"stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
 type headerFlags map[string]string

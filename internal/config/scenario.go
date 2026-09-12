@@ -65,7 +65,7 @@ type Assertion struct {
 
 type Step struct {
 	Name       string            `yaml:"name" json:"name"`
-	Type       string            `yaml:"type" json:"type"` // http (default) | ws | grpc | tcp | udp
+	Type       string            `yaml:"type" json:"type"` // http (default) | ws | grpc | tcp | udp | tep
 	Method     string            `yaml:"method" json:"method"`
 	URL        string            `yaml:"url" json:"url"`
 	Headers    map[string]string `yaml:"headers" json:"headers"`
@@ -79,6 +79,14 @@ type Step struct {
 	GrpcMethod    string `yaml:"grpc_method" json:"grpc_method"`       // grpc: "/pkg.Service/Method"; empty = health check
 	AwaitResponse bool   `yaml:"await_response" json:"await_response"` // udp: wait for a reply and measure RTT
 	Session       bool   `yaml:"session" json:"session"`               // ws|tcp: keep one persistent connection per virtual user
+
+	// TEP (Teno Event Protocol) options. When Type == "tep" the step forges a
+	// signed TEP envelope and pushes it to a consumer; Body is treated as JSON
+	// payload. Secret must be >= 32 bytes.
+	TepType   string `yaml:"tep_type" json:"tep_type"`
+	TepKey    string `yaml:"tep_key" json:"tep_key"`
+	TepSecret string `yaml:"tep_secret" json:"tep_secret"`
+	TepSource string `yaml:"tep_source" json:"tep_source"`
 }
 
 // SLA defines pass/fail thresholds evaluated against aggregate results after
@@ -249,9 +257,9 @@ func (s *Scenario) Normalize() error {
 			st.Type = "http"
 		}
 		switch st.Type {
-		case "http", "ws", "grpc", "tcp", "udp":
+		case "http", "ws", "grpc", "tcp", "udp", "tep":
 		default:
-			return fmt.Errorf("step %q: unsupported type %q (use http, ws, grpc, tcp, udp)", st.Name, st.Type)
+			return fmt.Errorf("step %q: unsupported type %q (use http, ws, grpc, tcp, udp, tep)", st.Name, st.Type)
 		}
 		st.Method = strings.ToUpper(strings.TrimSpace(st.Method))
 		if st.Method == "" {
@@ -270,6 +278,23 @@ func (s *Scenario) Normalize() error {
 		}
 		if st.GrpcMethod != "" && !strings.HasPrefix(st.GrpcMethod, "/") {
 			return fmt.Errorf("step %q: grpc_method must look like \"/package.Service/Method\"", st.Name)
+		}
+		if st.Type == "tep" {
+			if st.TepType == "" {
+				return fmt.Errorf("step %q: tep_type is required for tep steps", st.Name)
+			}
+			if st.TepSecret == "" || len(st.TepSecret) < 32 {
+				return fmt.Errorf("step %q: tep_secret must be at least 32 bytes", st.Name)
+			}
+			if st.TepKey == "" {
+				st.TepKey = "stress-strike"
+			}
+			if st.TepSource == "" {
+				st.TepSource = "stress-strike"
+			}
+			if !strings.Contains(st.URL, "://") {
+				st.URL = "http://" + st.URL
+			}
 		}
 		if st.Type == "http" && !strings.Contains(st.URL, "://") && !strings.HasPrefix(st.URL, "/") {
 			st.URL = "http://" + st.URL

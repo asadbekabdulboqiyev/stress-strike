@@ -1,0 +1,29 @@
+# TEP (Teno Event Protocol) load scenario — forge and push signed events
+# to a TEP consumer (e.g. nescom /api/v1/events/push) at full throttle.
+#
+# Run: ./bin/stress-strike --config examples/tep.yaml
+#      ./bin/stress-strike --config examples/tep.yaml --url http://consumer:3000
+name: tep-push-storm
+base_url: http://localhost:3000
+load_profile:
+  type: steady
+  users: 25
+  duration: 30
+  timeout: 5
+
+steps:
+  # Each iteration signs a fresh envelope and POSTs {$base_url}/v1/events/push.
+  # TEP_SECRET must be >= 32 bytes and identical on both sides of the wire.
+  - name: tep_company_updated
+    type: tep
+    url: /v1/events/push
+    tep_type: company.updated
+    tep_key: stress-strike
+    tep_source: stress-strike
+    tep_secret: "0123456789abcdef0123456789abcdef"
+    body: '{"company_id":"c-1","name":"TechCorp"}'
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: data.code

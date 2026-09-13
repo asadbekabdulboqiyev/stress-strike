@@ -542,6 +542,8 @@ func (e *Engine) runStepForUser(ctx context.Context, step config.Step, vars map[
 		}
 	case "tcp", "udp":
 		res, body = e.rawClientForUser(userIndex, ctx, step.Type, fullURL, step, vars, timeout)
+	case "tep":
+		res, body = e.tepClient(ctx, step, timeout)
 	default:
 		res, body = e.httpClientForUser(userIndex, ctx, fullURL, step, vars, timeout)
 	}

@@ -18,7 +18,7 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 
 ## Features
 
-- **Multi-protocol** — HTTP/HTTPS, WebSocket (`ws://`/`wss://`), gRPC (`grpc://` plaintext / `grpcs://` TLS), TCP, and UDP from a single scenario file
+- **Multi-protocol** — HTTP/HTTPS, WebSocket (`ws://`/`wss://`), gRPC (`grpc://` plaintext / `grpcs://` TLS), TCP, UDP, and TEP from a single scenario file
 - **Scenario constructor** — YAML/JSON multi-step chains with variable extraction between steps (`POST /login` → extract token → `GET /profile` → `POST /cart`)
 - **5 load profiles** — `steady`, `soak`, `linear-ramp`, `spike`, `wave` (sinusoidal load oscillation)
 - **Assertions** — per-step pass/fail checks on status families (`2xx`), JSON paths, or regex matches; failures surface as `assert_failed` errors
@@ -477,6 +477,20 @@ steps:
     assertions:
       - type: regex
         value: ".+"
+
+  - name: tep_company
+    type: tep
+    url: /v1/events/push
+    tep_type: company.updated
+    tep_key: stress-strike
+    tep_source: stress-strike
+    tep_secret: "0123456789abcdef0123456789abcdef"
+    body: '{"company_id":"c-1","name":"TechCorp"}'
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: data.code
 ```
 
 | Protocol | `session: true` | Notes |
@@ -486,6 +500,26 @@ steps:
 | gRPC | Shared HTTP/2 pool | Keepalive probes, custom methods |
 | TCP | Persistent connection | Self-healing on drop |
 | UDP | N/A | `await_response: true` for RTT |
+| TEP | N/A (signed per push) | HMAC-signed idempotent events |
+
+### TEP (Teno Event Protocol) Steps
+
+A `tep` step forges a timestamped, HMAC-SHA256-signed TEP envelope and pushes
+it to a TEP consumer. Idempotency, retries, and delivery semantics follow
+[spec/transport-http.md](https://github.com/asadbekabdulboqiyev/teno-event-protocol/blob/main/spec/transport-http.md).
+
+TEP-specific fields on a step:
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `tep_type` | yes | | Event type (e.g. `company.updated`) |
+| `tep_secret` | yes | | Shared HMAC secret, **>= 32 bytes** |
+| `tep_key` | no | `stress-strike` | Key header sent as `X-TEP-Key` |
+| `tep_source` | no | `stress-strike` | Source stamp in the envelope |
+| `body` | no | `{}` | JSON payload of the event |
+
+The consumer verifies the `X-TEP-Signature` HMAC before admitting an event.
+See [examples/tep.yaml](examples/tep.yaml) for a runnable scenario.
 
 ### Assertions
 

@@ -9,12 +9,10 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
@@ -50,6 +48,14 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 				TargetURL:       targetDisplay(scenario),
 				Users:           scenario.Profile.Users,
 				DurationSeconds: scenario.Profile.TotalDuration(),
+				Profile:         scenario.Profile.Type,
+				Warmup:          scenario.Profile.Warmup,
+				RampUp:          scenario.Profile.RampUp,
+				SpikeUsers:      scenario.Profile.SpikeUsers,
+				SpikeWarmup:     scenario.Profile.SpikeWarmup,
+				SpikeHold:       scenario.Profile.SpikeHold,
+				WavePeriod:      scenario.Profile.WavePeriod,
+				Timeout:         scenario.Profile.Timeout,
 				Method: func() string {
 					if len(scenario.Steps) > 0 {
 						return scenario.Steps[0].Method
@@ -70,6 +76,30 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 				if v := getS(argv, "method"); v != "" {
 					cfg.Method = v
 				}
+				if v := getS(argv, "profile"); v != "" {
+					cfg.Profile = v
+				}
+				if v := getI(argv, "rate_limit"); v > 0 {
+					cfg.RateLimit = v
+				}
+				if v := getI(argv, "warmup"); v > 0 {
+					cfg.Warmup = v
+				}
+				if v := getI(argv, "ramp_up"); v > 0 {
+					cfg.RampUp = v
+				}
+				if v := getI(argv, "spike_users"); v > 0 {
+					cfg.SpikeUsers = v
+				}
+				if v := getI(argv, "spike_warmup"); v > 0 {
+					cfg.SpikeWarmup = v
+				}
+				if v := getI(argv, "spike_hold"); v > 0 {
+					cfg.SpikeHold = v
+				}
+				if v := getI(argv, "wave_period"); v > 0 {
+					cfg.WavePeriod = v
+				}
 			}
 
 			bridge.StartRun(cfg)
@@ -77,8 +107,9 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 			// Build a fresh scenario from the (possibly overridden) config.
 			sc, err := quickScenario(
 				scenario.Name, cfg.TargetURL, cfg.Method, "", headerFlags{},
-				"steady", cfg.Users, cfg.DurationSeconds,
-				0, 0, 0, 0, 0, 0, 0, scenario.Profile.Timeout, true,
+				cfg.Profile, cfg.Users, cfg.DurationSeconds,
+				cfg.RampUp, cfg.SpikeUsers, cfg.SpikeWarmup, cfg.SpikeHold,
+				cfg.WavePeriod, cfg.RateLimit, cfg.RateLimit, cfg.Timeout, true,
 			)
 			if err != nil {
 				bridge.RunFailed(err)
@@ -104,11 +135,11 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 				return
 			}
 
-			fmt.Printf("  ▶ Run started: %s (%d users, %ds)\n", cfg.TargetURL, cfg.Users, cfg.DurationSeconds)
+			fmt.Printf("  ▶ Run started: %s (%d users, %ds, %s)\n", cfg.TargetURL, cfg.Users, cfg.DurationSeconds, cfg.Profile)
 
 			// Stream telemetry live WHILE the engine runs (~ real-time).
 			streamStop := make(chan struct{})
-			go streamTelemetry(srv, e, sc, streamStop)
+			go dashboard.StreamTelemetry(srv, e, sc, streamStop)
 
 			// Run the engine in the background.
 			go func() {
@@ -122,8 +153,9 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 					return
 				}
 				// Final snapshot + complete
-				srv.UpdateSnapshot(snapshotFromTelemetry(e, sc))
-				bridge.RunComplete()
+				final := dashboard.SnapshotFromTelemetry(e, sc)
+				srv.UpdateSnapshot(final)
+				bridge.RunCompleteFromSnapshot(final)
 
 				// Persist a report so it is not lost.
 				r := report.Build(telemetry, sc)
@@ -184,89 +216,8 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 	}
 }
 
-// streamTelemetry samples the engine's live Telemetry and pushes snapshots to
-// the WebSocket server at a fixed interval until streamStop is closed.
-func streamTelemetry(srv *dashboard.Server, e *engine.Engine, sc *config.Scenario, stop <-chan struct{}) {
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-stop:
-			return
-		case <-ticker.C:
-			srv.UpdateSnapshot(snapshotFromTelemetry(e, sc))
-		}
-	}
-}
-
-// snapshotFromTelemetry converts the engine's live Telemetry into a dashboard
-// LiveSnapshot for WebSocket broadcast.
-func snapshotFromTelemetry(e *engine.Engine, sc *config.Scenario) *dashboard.LiveSnapshot {
-	t, ok := engineTelemetry(e)
-	if !ok {
-		return &dashboard.LiveSnapshot{
-			Timestamp:   time.Now(),
-			ActiveUsers: sc.Profile.Users,
-			StatusCodes: map[int]uint64{},
-		}
-	}
-
-	elapsed := t.Elapsed()
-	elapsedSec := elapsed.Seconds()
-	if elapsedSec <= 0 {
-		elapsedSec = 0.001
-	}
-
-	reqs := t.TotalRequests()
-	errs := t.TotalErrors()
-	var errRate float64
-	if reqs > 0 {
-		errRate = float64(errs) / float64(reqs) * 100
-	}
-
-	// Percentiles from overall histogram
-	snap := t.Overall.Latency.Snapshot()
-	p50 := snap.Percentile(0.50)
-	p95 := snap.Percentile(0.95)
-	p99 := snap.Percentile(0.99)
-
-	totalDur := sc.Profile.TotalDuration()
-	progress := 0.0
-	if totalDur > 0 {
-		progress = elapsedSec / float64(totalDur) * 100
-		if progress > 100 {
-			progress = 100
-		}
-	}
-
-	return &dashboard.LiveSnapshot{
-		Timestamp:   time.Now(),
-		RPS:         float64(reqs) / elapsedSec,
-		TotalReq:    reqs,
-		TotalErrors: errs,
-		ErrorRate:   errRate,
-		P50Latency:  p50.Seconds() * 1000,
-		P95Latency:  p95.Seconds() * 1000,
-		P99Latency:  p99.Seconds() * 1000,
-		AvgLatency:  snap.Average.Seconds() * 1000,
-		MaxLatency:  snap.Max.Seconds() * 1000,
-		ActiveUsers: int(t.ActiveUsers.Load()),
-		StatusCodes: t.StatusCodes(),
-	}
-}
-
-// engineTelemetry safely returns the engine's live telemetry if available.
-func engineTelemetry(e *engine.Engine) (*metrics.Telemetry, bool) {
-	// Engine exposes its telemetry via concurrent-safe accessor methods;
-	// telemetry is set at the start of Run.
-	t := e.Telemetry()
-	if t == nil {
-		return nil, false
-	}
-	return t, true
-}
-
+// streamTelemetry is provided by the dashboard package (live.go).
+// getS and getI coerce browser-sent JSON values into Go types.
 func getS(m map[string]interface{}, key string) string {
 	if v, ok := m[key]; ok {
 		if s, ok := v.(string); ok {

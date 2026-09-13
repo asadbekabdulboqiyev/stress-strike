@@ -323,3 +323,35 @@ func TestWarmupValidation(t *testing.T) {
 		t.Errorf("negative warmup = %d, want clamped to 0", p.Warmup)
 	}
 }
+
+func TestNormalizeTepStep(t *testing.T) {
+	sc := &Scenario{Profile: Profile{Users: 10}, Steps: []Step{{
+		Type:      "tep",
+		URL:       "localhost:9999/v1/events/push",
+		TepType:   "loadtest.finished",
+		TepSecret: "0123456789abcdef0123456789abcdef",
+	}}}
+	if err := sc.Normalize(); err != nil {
+		t.Fatalf("tep step should normalize: %v", err)
+	}
+	s := sc.Steps[0]
+	if s.TepKey != "stress-strike" {
+		t.Errorf("default tep_key = %q, want stress-strike", s.TepKey)
+	}
+	if s.TepSource != "stress-strike" {
+		t.Errorf("default tep_source = %q, want stress-strike", s.TepSource)
+	}
+	if !strings.HasPrefix(s.URL, "http://") {
+		t.Errorf("tep url should get http:// prefix, got %q", s.URL)
+	}
+
+	sc = &Scenario{Profile: Profile{Users: 10}, Steps: []Step{{
+		Type:      "tep",
+		URL:       "/push",
+		TepType:   "a.b",
+		TepSecret: "short",
+	}}}
+	if err := sc.Normalize(); err == nil {
+		t.Error("expected error for short tep_secret")
+	}
+}

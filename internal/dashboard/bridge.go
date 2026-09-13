@@ -133,15 +133,24 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 	})
 }
 
-// RunComplete marks the run as completed
+// RunComplete marks the run as completed using the bridge's own record
+// counters (the simulated path). Real-engine flows should call
+// RunCompleteFromSnapshot instead so final telemetry lands in history.
 func (b *EngineBridge) RunComplete() {
+	b.RunCompleteFromSnapshot(nil)
+}
+
+// RunCompleteFromSnapshot marks the run as completed. When a final live
+// snapshot (e.g. from real engine telemetry) is provided, its totals take
+// precedence over the bridge's record counters, so history reflects real
+// traffic.
+func (b *EngineBridge) RunCompleteFromSnapshot(snap *LiveSnapshot) {
 	b.mu.Lock()
 	elapsed := time.Since(b.startTime)
 	elapsedSec := elapsed.Seconds()
 	if elapsedSec <= 0 {
 		elapsedSec = 0.001
 	}
-	rps := float64(b.totalReqs) / elapsedSec
 	config := b.config
 	startTime := b.startTime
 	totalReqs := b.totalReqs
@@ -151,6 +160,15 @@ func (b *EngineBridge) RunComplete() {
 		statusCodes[k] = v
 	}
 	b.mu.Unlock()
+
+	if snap != nil {
+		totalReqs = snap.TotalReq
+		totalErrors = snap.TotalErrors
+		if snap.StatusCodes != nil {
+			statusCodes = snap.StatusCodes
+		}
+	}
+	rps := float64(totalReqs) / elapsedSec
 
 	if config == nil {
 		b.server.SetRunState(&RunState{

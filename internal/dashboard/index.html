@@ -126,6 +126,8 @@ body {
 .field-url { flex: 1; min-width: 200px; }
 .field-url input { width: 100%; }
 .field-sm { width: 80px; }
+.field-profile { width: 128px; }
+.field-profile select { width: 100%; }
 
 .btn {
   padding: 9px 24px; border-radius: var(--radius-sm); border: none;
@@ -310,6 +312,19 @@ body {
 }
 .footer a { color: var(--green); text-decoration: none; }
 
+/* Profile badge */
+.profile-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 20px; font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.profile-badge.steady { background: var(--green-dim); color: var(--green); }
+.profile-badge.soak { background: var(--blue-dim); color: var(--blue); }
+.profile-badge.linear-ramp { background: var(--yellow-dim); color: var(--yellow); }
+.profile-badge.spike { background: var(--red-dim); color: var(--red); }
+.profile-badge.wave { background: var(--cyan); color: #062a30; }
+.profile-badge.constant-rps { background: var(--purple); color: #fff; }
+
 /* ==========================================================================
    TOAST
    ========================================================================== */
@@ -324,6 +339,61 @@ body {
 .toast.error { border-left: 3px solid var(--red); }
 .toast.info { border-left: 3px solid var(--blue); }
 @keyframes toast-in { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
+
+/* ==========================================================================
+   ADVANCED PROFILE
+   ========================================================================== */
+.btn-ghost {
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-1);
+  margin-top: 18px; font-weight: 600; font-size: 12px;
+}
+.btn-ghost:hover:not(.active) { border-color: var(--border-hover); color: var(--text-0); }
+.btn-ghost.active { border-color: var(--green); color: var(--green); }
+.advanced-wrap {
+  background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 20px; margin-bottom: 20px; display: none;
+}
+.advanced-wrap.open { display: block; animation: fade-in 0.3s ease; }
+.advanced-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.advanced-hint { margin-top: 10px; font-size: 11px; color: var(--text-3); }
+.advanced-hint code { background: var(--bg-2); padding: 1px 6px; border-radius: 4px; color: var(--text-1); }
+
+/* ==========================================================================
+   DIAGNOSTICS (steps + errors)
+   ========================================================================== */
+.diag-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 20px; }
+@media (max-width: 900px) { .diag-grid { grid-template-columns: 1fr; } }
+
+.steps-table { width: 100%; border-collapse: collapse; }
+.steps-table th, .steps-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+.steps-table th { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+.steps-table tr:last-child td { border-bottom: none; }
+.steps-table td { font-size: 13px; font-variant-numeric: tabular-nums; }
+.steps-table td.step-name { font-weight: 600; color: var(--text-0); }
+
+.proto-badge {
+  display: inline-flex; align-items: center; gap: 1px; justify-content: center;
+  padding: 2px 9px; border-radius: 5px; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.6px; text-transform: uppercase; font-family: monospace;
+}
+.proto-http { background: var(--green-dim); color: var(--green); }
+.proto-ws { background: var(--cyan); color: #062a30; }
+.proto-grpc { background: rgba(168,85,247,0.18); color: var(--purple); }
+.proto-tcp { background: var(--blue-dim); color: var(--blue); }
+.proto-udp { background: var(--yellow-dim); color: var(--yellow); }
+.proto-tep { background: rgba(236,72,153,0.2); color: var(--pink); border: 1px solid rgba(236,72,153,0.4); }
+.proto-def { background: var(--bg-3); color: var(--text-2); }
+
+.error-list { display: flex; flex-direction: column; gap: 10px; }
+.error-row { display: flex; align-items: center; gap: 10px; }
+.error-name {
+  font-size: 12px; min-width: 120px; max-width: 46%; color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace;
+}
+.error-bar-bg { flex: 1; height: 14px; background: var(--bg-2); border-radius: 4px; overflow: hidden; }
+.error-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--red), var(--orange)); transition: width 0.5s ease; }
+.error-count { font-size: 11px; color: var(--text-3); min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; }
+.error-empty { text-align: center; color: var(--text-3); padding: 32px 0; font-size: 13px; }
 
 /* ==========================================================================
    ANIMATIONS
@@ -342,6 +412,7 @@ body {
     <div class="header-left">
       <div class="logo">stress-strike <span>dashboard</span></div>
       <span class="badge badge-idle" id="statusBadge">idle</span>
+      <span class="profile-badge steady" id="profileBadge">steady</span>
     </div>
     <div class="header-right">
       <span class="conn-label" id="connLabel"><span class="conn-dot connected" id="connDot"></span>Connecting...</span>
@@ -355,22 +426,73 @@ body {
       <input id="inpUrl" placeholder="http://localhost:8080/health" value="http://localhost:8080/health">
     </div>
     <div class="field field-sm">
-      <div class="field-label">Users</div>
-      <input id="inpUsers" type="number" value="10" min="1">
-    </div>
-    <div class="field field-sm">
-      <div class="field-label">Duration</div>
-      <input id="inpDuration" type="number" value="30" min="1">
-    </div>
-    <div class="field field-sm">
       <div class="field-label">Method</div>
       <select id="inpMethod">
         <option>GET</option><option>POST</option><option>PUT</option>
         <option>DELETE</option><option>PATCH</option><option>HEAD</option>
       </select>
     </div>
+    <div class="field field-sm">
+      <div class="field-label">Users</div>
+      <input id="inpUsers" type="number" value="10" min="1">
+    </div>
+    <div class="field field-sm">
+      <div class="field-label">Duration (s)</div>
+      <input id="inpDuration" type="number" value="30" min="1">
+    </div>
+    <div class="field field-sm field-profile">
+      <div class="field-label">Profile</div>
+      <select id="inpProfile">
+        <option value="steady" selected>steady</option>
+        <option value="soak">soak</option>
+        <option value="linear-ramp">linear-ramp</option>
+        <option value="spike">spike</option>
+        <option value="wave">wave</option>
+        <option value="constant-rps">constant-rps</option>
+      </select>
+    </div>
+    <div class="field field-sm">
+      <div class="field-label">Rate (rps)</div>
+      <input id="inpRate" type="number" value="0" min="0" placeholder="auto">
+    </div>
     <button class="btn btn-start" id="btnStart" onclick="startRun()">&#9654; Start</button>
     <button class="btn btn-stop" id="btnStop" onclick="stopRun()" disabled>&#9632; Stop</button>
+    <button class="btn btn-ghost" id="btnAdvanced" onclick="toggleAdvanced()">Advanced &#9662;</button>
+  </div>
+
+  <!-- Advanced profile settings -->
+  <div class="advanced-wrap" id="advancedPanel">
+    <div class="advanced-grid">
+      <div class="field">
+        <div class="field-label">Warmup (s)</div>
+        <input id="inpWarmup" type="number" value="0" min="0">
+      </div>
+      <div class="field" id="fRampUp">
+        <div class="field-label">Ramp-up (s)</div>
+        <input id="inpRampUp" type="number" value="0" min="0" placeholder="auto">
+      </div>
+      <div class="field">
+        <div class="field-label">Timeout (s)</div>
+        <input id="inpTimeout" type="number" value="5" min="1">
+      </div>
+      <div class="field" id="fSpikeUsers">
+        <div class="field-label">Spike users</div>
+        <input id="inpSpikeUsers" type="number" value="0" min="0" placeholder="10x users">
+      </div>
+      <div class="field" id="fSpikeWarmup">
+        <div class="field-label">Spike warmup (s)</div>
+        <input id="inpSpikeWarmup" type="number" value="0" min="0">
+      </div>
+      <div class="field" id="fSpikeHold">
+        <div class="field-label">Spike hold (s)</div>
+        <input id="inpSpikeHold" type="number" value="0" min="0" placeholder="= duration">
+      </div>
+      <div class="field" id="fWavePeriod">
+        <div class="field-label">Wave period (s)</div>
+        <input id="inpWavePeriod" type="number" value="0" min="1" placeholder="= duration/3">
+      </div>
+    </div>
+    <div class="advanced-hint">Profiles: <code>steady</code> constant load &middot; <code>soak</code> long-running &middot; <code>linear-ramp</code> progressive climb &middot; <code>spike</code> sudden burst &middot; <code>wave</code> periodic oscillation &middot; <code>constant-rps</code> fixed request rate. Leave fields empty for engine defaults.</div>
   </div>
 
   <!-- Progress -->
@@ -461,6 +583,28 @@ body {
   <div class="panel" style="margin-bottom:20px">
     <div class="panel-title"><span class="dot" style="background:var(--cyan)"></span> Latency Timeline</div>
     <canvas class="chart-canvas" id="chartLatency" height="180"></canvas>
+  </div>
+
+  <!-- Diagnostics: steps + errors -->
+  <div class="diag-grid" id="diagGrid" style="display:none">
+    <!-- Steps -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot" style="background:var(--pink)"></span> Steps Detail</div>
+      <div class="table-wrap" style="border:none">
+        <table class="steps-table">
+          <thead><tr><th>Step</th><th>Protocol</th><th>Requests</th><th>RPS</th><th>P95</th><th>Errors</th></tr></thead>
+          <tbody id="stepsBody"></tbody>
+        </table>
+      </div>
+      <div id="stepsEmpty" style="text-align:center;color:var(--text-3);padding:24px 0;font-size:13px">Waiting for step data...</div>
+    </div>
+    <!-- Errors -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot" style="background:var(--red)"></span> Top Errors</div>
+      <div class="error-list" id="errorList">
+        <div class="error-empty">No errors — clean run</div>
+      </div>
+    </div>
   </div>
 
   <!-- Workers Table -->
@@ -575,7 +719,16 @@ function startRun() {
     target_url: document.getElementById('inpUrl').value || 'http://localhost:8080/health',
     users: parseInt(document.getElementById('inpUsers').value) || 10,
     duration_seconds: parseInt(document.getElementById('inpDuration').value) || 30,
-    method: document.getElementById('inpMethod').value || 'GET'
+    method: document.getElementById('inpMethod').value || 'GET',
+    profile: document.getElementById('inpProfile').value || 'steady',
+    rate_limit: parseInt(document.getElementById('inpRate').value) || 0,
+    warmup: parseInt(document.getElementById('inpWarmup').value) || 0,
+    ramp_up: parseInt(document.getElementById('inpRampUp').value) || 0,
+    spike_users: parseInt(document.getElementById('inpSpikeUsers').value) || 0,
+    spike_warmup: parseInt(document.getElementById('inpSpikeWarmup').value) || 0,
+    spike_hold: parseInt(document.getElementById('inpSpikeHold').value) || 0,
+    wave_period: parseInt(document.getElementById('inpWavePeriod').value) || 0,
+    timeout: parseInt(document.getElementById('inpTimeout').value) || 5
   };
   fetch(API + '/api/run/start', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -588,6 +741,46 @@ function stopRun() {
     toast('Run stopped', 'error');
   });
 }
+
+/* ==========================================================================
+   ADVANCED PROFILE
+   ========================================================================== */
+function toggleAdvanced() {
+  var panel = document.getElementById('advancedPanel');
+  var btn = document.getElementById('btnAdvanced');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active');
+  btn.innerHTML = btn.classList.contains('active') ? 'Advanced &#9652;' : 'Advanced &#9662;';
+}
+
+function profileClass(profile) {
+  return (profile || 'steady').replace(/_/g, '-');
+}
+
+function updateProfileBadge() {
+  var el = document.getElementById('profileBadge');
+  var p = document.getElementById('inpProfile').value || 'steady';
+  el.className = 'profile-badge ' + profileClass(p);
+  el.textContent = p;
+}
+
+function getActiveProfile() {
+  return (document.getElementById('inpProfile').value || 'steady');
+}
+
+function updateAdvancedVisibility() {
+  var p = getActiveProfile();
+  document.getElementById('fRampUp').style.display = (p === 'linear-ramp' || p === 'spike') ? '' : 'none';
+  document.getElementById('fSpikeUsers').style.display = (p === 'spike') ? '' : 'none';
+  document.getElementById('fSpikeWarmup').style.display = (p === 'spike') ? '' : 'none';
+  document.getElementById('fSpikeHold').style.display = (p === 'spike') ? '' : 'none';
+  document.getElementById('fWavePeriod').style.display = (p === 'wave') ? '' : 'none';
+}
+
+document.getElementById('inpProfile').addEventListener('change', function() {
+  updateProfileBadge();
+  updateAdvancedVisibility();
+});
 
 /* ==========================================================================
    TOAST
@@ -640,6 +833,21 @@ function render() {
     if (document.activeElement.id !== 'inpUsers') document.getElementById('inpUsers').value = r.config.users || 10;
     if (document.activeElement.id !== 'inpDuration') document.getElementById('inpDuration').value = r.config.duration_seconds || 30;
     if (document.activeElement.id !== 'inpMethod') document.getElementById('inpMethod').value = r.config.method || 'GET';
+    if (document.activeElement.id !== 'inpProfile') {
+      document.getElementById('inpProfile').value = r.config.profile || 'steady';
+      updateProfileBadge();
+      updateAdvancedVisibility();
+    }
+    if (document.activeElement.id !== 'inpRate') document.getElementById('inpRate').value = r.config.rate_limit || r.config.users || 0;
+    if (document.activeElement.id !== 'inpWarmup') document.getElementById('inpWarmup').value = r.config.warmup || 0;
+    if (document.activeElement.id !== 'inpRampUp') document.getElementById('inpRampUp').value = r.config.ramp_up || 0;
+    if (document.activeElement.id !== 'inpSpikeUsers') document.getElementById('inpSpikeUsers').value = r.config.spike_users || 0;
+    if (document.activeElement.id !== 'inpSpikeWarmup') document.getElementById('inpSpikeWarmup').value = r.config.spike_warmup || 0;
+    if (document.activeElement.id !== 'inpSpikeHold') document.getElementById('inpSpikeHold').value = r.config.spike_hold || 0;
+    if (document.activeElement.id !== 'inpWavePeriod') document.getElementById('inpWavePeriod').value = r.config.wave_period || 0;
+    if (document.activeElement.id !== 'inpTimeout') document.getElementById('inpTimeout').value = r.config.timeout || 5;
+  } else {
+    updateProfileBadge();
   }
 
   // Metric cards
@@ -667,6 +875,10 @@ function render() {
 
   // Status codes
   renderStatusCodes(s.status_codes || {});
+
+  // Diagnostics
+  renderSteps(s.steps || []);
+  renderErrors(s.errors || {});
 
   // Workers
   renderWorkers(s.workers || []);
@@ -712,6 +924,59 @@ function renderStatusCodes(codes) {
       '<span class="status-count">' + fmt(v) + ' (' + pct.toFixed(1) + '%)</span></div>';
   });
   el.innerHTML = html;
+}
+
+/* ==========================================================================
+   STEPS
+   ========================================================================== */
+var PROTO_MAP = {
+  http: 'http', ws: 'ws', grpc: 'grpc', tcp: 'tcp', udp: 'udp', tep: 'tep', wss: 'wss'
+};
+function renderSteps(steps) {
+  var grid = document.getElementById('diagGrid');
+  var empty = document.getElementById('stepsEmpty');
+  var body = document.getElementById('stepsBody');
+  if (!steps || steps.length === 0) {
+    grid.style.display = 'none';
+    return;
+  }
+  grid.style.display = '';
+  if (empty) empty.style.display = 'none';
+  body.innerHTML = steps.map(function(st) {
+    var proto = PROTO_MAP[st.type] || 'def';
+    var cls = 'proto-' + proto;
+    var badge = '<span class="proto-badge ' + cls + '">' + esc(proto) + '</span>';
+    return '<tr>' +
+      '<td class="step-name">' + esc(st.name || 'request') + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + fmt(st.requests || 0) + '</td>' +
+      '<td>' + (st.rps || 0).toFixed(1) + '</td>' +
+      '<td>' + (st.p95_ms || 0).toFixed(1) + ' ms</td>' +
+      '<td style="color:' + ((st.errors || 0) > 0 ? 'var(--red)' : 'var(--text-3)') + '">' + fmt(st.errors || 0) + '</td></tr>';
+  }).join('');
+}
+
+/* ==========================================================================
+   ERRORS
+   ========================================================================== */
+function renderErrors(errors) {
+  var el = document.getElementById('errorList');
+  if (!errors) return;
+  var keys = Object.keys(errors);
+  if (keys.length === 0) {
+    el.innerHTML = '<div class="error-empty">No errors — clean run</div>';
+    return;
+  }
+  var total = 0;
+  keys.forEach(function(k) { total += errors[k]; });
+  var sorted = keys.slice().sort(function(a, b) { return errors[b] - errors[a]; });
+  el.innerHTML = sorted.map(function(k) {
+    var pct = total > 0 ? (errors[k] / total * 100) : 0;
+    return '<div class="error-row" title="' + esc(k) + '">' +
+      '<span class="error-name">' + esc(k) + '</span>' +
+      '<div class="error-bar-bg"><div class="error-bar" style="width:' + pct + '%"></div></div>' +
+      '<span class="error-count">' + fmt(errors[k]) + ' (' + pct.toFixed(0) + '%)</span></div>';
+  }).join('');
 }
 
 /* ==========================================================================
@@ -1015,6 +1280,8 @@ document.addEventListener('keydown', function(e) {
    INIT
    ========================================================================== */
 connect();
+updateProfileBadge();
+updateAdvancedVisibility();
 render();
 </script>
 </body>

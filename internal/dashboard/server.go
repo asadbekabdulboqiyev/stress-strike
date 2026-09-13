@@ -16,19 +16,31 @@ var dashboardHTML []byte
 // --- Types ------------------------------------------------------------------
 
 type LiveSnapshot struct {
-	Timestamp   time.Time      `json:"timestamp"`
-	RPS         float64        `json:"rps"`
-	TotalReq    uint64         `json:"total_requests"`
-	TotalErrors uint64         `json:"total_errors"`
-	ErrorRate   float64        `json:"error_rate"`
-	P50Latency  float64        `json:"p50_latency_ms"`
-	P95Latency  float64        `json:"p95_latency_ms"`
-	P99Latency  float64        `json:"p99_latency_ms"`
-	AvgLatency  float64        `json:"avg_latency_ms"`
-	MaxLatency  float64        `json:"max_latency_ms"`
-	ActiveUsers int            `json:"active_users"`
-	StatusCodes map[int]uint64 `json:"status_codes"`
-	Workers     []WorkerStatus `json:"workers,omitempty"`
+	Timestamp   time.Time         `json:"timestamp"`
+	RPS         float64           `json:"rps"`
+	TotalReq    uint64            `json:"total_requests"`
+	TotalErrors uint64            `json:"total_errors"`
+	ErrorRate   float64           `json:"error_rate"`
+	P50Latency  float64           `json:"p50_latency_ms"`
+	P95Latency  float64           `json:"p95_latency_ms"`
+	P99Latency  float64           `json:"p99_latency_ms"`
+	AvgLatency  float64           `json:"avg_latency_ms"`
+	MaxLatency  float64           `json:"max_latency_ms"`
+	ActiveUsers int               `json:"active_users"`
+	PeakUsers   int64             `json:"peak_users"`
+	StatusCodes map[int]uint64    `json:"status_codes"`
+	Errors      map[string]uint64 `json:"errors,omitempty"`
+	Steps       []StepSnapshot    `json:"steps,omitempty"`
+	Workers     []WorkerStatus    `json:"workers,omitempty"`
+}
+
+type StepSnapshot struct {
+	Name     string  `json:"name"`
+	Type     string  `json:"type"`
+	Requests uint64  `json:"requests"`
+	RPS      float64 `json:"rps"`
+	P95Ms    float64 `json:"p95_ms"`
+	Errors   uint64  `json:"errors"`
 }
 
 type WorkerStatus struct {
@@ -48,6 +60,15 @@ type RunConfig struct {
 	Method          string            `json:"method"`
 	Headers         map[string]string `json:"headers,omitempty"`
 	Body            string            `json:"body,omitempty"`
+
+	Profile     string `json:"profile"`
+	Warmup      int    `json:"warmup"`
+	RampUp      int    `json:"ramp_up"`
+	SpikeUsers  int    `json:"spike_users"`
+	SpikeWarmup int    `json:"spike_warmup"`
+	SpikeHold   int    `json:"spike_hold"`
+	WavePeriod  int    `json:"wave_period"`
+	Timeout     int    `json:"timeout"`
 }
 
 type RunState struct {

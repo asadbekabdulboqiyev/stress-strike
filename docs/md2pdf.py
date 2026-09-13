@@ -251,8 +251,8 @@ def build_doc():
     # Cover
     story.append(Spacer(1, 8*mm))
     story.append(Paragraph("stress-strike", styles["h1"]))
-    story.append(Paragraph("To'liq O'rganish Qo'llanmasi (Study Guide)", styles["h2"]))
-    story.append(Paragraph("Go load-testing va security suite — arxitektura, oqimlar va mustaqil o'rganish rejasi", styles["p"]))
+    story.append(Paragraph("Complete Study Guide", styles["h2"]))
+    story.append(Paragraph("A Go load-testing and security suite — architecture, flows, and a self-study plan", styles["p"]))
     story.append(Spacer(1, 4*mm))
 
     # TOC
@@ -263,7 +263,7 @@ def build_doc():
             lvl = len(m.group(1))
             text = m.group(2).replace("`", "")
             headings.append((lvl, text))
-    story.append(Paragraph("Mundarija", styles["h2"]))
+    story.append(Paragraph("Table of Contents", styles["h2"]))
     for lvl, text in headings:
         indent = 10 if lvl == 2 else 22
         p = Paragraph(inline(text), ParagraphStyle("toc%d" % lvl,

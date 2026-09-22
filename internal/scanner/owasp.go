@@ -57,6 +57,10 @@ var owaspCategories = map[string]string{
 // (InsecureSkipVerify) because pentest targets frequently use self-signed,
 // expired, or internally-CA-signed certificates that must still be audited.
 // This is standard behavior for security scanners (nmap, Nessus, Burp).
+//
+// Default: InsecureSkipVerify=true — intentional for a pentest tool. There is
+// no --insecure opt-in flag: skipping verification is the tools' standard
+// mode, so authorization of the target (not configuration) is the control.
 // Only use against targets you are authorized to test.
 func NewOWASPChecker(target string) *OWASPChecker {
 	transport := &http.Transport{

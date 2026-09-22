@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -874,5 +877,264 @@ func TestJoinStrings(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("joinStrings(%v, %q) = %q, want %q", tt.ss, tt.sep, got, tt.want)
 		}
+	}
+}
+
+// --- Pacing Mode Tests ------------------------------------------------------
+
+func arrivalServer(t *testing.T) (*httptest.Server, func() []time.Time) {
+	t.Helper()
+	var mu sync.Mutex
+	var arr []time.Time
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		arr = append(arr, time.Now())
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	getArrivals := func() []time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		out := make([]time.Time, len(arr))
+		copy(out, arr)
+		return out
+	}
+	return srv, getArrivals
+}
+
+func timedCapture(base time.Time, url string, offsets ...time.Duration) *Capture {
+	c := &Capture{Format: FormatHAR, Packets: make([]*Packet, 0, len(offsets))}
+	for _, off := range offsets {
+		c.AddPacket(&Packet{
+			Timestamp: base.Add(off),
+			Method:    "GET",
+			URL:       url,
+			Protocol:  "http",
+			IsRequest: true,
+		})
+	}
+	return c
+}
+
+func runReplayEngine(t *testing.T, cfg *ReplayConfig, capture *Capture, workers int) *ReplayResult {
+	t.Helper()
+	engine := NewReplayEngine(cfg, capture, workers)
+	result, err := engine.Run()
+	if err != nil {
+		t.Fatalf("ReplayEngine.Run failed: %v", err)
+	}
+	return result
+}
+
+func TestReplayPacingTiming_PreservesRelativeGaps(t *testing.T) {
+	srv, arrivals := arrivalServer(t)
+	defer srv.Close()
+
+	// Capture: t0, t0+200ms, t0+500ms -> expected gaps 200ms and 300ms.
+	base := time.Now().Add(-time.Second)
+	capture := timedCapture(base, srv.URL+"/a", 0, 200*time.Millisecond, 500*time.Millisecond)
+
+	cfg := &ReplayConfig{
+		Pacing:         PacingTiming,
+		RateMultiplier: 1.0,
+		MaxConcurrency: 1,
+		SkipTLSVerify:  true,
+	}
+
+	result := runReplayEngine(t, cfg, capture, 1)
+	if result.Replayed != 3 {
+		t.Fatalf("replayed = %d, want 3", result.Replayed)
+	}
+
+	times := arrivals()
+	if len(times) != 3 {
+		t.Fatalf("server saw %d requests, want 3", len(times))
+	}
+	gap1 := times[1].Sub(times[0])
+	gap2 := times[2].Sub(times[1])
+
+	if d := gap1 - 200*time.Millisecond; d > 150*time.Millisecond || d < -150*time.Millisecond {
+		t.Errorf("gap1 = %v, want ~200ms (±150ms)", gap1)
+	}
+	if d := gap2 - 300*time.Millisecond; d > 150*time.Millisecond || d < -150*time.Millisecond {
+		t.Errorf("gap2 = %v, want ~300ms (±150ms)", gap2)
+	}
+}
+
+func TestReplayPacingTiming_RateScalesGaps(t *testing.T) {
+	srv, arrivals := arrivalServer(t)
+	defer srv.Close()
+
+	// Same capture as above; rate=2 should roughly halve the gaps.
+	base := time.Now().Add(-time.Second)
+	capture := timedCapture(base, srv.URL+"/b", 0, 200*time.Millisecond, 500*time.Millisecond)
+
+	cfg := &ReplayConfig{
+		Pacing:         PacingTiming,
+		RateMultiplier: 2.0,
+		MaxConcurrency: 1,
+		SkipTLSVerify:  true,
+	}
+
+	result := runReplayEngine(t, cfg, capture, 1)
+	if result.Replayed != 3 {
+		t.Fatalf("replayed = %d, want 3", result.Replayed)
+	}
+
+	times := arrivals()
+	if len(times) != 3 {
+		t.Fatalf("server saw %d requests, want 3", len(times))
+	}
+	half1 := times[1].Sub(times[0])
+	half2 := times[2].Sub(times[1])
+
+	if d := half1 - 100*time.Millisecond; d > 150*time.Millisecond || d < -150*time.Millisecond {
+		t.Errorf("halved gap1 = %v, want ~100ms (±150ms)", half1)
+	}
+	if d := half2 - 150*time.Millisecond; d > 175*time.Millisecond || d < -175*time.Millisecond {
+		t.Errorf("halved gap2 = %v, want ~150ms (±175ms)", half2)
+	}
+}
+
+func TestReplayPacingLegacy(t *testing.T) {
+	srv, arrivals := arrivalServer(t)
+	defer srv.Close()
+
+	// Timestamps far apart, but legacy ignores them and uses 1s/rate = 100ms.
+	base := time.Now().Add(-time.Hour)
+	capture := timedCapture(base, srv.URL+"/l", 0, 10*time.Minute, 20*time.Minute)
+
+	cfg := &ReplayConfig{
+		Pacing:         PacingLegacy,
+		RateMultiplier: 10.0,
+		MaxConcurrency: 1,
+		SkipTLSVerify:  true,
+	}
+
+	start := time.Now()
+	result := runReplayEngine(t, cfg, capture, 1)
+	elapsed := time.Since(start)
+
+	if result.Replayed != 3 {
+		t.Errorf("replayed = %d, want 3", result.Replayed)
+	}
+	if elapsed < 200*time.Millisecond || elapsed > 2*time.Second {
+		t.Errorf("legacy replay took %v, want ~300ms but < 2s", elapsed)
+	}
+
+	times := arrivals()
+	if len(times) != 3 {
+		t.Fatalf("server saw %d requests, want 3", len(times))
+	}
+	for i := 1; i < len(times); i++ {
+		gap := times[i].Sub(times[i-1])
+		if gap > 300*time.Millisecond {
+			t.Errorf("legacy gap %d = %v, want ~100ms", i, gap)
+		}
+	}
+}
+
+// --- Follow Redirects Tests -------------------------------------------------
+
+func TestReplayFollowRedirects(t *testing.T) {
+	var redirectHits int32
+	var finalHits int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/final", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&finalHits, 1)
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&redirectHits, 1)
+		http.Redirect(w, r, "/final", http.StatusFound)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	for _, tc := range []struct {
+		name     string
+		follow   bool
+		wantCode int
+	}{
+		{"no-follow", false, http.StatusFound},
+		{"follow", true, http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			atomic.StoreInt32(&redirectHits, 0)
+			atomic.StoreInt32(&finalHits, 0)
+
+			pkt := &Packet{Method: "GET", URL: srv.URL + "/start", Protocol: "http", IsRequest: true}
+			cfg := &ReplayConfig{
+				Pacing:          PacingTiming,
+				RateMultiplier:  1000,
+				MaxConcurrency:  1,
+				SkipTLSVerify:   true,
+				FollowRedirects: tc.follow,
+			}
+
+			w := NewReplayWorker(0, cfg, &Capture{}, []*Packet{pkt})
+			if err := w.Run(); err != nil {
+				t.Fatalf("Run failed: %v", err)
+			}
+			if pkt.Response == nil {
+				t.Fatal("no response recorded")
+			}
+			if pkt.Response.StatusCode != tc.wantCode {
+				t.Errorf("status = %d, want %d", pkt.Response.StatusCode, tc.wantCode)
+			}
+			if tc.follow {
+				if atomic.LoadInt32(&redirectHits) != 1 {
+					t.Errorf("redirect hits = %d, want 1", redirectHits)
+				}
+				if atomic.LoadInt32(&finalHits) != 1 {
+					t.Errorf("final hits = %d, want 1", finalHits)
+				}
+			} else {
+				if atomic.LoadInt32(&redirectHits) == 0 || atomic.LoadInt32(&finalHits) != 0 {
+					t.Errorf("redirect=%d final=%d, want redirect hit and no follow", redirectHits, finalHits)
+				}
+			}
+		})
+	}
+}
+
+// --- Duration Tests ---------------------------------------------------------
+
+func TestReplayDuration(t *testing.T) {
+	srv, arrivals := arrivalServer(t)
+	defer srv.Close()
+
+	// 20 packets at 200ms apart -> ~4s at rate=1; Duration caps it at 300ms.
+	base := time.Now().Add(-time.Hour)
+	n := 20
+	offsets := make([]time.Duration, n)
+	for i := range offsets {
+		offsets[i] = time.Duration(i) * 200 * time.Millisecond
+	}
+	capture := timedCapture(base, srv.URL+"/d", offsets...)
+
+	cfg := &ReplayConfig{
+		Pacing:         PacingTiming,
+		RateMultiplier: 1.0,
+		MaxConcurrency: 1,
+		Duration:       300 * time.Millisecond,
+		SkipTLSVerify:  true,
+	}
+
+	start := time.Now()
+	result := runReplayEngine(t, cfg, capture, 1)
+	elapsed := time.Since(start)
+
+	if elapsed > 2*time.Second {
+		t.Errorf("run took %v, want < 2s", elapsed)
+	}
+	if result.Replayed >= n {
+		t.Errorf("replayed = %d, want < %d (duration should stop early)", result.Replayed, n)
+	}
+	if result.Replayed == 0 {
+		t.Error("expected at least one request to replay within duration")
+	}
+	if len(arrivals()) != result.Replayed {
+		t.Errorf("server saw %d requests, want %d", len(arrivals()), result.Replayed)
 	}
 }

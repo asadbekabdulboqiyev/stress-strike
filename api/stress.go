@@ -25,6 +25,11 @@ type Config struct {
 	Timeout   time.Duration
 	KeepAlive bool
 	Profile   string
+	// Headers are attached to every request sent by the load test.
+	Headers map[string]string
+	// TLSFingerprint masks the ClientHello as a known client when the target
+	// is served over TLS. It is a no-op for plain HTTP targets.
+	TLSFingerprint string
 	// SLA optionally defines pass/fail thresholds; Result.SLAPassed reports
 	// the verdict so callers can fail builds or deployment gates.
 	SLA *config.SLA
@@ -36,6 +41,7 @@ type Result struct {
 	RPS           float64
 	ErrorRatePct  float64
 	P50, P95, P99 time.Duration
+	Avg, Max      time.Duration
 	StatusCodes   map[int]uint64
 	Errors        map[string]uint64
 	// SLAResults holds per-threshold outcomes (nil when no SLA configured).
@@ -73,15 +79,16 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 	sc := &config.Scenario{
 		Name: "api-run",
 		Profile: config.Profile{
-			Type:      profile,
-			Users:     users,
-			Duration:  duration,
-			RPS:       cfg.RPS,
-			Timeout:   timeout,
-			KeepAlive: &keepAlive,
+			Type:           profile,
+			Users:          users,
+			Duration:       duration,
+			RPS:            cfg.RPS,
+			Timeout:        timeout,
+			KeepAlive:      &keepAlive,
+			TLSFingerprint: cfg.TLSFingerprint,
 		},
 		Steps: []config.Step{
-			{Name: "request", Method: method, URL: cfg.URL},
+			{Name: "request", Method: method, URL: cfg.URL, Headers: cfg.Headers},
 		},
 	}
 	if err := sc.Normalize(); err != nil {
@@ -119,6 +126,8 @@ func resultFrom(tel *metrics.Telemetry) *Result {
 		P50:           snap.Percentile(0.50),
 		P95:           snap.Percentile(0.95),
 		P99:           snap.Percentile(0.99),
+		Avg:           snap.Average,
+		Max:           snap.Max,
 		StatusCodes:   tel.StatusCodes(),
 		Errors:        tel.Errors(),
 	}

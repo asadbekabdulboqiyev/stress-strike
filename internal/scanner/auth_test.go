@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -407,3 +408,95 @@ func (a *atomicString) get() string {
 	defer a.mu.Unlock()
 	return a.v
 }
+
+// TestAuthCredentialsNotLeakedOnCrossHostRedirect verifies that a redirect
+// leaving the original host surfaces the redirect response instead of
+// re-issuing the authenticated request at a foreign host. The injected
+// Authorization header must never reach the second origin.
+func TestAuthCredentialsNotLeakedOnCrossHostRedirect(t *testing.T) {
+	var (
+		hits int32
+		got  atomicString
+	)
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		syncAtomicAdd(&hits, 1)
+		got.set(r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer other.Close()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/steal", http.StatusFound)
+	}))
+	defer origin.Close()
+
+	cfg := AuthConfig{
+		Type:        AuthHeader,
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer top-secret-token",
+	}
+	sess, err := NewAuthSession(cfg, 5*time.Second)
+	if err != nil {
+		t.Fatalf("NewAuthSession: %v", err)
+	}
+
+	resp, err := sess.Client().Get(origin.URL + "/start")
+	if err != nil {
+		t.Fatalf("GET /start: %v", err)
+	}
+	resp.Body.Close()
+
+	// The redirect response is surfaced untouched (ErrUseLastResponse)…
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("redirect response status = %d, want 302", resp.StatusCode)
+	}
+	// …and the foreign origin was never contacted with the credential.
+	if n := syncAtomicLoad(&hits); n != 0 {
+		t.Fatalf("foreign host was contacted %d time(s); leaked header = %q", n, got.get())
+	}
+	if got.get() != "" {
+		t.Fatalf("credential leaked to foreign host: %q", got.get())
+	}
+}
+
+func TestAuthCookieNotLeakedOnCrossHostRedirect(t *testing.T) {
+	var (
+		hits int32
+		got  atomicString
+	)
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		syncAtomicAdd(&hits, 1)
+		got.set(r.Header.Get("Cookie"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer other.Close()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/steal", http.StatusFound)
+	}))
+	defer origin.Close()
+
+	sess, err := NewAuthSession(AuthConfig{Type: AuthCookie, Cookie: "session=super-secret"}, 5*time.Second)
+	if err != nil {
+		t.Fatalf("NewAuthSession: %v", err)
+	}
+
+	resp, err := sess.Client().Get(origin.URL + "/start")
+	if err != nil {
+		t.Fatalf("GET /start: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("redirect response status = %d, want 302", resp.StatusCode)
+	}
+	if n := syncAtomicLoad(&hits); n != 0 {
+		t.Fatalf("foreign host was contacted %d time(s); leaked cookie = %q", n, got.get())
+	}
+	if got.get() != "" {
+		t.Fatalf("cookie leaked to foreign host: %q", got.get())
+	}
+}
+
+func syncAtomicAdd(p *int32, v int32) { atomic.AddInt32(p, v) }
+func syncAtomicLoad(p *int32) int32   { return atomic.LoadInt32(p) }

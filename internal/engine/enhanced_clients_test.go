@@ -273,7 +273,7 @@ func TestGrpcSharedConnReuse(t *testing.T) {
 // TestHTTP2TransportEnabled asserts the transport still attempts HTTP/2 so
 // h2-capable targets benefit from multiplexing.
 func TestHTTP2TransportEnabled(t *testing.T) {
-	tr := newTransport(true, 256)
+	tr := newTransport(true, 256, "")
 	if !tr.ForceAttemptHTTP2 {
 		t.Error("ForceAttemptHTTP2 = false, want true")
 	}
@@ -281,4 +281,22 @@ func TestHTTP2TransportEnabled(t *testing.T) {
 		t.Errorf("TLS MinVersion = %x, want 0303 (TLS 1.2)", tr.TLSClientConfig.MinVersion)
 	}
 	_ = http2.Transport{} // ensure dependency stays linked for h2 upgrades
+}
+
+// TestFingerprintTransportConfiguresDialer asserts that requesting a TLS
+// fingerprint swaps the standard dialer for a uTLS-backed one, and that a
+// plain (default) profile keeps the built-in dialer — so the extra layer only
+// exists when explicitly asked for.
+func TestFingerprintTransportConfiguresDialer(t *testing.T) {
+	plain := newTransport(true, 256, "")
+	if plain.DialTLSContext != nil {
+		t.Fatal("default profile must not install a custom DialTLSContext")
+	}
+	fp := newTransport(true, 256, "chrome")
+	if fp.DialTLSContext == nil {
+		t.Fatal("chrome profile must install a uTLS-backed DialTLSContext")
+	}
+	if fp.ForceAttemptHTTP2 {
+		t.Fatal("fingerprinted transport must pin HTTP/1.1 so Go's transport cannot misread the negotiated protocol")
+	}
 }

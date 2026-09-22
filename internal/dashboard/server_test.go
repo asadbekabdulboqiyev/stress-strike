@@ -539,3 +539,184 @@ func TestWorkerStatus_JSON(t *testing.T) {
 		t.Errorf("RPS = %f", decoded.RPS)
 	}
 }
+
+// --- Origin / CSRF Tests ----------------------------------------------------
+
+func TestSameOrigin(t *testing.T) {
+	// No Origin header: non-browser clients (curl, CLI) stay allowed.
+	req := httptest.NewRequest("GET", "/ws", nil)
+	if !sameOrigin(req) {
+		t.Error("request without Origin must be allowed")
+	}
+
+	// Matching same-origin host: allowed (localhost dev case).
+	req = httptest.NewRequest("GET", "/ws", nil)
+	req.Host = "127.0.0.1:8888"
+	req.Header.Set("Origin", "http://127.0.0.1:8888")
+	if !sameOrigin(req) {
+		t.Error("same-origin request must be allowed")
+	}
+
+	// Cross-origin host: rejected.
+	req = httptest.NewRequest("GET", "/ws", nil)
+	req.Host = "127.0.0.1:8888"
+	req.Header.Set("Origin", "http://evil.example")
+	if sameOrigin(req) {
+		t.Error("cross-origin request must be rejected")
+	}
+
+	// Non-http(s) scheme: rejected.
+	req = httptest.NewRequest("GET", "/ws", nil)
+	req.Host = "127.0.0.1:8888"
+	req.Header.Set("Origin", "file:///etc/passwd")
+	if sameOrigin(req) {
+		t.Error("non-http origin scheme must be rejected")
+	}
+
+	// Malformed origin: rejected.
+	req = httptest.NewRequest("GET", "/ws", nil)
+	req.Host = "127.0.0.1:8888"
+	req.Header.Set("Origin", "http://[::1")
+	if sameOrigin(req) {
+		t.Error("malformed origin must be rejected")
+	}
+
+	// Port mismatch (same host, different port): rejected.
+	req = httptest.NewRequest("GET", "/ws", nil)
+	req.Host = "127.0.0.1:8888"
+	req.Header.Set("Origin", "HTTP://127.0.0.1:9999")
+	if sameOrigin(req) {
+		t.Error("port mismatch must be rejected")
+	}
+}
+
+func TestStartRunRejectsCrossOrigin(t *testing.T) {
+	s := NewServer()
+	var called bool
+	s.SetCommandHandler(func(cmd string, args map[string]interface{}) {
+		called = true
+	})
+
+	req := httptest.NewRequest("POST", "/api/run/start", strings.NewReader(`{"target_url":"https://example.com"}`))
+	req.Header.Set("Origin", "http://evil.example")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("cross-origin start status = %d, want 403", w.Code)
+	}
+	if called {
+		t.Error("command handler must not fire for a cross-origin start")
+	}
+}
+
+func TestStopRunRejectsCrossOrigin(t *testing.T) {
+	s := NewServer()
+	var called bool
+	s.SetCommandHandler(func(cmd string, args map[string]interface{}) {
+		called = true
+	})
+
+	req := httptest.NewRequest("POST", "/api/run/stop", nil)
+	req.Header.Set("Origin", "http://evil.example")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("cross-origin stop status = %d, want 403", w.Code)
+	}
+	if called {
+		t.Error("command handler must not fire for a cross-origin stop")
+	}
+}
+
+func TestStartRunBodyLimit(t *testing.T) {
+	s := NewServer()
+	var called bool
+	s.SetCommandHandler(func(cmd string, args map[string]interface{}) {
+		called = true
+	})
+
+	// Payload larger than the 1 MiB API body cap.
+	big := strings.Repeat("a", (1<<20)+4096)
+	body := `{"target_url":"https://example.com/` + big + `"}`
+	req := httptest.NewRequest("POST", "/api/run/start", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("oversized start body status = %d, want 400", w.Code)
+	}
+	if called {
+		t.Error("command handler must not fire for an oversized body")
+	}
+}
+
+// --- Security Headers / Assets ----------------------------------------------
+
+func TestSecurityHeadersApplied(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("GET", "/api/snapshot", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+
+	h := w.Header()
+	if got := h.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
+	}
+	if got := h.Get("X-Frame-Options"); got != "DENY" {
+		t.Errorf("X-Frame-Options = %q, want DENY", got)
+	}
+	if got := h.Get("Referrer-Policy"); got != "no-referrer" {
+		t.Errorf("Referrer-Policy = %q, want no-referrer", got)
+	}
+	csp := h.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "default-src 'self'") {
+		t.Errorf("CSP missing default-src 'self': %q", csp)
+	}
+	if !strings.Contains(csp, "connect-src") {
+		t.Errorf("CSP missing connect-src (WebSocket): %q", csp)
+	}
+	if !strings.Contains(csp, "ws://"+req.Host) {
+		t.Errorf("CSP missing same-origin WebSocket source: %q", csp)
+	}
+}
+
+func TestServesHardenedAssets(t *testing.T) {
+	s := NewServer()
+	for _, tc := range []struct {
+		path, ct string
+	}{
+		{"/style.css", "text/css"},
+		{"/app.js", "application/javascript"},
+	} {
+		req := httptest.NewRequest("GET", tc.path, nil)
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want 200", tc.path, w.Code)
+		}
+		if !strings.Contains(w.Header().Get("Content-Type"), tc.ct) {
+			t.Errorf("GET %s Content-Type = %q, want %q", tc.path, w.Header().Get("Content-Type"), tc.ct)
+		}
+		if w.Body.Len() == 0 {
+			t.Errorf("GET %s served an empty body", tc.path)
+		}
+	}
+}
+
+func TestIsLoopbackAddr(t *testing.T) {
+	for addr, want := range map[string]bool{
+		"127.0.0.1:8888": true,
+		"localhost:8888": true,
+		"[::1]:8888":     true,
+		":8888":          false, // all interfaces
+		"0.0.0.0:8888":   false,
+		"10.0.0.1:8888":  false,
+	} {
+		if got := IsLoopbackAddr(addr); got != want {
+			t.Errorf("IsLoopbackAddr(%q) = %v, want %v", addr, got, want)
+		}
+	}
+}

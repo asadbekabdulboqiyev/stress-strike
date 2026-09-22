@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.9.0-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.11.0-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -47,16 +47,32 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 
 ## Quick Start
 
+Ranjit (one command) is inside the repo and runnable on this machine the way
+the website says. From a terminal:
+
+```sh
+./start.sh
+```
+
+It builds the binaries **once** (first run only), boots a safe local demo
+site, serves the real-time **web dashboard** on http://localhost:8888, opens
+your browser automatically, and hands you a URL field + a **Start** button.
+No Docker. No SSH. No servers. No cloud account. Ctrl+C stops everything
+when you&rsquo;re done and cleans up the demo site.
+
+> Give it a real target whenever you like:
+> `URL=https://api.example.com USERS=100 DURATION=60 ./start.sh`
+
 ### Install (one command)
 
 > By default `stress-strike` installs from the module proxy. Requires **Go 1.26+**.
-> The `replay` binary additionally needs `libpcap` (see note below).
+> The whole suite is pure Go — no CGO, no libpcap, no system dependencies.
 
 ```sh
 # Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 
-# Or use the convenience installer
+# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.11.0)
 curl -fsSL https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh | bash
 ```
 
@@ -66,8 +82,13 @@ If `stress-strike` isn't found after installing, add Go's bin directory to your 
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-> **libpcap note:** `stress-strike play`/`replay` needs `libpcap` (CGO). On macOS:
-> `brew install libpcap`. The rest of the suite is pure Go and works without it.
+> **Pure-Go:** PCAP/HAR replay uses in-tree `pcapgo` — nothing to install,
+> no `brew install libpcap`, works on macOS/Linux/Windows out of the box.
+> Upgrade an old install anytime:
+> ```sh
+> go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+> ./scripts/install.sh   # or: ./scripts/install.sh v0.11.0
+> ```
 
 ### Your first test in 60 seconds
 
@@ -232,6 +253,7 @@ Core load testing command. Run with `--url` for quick mode or `--config` for YAM
 | `--rps` | `0` (unlimited) | Global pacing cap |
 | `--timeout` | `5` | Per-request timeout (seconds) |
 | `--keep-alive` | `true` | Reuse TCP connections |
+| `--tls-fingerprint` | | Present a browser/mobile TLS ClientHello (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...) — beats JA3-based blocking |
 | `--expect-p99-ms` | | SLA: max p99 latency (ms) |
 | `--expect-avg-ms` | | SLA: max avg latency (ms) |
 | `--expect-error-rate` | | SLA: max error rate (%) |
@@ -340,7 +362,11 @@ Distributed load testing coordinator. Distributes users across worker nodes.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--listen` | `:50051` | Master listen address |
-| `--workers` | | Comma-separated worker addresses (required) |
+| `--workers` | | Comma-separated worker addresses (static fleet) |
+| `--wait-workers` | `0` | Auto-discovery: wait for N self-registering workers |
+| `--wait-timeout` | `30` | Auto-discovery registration timeout (seconds) |
+| `--token` | | Shared control-plane token (empty = disabled) |
+| `--run-timeout` | `0` | Overall run deadline (0 = duration + 60s) |
 | `--config` | | YAML scenario file |
 | `--url` | | Target URL (quick mode) |
 | `--users` | `100` | Total virtual users (split across workers) |
@@ -352,6 +378,7 @@ Distributed load testing coordinator. Distributes users across worker nodes.
 | `--compare` | | Baseline for regression detection |
 | `--regress-pct` | `20` | Regression threshold (%) |
 | `--timeline` | | Export CSV timeline |
+| `--quiet` | `false` | Suppress the live aggregate progress line |
 
 ### `stress-strike worker`
 
@@ -360,9 +387,23 @@ Distributed load testing worker node. Receives commands from master over gRPC.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--listen` | `:0` (random) | Worker listen address |
-| `--master` | | Master address for registration |
+| `--advertise` | listen addr | Address advertised to the master |
+| `--master` | | Master address for self-registration |
 | `--id` | auto-generated | Worker identifier |
 | `--max-users` | `100000` | Max virtual users this worker supports |
+| `--max-runs` | `4` | Max concurrent runs |
+| `--token` | | Shared control-plane token (must match master) |
+
+The master aggregates live telemetry from every worker (200 ms cadence), keeps
+running if a worker dies, and merges the final per-worker reports. Every
+load-shaping field (`users`, `spike_users`, `rps`) is split across the fleet.
+See [docs/DISTRIBUTED.md](docs/DISTRIBUTED.md) for the full guide, including
+fault tolerance, security, Docker and systemd deployment, and the Linux worker
+cross-compile script:
+
+```sh
+./scripts/build-worker-linux.sh 0.11.0   # or: make worker-linux
+```
 
 ---
 
@@ -575,35 +616,132 @@ Run load tests across multiple machines using the master/worker architecture ove
 
 ```sh
 # On machine A (worker)
-stress-strike worker --listen :50052
+stress-strike-worker -listen :50052 -id worker-a -max-users 200000
 
 # On machine B (worker)
-stress-strike worker --listen :50052
+stress-strike-worker -listen :50052 -id worker-b -max-users 200000
 
 # On machine C (master) — distributes 3000 users across 2 workers
-stress-strike master \
-  --workers host-a:50052,host-b:50052 \
-  --url https://api.example.com \
-  --users 3000 \
-  --duration 60 \
-  --profile linear-ramp
+stress-strike-master \
+  -workers host-a:50052,host-b:50052 \
+  -url https://api.example.com \
+  -users 3000 \
+  -duration 60 \
+  -profile linear-ramp
 ```
 
 ### With scenario file
 
 ```sh
-stress-strike master \
-  --workers host-a:50052,host-b:50052,host-c:50052 \
-  --config scenario.yaml
+stress-strike-master \
+  -workers host-a:50052,host-b:50052,host-c:50052 \
+  -config scenario.yaml
 ```
 
-The master automatically splits users across workers (e.g. 3000 users / 3 workers = 1000 each), aggregates telemetry in real-time, and produces a unified report.
+The master splits every load-shaping field (`users`, `spike_users`, `rps`)
+across workers, streams and aggregates live telemetry every 200 ms, keeps
+running if a worker dies, and produces a unified report with recomputed SLA
+verdicts.
 
-### Worker with auto-registration
+### Auto-discovery
+
+Start the master with `-wait-workers N`, then launch workers that register
+themselves — no static address list needed:
 
 ```sh
-stress-strike worker --listen :50052 --master master-host:50051
+stress-strike-master -listen :50051 -wait-workers 3 -url https://api.example.com -users 30000 -duration 120
+
+stress-strike-worker -listen 0.0.0.0:50052 -id worker-a \
+  -master master-host:50051 -advertise host-a:50052
 ```
+
+### Securing the control plane
+
+Pass the same `-token` to the master and every worker; calls without it are
+rejected with `Unauthenticated`:
+
+```sh
+stress-strike-master -workers host-a:50052 -token "$STRESS_TOKEN" ...
+stress-strike-worker -listen :50052 -token "$STRESS_TOKEN" ...
+```
+
+### Deploying to real Linux load hosts
+
+```sh
+./scripts/build-worker-linux.sh 0.11.0   # or: make worker-linux
+```
+
+Each archive (amd64/arm64) ships the worker, the master, a hardened systemd
+unit and an `worker.env` template. See
+[docs/DISTRIBUTED.md](docs/DISTRIBUTED.md) for systemd, Docker, sysctl tuning
+and the full CLI reference.
+
+For a ready-to-run VPS fleet straight from your SSH keys, two helpers ship in
+the repo:
+
+```sh
+# one host manually
+scp dist/linux-worker/stress-strike-worker-v0.11.0-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+ssh root@HOST 'cd /tmp && \
+  SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
+  bash bootstrap-worker.sh stress-strike-worker-v0.11.0-linux-amd64.tar.gz'
+
+# a whole fleet (builds packages, scp + installs, prints the master command)
+./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12
+```
+
+Single-host container option:
+[`deploy/docker-compose.yml`](deploy/docker-compose.yml) (master + 2 workers).
+Full checklist in [docs/DEPLOY-REMOTE.md](docs/DEPLOY-REMOTE.md).
+
+---
+
+## TLS Fingerprinting (JA3 masking)
+
+Many CDNs and WAFs fingerprint clients by their TLS ClientHello (JA3/JA4).
+Go's own hello is distinctive, so pure-Go load generators get blocked or
+challenged the instant a fingerprinting rule goes live.
+
+`stress-strike` can impersonate a real browser or mobile client at the TLS
+layer with `-tls-fingerprint` (or `tls_fingerprint:` in a scenario):
+
+```sh
+stress-strike run --url https://api.example.com \
+  --users 500 --duration 120 \
+  --tls-fingerprint chrome      # or: firefox, safari, edge, ios, android_okhttp
+```
+
+```yaml
+name: mobile-like
+base_url: https://api.example.com
+profile:
+  users: 500
+  duration: 120
+  tls_fingerprint: ios
+```
+
+Fingerprint presets (from `github.com/refraction-networking/utls`):
+
+| Preset | ClientHello mimics |
+|--------|--------------------|
+| `chrome` | Chrome 133 (`chrome_120`, `chrome_133`) |
+| `firefox` | Firefox 120 (`firefox_102`) |
+| `safari` | Safari 16.0 |
+| `edge` | Edge 85 |
+| `ios` | iOS 14 |
+| `android_okhttp` | Android 11 OkHttp (real mobile traffic) |
+| `golang` | plain Go hello (baseline, useful for comparisons) |
+| `randomized*` | random walk over extension sets |
+
+JA3 is the fingerprint most gateways check, and the masked ClientHello keeps
+that value: ciphers, extension ordering, curves and point formats all match the
+mimicked browser. ALPN is pinned to `http/1.1` so the Go transport never
+misreads the negotiated protocol (HTTP/2 is available in the fingerprint-off
+path). The engine has been exercised end-to-end against live TLS hosts, where a
+`chrome` masked run returns full 200s while unmasked Go hellos get marked.
+
+In distributed mode, pass the same flag on the master and every worker receives
+it in the scenario: `stress-strike-master -tls-fingerprint chrome -wait-workers 4 ...`.
 
 ---
 
@@ -783,7 +921,7 @@ cd stress-strike
 | `make bench` | Run benchmarks |
 | `make clean` | Remove build artifacts |
 | `make install` | Install into `PATH` |
-| `make release VERSION=0.9.0` | Cross-compile all platforms into `./dist` |
+| `make release VERSION=0.11.0` | Cross-compile all platforms into `./dist` |
 
 ### Cross-compilation
 

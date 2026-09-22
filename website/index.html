@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stress-strike — real multi-node load testing on hardware you already own</title>
+  <meta name="description" content="stress-strike runs browser-grade TLS-fingerprinted load against any site, across machines you already have. Two paths: a Docker fleet on one box, or real VPS workers over SSH. No SaaS, no cloud account, no signup.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="stress-strike">
+  <meta property="og:title" content="stress-strike — real multi-node load testing on hardware you already own">
+  <meta property="og:description" content="Browser-grade TLS-fingerprinted load testing from machines you already have. Docker fleet or VPS workers over SSH. No SaaS, no cloud account, no signup.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="stress-strike — real multi-node load testing on hardware you already own">
+  <meta name="twitter:description" content="Browser-grade TLS-fingerprinted load testing from machines you already have. No SaaS, no cloud account, no signup.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230d0f0e'/%3E%3Cpath d='M3 3h6v3H6v3H3V3zm4 7h6v3H7v-3z' fill='%23ffb454'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-top">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">&#9644;</span>
+        <span class="brand-name">stress-strike</span>
+        <span class="brand-ver">v0.11.0</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#paths">Two paths</a>
+        <a href="#output">What you see</a>
+        <a href="#compare">Compare</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+        <a class="btn btn-primary btn-sm site-cta" href="#run">Run it now</a>
+        <button class="navtoggle" id="navToggle" type="button" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu"><span></span><span></span></button>
+    </div>
+    <nav class="site-nav" id="mobileNav" aria-label="Mobile">
+      <a href="#paths">Two paths</a>
+      <a href="#output">What you see</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="#run">Run it now</a>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <!-- hero -->
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1>Load-test a real site with machines you already have.</h1>
+          <p class="lede">stress-strike sends browser-grade HTTPS connections at any target and reports what the server can actually take. Run it on one laptop, or stretch it across every VPS and home server you own.</p>
+          <p class="hero-cta">
+            <a class="btn btn-primary" href="#run">One command &mdash; run it now</a>
+            <a class="btn btn-ghost" href="#output">See a real run</a>
+          </p>
+          <p class="hero-note">No account. No cloud. No dependencies beyond what&rsquo;s listed on this page.</p>
+        </div>
+
+        <div class="term-wrap">
+          <div class="term" role="img" aria-label="terminal output of the deploy launcher">
+            <div class="term-head">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="term-title">deploy.sh</span>
+            </div>
+            <pre class="term-body" id="heroTerm">$ ./start.sh
+&#9644;&#9644; stress-strike &#9644;&#9644;
+[ ok ] go:    1.26.0
+[ ok ] src:   stress-strike (this repo)
+
+building binaries (first run only)...
+[ ok ] done — stress-strike + dashboard ready
+
+[ ok ] demo site up      http://localhost:8080
+[ ok ] dashboard up      http://localhost:8888
+
+opening browser for you...
+   -> http://localhost:8888
+
+  target:  https://local.demo
+  users:   20   duration: 30s
+
+press [Start] in the browser — dashboard streams live<span class="t-cursor" aria-hidden="true"></span></pre>
+          </div>
+          <p class="term-caption"><code>./start.sh</code> is the one command: it builds the binaries the first time, boots a safe local demo site, and opens the live dashboard so you can press <strong>Start</strong> straight away.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- fact strip -->
+    <section class="facts" aria-label="Key facts">
+      <div class="wrap facts-grid">
+        <div class="fact"><span class="fact-n">2</span><span class="fact-l">paths to a real fleet</span></div>
+        <div class="fact"><span class="fact-n">1</span><span class="fact-l">command to start</span></div>
+        <div class="fact"><span class="fact-n">0</span><span class="fact-l">cloud accounts needed</span></div>
+        <div class="fact"><span class="fact-n">~30s</span><span class="fact-l">per host, fleet install</span></div>
+      </div>
+    </section>
+
+    <!-- statement -->
+    <section class="statement">
+      <div class="wrap">
+        <p class="statement-text">Most load tools make you rent their servers and stream your traffic through their pipes. That is not a load test, that is a lecture. stress-strike runs <em>from</em> your hardware, against the real internet, over TLS that looks like a browser.</p>
+        <p class="statement-note">It does not fake the network. It does not fake TLS. It does not fake the results.</p>
+      </div>
+    </section>
+
+    <!-- paths -->
+    <section class="paths section-pad" id="paths">
+      <div class="wrap">
+        <h2 class="sec-title">Two ways to run it</h2>
+        <p class="sec-sub">Both paths ship the same binaries. Pick whichever fits the hardware you own. The steps below are complete and copy-pasteable.</p>
+
+        <div class="tabs">
+          <div class="tablist" role="tablist" aria-label="Deployment paths">
+            <button class="tab active" id="tab-docker" role="tab" aria-selected="true" aria-controls="pan-docker" type="button">
+              <span class="tab-idx">01</span> Path one — Docker
+              <span class="tab-tag">no servers needed</span>
+            </button>
+            <button class="tab" id="tab-fleet" role="tab" aria-selected="false" aria-controls="pan-fleet" type="button">
+              <span class="tab-idx">02</span> Path two — VPS fleet
+              <span class="tab-tag">SSH, systemd</span>
+            </button>
+          </div>
+
+          <!-- docker panel -->
+          <div class="tabpanel active" id="pan-docker" role="tabpanel" aria-labelledby="tab-docker">
+            <div class="panel-lead">
+              <p>One machine, everything in containers. Master plus N workers talk to each other over an internal compose network. Your only prerequisite is Docker Desktop already running.</p>
+              <p class="prereq"><span class="prereq-label">Prereq</span> Docker Desktop (free download), terminal. That&rsquo;s all.</p>
+            </div>
+
+            <ol class="steps">
+              <li class="step">
+                <div class="step-head"><span class="step-n">1</span><h3>Get the code</h3></div>
+                <p class="step-d">A single folder. Works the same on macOS, Linux, and Windows (via Docker Desktop).</p>
+                <div class="cmd"><pre>git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
+cd stress-strike</pre><button class="copy" data-copy="git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
+cd stress-strike" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">2</span><h3>Start the launcher</h3></div>
+                <p class="step-d">It checks that Docker is present, then opens the wizard. With Docker installed it picks path 1 automatically.</p>
+                <div class="cmd"><pre>./scripts/deploy.sh</pre><button class="copy" data-copy="./scripts/deploy.sh" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">3</span><h3>Answer four questions</h3></div>
+                <p class="step-d">Target URL, number of workers (1&ndash;20), virtual users, duration. Everything else is decided for you.</p>
+                <div class="cmd"><pre>target URL to load [http://example.com]: https://shop.example.com
+number of workers (1-20) [2]:
+virtual users [20]:                  100
+duration (seconds) [30]:             120</pre><button class="copy" data-copy="target URL to load [http://example.com]: https://shop.example.com
+number of workers (1-20) [2]:
+virtual users [20]:                  100
+duration (seconds) [30]:             120" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">4</span><h3>Watch it build and run</h3></div>
+                <p class="step-d">First build takes a few minutes while images compile. Then the master starts the run across all workers and streams results to the live dashboard on port 7800.</p>
+                <div class="cmd"><pre>building images...  (first build a few minutes)
+[ done ] compose file written: dist/docker-compose.generated.yml
+[ done ] fleet is up!
+  master (gRPC):  localhost:50051   (control plane)
+  workers:        4
+  target:         https://shop.example.com  (users=100, duration=120s)
+  dashboard:      http://localhost:7800</pre><button class="copy" data-copy="building images...  (first build a few minutes)
+[ done ] compose file written: dist/docker-compose.generated.yml
+[ done ] fleet is up!
+  master (gRPC):  localhost:50051   (control plane)
+  workers:        4
+  target:         https://shop.example.com  (users=100, duration=120s)
+  dashboard:      http://localhost:7800" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">5</span><h3>Stop or rerun, any time</h3></div>
+                <p class="step-d">Change nothing between runs or change everything. Rerunning with new settings takes one line.</p>
+                <div class="cmd"><pre>./scripts/deploy.sh down                         # stop + remove the fleet
+./scripts/deploy-docker.sh logs                  # tail all worker logs live
+./scripts/deploy.sh -y URL=https://api.example.com WORKERS=6 DURATION=300</pre><button class="copy" data-copy="./scripts/deploy.sh down
+ ./scripts/deploy-docker.sh logs
+ ./scripts/deploy.sh -y URL=https://api.example.com WORKERS=6 DURATION=300" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+            </ol>
+          </div>
+
+          <!-- fleet panel -->
+          <div class="tabpanel" id="pan-fleet" role="tabpanel" aria-labelledby="tab-fleet" hidden>
+            <div class="panel-lead">
+              <p>Real workers on real Linux hosts. The launcher builds the worker packages for amd64 and arm64, uploads them over scp, installs a hardened systemd unit on each box, and reports back. One VPS is enough; a fleet is just N of them.</p>
+              <p class="prereq"><span class="prereq-label">Prereq</span> Linux host with SSH + root or passwordless sudo, and an SSH key already authorized. systemd required.</p>
+            </div>
+
+            <ol class="steps">
+              <li class="step">
+                <div class="step-head"><span class="step-n">1</span><h3>Authorize your SSH key (once)</h3></div>
+                <p class="step-d">If your key is not already trusted on the host, trust it now. You will only do this once per host.</p>
+                <div class="cmd"><pre>ssh-copy-id root@203.0.113.7</pre><button class="copy" data-copy="ssh-copy-id root@203.0.113.7" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">2</span><h3>Start the launcher</h3></div>
+                <p class="step-d">Paste your hosts one per line&mdash;<code>user@host</code>&mdash;and hit enter on an empty line when done.</p>
+                <div class="cmd"><pre>./scripts/deploy.sh</pre><button class="copy" data-copy="./scripts/deploy.sh" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">3</span><h3>Answer two questions</h3></div>
+                <p class="step-d">How should workers attach, and a shared token for the control plane. Auto-discovery lets each worker find the master itself; static mode lists workers in the master command.</p>
+                <div class="cmd"><pre>How should workers attach to the master?
+  1) auto-discovery -- workers find the master themselves
+  2) static list    -- master connects to a fixed worker list
+mode (1/2) [1]: 1
+master address (host:port): 198.51.100.10:50051
+protect the control plane with a shared token? [y/n]: y
+token (any secret string): ****************</pre><button class="copy" data-copy="How should workers attach to the master?
+  1) auto-discovery -- workers find the master themselves
+  2) static list    -- master connects to a fixed worker list
+mode (1/2) [1]: 1
+master address (host:port): 198.51.100.10:50051
+protect the control plane with a shared token? [y/n]: y
+token (any secret string): ****************" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">4</span><h3>Watch each host install itself</h3></div>
+                <p class="step-d">The package build runs once, then every host gets the worker uploaded and installed in about 30 seconds. Systemd keeps it alive across reboots.</p>
+                <div class="cmd"><pre>building worker packages v0.11.0 (amd64 + arm64)...
+&#9644;&#9644; deploying to 2 host(s) &#9644;&#9644;
+
+[1/2] root@203.0.113.7
+      arch: amd64
+      uploading worker package + helpers...
+      [ ok ] worker installed, systemd unit active (running)
+[2/2] root@203.0.113.15
+      arch: arm64
+      uploading worker package + helpers...
+      [ ok ] worker installed, systemd unit active (running)
+
+&#9644;&#9644; fleet ready -- 2 worker(s) &#9644;&#9644;</pre><button class="copy" data-copy="building worker packages v0.11.0 (amd64 + arm64)...
+&#9644;&#9644; deploying to 2 host(s) &#9644;&#9644;
+
+[1/2] root@203.0.113.7
+      arch: amd64
+      uploading worker package + helpers...
+      [ ok ] worker installed, systemd unit active (running)
+[2/2] root@203.0.113.15
+      arch: arm64
+      uploading worker package + helpers...
+      [ ok ] worker installed, systemd unit active (running)
+
+&#9644;&#9644; fleet ready -- 2 worker(s) &#9644;&#9644;" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+              <li class="step">
+                <div class="step-head"><span class="step-n">5</span><h3>Drive the fleet from your control box</h3></div>
+                <p class="step-d">The launcher prints the exact master command for your setup. Static mode needs one more flag; auto-discovery just works. Confirm with the 6&ndash;second smoke test.</p>
+                <div class="cmd"><pre>stress-strike-master -listen 0.0.0.0:50051 \
+  -wait-workers 2 -wait-timeout 30 \
+  -url https://target.example.com -users 500 -duration 120 \
+  -token secret \
+  -tls-fingerprint chrome -timeline -quiet</pre><button class="copy" data-copy="stress-strike-master -listen 0.0.0.0:50051 \
+  -wait-workers 2 -wait-timeout 30 \
+  -url https://target.example.com -users 500 -duration 120 \
+  -token secret \
+  -tls-fingerprint chrome -timeline -quiet" type="button" aria-label="Copy command">copy</button></div>
+                <p class="step-d">Smoke test right after the master is up:</p>
+                <div class="cmd"><pre>stress-strike-master -wait-workers 2 -wait-timeout 30 \
+  -url https://example.com -users 8 -duration 6 \
+  -token secret \
+  -tls-fingerprint chrome    # expect 0 errors</pre><button class="copy" data-copy="stress-strike-master -wait-workers 2 -wait-timeout 30 \
+  -url https://example.com -users 8 -duration 6 \
+  -token secret \
+  -tls-fingerprint chrome    # expect 0 errors" type="button" aria-label="Copy command">copy</button></div>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- real output -->
+    <section class="section-pad output" id="output">
+      <div class="wrap narrow">
+        <h2 class="sec-title">What a real run looks like</h2>
+        <p class="sec-sub">An actual smoke run from development, not a mock. Chrome TLS fingerprint, HTTPS target, six seconds, one worker on this machine. Latency columns come from the live dashboard&rsquo;s final summary.</p>
+        <div class="term term-lg">
+          <div class="term-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">stress-strike-master</span></div>
+          <pre class="term-body">-url https://example.com -users 8 -duration 6 -tls-fingerprint chrome
+
+  attach:  1 worker (auto-discovery)  token: yes
+  target:  https://example.com  method: GET  users: 8  run: 6s
+
+  run started   (profile=chrome, tls=chrome)
+  worker registered: docker-worker-1 (1 total)
+
+  run complete   6.0s elapsed
+
+  Requests:      330    0 errors    (55.0 req/s)
+  Latency (ms):  P50 87   P95 132   P99 221
+  Status:        all 200   content-length 1256 B</pre>
+        </div>
+        <p class="term-caption">Same run through a distributed fleet stays clean and quiet&mdash;that&rsquo;s the whole point of the tooling.</p>
+        <div class="output-cta">
+          <a class="btn btn-ghost" href="#compare">Compare the paths</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- compare -->
+    <section class="section-pad compare" id="compare">
+      <div class="wrap">
+        <h2 class="sec-title">Which path fits you</h2>
+        <p class="sec-sub">Both produce identical workloads and identical numbers. The difference is where the workers live.</p>
+        <div class="table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th scope="col"><span class="th-label">Question</span></th>
+                <th scope="col"><span class="th-path">Path one &mdash; Docker</span></th>
+                <th scope="col"><span class="th-path alt">Path two &mdash; VPS fleet</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Need</th>
+                <td>Docker Desktop</td>
+                <td>a Linux host with SSH + systemd</td>
+              </tr>
+              <tr>
+                <th scope="row">Workers live</th>
+                <td>containers on one machine</td>
+                <td>on each real server</td>
+              </tr>
+              <tr>
+                <th scope="row">Scale</th>
+                <td>1 machine, its limits</td>
+                <td>as many hosts as you own</td>
+              </tr>
+              <tr>
+                <th scope="row">Time to first run</th>
+                <td>a few minutes (first build)</td>
+                <td>about 30s per host</td>
+              </tr>
+              <tr>
+                <th scope="row">Traffic really leaves your box</th>
+                <td>yes, from one IP</td>
+                <td>yes, from every host you add</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- faq -->
+    <section class="section-pad faq" id="faq">
+      <div class="wrap narrow">
+        <h2 class="sec-title">FAQ</h2>
+        <div class="acc" data-acc>
+          <div class="acc-item">
+            <button class="acc-q" type="button" aria-expanded="false">Is this legal against sites I do not own?</button>
+            <div class="acc-a" hidden><p>Same rules as any load tool: only run against infrastructure you own or are explicitly authorized to test. The tooling does not care where you point it. The terms of your target do. Read the LICENSE and use common sense.</p></div>
+          </div>
+          <div class="acc-item">
+            <button class="acc-q" type="button" aria-expanded="false">Will the target firewall or WAF block me?</button>
+            <div class="acc-a" hidden><p>Possibly. stress-strike speaks real TLS with browser fingerprints (chrome, firefox, ios among others), so it passes most setups, but a strict WAF can still drop sustained streams. If a run fails at high rates, drop to a smaller run, try a different fingerprint, or check the timeline.</p></div>
+          </div>
+          <div class="acc-item">
+            <button class="acc-q" type="button" aria-expanded="false">Do I need any coding or cloud experience?</button>
+            <div class="acc-a" hidden><p>Path one needs Docker Desktop and a terminal, nothing else. Path two needs basic SSH familiarity, but the launcher handles the install entirely and prints friendly instructions when something is missing (for example, the ssh-copy-id hint).</p></div>
+          </div>
+          <div class="acc-item">
+            <button class="acc-q" type="button" aria-expanded="false">How is this different from ab, wrk, or load-generator SaaS?</button>
+            <div class="acc-a" hidden><p>Those either fake TLS or run from someone else&rsquo;s datacenter. stress-strike runs from hardware the tester controls, over browser-grade TLS, and can span many of them at once. The results are your network to your target, no middleman in between.</p></div>
+          </div>
+          <div class="acc-item">
+            <button class="acc-q" type="button" aria-expanded="false">Windows?</button>
+            <div class="acc-a" hidden><p>The Docker path works on Windows via Docker Desktop. The fleet path assumes a POSIX shell on the control machine, so pair it with WSL or run the launcher from any Linux/macOS box and target the same hosts.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- cta -->
+    <section class="section-pad cta" id="run">
+      <div class="wrap cta-inner">
+        <div>
+          <h2 class="cta-title">One command to first results</h2>
+          <p class="cta-sub">Clone it, run the launcher, answer four prompts. Your first real multi-node run takes minutes.</p>
+        </div>
+        <div>
+          <p class="cta-code">$ git clone https://github.com/asadbekabdulboqiyev/stress-strike.git && cd stress-strike && ./scripts/deploy.sh</p>
+          <p class="cta-links">
+            <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener">Source on GitHub</a>
+            <span class="cta-sep" aria-hidden="true">/</span>
+            <a href="https://github.com/asadbekabdulboqiyev/stress-strike/blob/main/docs/DEPLOY-REMOTE.md" target="_blank" rel="noopener">Deploy guide</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-inner">
+      <p class="foot-brand">stress-strike &mdash; AGPL-3.0. Source on GitHub.</p>
+      <p class="foot-links">
+        <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/asadbekabdulboqiyev/stress-strike/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+        <a href="https://github.com/asadbekabdulboqiyev/stress-strike/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
+      </p>
+      <p class="foot-notes">Built as a dev-tools site. Test against authorized targets only.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js" defer></script>
+</body>
+</html>

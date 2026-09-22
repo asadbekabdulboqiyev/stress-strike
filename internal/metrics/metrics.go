@@ -89,6 +89,9 @@ type Telemetry struct {
 	PeakUsers   atomic.Int64
 	Timeline    Timeline
 	warmupUntil atomic.Int64
+	// endUnixNano mirrors End for lock-free reads while a run is still live:
+	// Elapsed() must be safe to call concurrently with Finish().
+	endUnixNano atomic.Int64
 }
 
 func NewTelemetry() *Telemetry {
@@ -118,14 +121,16 @@ func (t *Telemetry) AddStep(stats *StepStats) {
 }
 
 func (t *Telemetry) Finish() {
-	t.End = time.Now()
+	now := time.Now()
+	t.End = now
+	t.endUnixNano.Store(now.UnixNano())
 }
 
 func (t *Telemetry) Elapsed() time.Duration {
-	if t.End.IsZero() {
-		return time.Since(t.Start)
+	if n := t.endUnixNano.Load(); n != 0 {
+		return time.Unix(0, n).Sub(t.Start)
 	}
-	return t.End.Sub(t.Start)
+	return time.Since(t.Start)
 }
 
 func (t *Telemetry) TotalRequests() uint64 {

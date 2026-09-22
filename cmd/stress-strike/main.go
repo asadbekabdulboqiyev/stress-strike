@@ -7,10 +7,10 @@ import (
 
 // version is overridden at build time via:
 //
-//	go build -ldflags "-X main.version=0.9.0"
+//	go build -ldflags "-X main.version=0.11.0"
 //
 // The default mirrors the latest release tag.
-var version = "0.9.0"
+var version = "0.11.0"
 
 func main() {
 	// Check for subcommands
@@ -127,7 +127,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
 
    Mode:
    --mode string            cli (terminal report, default) | dashboard (real-time web)
-   --listen string          Dashboard listen address, e.g. :8888 (with --mode dashboard)
+   --listen string          Dashboard listen address (default: 127.0.0.1:8888, with --mode dashboard)
 
 ═══════════════════════════════════════════════════════════════════════
  REPLAY FLAGS — Traffic Replay
@@ -162,7 +162,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
 ═══════════════════════════════════════════════════════════════════════
  DASHBOARD FLAGS — Web Dashboard
 ═══════════════════════════════════════════════════════════════════════
-   -listen string           Address to listen on (default: ":8888")
+   -listen string           Address to listen on (default: "127.0.0.1:8888")
 
 ═══════════════════════════════════════════════════════════════════════
  MASTER FLAGS — Distributed Coordinator
@@ -236,7 +236,10 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
   # Scan server security
   stress-strike scan -target example.com -all
 
-  # Start web dashboard
+  # Start web dashboard (loopback only by default)
+  stress-strike dashboard
+
+  # Expose on all interfaces (warns: no auth)
   stress-strike dashboard -listen :8888
 
   # Distributed load test

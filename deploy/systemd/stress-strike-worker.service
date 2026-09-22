@@ -1,0 +1,38 @@
+[Unit]
+Description=stress-strike distributed load worker
+Documentation=https://github.com/asadbekabdulboqiyev/stress-strike
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Copy worker.env.example to /etc/stress-strike/worker.env and edit it.
+EnvironmentFile=-/etc/stress-strike/worker.env
+ExecStart=/usr/local/bin/stress-strike-worker $WORKER_ARGS
+Restart=on-failure
+RestartSec=3
+
+# A load generator opens a very large number of sockets; raise the limits.
+LimitNOFILE=1048576
+LimitNPROC=65535
+
+# Run unprivileged. Create these users/group first:
+#   sudo groupadd --system stress-strike
+#   sudo useradd  --system --gid stress-strike --no-create-home stress-strike
+User=stress-strike
+Group=stress-strike
+
+# Basic hardening — the worker only needs outbound network + ephemeral ports.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

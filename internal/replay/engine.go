@@ -24,6 +24,7 @@ type ReplayWorker struct {
 	capture   *Capture
 	packets   []*Packet
 	stopCh    chan struct{}
+	deadline  time.Time
 	mu        sync.Mutex
 	latencies []time.Duration
 	errors    []error
@@ -52,47 +53,139 @@ func NewReplayWorker(id int, config *ReplayConfig, capture *Capture, packets []*
 		packets:   packets,
 		stopCh:    make(chan struct{}),
 		latencies: make([]time.Duration, 0, len(packets)),
-		conn:      http.Client{Transport: transport, Timeout: 30 * time.Second},
+		conn: http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if !config.FollowRedirects {
+					return http.ErrUseLastResponse
+				}
+				if len(via) >= 10 {
+					return fmt.Errorf("stopped after %d redirects", len(via))
+				}
+				return nil
+			},
+		},
 	}
 }
 
-// Run replays all packets at the configured rate multiplier
+// Run replays all packets at the configured pacing mode
 func (rw *ReplayWorker) Run() error {
 	total := len(rw.packets)
 	if total == 0 {
 		return nil
 	}
 
-	// Calculate delay between requests based on rate multiplier
-	// rate=1.0 means real-time, rate=10.0 means 10x faster
+	// Rate multiplier semantics: rate=1.0 means real-time, rate=10.0 means 10x faster
 	if rw.config.RateMultiplier <= 0 {
 		rw.config.RateMultiplier = 1.0
 	}
-	delay := time.Duration(float64(time.Second) / rw.config.RateMultiplier)
 
-	rateTicker := time.NewTicker(delay)
-	defer rateTicker.Stop()
+	pacing := rw.config.Pacing
+	if pacing == "" {
+		pacing = PacingTiming
+	}
 
-	for i := 0; i < total; i++ {
-		select {
-		case <-rw.stopCh:
-			return fmt.Errorf("worker %d stopped", rw.id)
-		case <-rateTicker.C:
-			pkt := rw.packets[i]
+	const (
+		// maxPacingGap caps a single captured gap so pathological capture
+		// drafts cannot cause dead pauses when replayed at real-time pace.
+		maxPacingGap = 5 * time.Second
+		// minPacingGap floors gaps to keep replay moving for packets with
+		// missing or degenerate timestamps.
+		minPacingGap = time.Millisecond
+	)
 
-			start := time.Now()
-			err := rw.replayPacket(pkt)
-			latency := time.Since(start)
-
-			rw.mu.Lock()
-			rw.latencies = append(rw.latencies, latency)
-			if err != nil {
-				rw.errors = append(rw.errors, err)
-			}
-			rw.mu.Unlock()
+	// Legacy and RPS modes pace at a fixed interval.
+	var fixedDelay time.Duration
+	switch pacing {
+	case PacingRPS:
+		rps := rw.config.RPS
+		if rps <= 0 {
+			rps = 1.0
 		}
+		fixedDelay = time.Duration(float64(time.Second) / rps)
+	case PacingLegacy:
+		fixedDelay = time.Duration(float64(time.Second) / rw.config.RateMultiplier)
+	}
+
+	var prev time.Time
+	for i := 0; i < total; i++ {
+		// Respect the configured Duration deadline (see ReplayEngine.Run).
+		if !rw.deadline.IsZero() && time.Now().After(rw.deadline) {
+			break
+		}
+
+		var wait time.Duration
+		switch pacing {
+		case PacingRPS, PacingLegacy:
+			wait = fixedDelay
+		default: // PacingTiming
+			if i == 0 || prev.IsZero() {
+				wait = minPacingGap
+			} else {
+				gap := rw.packets[i].Timestamp.Sub(prev)
+				if gap > maxPacingGap {
+					gap = maxPacingGap
+				}
+				if gap <= 0 {
+					wait = minPacingGap
+				} else {
+					wait = time.Duration(float64(gap) / rw.config.RateMultiplier)
+					if wait < minPacingGap {
+						wait = minPacingGap
+					}
+				}
+			}
+		}
+
+		if err := rw.sleepFor(wait, rw.deadline); err != nil {
+			return err
+		}
+		if !rw.deadline.IsZero() && time.Now().After(rw.deadline) {
+			break
+		}
+
+		pkt := rw.packets[i]
+
+		start := time.Now()
+		err := rw.replayPacket(pkt)
+		latency := time.Since(start)
+
+		rw.mu.Lock()
+		rw.latencies = append(rw.latencies, latency)
+		if err != nil {
+			rw.errors = append(rw.errors, err)
+		}
+		rw.mu.Unlock()
+
+		prev = rw.packets[i].Timestamp
 	}
 	return nil
+}
+
+// sleepFor waits the given duration, interrupting early if Stop() is called or
+// if the sleep would run past the deadline. Sleeps never exceed the deadline.
+func (rw *ReplayWorker) sleepFor(wait time.Duration, deadline time.Time) error {
+	if wait <= 0 {
+		return nil
+	}
+	if !deadline.IsZero() {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return nil
+		}
+		if wait > remaining {
+			wait = remaining
+		}
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-rw.stopCh:
+		return fmt.Errorf("worker %d stopped", rw.id)
+	case <-timer.C:
+		return nil
+	}
 }
 
 // Stop signals the worker to stop
@@ -268,6 +361,12 @@ func (re *ReplayEngine) Run() (*ReplayResult, error) {
 		Errors:       make(map[string]int),
 	}
 
+	// Deadline derived from the configured Duration, measured from Run start.
+	var deadline time.Time
+	if re.config.Duration > 0 {
+		deadline = result.StartTime.Add(re.config.Duration)
+	}
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	allLatencies := make([]time.Duration, 0)
@@ -295,6 +394,7 @@ func (re *ReplayEngine) Run() (*ReplayResult, error) {
 			}
 
 			worker := NewReplayWorker(workerID, re.config, re.capture, packets[start:end])
+			worker.deadline = deadline
 
 			if err := worker.Run(); err != nil {
 				mu.Lock()

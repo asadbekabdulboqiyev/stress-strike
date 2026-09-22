@@ -97,8 +97,19 @@ func NewCrawler(startURL string, opts CrawlOptions) *Crawler {
 	return &Crawler{
 		StartURL: strings.TrimSpace(startURL),
 		Options:  opts,
-		Client:   &http.Client{Timeout: opts.Timeout},
+		Client:   &http.Client{Timeout: opts.Timeout, CheckRedirect: crawlerRedirectGuard},
 	}
+}
+
+// crawlerRedirectGuard keeps every crawled redirect on the original host: a
+// hostile page must not be able to steer the crawler's requests (which carry
+// the authenticated session when injected) at third-party hosts. Direct
+// offsite fetches are unaffected — only redirect hops are cut.
+func crawlerRedirectGuard(req *http.Request, via []*http.Request) error {
+	if len(via) > 0 && req.URL.Host != via[0].URL.Host {
+		return http.ErrUseLastResponse
+	}
+	return nil
 }
 
 // Crawl runs the crawl and always returns a non-nil result. It never panics
@@ -114,7 +125,7 @@ func (c *Crawler) Crawl() *CrawlResult {
 	}
 
 	if c.Client == nil {
-		c.Client = &http.Client{Timeout: c.Options.Timeout}
+		c.Client = &http.Client{Timeout: c.Options.Timeout, CheckRedirect: crawlerRedirectGuard}
 	}
 
 	c.visited = map[string]bool{}

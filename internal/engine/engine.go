@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
 )
 
@@ -194,7 +194,7 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		keepAlive = *scenario.Profile.KeepAlive
 	}
 	maxConns := profile.MaxConcurrency() * 2
-	transport := newTransport(keepAlive, maxConns)
+	transport := newTransport(keepAlive, maxConns, fingerprint.Profile(scenario.Profile.TLSFingerprint))
 
 	// For constant-rps mode, the token bucket starts at rate 0 and is
 	// dynamically updated by the controller during ramp-up.
@@ -281,24 +281,10 @@ func (e *Engine) preWarmConnections(count int) {
 		go func(idx int) {
 			defer func() { <-sem; done <- struct{}{} }()
 
-			transport := &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   10 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          1,
-				MaxIdleConnsPerHost:   1,
-				MaxConnsPerHost:       1,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: time.Second,
-				TLSClientConfig: &tls.Config{
-					MinVersion:         tls.VersionTLS12,
-					ClientSessionCache: tls.NewLRUClientSessionCache(0),
-				},
-			}
+			transport := baseTransport(true, fingerprint.Profile(e.scenario.Profile.TLSFingerprint))
+			transport.MaxIdleConns = 1
+			transport.MaxIdleConnsPerHost = 1
+			transport.MaxConnsPerHost = 1
 			client := &http.Client{
 				Transport:     transport,
 				Timeout:       e.timeout,

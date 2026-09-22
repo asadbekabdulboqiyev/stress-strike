@@ -6,7 +6,7 @@
 ###############################################################################
 FROM golang:1.26-alpine AS builder
 
-ARG VERSION=0.9.0
+ARG VERSION=0.11.0
 
 # Build deps for CGO (replay binary needs libpcap for gopacket/pcap).
 RUN apk add --no-cache build-base libpcap-dev
@@ -33,9 +33,9 @@ RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}"
 ###############################################################################
 # Stage 2 — runtime: minimal Alpine image with all binaries.
 ###############################################################################
-FROM alpine:latest
+FROM alpine:3.21
 
-ARG VERSION=0.9.0
+ARG VERSION=0.11.0
 
 LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \

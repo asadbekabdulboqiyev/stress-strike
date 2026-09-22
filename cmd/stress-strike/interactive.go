@@ -9,8 +9,10 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -89,8 +91,10 @@ type wizardAnswers struct {
 }
 
 type lastRun struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name     string `json:"name"`
+	URL      string `json:"url"`
+	VUsers   int    `json:"v_users,omitempty"`
+	Duration int    `json:"duration,omitempty"`
 }
 
 var historyFilePath = defaultHistoryPath
@@ -730,6 +734,16 @@ func yesNo(b bool) string {
 
 // ── Interactive picker (LOCAL PRIMARY) ────────────────────────────────────
 
+func openBrowser(u string) {
+	cmd := exec.Command("open", u)
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command("xdg-open", u)
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", "start", "", u)
+	}
+	_ = cmd.Start()
+}
+
 // interactivePicker presents the workspace selection menu when the binary is
 // run with no arguments from a terminal: choose CLI (terminal report) or
 // Web Server (real-time dashboard), then gather the minimum settings and run.
@@ -765,17 +779,21 @@ func interactivePicker() {
 // default scenario from the answered settings, launches the dashboard server
 // and the real engine; the user drives it from the browser.
 func interactiveDashboard(r *bufio.Reader) {
-	url := readLine(r, "Target URL (e.g. https://api.example.com)")
+	last := loadLastRun()
+	url := last.URL
 	if url == "" {
 		fmt.Println("error: target URL is required.")
 		os.Exit(1)
 	}
-	users := readInt(r, "Virtual users", 10)
-	duration := readInt(r, "Duration (seconds)", 30)
-	listen := readLine(r, "Dashboard listen address (e.g. :8888)")
-	if listen == "" {
-		listen = ":8888"
+	users := last.VUsers
+	if users == 0 {
+		users = 10
 	}
+	duration := last.Duration
+	if duration == 0 {
+		duration = 30
+	}
+	listen := "127.0.0.1:8888"
 
 	sc, err := quickScenario("interactive", url, "GET", "", headerFlags{},
 		"steady", users, duration, 0, 0, 0, 0, 0, 0, 0, 5, true)
@@ -783,7 +801,10 @@ func interactiveDashboard(r *bufio.Reader) {
 		fatal(err)
 	}
 
-	fmt.Printf("\nStarting Web Server dashboard on %s — open it in a browser and press Start.\n\n", listen)
+	saveLastRun(lastRun{Name: "interactive", URL: url, VUsers: users, Duration: duration})
+
+	openBrowser("http://" + listen)
+	fmt.Printf("\nWeb Server dashboard: http://%s — already open in your browser. Press Start to run.\n\n", listen)
 	runWithDashboard(sc, listen, "./reports")
 }
 

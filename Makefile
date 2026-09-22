@@ -10,7 +10,7 @@
 #   make run         Build and run demo server
 #   make help        List all targets
 
-VERSION ?= 0.9.0
+VERSION ?= 0.11.0
 
 GO      ?= go
 GOFLAGS ?=
@@ -52,6 +52,36 @@ docker: ## Build Docker image
 	docker build --build-arg VERSION=$(VERSION) -t stress-strike:$(VERSION) .
 	docker tag stress-strike:$(VERSION) stress-strike:latest
 	@echo "docker image built: stress-strike:$(VERSION)"
+
+.PHONY: worker-linux
+worker-linux: ## Cross-compile Linux worker packages (amd64 + arm64) into ./dist
+	VERSION=$(VERSION) ./scripts/build-worker-linux.sh $(VERSION)
+
+.PHONY: docker-worker
+docker-worker: ## Build the distributed worker Docker image
+	docker build -f Dockerfile.worker --build-arg VERSION=$(VERSION) -t stress-strike-worker:$(VERSION) .
+	@echo "docker worker image built: stress-strike-worker:$(VERSION)"
+
+.PHONY: docker-master
+docker-master: ## Build the master/coordinator Docker image
+	docker build -f Dockerfile.master --build-arg VERSION=$(VERSION) -t stress-strike-master:$(VERSION) .
+	@echo "docker master image built: stress-strike-master:$(VERSION)"
+
+.PHONY: deploy
+deploy: ## Friendly launcher: Docker fleet (local) or VPS fleet (SSH)
+	./scripts/deploy.sh
+
+.PHONY: deploy-docker
+deploy-docker: ## Run a Docker fleet locally (master + N workers)
+	./scripts/deploy-docker.sh
+
+.PHONY: deploy-fleet
+deploy-fleet: ## Put workers on real Linux hosts over SSH (interactive wizard)
+	./scripts/deploy-fleet.sh
+
+.PHONY: docker-down
+docker-down: ## Stop + remove the locally deployed Docker fleet
+	./scripts/deploy-docker.sh down
 
 .PHONY: coverage
 coverage: ## Run tests with coverage report

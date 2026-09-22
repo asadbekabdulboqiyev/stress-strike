@@ -1,0 +1,37 @@
+# Dockerfile.worker — containerized stress-strike distributed worker.
+#
+# Build:
+#   docker build -f Dockerfile.worker -t stress-strike-worker:0.11.0 .
+#
+# Run (static fleet):
+#   docker run --rm -p 50061:50061 stress-strike-worker:0.11.0 \
+#     -listen 0.0.0.0:50061 -id docker-1 -max-users 200000
+#
+# Run (auto-discovery, reachable as docker-1:50061 on a shared network):
+#   docker run --rm --network strike -p 50061:50061 stress-strike-worker:0.11.0 \
+#     -listen 0.0.0.0:50061 -advertise docker-1:50061 \
+#     -master master:50051 -id docker-1 -token "$TOKEN"
+#
+# NOTE: a container needs extra capabilities/ulimits to reach very high
+# connection counts: --ulimit nofile=1048576:1048576 --network host.
+
+FROM golang:1.26 AS build
+
+ARG VERSION=0.11.0
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false \
+      -ldflags="-s -w -X main.version=${VERSION}" \
+      -o /out/stress-strike-worker ./cmd/stress-strike-worker
+
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=build /out/stress-strike-worker /usr/local/bin/stress-strike-worker
+
+EXPOSE 50061
+ENTRYPOINT ["/usr/local/bin/stress-strike-worker"]
+CMD ["-listen", "0.0.0.0:50061"]

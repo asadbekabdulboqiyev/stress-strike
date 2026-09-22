@@ -14,10 +14,22 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/google/gopacket/tcpassembly"
 	"github.com/google/gopacket/tcpassembly/tcpreader"
 )
+
+// maxCaptureFileBytes caps in-memory capture containers (HAR/JSON): a
+// captured session bigger than 512 MiB is rejected instead of being loaded
+// wholesale. Classic PCAP/PCAPNG files are streamed through a packet reader
+// and are not subject to this cap.
+const maxCaptureFileBytes = 512 << 20 // 512 MiB
+
+// maxStreamBodyBytes caps the buffered body of a single HTTP request extracted
+// from a TCP stream. Bodies beyond 8 MiB are truncated — replay/timing only
+// needs method, URL, headers and parameters, and streaming unbounded bodies
+// out of a pcap would let one hostile capture exhaust host memory.
+const maxStreamBodyBytes = 8 << 20 // 8 MiB
 
 // PCAPParser parses PCAP files and extracts HTTP requests
 type PCAPParser struct {
@@ -61,21 +73,85 @@ func NewPCAPParser(keys []*TLSKey) *PCAPParser {
 	return p
 }
 
+// captureFormat identifies the on-disk capture container format.
+type captureFormat int
+
+const (
+	capturePcap captureFormat = iota
+	capturePcapNG
+)
+
+// pcapPacketSource is the minimal interface shared by pcapgo.Reader (pcap)
+// and pcapgo.NgReader (pcapng). Both are pure-Go implementations that do
+// NOT require cgo / libpcap, unlike github.com/google/gopacket/pcap.
+type pcapPacketSource interface {
+	// ReadPacketData reads the next raw packet payload and its capture info.
+	ReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error)
+	// LinkType returns the link-layer type of the capture.
+	LinkType() layers.LinkType
+}
+
+// sniffCaptureFormat inspects the first four bytes (the magic number) of a
+// capture file and returns whether it is a classic pcap or a pcapng file.
+// pcap magic: 0xd4c3b2a1 (little-endian) or 0xa1b2c3d4 (big-endian).
+// pcapng magic: 0x0a0d0d0a (Section Header Block).
+func sniffCaptureFormat(r io.Reader) (captureFormat, error) {
+	var magic [4]byte
+	if _, err := io.ReadFull(r, magic[:]); err != nil {
+		return 0, fmt.Errorf("read magic bytes: %w", err)
+	}
+	switch magic {
+	case [4]byte{0xd4, 0xc3, 0xb2, 0xa1}, [4]byte{0xa1, 0xb2, 0xc3, 0xd4}:
+		return capturePcap, nil
+	case [4]byte{0x0a, 0x0d, 0x0d, 0x0a}:
+		return capturePcapNG, nil
+	default:
+		return 0, fmt.Errorf("unrecognized capture magic %x (expected pcap or pcapng)", magic)
+	}
+}
+
+// ParseFile parses a PCAP or PCAPNG file and extracts HTTP requests.
+//
+// The file is read with the pure-Go pcapgo reader instead of the cgo-based
+// github.com/google/gopacket/pcap package, so the replay tool compiles and
+// runs with CGO_ENABLED=0 (e.g. on machines without a working C toolchain).
 func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
-	handle, err := pcap.OpenOffline(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open pcap: %w", err)
 	}
-	defer handle.Close()
+	defer f.Close()
 
 	p.capture.Source = path
 
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-	for packet := range packetSource.Packets() {
-		p.stats.TotalPackets++
-		p.processPacket(packet)
+	// Detect the container format and build the matching pure-Go reader.
+	kind, err := sniffCaptureFormat(f)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("rewind capture: %w", err)
 	}
 
+	var src pcapPacketSource
+	switch kind {
+	case capturePcap:
+		r, err := pcapgo.NewReader(f)
+		if err != nil {
+			return nil, fmt.Errorf("open pcap reader: %w", err)
+		}
+		src = r
+	case capturePcapNG:
+		r, err := pcapgo.NewNgReader(f, pcapgo.DefaultNgReaderOptions)
+		if err != nil {
+			return nil, fmt.Errorf("open pcapng reader: %w", err)
+		}
+		src = r
+	default:
+		return nil, fmt.Errorf("unsupported capture format")
+	}
+
+	p.readAllPackets(src)
 	p.asm.FlushAll()
 
 	p.capture.Metadata = map[string]string{
@@ -87,6 +163,37 @@ func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
 	}
 
 	return p.capture, nil
+}
+
+// readAllPackets drains a packet source, decoding each raw frame into a
+// gopacket.Packet and feeding TCP packets to the stream assembler.
+func (p *PCAPParser) readAllPackets(src pcapPacketSource) {
+	linkType := src.LinkType()
+	for {
+		data, ci, err := src.ReadPacketData()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			// A single corrupt frame must not abort the whole capture.
+			p.stats.Errors++
+			pcapErrors.Add(1)
+			continue
+		}
+		p.stats.TotalPackets++
+		p.processPacketData(data, linkType, ci.Timestamp)
+	}
+}
+
+// processPacketData wraps a raw frame into a gopacket.Packet, preserving the
+// capture timestamp (gopacket.NewPacket alone does not set one), and hands it
+// to the shared decoding pipeline.
+func (p *PCAPParser) processPacketData(data []byte, linkType layers.LinkType, ts time.Time) {
+	packet := gopacket.NewPacket(data, linkType, gopacket.Default)
+	if md := packet.Metadata(); md != nil {
+		md.Timestamp = ts
+	}
+	p.processPacket(packet)
 }
 
 func (p *PCAPParser) processPacket(packet gopacket.Packet) {
@@ -143,7 +250,12 @@ func (s *tcpReplayStream) process() {
 			}
 			return
 		}
-		body, _ := io.ReadAll(req.Body)
+		body, _ := io.ReadAll(io.LimitReader(req.Body, maxStreamBodyBytes))
+		if len(body) == int(maxStreamBodyBytes) {
+			// Truncated (or exactly at the cap): drain the remainder so the
+			// parser stays aligned with the stream for the next request.
+			io.Copy(io.Discard, req.Body)
+		}
 		req.Body.Close()
 
 		pkt := &Packet{
@@ -171,9 +283,12 @@ func ParseHAR(path string) (*Capture, error) {
 	}
 	defer f.Close()
 
-	data, err := io.ReadAll(f)
+	data, err := io.ReadAll(io.LimitReader(f, maxCaptureFileBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read har: %w", err)
+	}
+	if len(data) > maxCaptureFileBytes {
+		return nil, fmt.Errorf("har file exceeds %d MiB limit", maxCaptureFileBytes>>20)
 	}
 
 	var har HAR

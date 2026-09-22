@@ -109,6 +109,15 @@ func TestNormalizeErrors(t *testing.T) {
 	if err := sc4.Normalize(); err == nil {
 		t.Error("expected error for unsupported extract.from")
 	}
+
+	fp := &Scenario{Profile: Profile{Users: 10, TLSFingerprint: "nope"}, Steps: []Step{{URL: "/x", Timeout: 30}}}
+	if err := fp.Normalize(); err == nil {
+		t.Error("expected error for unknown tls_fingerprint")
+	}
+	fp = &Scenario{Profile: Profile{Users: 10, TLSFingerprint: "chrome"}, Steps: []Step{{URL: "/x", Timeout: 30}}}
+	if err := fp.Normalize(); err != nil {
+		t.Errorf("valid tls_fingerprint rejected: %v", err)
+	}
 }
 
 func TestLoadBadFile(t *testing.T) {

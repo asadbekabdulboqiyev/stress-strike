@@ -330,6 +330,71 @@ func TestCrawlClientInjection(t *testing.T) {
 	}
 }
 
+// TestCrawlRedirectDoesNotLeaveHost verifies the crawler's redirect guard:
+// a 302 pointing at a foreign host surfaces the redirect response and the
+// foreign origin is never contacted.
+func TestCrawlRedirectDoesNotLeaveHost(t *testing.T) {
+	var crossHits int32
+	cross := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&crossHits, 1)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<html><body>evil</body></html>")
+	}))
+	defer cross.Close()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, cross.URL+"/steal", http.StatusFound)
+	}))
+	defer origin.Close()
+
+	c := NewCrawler(origin.URL, CrawlOptions{MaxPages: 5})
+	res := c.Crawl()
+
+	if got := atomic.LoadInt32(&crossHits); got != 0 {
+		t.Fatalf("foreign host was contacted %d time(s)", got)
+	}
+	if res.Pages != 1 {
+		t.Fatalf("Pages = %d, want 1 (the surfaced redirect response)", res.Pages)
+	}
+}
+
+// TestCrawlFollowsSameHostRedirect verifies redirects within the same host
+// still work (the redirect guard must only cut cross-host hops).
+func TestCrawlFollowsSameHostRedirect(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/home", http.StatusFound)
+	})
+	mux.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `<html><body><a href="/about">About</a></body></html>`)
+	})
+	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `<html><body>about page</body></html>`)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := NewCrawler(srv.URL, CrawlOptions{MaxPages: 10})
+	res := c.Crawl()
+
+	// "/" resolves through a same-host redirect to /home: the chain counts as
+	// one fetched page whose HTML yields /about as the second page.
+	if res.Pages != 2 {
+		t.Fatalf("Pages = %d, want 2 (/, /about)", res.Pages)
+	}
+	foundAbout := false
+	for _, ep := range res.Endpoints {
+		if strings.HasSuffix(ep.URL, "/about") && ep.Method == "GET" {
+			foundAbout = true
+		}
+	}
+	if !foundAbout {
+		t.Errorf("endpoint /about not discovered after same-host redirect: %v", endpointURLs(res.Endpoints))
+	}
+}
+
 // endpointURLs is a compact debug helper for failure messages.
 func endpointURLs(eps []Endpoint) []string {
 	out := make([]string, 0, len(eps))

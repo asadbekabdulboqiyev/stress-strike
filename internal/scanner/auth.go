@@ -157,16 +157,33 @@ func NewAuthSession(cfg AuthConfig, timeout time.Duration) (*AuthSession, error)
 		Transport: rt,
 		Jar:       s.jar, // nil unless form authentication
 		Timeout:   timeout,
+		// Credential guard: the injected header/cookie (and any jar cookies
+		// on redirects) must never hop to a foreign host. A redirect that
+		// leaves the original host surfaces the redirect response instead of
+		// re-issuing the request (same policy as internal/engine/client.go).
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxLoginRedirects {
+				return errors.New("auth: stopped after 10 redirects")
+			}
+			if len(via) > 0 && req.URL.Host != via[0].URL.Host {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
 	}
 	// The login client bypasses the re-auth transport on purpose: a failing
 	// refresh must never recurse into another refresh. Redirects are capped
-	// so hostile targets cannot spin us in circles.
+	// and pinned to the login origin so hostile targets cannot exfiltrate
+	// credentials or spin us in circles.
 	s.authClient = &http.Client{
 		Jar:     s.jar,
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= maxLoginRedirects {
 				return errors.New("auth: stopped after 10 redirects during login")
+			}
+			if len(via) > 0 && req.URL.Host != via[0].URL.Host {
+				return http.ErrUseLastResponse
 			}
 			return nil
 		},

@@ -1,0 +1,99 @@
+# docker-compose.yml — containerized stress-strike fleet for a single host
+# that runs Docker. Use this when you want master + workers in containers
+# instead of systemd on separate VPS boxes.
+#
+# Build (once):
+#   docker compose -f deploy/docker-compose.yml build
+#
+# Run:
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# The workers self-register with the master via auto-discovery. Start a run
+# from the master container:
+#   docker compose -f deploy/docker-compose.yml exec master \
+#     /usr/local/bin/stress-strike-master -listen 0.0.0.0:50051 \
+#       -wait-workers 2 -wait-timeout 30 \
+#       -url https://example.com -users 500 -duration 60
+#
+# IMPORTANT: the default bridge network adds NAT; for maximum connection
+# counts use `network_mode: host` and expose the ports appropriately. The
+# compose file below keeps it simple and functional.
+
+services:
+  master:
+    build:
+      context: ..
+      dockerfile: Dockerfile.master
+    command:
+      - /usr/local/bin/stress-strike-master
+      - -listen
+      - 0.0.0.0:50051
+      - -url
+      - ${STRESS_STRIKE_URL:-http://example.com}
+      - -users
+      - "20"
+      - -duration
+      - "30"
+      - -wait-workers
+      - "2"
+      - -wait-timeout
+      - "60"
+    environment:
+      - STRESS_STRIKE_TOKEN=${STRESS_STRIKE_TOKEN:-}
+    ports:
+      - "50051:50051"
+    networks:
+      - strike
+    restart: unless-stopped
+
+  worker-1:
+    build:
+      context: ..
+      dockerfile: Dockerfile.worker
+    command:
+      - /usr/local/bin/stress-strike-worker
+      - -listen
+      - 0.0.0.0:50061
+      - -id
+      - docker-worker-1
+      - -advertise
+      - "worker-1:50061"
+      - -master
+      - "master:50051"
+      - -token
+      - ${STRESS_STRIKE_TOKEN:-}
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+    networks:
+      - strike
+    restart: unless-stopped
+
+  worker-2:
+    build:
+      context: ..
+      dockerfile: Dockerfile.worker
+    command:
+      - /usr/local/bin/stress-strike-worker
+      - -listen
+      - 0.0.0.0:50061
+      - -id
+      - docker-worker-2
+      - -advertise
+      - "worker-2:50061"
+      - -master
+      - "master:50051"
+      - -token
+      - ${STRESS_STRIKE_TOKEN:-}
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+    networks:
+      - strike
+    restart: unless-stopped
+
+networks:
+  strike:
+    driver: bridge

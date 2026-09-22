@@ -3,338 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#06060a">
+<meta name="color-scheme" content="dark">
 <title>stress-strike Dashboard</title>
-<style>
-/* ==========================================================================
-   DESIGN SYSTEM
-   ========================================================================== */
-:root {
-  --bg-0: #06060a;
-  --bg-1: #0c0c14;
-  --bg-2: #12121e;
-  --bg-3: #1a1a2a;
-  --border: #1e1e30;
-  --border-hover: #2a2a44;
-  --text-0: #f0f0f8;
-  --text-1: #b0b0c8;
-  --text-2: #707088;
-  --text-3: #484860;
-  --green: #00e87b;
-  --green-dim: #00e87b33;
-  --green-glow: #00e87b18;
-  --blue: #3b82f6;
-  --blue-dim: #3b82f633;
-  --yellow: #f59e0b;
-  --yellow-dim: #f59e0b33;
-  --red: #ef4444;
-  --red-dim: #ef444433;
-  --cyan: #06b6d4;
-  --purple: #a855f7;
-  --orange: #f97316;
-  --pink: #ec4899;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ==========================================================================
-   RESET & BASE
-   ========================================================================== */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { font-size: 14px; }
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg-0);
-  color: var(--text-0);
-  line-height: 1.5;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ==========================================================================
-   SCROLLBAR
-   ========================================================================== */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
-
-/* ==========================================================================
-   LAYOUT
-   ========================================================================== */
-.app { max-width: 1440px; margin: 0 auto; padding: 20px 24px 40px; }
-
-/* ==========================================================================
-   HEADER
-   ========================================================================== */
-.header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
-}
-.header-left { display: flex; align-items: center; gap: 16px; }
-.logo {
-  font-size: 20px; font-weight: 800; letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--green), var(--cyan));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.logo span { font-weight: 400; opacity: 0.6; }
-.header-right { display: flex; align-items: center; gap: 12px; }
-
-/* Connection indicator */
-.conn-dot {
-  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-  margin-right: 6px; vertical-align: middle;
-}
-.conn-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.conn-dot.disconnected { background: var(--red); box-shadow: 0 0 8px var(--red); }
-.conn-label { font-size: 12px; color: var(--text-3); }
-
-/* Status badge */
-.badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 14px; border-radius: 20px; font-size: 12px;
-  font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.badge-idle { background: var(--bg-3); color: var(--text-3); }
-.badge-running { background: var(--green-dim); color: var(--green); animation: pulse-badge 2s infinite; }
-.badge-completed { background: var(--blue-dim); color: var(--blue); }
-.badge-failed { background: var(--red-dim); color: var(--red); }
-.badge-stopped { background: var(--yellow-dim); color: var(--yellow); }
-@keyframes pulse-badge { 0%,100%{ opacity:1 } 50%{ opacity:0.65 } }
-
-/* ==========================================================================
-   CONTROLS BAR
-   ========================================================================== */
-.controls {
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px 20px;
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
-.field input, .field select {
-  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-0);
-  padding: 8px 12px; border-radius: var(--radius-sm); font-family: inherit;
-  font-size: 13px; outline: none; transition: border var(--transition);
-  min-width: 0;
-}
-.field input:focus, .field select:focus { border-color: var(--green); }
-.field input::placeholder { color: var(--text-3); }
-.field-url { flex: 1; min-width: 200px; }
-.field-url input { width: 100%; }
-.field-sm { width: 80px; }
-
-.btn {
-  padding: 9px 24px; border-radius: var(--radius-sm); border: none;
-  font-family: inherit; font-weight: 700; cursor: pointer; font-size: 13px;
-  transition: all var(--transition); display: inline-flex; align-items: center;
-  gap: 6px; white-space: nowrap; margin-top: 18px;
-}
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-.btn-start { background: var(--green); color: #000; }
-.btn-start:hover:not(:disabled) { background: #00ff88; box-shadow: 0 0 20px var(--green-dim); }
-.btn-stop { background: var(--red); color: #fff; }
-.btn-stop:hover:not(:disabled) { background: #ff5555; box-shadow: 0 0 20px var(--red-dim); }
-
-/* ==========================================================================
-   PROGRESS BAR
-   ========================================================================== */
-.progress-wrap {
-  margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
-}
-.progress-bar {
-  flex: 1; height: 6px; background: var(--bg-2); border-radius: 3px;
-  overflow: hidden; position: relative;
-}
-.progress-fill {
-  height: 100%; border-radius: 3px; transition: width 0.4s ease;
-  background: linear-gradient(90deg, var(--green), var(--cyan));
-  position: relative;
-}
-.progress-fill::after {
-  content: ''; position: absolute; right: 0; top: -2px;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--green); box-shadow: 0 0 12px var(--green);
-  opacity: 0; transition: opacity 0.3s;
-}
-.progress-fill.active::after { opacity: 1; }
-.progress-text {
-  font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums;
-  min-width: 90px; text-align: right;
-}
-
-/* ==========================================================================
-   METRIC CARDS
-   ========================================================================== */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-@media (max-width: 1100px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .metrics { grid-template-columns: 1fr; } }
-
-.card {
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 18px 20px;
-  transition: border var(--transition), box-shadow var(--transition);
-  position: relative; overflow: hidden;
-}
-.card:hover { border-color: var(--border-hover); box-shadow: var(--shadow); }
-.card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--accent, var(--green)); opacity: 0.6;
-}
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.card-label {
-  font-size: 11px; color: var(--text-3); text-transform: uppercase;
-  letter-spacing: 1px; font-weight: 600;
-}
-.card-icon { font-size: 16px; opacity: 0.4; }
-.card-value {
-  font-size: 36px; font-weight: 800; margin: 8px 0 4px;
-  font-variant-numeric: tabular-nums; letter-spacing: -1px;
-  line-height: 1;
-}
-.card-value.green { color: var(--green); }
-.card-value.blue { color: var(--blue); }
-.card-value.yellow { color: var(--yellow); }
-.card-value.red { color: var(--red); }
-.card-sub { font-size: 12px; color: var(--text-3); }
-.card-sparkline { margin-top: 12px; height: 36px; }
-
-/* ==========================================================================
-   CHART PANELS
-   ========================================================================== */
-.charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
-@media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
-
-.panel {
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 20px; position: relative;
-}
-.panel-title {
-  font-size: 13px; font-weight: 600; color: var(--text-1);
-  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
-}
-.panel-title .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--green); display: inline-block;
-}
-.chart-canvas { width: 100%; display: block; }
-
-/* Status code bars */
-.status-bars { display: flex; flex-direction: column; gap: 10px; }
-.status-row { display: flex; align-items: center; gap: 10px; }
-.status-code {
-  font-size: 12px; font-weight: 700; min-width: 40px;
-  font-variant-numeric: tabular-nums;
-}
-.status-code.c2xx { color: var(--green); }
-.status-code.c3xx { color: var(--cyan); }
-.status-code.c4xx { color: var(--yellow); }
-.status-code.c5xx { color: var(--red); }
-.status-bar-bg {
-  flex: 1; height: 20px; background: var(--bg-2); border-radius: 4px;
-  overflow: hidden;
-}
-.status-bar {
-  height: 100%; border-radius: 4px; transition: width 0.5s ease;
-  min-width: 2px;
-}
-.status-bar.c2xx { background: var(--green); }
-.status-bar.c3xx { background: var(--cyan); }
-.status-bar.c4xx { background: var(--yellow); }
-.status-bar.c5xx { background: var(--red); }
-.status-count {
-  font-size: 11px; color: var(--text-3); min-width: 60px;
-  text-align: right; font-variant-numeric: tabular-nums;
-}
-
-/* ==========================================================================
-   LATENCY DETAIL
-   ========================================================================== */
-.latency-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
-@media (max-width: 700px) { .latency-grid { grid-template-columns: 1fr; } }
-
-.latency-card {
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px 20px; text-align: center;
-}
-.latency-card .lc-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
-.latency-card .lc-value {
-  font-size: 28px; font-weight: 800; margin: 6px 0 2px;
-  font-variant-numeric: tabular-nums;
-}
-.latency-card .lc-unit { font-size: 12px; color: var(--text-3); }
-.latency-card canvas { margin-top: 10px; width: 100%; height: 40px; }
-
-/* ==========================================================================
-   WORKERS TABLE
-   ========================================================================== */
-.workers-section { margin-bottom: 20px; }
-.workers-section.hidden { display: none; }
-.table-wrap {
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden;
-}
-.table-wrap table { width: 100%; border-collapse: collapse; }
-.table-wrap th {
-  text-align: left; padding: 12px 16px; background: var(--bg-2);
-  font-size: 11px; color: var(--text-3); text-transform: uppercase;
-  letter-spacing: 0.8px; font-weight: 600; border-bottom: 1px solid var(--border);
-}
-.table-wrap td {
-  padding: 10px 16px; border-bottom: 1px solid var(--border);
-  font-size: 13px; font-variant-numeric: tabular-nums;
-}
-.table-wrap tr:last-child td { border-bottom: none; }
-.table-wrap tr:hover td { background: var(--bg-2); }
-.worker-status { display: inline-flex; align-items: center; gap: 5px; }
-.worker-dot { width: 6px; height: 6px; border-radius: 50%; }
-.worker-dot.active { background: var(--green); }
-.worker-dot.idle { background: var(--text-3); }
-
-/* ==========================================================================
-   HISTORY TABLE
-   ========================================================================== */
-.history-section { margin-bottom: 20px; }
-.history-section .panel-title { margin-bottom: 12px; }
-
-/* ==========================================================================
-   FOOTER
-   ========================================================================== */
-.footer {
-  text-align: center; padding: 24px 0 0; color: var(--text-3);
-  font-size: 11px; border-top: 1px solid var(--border);
-}
-.footer a { color: var(--green); text-decoration: none; }
-
-/* ==========================================================================
-   TOAST
-   ========================================================================== */
-.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
-.toast {
-  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 10px 16px; font-size: 13px; color: var(--text-0);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: toast-in 0.3s ease;
-  display: flex; align-items: center; gap: 8px; max-width: 360px;
-}
-.toast.success { border-left: 3px solid var(--green); }
-.toast.error { border-left: 3px solid var(--red); }
-.toast.info { border-left: 3px solid var(--blue); }
-@keyframes toast-in { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
-
-/* ==========================================================================
-   ANIMATIONS
-   ========================================================================== */
-@keyframes fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-.card, .panel, .controls { animation: fade-in 0.4s ease; }
-</style>
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<div class="toast-container" id="toasts"></div>
+<div class="toast-container" id="toasts" aria-live="polite"></div>
 
 <div class="app" id="app">
   <!-- Header -->
@@ -352,31 +28,73 @@ body {
   <div class="controls">
     <div class="field field-url">
       <div class="field-label">Target URL</div>
-      <input id="inpUrl" placeholder="http://localhost:8080/health" value="http://localhost:8080/health">
+      <input id="inpUrl" placeholder="http://localhost:8080/health" value="http://localhost:8080/health" aria-label="Target URL">
     </div>
     <div class="field field-sm">
       <div class="field-label">Users</div>
-      <input id="inpUsers" type="number" value="10" min="1">
+      <input id="inpUsers" type="number" value="10" min="1" aria-label="Virtual users">
     </div>
     <div class="field field-sm">
       <div class="field-label">Duration</div>
-      <input id="inpDuration" type="number" value="30" min="1">
+      <input id="inpDuration" type="number" value="30" min="1" aria-label="Duration in seconds">
     </div>
     <div class="field field-sm">
       <div class="field-label">Method</div>
-      <select id="inpMethod">
+      <select id="inpMethod" aria-label="HTTP method">
         <option>GET</option><option>POST</option><option>PUT</option>
         <option>DELETE</option><option>PATCH</option><option>HEAD</option>
       </select>
     </div>
-    <button class="btn btn-start" id="btnStart" onclick="startRun()">&#9654; Start</button>
-    <button class="btn btn-stop" id="btnStop" onclick="stopRun()" disabled>&#9632; Stop</button>
+    <div class="field field-sm">
+      <div class="field-label">Rate Limit</div>
+      <input id="inpRate" type="number" value="0" min="0" placeholder="req/s" aria-label="Rate limit in requests per second">
+    </div>
+    <div class="field">
+      <div class="field-label">Profile</div>
+      <select id="inpProfile" aria-label="Load profile">
+        <option value="steady">steady</option>
+        <option value="soak">soak</option>
+        <option value="linear-ramp">linear-ramp</option>
+        <option value="spike">spike</option>
+        <option value="wave">wave</option>
+        <option value="constant-rps">constant-rps</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="field-label">TLS Fingerprint</div>
+      <select id="inpFingerprint" aria-label="TLS fingerprint">
+        <option value="">default</option>
+        <option value="chrome">chrome</option>
+        <option value="chrome_120">chrome_120</option>
+        <option value="firefox">firefox</option>
+        <option value="safari">safari</option>
+        <option value="edge">edge</option>
+        <option value="ios">ios</option>
+        <option value="android_okhttp">android_okhttp</option>
+        <option value="golang">golang</option>
+      </select>
+    </div>
+    <button class="btn btn-start" id="btnStart">&#9654; Start</button>
+    <button class="btn btn-stop" id="btnStop" disabled>&#9632; Stop</button>
   </div>
 
   <!-- Progress -->
   <div class="progress-wrap">
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     <div class="progress-text" id="progressText">0% | 0s / 30s</div>
+  </div>
+
+  <!-- Live config + latency stats strip -->
+  <div class="stats-strip">
+    <div class="stat-item"><span class="stat-label">Profile</span><span class="stat-value" id="metaProfile">&#8212;</span></div>
+    <div class="stat-item"><span class="stat-label">Rate Limit</span><span class="stat-value" id="metaRate">&#8212;</span></div>
+    <div class="stat-item"><span class="stat-label">TLS Fingerprint</span><span class="stat-value" id="metaFingerprint">&#8212;</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">P50</span><span class="stat-value" id="metaP50">0</span></div>
+    <div class="stat-item"><span class="stat-label">P95</span><span class="stat-value" id="metaP95">0</span></div>
+    <div class="stat-item"><span class="stat-label">P99</span><span class="stat-value" id="metaP99">0</span></div>
+    <div class="stat-item"><span class="stat-label">Avg</span><span class="stat-value" id="metaAvg">0</span></div>
+    <div class="stat-item"><span class="stat-label">Max</span><span class="stat-value" id="metaMax">0</span></div>
   </div>
 
   <!-- Metric Cards -->
@@ -494,528 +212,6 @@ body {
   </div>
 </div>
 
-<script>
-/* ==========================================================================
-   STATE
-   ========================================================================== */
-var S = {
-  snapshot: {},
-  run: { status: 'idle', progress: 0, config: null, elapsed: '0s', duration: 0 },
-  history: [],
-  rpsHist: [],
-  latAvgHist: [],
-  latP50Hist: [],
-  latP95Hist: [],
-  latP99Hist: [],
-  errHist: [],
-  userHist: [],
-  connected: false
-};
-var MAX_HIST = 120;
-var ws = null;
-var API = location.origin;
-
-/* ==========================================================================
-   WEBSOCKET
-   ========================================================================== */
-function connect() {
-  var url = API.replace(/^http/, 'ws') + '/ws';
-  ws = new WebSocket(url);
-  ws.onopen = function() {
-    S.connected = true;
-    updateConnStatus();
-    toast('Connected to dashboard', 'success');
-  };
-  ws.onmessage = function(e) {
-    var msg = JSON.parse(e.data);
-    if (msg.type === 'init') {
-      S.run = msg.state || S.run;
-      S.history = msg.history || [];
-      renderHistory();
-    } else if (msg.type === 'snapshot') {
-      var d = msg.data;
-      S.snapshot = d;
-      pushHist('rpsHist', d.rps || 0);
-      pushHist('latAvgHist', d.avg_latency_ms || 0);
-      pushHist('latP50Hist', d.p50_latency_ms || 0);
-      pushHist('latP95Hist', d.p95_latency_ms || 0);
-      pushHist('latP99Hist', d.p99_latency_ms || 0);
-      pushHist('errHist', d.error_rate || 0);
-      pushHist('userHist', d.active_users || 0);
-    } else if (msg.type === 'run_state') {
-      var prev = S.run.status;
-      S.run = msg.data;
-      if (prev !== 'completed' && S.run.status === 'completed') {
-        toast('Run completed!', 'success');
-      }
-      if (prev !== 'failed' && S.run.status === 'failed') {
-        toast('Run failed!', 'error');
-      }
-    }
-    render();
-  };
-  ws.onclose = function() {
-    S.connected = false;
-    updateConnStatus();
-    setTimeout(connect, 2000);
-  };
-  ws.onerror = function() {};
-}
-
-function pushHist(arr, val) {
-  S[arr].push(val);
-  if (S[arr].length > MAX_HIST) S[arr].shift();
-}
-
-/* ==========================================================================
-   ACTIONS
-   ========================================================================== */
-function startRun() {
-  var cfg = {
-    target_url: document.getElementById('inpUrl').value || 'http://localhost:8080/health',
-    users: parseInt(document.getElementById('inpUsers').value) || 10,
-    duration_seconds: parseInt(document.getElementById('inpDuration').value) || 30,
-    method: document.getElementById('inpMethod').value || 'GET'
-  };
-  fetch(API + '/api/run/start', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cfg)
-  }).then(function() { toast('Run started!', 'info'); });
-}
-
-function stopRun() {
-  fetch(API + '/api/run/stop', { method: 'POST' }).then(function() {
-    toast('Run stopped', 'error');
-  });
-}
-
-/* ==========================================================================
-   TOAST
-   ========================================================================== */
-function toast(msg, type) {
-  var c = document.getElementById('toasts');
-  var t = document.createElement('div');
-  t.className = 'toast ' + (type || 'info');
-  t.textContent = msg;
-  c.appendChild(t);
-  setTimeout(function() { t.style.opacity = '0'; t.style.transition = '0.3s'; setTimeout(function() { t.remove(); }, 300); }, 3000);
-}
-
-/* ==========================================================================
-   RENDER
-   ========================================================================== */
-function render() {
-  var s = S.snapshot || {};
-  var r = S.run || {};
-  var running = r.status === 'running';
-  var elapsed = r.elapsed || 0;
-  var duration = (r.config && r.config.duration_seconds) || (S.run.duration || 30);
-  if (typeof elapsed === 'number') elapsed = elapsed / 1e9; // nanoseconds to seconds
-  var elapsedNum = parseFloat(elapsed) || 0;
-  var progress = r.progress || 0;
-
-  // Status badge
-  var badge = document.getElementById('statusBadge');
-  if (badge.getAttribute('data-status') !== (r.status || 'idle')) {
-    badge.setAttribute('data-status', r.status || 'idle');
-    badge.className = 'badge badge-' + (r.status || 'idle');
-    badge.textContent = (r.status || 'idle');
-  }
-
-  // Buttons
-  document.getElementById('btnStart').disabled = running;
-  document.getElementById('btnStop').disabled = !running;
-
-  // Progress
-  var pf = document.getElementById('progressFill');
-  pf.style.width = progress + '%';
-  pf.className = 'progress-fill' + (running ? ' active' : '');
-  var remain = Math.max(0, duration - elapsedNum);
-  document.getElementById('progressText').textContent =
-    progress.toFixed(0) + '% | ' + formatDuration(elapsedNum) + ' / ' + formatDuration(duration) + ' | ' + formatDuration(remain) + ' left';
-
-  // Populate inputs from config when running
-  if (r.config) {
-    if (document.activeElement.id !== 'inpUrl') document.getElementById('inpUrl').value = r.config.target_url || '';
-    if (document.activeElement.id !== 'inpUsers') document.getElementById('inpUsers').value = r.config.users || 10;
-    if (document.activeElement.id !== 'inpDuration') document.getElementById('inpDuration').value = r.config.duration_seconds || 30;
-    if (document.activeElement.id !== 'inpMethod') document.getElementById('inpMethod').value = r.config.method || 'GET';
-  }
-
-  // Metric cards
-  var rps = s.rps || 0;
-  document.getElementById('valRPS').textContent = Math.round(rps);
-  document.getElementById('subRPS').textContent = fmt(s.total_requests || 0) + ' total requests';
-
-  var avg = s.avg_latency_ms || 0;
-  document.getElementById('valAvg').innerHTML = avg.toFixed(1) + ' <small style="font-size:14px;font-weight:400">ms</small>';
-  document.getElementById('subLatency').textContent =
-    'P50: ' + (s.p50_latency_ms||0).toFixed(1) + ' \u00b7 P95: ' + (s.p95_latency_ms||0).toFixed(1) + ' \u00b7 P99: ' + (s.p99_latency_ms||0).toFixed(1) + ' ms';
-
-  var errRate = s.error_rate || 0;
-  var errEl = document.getElementById('valErrors');
-  errEl.style.color = errRate > 5 ? 'var(--red)' : errRate > 1 ? 'var(--yellow)' : 'var(--green)';
-  errEl.innerHTML = errRate.toFixed(2) + ' <small style="font-size:14px;font-weight:400">%</small>';
-  document.getElementById('subErrors').textContent = fmt(s.total_errors || 0) + ' errors / ' + fmt(s.total_requests || 0) + ' total';
-
-  document.getElementById('valUsers').textContent = s.active_users || 0;
-
-  // Latency detail cards
-  document.getElementById('latP50').textContent = (s.p50_latency_ms||0).toFixed(1);
-  document.getElementById('latP95').textContent = (s.p95_latency_ms||0).toFixed(1);
-  document.getElementById('latP99').textContent = (s.p99_latency_ms||0).toFixed(1);
-
-  // Status codes
-  renderStatusCodes(s.status_codes || {});
-
-  // Workers
-  renderWorkers(s.workers || []);
-
-  // Charts
-  drawSparkline('sparkRPS', S.rpsHist, 'rgba(0,232,123,0.6)');
-  drawSparkline('sparkLatency', S.latAvgHist, 'rgba(59,130,246,0.6)');
-  drawSparkline('sparkErrors', S.errHist, errRate > 5 ? 'rgba(239,68,68,0.6)' : 'rgba(0,232,123,0.6)');
-  drawSparkline('sparkUsers', S.userHist, 'rgba(245,158,11,0.6)');
-  drawTimelineChart('chartRPS', [
-    { data: S.rpsHist, color: '#00e87b', label: 'RPS' }
-  ]);
-  drawTimelineChart('chartLatency', [
-    { data: S.latP50Hist, color: '#00e87b', label: 'P50' },
-    { data: S.latP95Hist, color: '#f59e0b', label: 'P95' },
-    { data: S.latP99Hist, color: '#ef4444', label: 'P99' }
-  ]);
-  drawMiniLine('chartP50', S.latP50Hist, '#00e87b');
-  drawMiniLine('chartP95', S.latP95Hist, '#f59e0b');
-  drawMiniLine('chartP99', S.latP99Hist, '#ef4444');
-}
-
-/* ==========================================================================
-   STATUS CODES
-   ========================================================================== */
-function renderStatusCodes(codes) {
-  var el = document.getElementById('statusBars');
-  var keys = Object.keys(codes).sort();
-  if (keys.length === 0) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px 0;font-size:13px">No data yet</div>';
-    return;
-  }
-  var total = 0;
-  keys.forEach(function(k) { total += codes[k]; });
-  var html = '';
-  keys.forEach(function(k) {
-    var v = codes[k];
-    var pct = total > 0 ? (v / total * 100) : 0;
-    var cls = k < 300 ? 'c2xx' : k < 400 ? 'c3xx' : k < 500 ? 'c4xx' : 'c5xx';
-    html += '<div class="status-row">' +
-      '<span class="status-code ' + cls + '">' + k + '</span>' +
-      '<div class="status-bar-bg"><div class="status-bar ' + cls + '" style="width:' + pct + '%"></div></div>' +
-      '<span class="status-count">' + fmt(v) + ' (' + pct.toFixed(1) + '%)</span></div>';
-  });
-  el.innerHTML = html;
-}
-
-/* ==========================================================================
-   WORKERS
-   ========================================================================== */
-function renderWorkers(workers) {
-  var section = document.getElementById('workersSection');
-  if (!workers || workers.length === 0) {
-    section.classList.add('hidden');
-    return;
-  }
-  section.classList.remove('hidden');
-  var body = document.getElementById('workersBody');
-  var html = '';
-  workers.forEach(function(w) {
-    var isActive = w.status === 'running' || w.status === 'active';
-    html += '<tr>' +
-      '<td><strong>' + esc(w.id) + '</strong></td>' +
-      '<td style="color:var(--text-1)">' + esc(w.address) + '</td>' +
-      '<td><span class="worker-status"><span class="worker-dot ' + (isActive ? 'active' : 'idle') + '"></span>' + esc(w.status) + '</span></td>' +
-      '<td>' + (w.rps || 0).toFixed(0) + '</td>' +
-      '<td>' + (w.latency_ms || 0).toFixed(1) + ' ms</td>' +
-      '<td>' + fmt(w.errors || 0) + '</td></tr>';
-  });
-  body.innerHTML = html;
-}
-
-/* ==========================================================================
-   HISTORY
-   ========================================================================== */
-function renderHistory() {
-  var section = document.getElementById('historySection');
-  if (S.history.length === 0) { section.style.display = 'none'; return; }
-  section.style.display = '';
-  var body = document.getElementById('historyBody');
-  var html = '';
-  S.history.forEach(function(h) {
-    html += '<tr>' +
-      '<td style="color:var(--text-1)">' + esc(h.id) + '</td>' +
-      '<td>' + new Date(h.timestamp).toLocaleTimeString() + '</td>' +
-      '<td>' + esc((h.config && h.config.target_url) || '-') + '</td>' +
-      '<td>' + ((h.config && h.config.users) || '-') + '</td>' +
-      '<td>' + ((h.config && h.config.duration_seconds) || '-') + 's</td>' +
-      '<td style="color:var(--green);font-weight:600">' + ((h.result && h.result.rps) || 0).toFixed(0) + '</td>' +
-      '<td>' + ((h.result && h.result.p50_latency) || 0).toFixed(1) + 'ms</td>' +
-      '<td>' + ((h.result && h.result.p99_latency) || 0).toFixed(1) + 'ms</td>' +
-      '<td style="color:var(--red)">' + ((h.result && h.result.total_errors) || 0) + '</td></tr>';
-  });
-  body.innerHTML = html;
-}
-
-/* ==========================================================================
-   CANVAS CHARTS
-   ========================================================================== */
-function drawSparkline(id, data, color) {
-  var canvas = document.getElementById(id);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  var ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  var w = rect.width, h = rect.height;
-  ctx.clearRect(0, 0, w, h);
-  if (!data || data.length < 2) return;
-  var max = Math.max.apply(null, data.concat([1]));
-  var step = w / (MAX_HIST - 1);
-  var startIdx = MAX_HIST - data.length;
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  for (var i = 0; i < data.length; i++) {
-    var x = (startIdx + i) * step;
-    var y = h - (data[i] / max) * (h - 4);
-    if (i === 0) ctx.lineTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.lineTo((startIdx + data.length - 1) * step, h);
-  ctx.closePath();
-  var grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, color);
-  grad.addColorStop(1, 'transparent');
-  ctx.fillStyle = grad;
-  ctx.fill();
-  // Line on top
-  ctx.beginPath();
-  for (var i = 0; i < data.length; i++) {
-    var x = (startIdx + i) * step;
-    var y = h - (data[i] / max) * (h - 4);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.strokeStyle = color.replace('0.6', '1');
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-}
-
-function drawTimelineChart(id, series) {
-  var canvas = document.getElementById(id);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  var ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  var w = rect.width, h = rect.height;
-  var pad = { top: 10, right: 10, bottom: 24, left: 50 };
-  var cw = w - pad.left - pad.right;
-  var ch = h - pad.top - pad.bottom;
-  ctx.clearRect(0, 0, w, h);
-
-  // Find max across all series
-  var allMax = 1;
-  series.forEach(function(s) {
-    var m = Math.max.apply(null, s.data.concat([1]));
-    if (m > allMax) allMax = m;
-  });
-
-  // Grid lines
-  ctx.strokeStyle = '#1e1e30';
-  ctx.lineWidth = 1;
-  for (var i = 0; i <= 4; i++) {
-    var y = pad.top + (ch / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
-    ctx.fillStyle = '#484860';
-    ctx.font = '10px Inter, system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(fmtSmart(allMax * (1 - i / 4)), pad.left - 8, y + 4);
-  }
-
-  // Time labels
-  ctx.fillStyle = '#484860';
-  ctx.textAlign = 'center';
-  ctx.font = '10px Inter, system-ui, sans-serif';
-  var maxLen = 0;
-  series.forEach(function(s) { if (s.data.length > maxLen) maxLen = s.data.length; });
-  if (maxLen > 1) {
-    for (var i = 0; i <= 4; i++) {
-      var idx = Math.floor((maxLen - 1) * i / 4);
-      var x = pad.left + (cw * i / 4);
-      ctx.fillText('-' + (maxLen - 1 - idx) + 's', x, h - 6);
-    }
-  }
-
-  // Draw each series
-  series.forEach(function(s) {
-    if (s.data.length < 2) return;
-    var step = cw / (MAX_HIST - 1);
-    var startIdx = MAX_HIST - s.data.length;
-    // Fill
-    ctx.beginPath();
-    ctx.moveTo(pad.left + startIdx * step, pad.top + ch);
-    for (var i = 0; i < s.data.length; i++) {
-      var x = pad.left + (startIdx + i) * step;
-      var y = pad.top + ch - (s.data[i] / allMax) * ch;
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(pad.left + (startIdx + s.data.length - 1) * step, pad.top + ch);
-    ctx.closePath();
-    var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
-    grad.addColorStop(0, s.color + '33');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.fill();
-    // Line
-    ctx.beginPath();
-    for (var i = 0; i < s.data.length; i++) {
-      var x = pad.left + (startIdx + i) * step;
-      var y = pad.top + ch - (s.data[i] / allMax) * ch;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // End dot
-    if (s.data.length > 0) {
-      var lastI = s.data.length - 1;
-      var lx = pad.left + (startIdx + lastI) * step;
-      var ly = pad.top + ch - (s.data[lastI] / allMax) * ch;
-      ctx.beginPath();
-      ctx.arc(lx, ly, 4, 0, Math.PI * 2);
-      ctx.fillStyle = s.color;
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(lx, ly, 7, 0, Math.PI * 2);
-      ctx.strokeStyle = s.color + '44';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-  });
-
-  // Legend
-  if (series.length > 1) {
-    var lx = pad.left;
-    series.forEach(function(s, i) {
-      ctx.fillStyle = s.color;
-      ctx.fillRect(lx, 2, 8, 8);
-      ctx.fillStyle = '#707088';
-      ctx.font = '10px Inter, system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(s.label, lx + 12, 10);
-      lx += ctx.measureText(s.label).width + 24;
-    });
-  }
-}
-
-function drawMiniLine(id, data, color) {
-  var canvas = document.getElementById(id);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  var ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  var w = rect.width, h = rect.height;
-  ctx.clearRect(0, 0, w, h);
-  if (!data || data.length < 2) return;
-  var max = Math.max.apply(null, data.concat([1]));
-  var step = w / (MAX_HIST - 1);
-  var startIdx = MAX_HIST - data.length;
-  ctx.beginPath();
-  for (var i = 0; i < data.length; i++) {
-    var x = (startIdx + i) * step;
-    var y = h - (data[i] / max) * (h - 4);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-/* ==========================================================================
-   HELPERS
-   ========================================================================== */
-function formatDuration(sec) {
-  sec = Math.round(sec || 0);
-  if (sec < 60) return sec + 's';
-  var m = Math.floor(sec / 60);
-  var s = sec % 60;
-  return m + 'm ' + s + 's';
-}
-function fmt(n) {
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return String(n);
-}
-function fmtSmart(n) {
-  if (n >= 1e6) return (n / 1e6).toFixed(0) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
-  return String(Math.round(n));
-}
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function updateConnStatus() {
-  var dot = document.getElementById('connDot');
-  var label = document.getElementById('connLabel');
-  if (!dot || !label) return;
-  if (S.connected) {
-    dot.className = 'conn-dot connected';
-    label.textContent = '';
-    label.appendChild(dot);
-    label.appendChild(document.createTextNode(' Connected'));
-    label.style.color = 'var(--green)';
-  } else {
-    dot.className = 'conn-dot disconnected';
-    label.textContent = '';
-    label.appendChild(dot);
-    label.appendChild(document.createTextNode(' Disconnected'));
-    label.style.color = 'var(--red)';
-  }
-}
-
-/* ==========================================================================
-   POLLING FALLBACK (for when WS snapshots are delayed)
-   ========================================================================== */
-setInterval(function() {
-  if (S.run && S.run.status === 'running') {
-    fetch(API + '/api/snapshot').then(function(r) { return r.json(); }).then(function(d) {
-      S.snapshot = d;
-      pushHist('rpsHist', d.rps || 0);
-      pushHist('latAvgHist', d.avg_latency_ms || 0);
-      pushHist('latP50Hist', d.p50_latency_ms || 0);
-      pushHist('latP95Hist', d.p95_latency_ms || 0);
-      pushHist('latP99Hist', d.p99_latency_ms || 0);
-      pushHist('errHist', d.error_rate || 0);
-      pushHist('userHist', d.active_users || 0);
-      render();
-    }).catch(function() {});
-  }
-}, 1000);
-
-/* ==========================================================================
-   KEYBOARD SHORTCUTS
-   ========================================================================== */
-document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  if (e.key === 's' || e.key === 'S') { e.preventDefault(); if (!S.run || S.run.status !== 'running') startRun(); }
-  if (e.key === 'x' || e.key === 'X') { e.preventDefault(); if (S.run && S.run.status === 'running') stopRun(); }
-});
-
-/* ==========================================================================
-   INIT
-   ========================================================================== */
-connect();
-render();
-</script>
+<script src="/app.js"></script>
 </body>
 </html>

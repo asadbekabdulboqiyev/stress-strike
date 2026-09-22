@@ -10,7 +10,7 @@
 #     stress-strike
 #     stress-strike-scan
 #     stress-strike-master
-#     stress-strike-replay       (requires libpcap for CGO; skipped if unavailable)
+#     stress-strike-replay       (pure-Go, no CGO/libpcap required)
 #     stress-strike-worker
 #     stress-strike-dashboard
 #
@@ -29,7 +29,7 @@
 #   RELEASE=1 VERSION=1.0.0 ./scripts/build-all.sh
 #
 # Environment overrides:
-#   VERSION    release version injected via ldflags (default 0.9.0)
+#   VERSION    release version injected via ldflags (default 0.11.0)
 #   RELEASE    set to 1 for cross-platform release builds with archives
 #   DIST_DIR   alternative dist/ root (default: <repo>/dist)
 
@@ -37,7 +37,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-VERSION="${1:-${VERSION:-0.9.0}}"
+VERSION="${1:-${VERSION:-0.11.0}}"
 LDFLAGS="-s -w -X main.version=${VERSION}"
 
 if ! command -v go >/dev/null 2>&1; then
@@ -141,18 +141,7 @@ for entry in "${BINARIES[@]}"; do
   pkg="${entry#*:}"
   out="${BIN_DIR}/${name}"
 
-  # replay binary needs CGO for gopacket/pcap — try CGO=1 first, skip on failure
-  if [ "${name}" = "stress-strike-replay" ]; then
-    if CGO_ENABLED=1 go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${out}" "${pkg}" 2>/dev/null; then
-      echo "  ${name} (cgo)"
-      built=$((built + 1))
-    else
-      echo "  ${name} -- SKIPPED (libpcap not installed; install with: brew install libpcap)"
-      skipped=$((skipped + 1))
-    fi
-    continue
-  fi
-
+  # All binaries are pure-Go (replay uses pcapgo, no CGO/libpcap needed).
   echo "  ${name}"
   (
     cd "${REPO_ROOT}"

@@ -8,6 +8,7 @@ coverage.out
 coverage.html
 *.test
 *.exe
+/stress-strike
 
 # VCS & CI
 .git/
@@ -29,3 +30,6 @@ SECURITY.md
 README.md
 examples/
 scripts/
+
+# Host deployment files (systemd units, fleet templates) — not needed in the image
+deploy/

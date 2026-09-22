@@ -22,6 +22,9 @@ func main() {
 	duration := flag.String("duration", "", "Max replay duration (e.g. 30s, 5m)")
 	baseURL := flag.String("base-url", "", "Override target base URL")
 	skipTLS := flag.Bool("skip-tls-verify", false, "Skip TLS certificate verification")
+	pace := flag.String("pace", "timing", "Pacing mode: timing (capture-accurate, default), rps (fixed requests/sec), legacy (1s/rate)")
+	rpsFlag := flag.Float64("rps", 0, "Target requests per second (used with --pace rps)")
+	followRedirects := flag.Bool("follow-redirects", false, "Follow HTTP redirects (up to 10)")
 	methods := flag.String("methods", "", "Filter by HTTP methods (e.g. GET,POST)")
 	urlPattern := flag.String("url-pattern", "", "Filter by URL pattern (glob)")
 	statusCodes := flag.String("status", "", "Filter by response status codes (e.g. 200,404)")
@@ -54,8 +57,20 @@ Examples:
   # Replay HAR at 10x speed
   stress-strike-replay -input traffic.har -rate 10x
 
+  # Replay HAR at real-time capture pace (timing-accurate, the default)
+  stress-strike-replay -input traffic.har -pace timing
+
+  # Constant-rate replay
+  stress-strike-replay -input traffic.har -pace rps -rps 50
+
+  # Legacy fixed pacing (1s per rate unit)
+  stress-strike-replay -input traffic.har -rate 10x -pace legacy
+
   # Replay PCAP at 50x with 50 workers, filter GET requests
   stress-strike-replay -input capture.pcap -rate 50x -concurrency 50 -methods GET
+
+  # Replay with response validation
+  stress-strike-replay -input traffic.har -rate 5x -validate -assert-status 200
 
   # Replay with response validation
   stress-strike-replay -input traffic.har -rate 5x -validate -assert-status 200
@@ -80,6 +95,22 @@ Examples:
 	rateMultiplier, err := parseRate(*rate)
 	if err != nil {
 		log.Fatalf("Invalid rate: %v", err)
+	}
+
+	// Resolve pacing mode
+	var pacing replay.ReplayPacing
+	switch *pace {
+	case "timing":
+		pacing = replay.PacingTiming
+	case "rps":
+		pacing = replay.PacingRPS
+	case "legacy":
+		pacing = replay.PacingLegacy
+	default:
+		log.Fatalf("Invalid pacing mode %q (use timing, rps, or legacy)", *pace)
+	}
+	if pacing == replay.PacingRPS && *rpsFlag <= 0 {
+		log.Fatalf("--rps must be a positive value when --pace rps is used")
 	}
 
 	// Parse duration
@@ -132,9 +163,12 @@ Examples:
 		RateMultiplier:   rateMultiplier,
 		MaxConcurrency:   *concurrency,
 		Duration:         dur,
+		Pacing:           pacing,
+		RPS:              *rpsFlag,
 		BaseURL:          *baseURL,
 		SkipTLSVerify:    *skipTLS,
 		TLSKeys:          tlsKeys,
+		FollowRedirects:  *followRedirects,
 		ValidateResponse: *validate,
 		Assertions:       assertions,
 		OutputReport:     *outputJSON != "" || *outputCSV != "",
@@ -209,6 +243,7 @@ Examples:
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Printf("║  REPLAYING at %.1fx speed with %d workers                    \n", rateMultiplier, numWorkers)
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
+	fmt.Printf("  Pacing: %s\n", pacing)
 	fmt.Println()
 
 	startTime := time.Now()

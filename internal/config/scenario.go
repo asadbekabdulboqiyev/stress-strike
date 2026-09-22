@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
 )
 
 const (
@@ -39,6 +41,7 @@ type Profile struct {
 	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
 	Gate            bool   `yaml:"gate" json:"gate"`
 	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
+	TLSFingerprint  string `yaml:"tls_fingerprint" json:"tls_fingerprint"`
 	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
 
@@ -208,6 +211,10 @@ func (p *Profile) Normalize() error {
 		if p.SpikeWarmup+p.SpikeHold > maxDuration {
 			return fmt.Errorf("spike total duration (warmup+hold = %d) exceeds maximum of %d seconds", p.SpikeWarmup+p.SpikeHold, maxDuration)
 		}
+	}
+	if !fingerprint.Profile(p.TLSFingerprint).Valid() {
+		return fmt.Errorf("tls_fingerprint %q is not a known fingerprint (valid values: %s)",
+			p.TLSFingerprint, strings.Join(fingerprint.Names(), ", "))
 	}
 	return nil
 }

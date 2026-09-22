@@ -72,10 +72,24 @@ type Response struct {
 	Duration   time.Duration
 }
 
+type ReplayPacing string
+
+const (
+	// PacingTiming replays packets at their captured inter-request gaps,
+	// scaled by RateMultiplier (rate=1 is real-time).
+	PacingTiming ReplayPacing = "timing"
+	// PacingRPS paces requests at a constant rate defined by RPS.
+	PacingRPS ReplayPacing = "rps"
+	// PacingLegacy keeps the original fixed 1s/RateMultiplier behavior.
+	PacingLegacy ReplayPacing = "legacy"
+)
+
 type ReplayConfig struct {
 	RateMultiplier   float64
 	MaxConcurrency   int
 	Duration         time.Duration
+	Pacing           ReplayPacing
+	RPS              float64
 	BaseURL          string
 	SkipTLSVerify    bool
 	TLSKeys          []*TLSKey

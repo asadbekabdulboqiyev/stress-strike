@@ -12,6 +12,7 @@ import (
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
@@ -61,6 +62,7 @@ func cmdRun() {
 		targetRPS     int
 		mode          string
 		dashListen    string
+		tlsFP         string
 	)
 
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
@@ -83,6 +85,7 @@ func cmdRun() {
 	fs.IntVar(&targetRPS, "target-rps", 0, "target requests per second (constant-rps mode)")
 	fs.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
 	fs.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections")
+	fs.StringVar(&tlsFP, "tls-fingerprint", "", "TLS ClientHello fingerprint (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...)")
 	fs.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA: max p99 latency (ms)")
 	fs.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA: max avg latency (ms)")
 	fs.Float64Var(&expectErrRate, "expect-error-rate", 0, "SLA: max error rate (%%)")
@@ -96,7 +99,7 @@ func cmdRun() {
 	fs.StringVar(&reportDir, "report-dir", "./reports", "report output directory")
 	fs.BoolVar(&showVersion, "version", false, "print version")
 	fs.StringVar(&mode, "mode", "cli", "output mode: cli (terminal report) | dashboard (real-time web dashboard)")
-	fs.StringVar(&dashListen, "listen", ":8888", "dashboard listen address (with --mode dashboard)")
+	fs.StringVar(&dashListen, "listen", "127.0.0.1:8888", "dashboard listen address (with --mode dashboard)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
@@ -146,6 +149,13 @@ func cmdRun() {
 		scenario = sc
 	}
 
+	if tlsFP != "" {
+		if !fingerprint.Profile(tlsFP).Valid() {
+			fatal(fmt.Errorf("unknown -tls-fingerprint %q (valid values: %s)", tlsFP, strings.Join(fingerprint.Names(), ", ")))
+		}
+		scenario.Profile.TLSFingerprint = tlsFP
+	}
+
 	sla := scenario.SLA
 	if sla == nil {
 		sla = &config.SLA{}
@@ -188,6 +198,9 @@ func cmdRun() {
 
 	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
+	if scenario.Profile.TLSFingerprint != "" {
+		fmt.Fprintf(os.Stderr, "TLS fingerprint: masking ClientHello as %q (JA3-mitigation bypass)\n", scenario.Profile.TLSFingerprint)
+	}
 
 	eng, err := engine.New(scenario)
 	if err != nil {

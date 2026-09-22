@@ -7,14 +7,13 @@
 # e.g.:
 #
 #   ./scripts/install.sh                  # @latest
-#   ./scripts/install.sh v0.9.0           # pinned release
+#   ./scripts/install.sh v0.11.0           # pinned release
 #
 # Requirements:
 #   - Go 1.26+ on PATH
 #   - network access to the module proxy
 #
-# The replay binary additionally needs libpcap (CGO). If libpcap is missing
-# it is skipped with a notice rather than failing the whole install.
+# All binaries are pure-Go — no CGO or libpcap required.
 
 set -euo pipefail
 
@@ -26,7 +25,7 @@ fi
 MODULE="github.com/asadbekabdulboqiyev/stress-strike"
 VERSION="${1:-latest}"
 REF="@${VERSION}"
-# Normalize a bare "0.9.0" to "v0.9.0" for the reference form.
+# Normalize a bare "0.11.0" to "v0.11.0" for the reference form.
 if [[ "${VERSION}" != "latest" && "${VERSION}" != v* ]]; then
   REF="@v${VERSION}"
 fi
@@ -49,17 +48,6 @@ skipped=0
 
 for pkg in "${BINARIES[@]}"; do
   name="$(basename "${pkg}")"
-  # replay needs CGO/libpcap — try it, tolerate failure so the rest installs.
-  if [ "${name}" = "stress-strike-replay" ]; then
-    if go install "${MODULE}/${pkg}${REF}" 2>/dev/null; then
-      echo "  ✓ ${name}"
-      installed=$((installed + 1))
-    else
-      echo "  - ${name} skipped (libpcap not available; install with: brew install libpcap)"
-      skipped=$((skipped + 1))
-    fi
-    continue
-  fi
   go install "${MODULE}/${pkg}${REF}"
   echo "  ✓ ${name}"
   installed=$((installed + 1))

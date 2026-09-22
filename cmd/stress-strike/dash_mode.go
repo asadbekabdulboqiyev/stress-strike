@@ -143,10 +143,15 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 		}
 	})
 
+	if !dashboard.IsLoopbackAddr(dashListen) {
+		fmt.Fprintln(os.Stderr, "WARNING: dashboard is listening on a non-loopback interface — the control API has NO authentication.")
+		fmt.Fprintln(os.Stderr, "Anyone who can reach this address can start/stop load runs. Prefer 127.0.0.1:8888.")
+	}
+
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  stress-strike dashboard — real-time load telemetry             ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
-	fmt.Printf("  Dashboard : http://localhost%s\n", dashListen)
+	fmt.Printf("  Dashboard : http://%s\n", dashListen)
 	fmt.Printf("  Default   : %s (%d users, %ds)\n", targetDisplay(scenario), scenario.Profile.Users, scenario.Profile.TotalDuration())
 	fmt.Println("  Open the URL in a browser and press Start.")
 	fmt.Println()
@@ -178,7 +183,15 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 		os.Exit(0)
 	}()
 
-	if err := http.ListenAndServe(dashListen, srv); err != nil {
+	// http.Server with explicit header/idle timeouts: a slowloris-style
+	// client must not be able to hold a handler goroutine open forever.
+	dashSrv := &http.Server{
+		Addr:              dashListen,
+		Handler:           srv,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	if err := dashSrv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "dashboard server failed: %v\n", err)
 		os.Exit(1)
 	}

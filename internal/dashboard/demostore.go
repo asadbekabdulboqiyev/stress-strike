@@ -33,9 +33,13 @@ type DemoStore struct {
 	mu      sync.Mutex
 	url     string
 	cmd     *exec.Cmd
-	managed bool // we spawned the process, so Stop may kill it
-	protect bool // protection flag used at launch
+	exited  chan struct{} // closed by the reaper goroutine once the process is gone
+	managed bool          // we spawned the process, so Stop may kill it
+	protect bool          // protection flag used at launch
 	logger  *log.Logger
+
+	// locateOverride replaces locate() for tests (spawns a fake store).
+	locateOverride func() (string, []string, error)
 }
 
 // NewDemoStore creates a launcher/supervisor for the VoltStore demo.
@@ -78,6 +82,9 @@ func (d *DemoStore) Status() map[string]any {
 // The checkout search walks upward from the working directory, so the
 // dashboard works from any subdirectory of the repo — not just the root.
 func (d *DemoStore) locate() (string, []string, error) {
+	if d.locateOverride != nil {
+		return d.locateOverride()
+	}
 	// 1) Pre-built binary in a checkout: ./bin/demo-store (make build).
 	if p := findUp("bin/demo-store"); p != "" {
 		return p, nil, nil
@@ -87,7 +94,9 @@ func (d *DemoStore) locate() (string, []string, error) {
 		return p, nil, nil
 	}
 	// 3) Go checkout: `go run ./examples/demo_store` (needs a toolchain).
-	if root := findUp("go.mod"); root != "" {
+	// findUp returns the go.mod FILE path — the checkout root is its parent.
+	if mod := findUp("go.mod"); mod != "" {
+		root := filepath.Dir(mod)
 		if _, err := os.Stat(filepath.Join(root, "examples", "demo_store")); err == nil {
 			if goBin, err := exec.LookPath("go"); err == nil {
 				return goBin, []string{"run", filepath.Join(root, "examples", "demo_store")}, nil
@@ -151,6 +160,7 @@ func (d *DemoStore) Start() (string, bool, error) {
 	// the readiness loop below can distinguish "slow to boot" from "died".
 	exited := make(chan struct{})
 	go func() { _ = cmd.Wait(); close(exited) }()
+	d.exited = exited
 
 	deadline := time.Now().Add(demoStoreReadyTimeout)
 	for {
@@ -159,9 +169,7 @@ func (d *DemoStore) Start() (string, bool, error) {
 		}
 		select {
 		case <-exited:
-			d.cmd = nil
-			d.managed = false
-			d.protect = false
+			d.clearSpawned()
 			return "", false, fmt.Errorf("demo store exited during startup (see [demo-store] log above)")
 		case <-time.After(150 * time.Millisecond):
 		}
@@ -170,15 +178,28 @@ func (d *DemoStore) Start() (string, bool, error) {
 		}
 	}
 	_ = cmd.Process.Kill()
-	d.cmd = nil
-	d.managed = false
-	d.protect = false
+	d.clearSpawned()
 	return "", false, fmt.Errorf("demo store did not become ready within %s", demoStoreReadyTimeout)
 }
 
+// clearSpawned forgets a process we spawned. It must be called with d.mu
+// held. The reaper goroutine owns the wait, so the process is never leaked.
+func (d *DemoStore) clearSpawned() {
+	d.cmd = nil
+	d.exited = nil
+	d.managed = false
+	d.protect = false
+}
+
+// demoStoreKillWait bounds how long Stop waits for the process to die after
+// SIGKILL. Killed processes exit almost instantly; this is pure safety.
+const demoStoreKillWait = 5 * time.Second
+
 // Stop terminates the store only when the dashboard spawned it. A store that
 // was already running (user-managed) is left untouched. The reaper goroutine
-// from Start owns the wait, so we only signal the process here.
+// from Start owns the wait, so we only signal the process here — but we do
+// block until it actually exits, so a closely following Start() cannot adopt
+// the dying process as "already running" and lose supervision over it.
 func (d *DemoStore) Stop() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -186,9 +207,13 @@ func (d *DemoStore) Stop() error {
 		return nil
 	}
 	_ = d.cmd.Process.Kill()
-	d.cmd = nil
-	d.managed = false
-	d.protect = false
+	if d.exited != nil {
+		select {
+		case <-d.exited: // process reaped
+		case <-time.After(demoStoreKillWait):
+		}
+	}
+	d.clearSpawned()
 	return nil
 }
 

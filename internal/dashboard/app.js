@@ -1084,6 +1084,11 @@ function refreshDemoStore() {
 function demoStoreClick() {
   if (!_btnDemoStore) return;
   _btnDemoStore.classList.add('loading');
+  // Open the tab synchronously inside the user gesture so popup blockers
+  // allow it; it is pointed at the store URL once the launcher confirms
+  // the store is up (Start only returns when the store accepts requests).
+  var win = null;
+  try { win = window.open('', '_blank'); } catch (e) { win = null; }
   fetch(API + '/api/demo-store/start', { method: 'POST' })
     .then(function(r) {
       return r.json().then(function(d) { return { status: r.status, data: d }; });
@@ -1092,15 +1097,22 @@ function demoStoreClick() {
       _btnDemoStore.classList.remove('loading');
       if (res.status !== 200 || !res.data.ok) {
         toast('Demo store: ' + ((res.data && res.data.error) || 'failed to start'), 'error');
+        if (win) { try { win.close(); } catch (e) {} }
         return;
       }
       toast('VoltStore demo ' + (res.data.already_running ? 'already running — ' : 'launched — ') + res.data.url, 'success');
-      window.open(res.data.url, '_blank', 'noopener');
+      if (win) {
+        win.location = res.data.url;
+      } else {
+        var fallback = window.open(res.data.url, '_blank', 'noopener');
+        if (!fallback) toast('Popup blocked — open ' + res.data.url + ' manually', 'info');
+      }
       refreshDemoStore();
     })
     .catch(function() {
       _btnDemoStore.classList.remove('loading');
       toast('Demo store: request failed', 'error');
+      if (win) { try { win.close(); } catch (e) {} }
     });
 }
 

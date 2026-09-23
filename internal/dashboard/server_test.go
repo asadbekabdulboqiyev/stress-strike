@@ -2,10 +2,13 @@ package dashboard
 
 import (
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -837,7 +840,6 @@ func TestDemoStoreStartRejectsCrossOrigin(t *testing.T) {
 	s := NewServer()
 	req := httptest.NewRequest("POST", "/api/demo-store/start", nil)
 	req.Header.Set("Origin", "http://evil.example")
-	req.Header.Set("Host", "127.0.0.1:8888")
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden {
@@ -853,7 +855,6 @@ func TestDemoStoreStopRejectsCrossOrigin(t *testing.T) {
 	s := NewServer()
 	req := httptest.NewRequest("POST", "/api/demo-store/stop", nil)
 	req.Header.Set("Origin", "http://evil.example")
-	req.Header.Set("Host", "127.0.0.1:8888")
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden {
@@ -896,5 +897,202 @@ func TestFindUp(t *testing.T) {
 	}
 	if st, err := os.Stat(p); err != nil || st.IsDir() {
 		t.Errorf("findUp(%q) = %q is not a file (err=%v)", "go.mod", p, err)
+	}
+}
+
+// --- DemoStore lifecycle (integration) ---------------------------------------
+
+// helperPort extracts the port (after "--") from a re-exec'd test binary's
+// args; the parent DemoStore tests spawn this test binary as a fake store.
+func helperPort() string {
+	args := os.Args
+	for i, a := range args {
+		if a == "--" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+// TestDemoStoreHelperServer is a re-exec helper: when launched by a parent
+// DemoStore test (via locateOverride), it plays the role of the demo store by
+// listening on the port passed after "--" until it is killed. In a normal
+// suite run it has nothing to do and returns immediately.
+func TestDemoStoreHelperServer(t *testing.T) {
+	port := helperPort()
+	if port == "" {
+		return
+	}
+	srv := &http.Server{
+		Addr: "127.0.0.1:" + port,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = w.Write([]byte("helper store"))
+		}),
+	}
+	_ = srv.ListenAndServe() // blocks until the parent kills this process
+}
+
+// freePort reserves and releases an ephemeral port for the fake store.
+func freePort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("reserve port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	return port
+}
+
+// newFakeStore returns a DemoStore that spawns this test binary (re-exec) as
+// the fake store listening on a free ephemeral port.
+func newFakeStore(t *testing.T) *DemoStore {
+	t.Helper()
+	port := freePort(t)
+	d := NewDemoStore(nil)
+	d.url = fmt.Sprintf("http://127.0.0.1:%d", port)
+	d.locateOverride = func() (string, []string, error) {
+		return os.Args[0], []string{"-test.run=TestDemoStoreHelperServer", "--", strconv.Itoa(port)}, nil
+	}
+	t.Cleanup(func() { _ = d.Stop() })
+	return d
+}
+
+// TestDemoStoreStartSpawnsAndStopReaps drives the full supervised lifecycle:
+// spawn -> ready -> managed -> stop -> process gone (H2 regression covered by
+// the rapid restart test below).
+func TestDemoStoreStartSpawnsAndStopReaps(t *testing.T) {
+	d := newFakeStore(t)
+
+	url, already, err := d.Start()
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if already {
+		t.Error("Start reported already_running for a fresh spawn")
+	}
+	if url != d.url {
+		t.Errorf("Start url = %q, want %q", url, d.url)
+	}
+	st := d.Status()
+	if st["running"] != true || st["managed"] != true || st["protection"] != true {
+		t.Errorf("after Start, status = %v, want running+managed+protection", st)
+	}
+
+	if err := d.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	if d.Running() {
+		t.Error("store still listening after Stop")
+	}
+	st = d.Status()
+	if st["running"] != false || st["managed"] != false {
+		t.Errorf("after Stop, status = %v, want running=false managed=false", st)
+	}
+}
+
+// TestDemoStoreStopStartRapidSpawn is the regression for the Stop->Start
+// supervision race (QA H2): a Stop that only sent SIGKILL and returned
+// immediately let the next Start adopt the dying process as "already
+// running", so the dashboard lost the ability to stop the store it had
+// spawned. Stop must block until the process is gone.
+func TestDemoStoreStopStartRapidSpawn(t *testing.T) {
+	d := newFakeStore(t)
+
+	for i := 0; i < 5; i++ {
+		_, _, err := d.Start()
+		if err != nil {
+			t.Fatalf("cycle %d Start: %v", i, err)
+		}
+		if err := d.Stop(); err != nil {
+			t.Fatalf("cycle %d Stop: %v", i, err)
+		}
+		// The next Start must spawn a brand-new, managed process: if the
+		// old one were still draining, Start would adopt it unmanaged.
+		_, _, err = d.Start()
+		if err != nil {
+			t.Fatalf("cycle %d restart Start: %v", i, err)
+		}
+		st := d.Status()
+		if st["managed"] != true {
+			t.Fatalf("cycle %d restart: status = %v, want managed=true (lost supervision)", i, st)
+		}
+	}
+}
+
+// TestDemoStoreStartAdoptsExternalStore: a store already listening on the
+// address (started outside the dashboard) is adopted as running but never
+// managed — Stop must leave it untouched.
+func TestDemoStoreStartAdoptsExternalStore(t *testing.T) {
+	port := freePort(t)
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+
+	d := NewDemoStore(nil)
+	d.url = fmt.Sprintf("http://127.0.0.1:%d", port)
+
+	url, already, err := d.Start()
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if !already {
+		t.Error("Start did not report already_running for an existing listener")
+	}
+	if url != d.url {
+		t.Errorf("url = %q, want %q", url, d.url)
+	}
+	st := d.Status()
+	if st["running"] != true {
+		t.Errorf("status = %v, want running=true", st)
+	}
+	if st["managed"] != false {
+		t.Errorf("status = %v, want managed=false for an external store", st)
+	}
+
+	if err := d.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	if !d.Running() {
+		t.Error("Stop killed a store it did not spawn")
+	}
+}
+
+// TestLocateGORunFallbackFromNestedDir is the regression for the go.mod path
+// bug: findUp("go.mod") returns the FILE path, so the go run fallback must
+// join the examples dir against the checkout root (the file's parent), not
+// against the file itself (which yielded
+// "<repo>/go.mod/examples/demo_store" — not a directory).
+func TestLocateGORunFallbackFromNestedDir(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "examples", "demo_store"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module fake\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(root, "internal", "dashboard")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(nested)
+
+	d := NewDemoStore(nil)
+	bin, extra, err := d.locate()
+	if err != nil {
+		t.Fatalf("locate: %v", err)
+	}
+	if filepath.Base(bin) != "go" {
+		t.Errorf("bin = %q, want the go binary", bin)
+	}
+	if len(extra) != 2 || extra[0] != "run" {
+		t.Fatalf("extra = %v, want [run <checkout>/examples/demo_store]", extra)
+	}
+	want := filepath.Join(root, "examples", "demo_store")
+	if extra[1] != want {
+		t.Errorf("run target = %q, want %q", extra[1], want)
 	}
 }

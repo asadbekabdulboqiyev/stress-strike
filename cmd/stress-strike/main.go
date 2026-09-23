@@ -11,16 +11,16 @@ import (
 
 // version is overridden at build time via:
 //
-//	go build -ldflags "-X main.version=0.14.0"
+//	go build -ldflags "-X main.version=0.14.2"
 //
 // The default mirrors the latest release tag.
-var version = "0.14.0"
+var version = "0.14.2"
 
 // knownCommands is the source of truth for command suggestions and the
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"pentest", "help", "version",
+	"demo-store", "pentest", "help", "version",
 }
 
 func main() {
@@ -49,6 +49,9 @@ func main() {
 			return
 		case "pentest":
 			cmdPentest()
+			return
+		case "demo-store":
+			cmdDemoStore()
 			return
 		case "help", "--help", "-h":
 			printFullHelp()
@@ -114,6 +117,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    dashboard   Real-time web dashboard with WebSocket
    master      Distributed mode — master coordinator
    worker      Distributed mode — worker node
+   demo-store  Launch bundled VoltStore demo (VeriGate ON)
    pentest     1-click professional security assessment
    help        Show this help
    version     Show version

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
 	"github.com/gorilla/websocket"
 )
 
@@ -131,7 +132,7 @@ type Server struct {
 	runState  *RunState
 	history   []HistoryEntry
 	onCommand func(cmd string, args map[string]interface{})
-	store     *DemoStore // bundled VoltStore demo launcher/supervisor
+	store     *demostore.DemoStore // bundled VoltStore demo launcher/supervisor
 }
 
 func NewServer() *Server {
@@ -148,7 +149,10 @@ func NewServer() *Server {
 		snapshot: &LiveSnapshot{StatusCodes: make(map[int]uint64)},
 		runState: &RunState{Status: "idle"},
 		history:  make([]HistoryEntry, 0),
-		store:    NewDemoStore(nil),
+		// The dashboard always launches the store with VeriGate protection
+		// ON: the whole point is to demo the WAF. Visitors can still flip it
+		// OFF from the store's own /admin control plane.
+		store: demostore.New(demostore.Options{ExtraArgs: []string{"-protect"}}),
 	}
 }
 

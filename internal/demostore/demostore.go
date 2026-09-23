@@ -1,4 +1,9 @@
-package dashboard
+// Package demostore supervises the bundled VoltStore demo target: it locates
+// the demo-store binary, spawns it, and tracks liveness. It is shared by the
+// web dashboard (one-click "open the demo" button) and the
+// `stress-strike demo-store` CLI command, so both entry points behave
+// identically and supervision logic stays in one place.
+package demostore
 
 import (
 	"fmt"
@@ -12,26 +17,46 @@ import (
 	"time"
 )
 
-// defaultDemoStoreURL is where the bundled VoltStore demo listens by default
+// DefaultURL is where the bundled VoltStore demo listens by default
 // (examples/demo_store serves 127.0.0.1:8090 unless a custom -addr is given).
-const defaultDemoStoreURL = "http://127.0.0.1:8090"
+const DefaultURL = "http://127.0.0.1:8090"
 
-// demoStoreReadyTimeout bounds how long Start waits for the store to accept
+// readyTimeout bounds how long Start waits for the store to accept
 // connections. A cold `go run` fallback has to compile first, so this is
 // generous (browsers time out much later).
-const demoStoreReadyTimeout = 15 * time.Second
+const readyTimeout = 15 * time.Second
+
+// killWait bounds how long Stop waits for the process to die after SIGKILL.
+// Killed processes exit almost instantly; this is pure safety.
+const killWait = 5 * time.Second
+
+// Options configures a DemoStore.
+type Options struct {
+	// URL where the demo store listens. Empty means DefaultURL. It is what
+	// Running probes and Start/Status report; when the store is spawned, the
+	// caller normally passes the matching -addr flag inside ExtraArgs.
+	URL string
+
+	// ExtraArgs are appended to the spawned binary's command line (for
+	// example "-protect" to enable VeriGate, or "-addr=127.0.0.1:8090").
+	ExtraArgs []string
+
+	// Logger receives subprocess output when the store was spawned. Nil
+	// defaults to log.Default().
+	Logger *log.Logger
+}
 
 // DemoStore supervises the bundled VoltStore demo target. It locates the
-// demo-store binary, spawns it (with VeriGate protection ON so the dashboard
-// always demonstrates the protected target), and tracks liveness so the UI
-// can offer a one-click "open the demo" button whose state stays honest.
+// demo-store binary, spawns it, and tracks liveness so callers can offer a
+// one-click "open the demo" entry point whose state stays honest.
 //
 // If a store is already listening on the address — started by the user, the
-// SLA script, or a previous dashboard session — it is adopted as "running"
-// but never killed by Stop (we only terminate processes we spawned).
+// SLA script, or a previous session — it is adopted as "running" but never
+// killed by Stop (we only terminate processes we spawned).
 type DemoStore struct {
 	mu      sync.Mutex
 	url     string
+	extra   []string
 	cmd     *exec.Cmd
 	exited  chan struct{} // closed by the reaper goroutine once the process is gone
 	managed bool          // we spawned the process, so Stop may kill it
@@ -42,12 +67,17 @@ type DemoStore struct {
 	locateOverride func() (string, []string, error)
 }
 
-// NewDemoStore creates a launcher/supervisor for the VoltStore demo.
-func NewDemoStore(logger *log.Logger) *DemoStore {
+// New creates a launcher/supervisor for the VoltStore demo.
+func New(opts Options) *DemoStore {
+	url := opts.URL
+	if url == "" {
+		url = DefaultURL
+	}
+	logger := opts.Logger
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &DemoStore{url: defaultDemoStoreURL, logger: logger}
+	return &DemoStore{url: url, extra: opts.ExtraArgs, logger: logger}
 }
 
 // URL returns the base URL of the demo store.
@@ -65,7 +95,7 @@ func (d *DemoStore) Running() bool {
 	return true
 }
 
-// Status returns a snapshot for the control API.
+// Status returns a snapshot for control APIs.
 func (d *DemoStore) Status() map[string]any {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -77,10 +107,24 @@ func (d *DemoStore) Status() map[string]any {
 	}
 }
 
+// Done returns a channel that is closed when the spawned store process
+// exits. When no process is managed (adopted store, or nothing running) it
+// returns a channel that never closes — callers should only rely on it after
+// a successful Start that reported a fresh spawn.
+func (d *DemoStore) Done() <-chan struct{} {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.exited == nil {
+		ch := make(chan struct{})
+		return ch
+	}
+	return d.exited
+}
+
 // locate finds a way to run the demo store, preferring a pre-built binary,
 // then a binary on PATH, then a `go run` inside a checkout of this repo.
-// The checkout search walks upward from the working directory, so the
-// dashboard works from any subdirectory of the repo — not just the root.
+// The checkout search walks upward from the working directory, so it works
+// from any subdirectory of the repo — not just the root.
 func (d *DemoStore) locate() (string, []string, error) {
 	if d.locateOverride != nil {
 		return d.locateOverride()
@@ -104,7 +148,7 @@ func (d *DemoStore) locate() (string, []string, error) {
 		}
 	}
 	return "", nil, fmt.Errorf(
-		"demo store not found: build it with `make build` (bin/demo-store), install it on PATH, or run the dashboard from the stress-strike checkout")
+		"demo store not found: build it with `make build` (bin/demo-store), install it on PATH, or run the command from the stress-strike checkout")
 }
 
 // findUp walks from the working directory toward the filesystem root looking
@@ -138,15 +182,13 @@ func (d *DemoStore) Start() (string, bool, error) {
 		return d.url, true, nil
 	}
 
-	bin, extra, err := d.locate()
+	bin, runArgs, err := d.locate()
 	if err != nil {
 		return "", false, err
 	}
-	// The dashboard always launches the store with VeriGate protection ON:
-	// the whole point is to demo the WAF. Visitors can still flip it OFF
-	// from the store's own /admin control plane.
-	args := append(append([]string{}, extra...), "-protect")
+	args := append(append([]string{}, runArgs...), d.extra...)
 	cmd := exec.Command(bin, args...)
+	spawnProcessGroup(cmd) // go run fallback: kill reaps the whole tree
 	cmd.Stdout = &prefixedLineWriter{prefix: "[demo-store] ", logger: d.logger}
 	cmd.Stderr = &prefixedLineWriter{prefix: "[demo-store] ", logger: d.logger}
 	if err := cmd.Start(); err != nil {
@@ -154,7 +196,7 @@ func (d *DemoStore) Start() (string, bool, error) {
 	}
 	d.cmd = cmd
 	d.managed = true
-	d.protect = true
+	d.protect = hasProtect(d.extra)
 
 	// A single goroutine reaps the process (no zombies), signalling exit so
 	// the readiness loop below can distinguish "slow to boot" from "died".
@@ -162,7 +204,7 @@ func (d *DemoStore) Start() (string, bool, error) {
 	go func() { _ = cmd.Wait(); close(exited) }()
 	d.exited = exited
 
-	deadline := time.Now().Add(demoStoreReadyTimeout)
+	deadline := time.Now().Add(readyTimeout)
 	for {
 		if d.Running() {
 			return d.url, false, nil
@@ -177,9 +219,19 @@ func (d *DemoStore) Start() (string, bool, error) {
 			break
 		}
 	}
-	_ = cmd.Process.Kill()
+	killProcessGroup(cmd)
 	d.clearSpawned()
-	return "", false, fmt.Errorf("demo store did not become ready within %s", demoStoreReadyTimeout)
+	return "", false, fmt.Errorf("demo store did not become ready within %s", readyTimeout)
+}
+
+// hasProtect reports whether the spawn args enable VeriGate protection.
+func hasProtect(args []string) bool {
+	for _, a := range args {
+		if a == "-protect" || strings.HasPrefix(a, "-protect=") {
+			return true
+		}
+	}
+	return false
 }
 
 // clearSpawned forgets a process we spawned. It must be called with d.mu
@@ -190,10 +242,6 @@ func (d *DemoStore) clearSpawned() {
 	d.managed = false
 	d.protect = false
 }
-
-// demoStoreKillWait bounds how long Stop waits for the process to die after
-// SIGKILL. Killed processes exit almost instantly; this is pure safety.
-const demoStoreKillWait = 5 * time.Second
 
 // Stop terminates the store only when the dashboard spawned it. A store that
 // was already running (user-managed) is left untouched. The reaper goroutine
@@ -206,19 +254,19 @@ func (d *DemoStore) Stop() error {
 	if !d.managed || d.cmd == nil || d.cmd.Process == nil {
 		return nil
 	}
-	_ = d.cmd.Process.Kill()
+	killProcessGroup(d.cmd)
 	if d.exited != nil {
 		select {
 		case <-d.exited: // process reaped
-		case <-time.After(demoStoreKillWait):
+		case <-time.After(killWait):
 		}
 	}
 	d.clearSpawned()
 	return nil
 }
 
-// prefixedLineWriter forwards subprocess output to the dashboard log with a
-// stable prefix, one line at a time (demo-store already logs complete lines).
+// prefixedLineWriter forwards subprocess output to the log with a stable
+// prefix, one line at a time (demo-store already logs complete lines).
 type prefixedLineWriter struct {
 	prefix string
 	logger *log.Logger

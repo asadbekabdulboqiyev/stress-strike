@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
@@ -22,7 +24,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
-var version = "0.11.0"
+var version = "0.12.0"
 
 var (
 	listenAddr  = flag.String("listen", ":50051", "Master listen address (for worker registration)")
@@ -48,11 +50,40 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	// Friendly flag errors + consistent help (exit 2 on usage errors).
+	flag.CommandLine.Init("stress-strike-master", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
+	masterHelp := func() {
+		cliux.BoxHelp(os.Stderr,
+			"stress-strike master — distributed load-test coordinator",
+			[]string{
+				"stress-strike master --url https://api.example.com --users 1000 --duration 60",
+				"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+				"stress-strike master --config scenario.yaml --workers host1:50052",
+			},
+			[]string{
+				"# Static fleet",
+				"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+				"",
+				"# Auto-discovery (wait for 2 workers to self-register)",
+				"stress-strike master --url https://api.example.com --wait-workers 2 --wait-timeout 30",
+				"",
+				"# YAML scenario with SLA gate",
+				"stress-strike master --config scenario.yaml --workers host1:50052 --expect-p99-ms 200",
+			},
+			flag.CommandLine)
+	}
+	cliux.Parse(flag.CommandLine, os.Args[1:], masterHelp, cliux.Options{
+		Command: "master",
+		FlagSet: flag.CommandLine,
+		Examples: []string{
+			"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+		},
+	})
 	coordinator.Version = version
 
 	if *configPath == "" && *url == "" {
-		log.Fatal("Either -config or -url is required")
+		log.Fatal("Either --config or --url is required")
 	}
 
 	var workerList []string
@@ -64,7 +95,7 @@ func main() {
 		}
 	}
 	if len(workerList) == 0 && *waitWorkers <= 0 {
-		log.Fatal("Pass -workers (static) or -wait-workers N (auto-discovery)")
+		log.Fatal("Pass --workers (static) or --wait-workers N (auto-discovery)")
 	}
 
 	var scenario *config.Scenario

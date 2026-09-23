@@ -14,12 +14,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 )
 
 func main() {
+	// Friendly flag errors + consistent help (exit 2 on usage errors).
+	flag.CommandLine.Init("stress-strike-dashboard", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
+
 	listen := flag.String("listen", "127.0.0.1:8888", "Dashboard listen address")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
@@ -39,7 +44,7 @@ Usage:
 
 Flags:
 `)
-		flag.PrintDefaults()
+		cliux.PrintFlagList(os.Stderr, flag.CommandLine)
 		fmt.Fprintf(os.Stderr, `
 Examples:
   # Start dashboard on default port
@@ -49,7 +54,13 @@ Examples:
   stress-strike-dashboard -listen :9090
 `)
 	}
-	flag.Parse()
+	cliux.Parse(flag.CommandLine, os.Args[1:], flag.Usage, cliux.Options{
+		Command: "dashboard",
+		FlagSet: flag.CommandLine,
+		Examples: []string{
+			"stress-strike dashboard",
+		},
+	})
 
 	srv := dashboard.NewServer()
 	bridge := dashboard.NewEngineBridge(srv)

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,10 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/replay"
 )
 
 func main() {
+	// Friendly flag errors + consistent help (exit 2 on usage errors).
+	flag.CommandLine.Init("stress-strike-replay", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
+
 	// Flags
 	inputFile := flag.String("input", "", "PCAP or HAR file to replay")
 	rate := flag.String("rate", "1x", "Replay rate multiplier (e.g. 1x, 5x, 10x, 100x)")
@@ -51,7 +57,7 @@ Usage:
 
 Flags:
 `)
-		flag.PrintDefaults()
+		cliux.PrintFlagList(os.Stderr, flag.CommandLine)
 		fmt.Fprintf(os.Stderr, `
 Examples:
   # Replay HAR at 10x speed
@@ -72,9 +78,6 @@ Examples:
   # Replay with response validation
   stress-strike-replay -input traffic.har -rate 5x -validate -assert-status 200
 
-  # Replay with response validation
-  stress-strike-replay -input traffic.har -rate 5x -validate -assert-status 200
-
   # Replay with custom TLS keys
   stress-strike-replay -input capture.pcap -tls-key client.key -tls-cert client.crt -rate 10x
 
@@ -83,10 +86,18 @@ Examples:
 `)
 	}
 
-	flag.Parse()
+	cliux.Parse(flag.CommandLine, os.Args[1:], flag.Usage, cliux.Options{
+		Command: "replay",
+		FlagSet: flag.CommandLine,
+		Examples: []string{
+			"stress-strike replay -input traffic.har -rate 10x",
+		},
+	})
 
 	if *inputFile == "" {
-		fmt.Fprintln(os.Stderr, "Error: -input flag is required")
+		fmt.Fprintln(os.Stderr, "Error: --input is required.")
+		fmt.Fprintln(os.Stderr, "Example: stress-strike replay -input traffic.har -rate 10x")
+		fmt.Fprintln(os.Stderr, "")
 		flag.Usage()
 		os.Exit(1)
 	}

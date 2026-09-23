@@ -4,14 +4,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
 )
 
 func main() {
+	// Friendly flag errors + consistent help (exit 2 on usage errors).
+	flag.CommandLine.Init("stress-strike-scan", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
 	target := flag.String("target", "", "Target host to scan (e.g. example.com)")
 	port := flag.Int("port", 443, "Target port")
 	outputJSON := flag.String("output-json", "", "Export results to JSON file")
@@ -39,7 +44,7 @@ Usage:
 
 Flags:
 `)
-		flag.PrintDefaults()
+		cliux.PrintFlagList(os.Stderr, flag.CommandLine)
 		fmt.Fprintf(os.Stderr, `
 Examples:
   # Full scan
@@ -59,10 +64,18 @@ Examples:
 `)
 	}
 
-	flag.Parse()
+	cliux.Parse(flag.CommandLine, os.Args[1:], flag.Usage, cliux.Options{
+		Command: "scan",
+		FlagSet: flag.CommandLine,
+		Examples: []string{
+			"stress-strike scan -target example.com -all",
+		},
+	})
 
 	if *target == "" {
-		fmt.Fprintln(os.Stderr, "Error: -target flag is required")
+		fmt.Fprintln(os.Stderr, "Error: --target is required.")
+		fmt.Fprintln(os.Stderr, "Example: stress-strike scan -target example.com -all")
+		fmt.Fprintln(os.Stderr, "")
 		flag.Usage()
 		os.Exit(1)
 	}

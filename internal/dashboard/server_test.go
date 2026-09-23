@@ -326,6 +326,54 @@ func TestServeHTTP_StartRunPOST(t *testing.T) {
 	}
 }
 
+func TestServeHTTP_StartRunEmptyTargetURL(t *testing.T) {
+	s := NewServer()
+	var receivedCmd string
+	s.SetCommandHandler(func(cmd string, args map[string]interface{}) {
+		receivedCmd = cmd
+	})
+
+	for _, body := range []string{`{}`, `{"users":25}`, `{"target_url":""}`} {
+		req := httptest.NewRequest("POST", "/api/run/start", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("POST /api/run/start body=%s status = %d, want 400", body, w.Code)
+		}
+	}
+	if receivedCmd != "" {
+		t.Errorf("command handler called with %q for invalid body — must not start a run", receivedCmd)
+	}
+}
+
+func TestServeHTTP_StartRunInvalidTargetURL(t *testing.T) {
+	s := NewServer()
+	var receivedCmd string
+	s.SetCommandHandler(func(cmd string, args map[string]interface{}) {
+		receivedCmd = cmd
+	})
+
+	for _, body := range []string{
+		`{"target_url":"not-a-url"}`,
+		`{"target_url":"ftp://example.com"}`,
+		`{"target_url":"   "}`,
+	} {
+		req := httptest.NewRequest("POST", "/api/run/start", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("POST /api/run/start body=%s status = %d, want 400", body, w.Code)
+		}
+	}
+	if receivedCmd != "" {
+		t.Errorf("command handler called for invalid URL — must not start a run")
+	}
+}
+
 func TestServeHTTP_StartRunMethodNotAllowed(t *testing.T) {
 	s := NewServer()
 

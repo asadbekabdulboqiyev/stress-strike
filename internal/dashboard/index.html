@@ -17,41 +17,103 @@
   <div class="header">
     <div class="header-left">
       <div class="logo">stress-strike <span>dashboard</span></div>
-      <span class="badge badge-idle" id="statusBadge">idle</span>
+      <span class="badge badge-idle" id="statusBadge" role="status" aria-live="polite">idle</span>
     </div>
     <div class="header-right">
+      <span class="hint-chip" title="Keyboard shortcuts: press S to start a run, E to stop it (when no field is focused)" aria-label="Keyboard shortcuts: S starts a run, E stops a run">
+        <kbd>S</kbd> start <kbd>E</kbd> stop
+      </span>
       <span class="conn-label" id="connLabel"><span class="conn-dot connected" id="connDot"></span>Connecting...</span>
     </div>
   </div>
 
+  <!-- First-run onboarding / empty state -->
+  <section class="onboarding hidden" id="onboarding" aria-labelledby="obTitle">
+    <button class="ob-close" id="onboardingClose" type="button" title="Do not show this guide again" aria-label="Dismiss the getting started guide permanently">
+      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+    <div class="ob-body">
+      <div class="ob-kicker">Getting started</div>
+      <h2 class="ob-title" id="obTitle">Run your first load test</h2>
+      <p class="ob-text">Enter a target URL and press <strong>Start</strong>. Live metrics stream into the dashboard over WebSocket while the run is going.</p>
+      <form class="ob-form" id="onboardingForm" novalidate autocomplete="off">
+        <div class="ob-field">
+          <label class="sr-only" for="obUrl">Target URL for the first run</label>
+          <input id="obUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:8080/health" title="Full URL of the endpoint you want to load test" aria-describedby="obError">
+          <p class="field-error" id="obError" role="alert"></p>
+        </div>
+        <button class="btn btn-ghost" id="btnLoadDemo" type="button" title="Fill in the bundled demo server URL: http://127.0.0.1:8080/health">Load demo</button>
+        <button class="btn btn-start" id="btnObStart" type="submit" title="Start the first run (keyboard shortcut: S)">
+          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
+          <span>Start first run</span>
+        </button>
+      </form>
+    </div>
+    <ol class="ob-steps">
+      <li><span class="step-num">1</span><span>Enter a target URL</span></li>
+      <li><span class="step-num">2</span><span>Press Start (or <kbd>S</kbd>)</span></li>
+      <li><span class="step-num">3</span><span>Watch live results</span></li>
+    </ol>
+  </section>
+
+  <!-- Run summary (shown after a run finishes) -->
+  <section class="summary hidden" id="runSummary" role="status" aria-live="polite" aria-labelledby="summaryTitle">
+    <div class="summary-top">
+      <span class="summary-mark" aria-hidden="true">
+        <svg class="ico mark-check" viewBox="0 0 16 16"><path d="M3 8.4l3.3 3.3L13 4.8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="ico mark-x" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </span>
+      <div class="summary-head">
+        <h2 class="summary-title" id="summaryTitle">Test complete</h2>
+        <p class="summary-note" id="summaryNote"></p>
+      </div>
+      <button class="summary-close" id="summaryClose" type="button" title="Dismiss this summary" aria-label="Dismiss the run summary">
+        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="summary-stats" id="summaryStats"></div>
+    <div class="summary-actions">
+      <button class="btn btn-ghost" id="btnViewReport" type="button" title="Jump to the Run History table with this run's report">View report</button>
+      <button class="btn btn-start" id="btnRunAgain" type="button" title="Start the same run again (keyboard shortcut: S)">
+        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
+        <span>Run again</span>
+      </button>
+    </div>
+  </section>
+
   <!-- Controls -->
-  <div class="controls">
+  <form class="controls" id="controlsForm" novalidate autocomplete="off">
     <div class="field field-url">
-      <div class="field-label">Target URL</div>
-      <input id="inpUrl" placeholder="http://localhost:8080/health" value="http://localhost:8080/health" aria-label="Target URL">
+      <label class="field-label" for="inpUrl">Target URL</label>
+      <input id="inpUrl" placeholder="e.g. http://127.0.0.1:8080/health" value="http://localhost:8080/health" title="Full URL of the endpoint to load test (Enter also starts the run)" spellcheck="false" autocomplete="off" aria-describedby="urlError">
+      <p class="field-error" id="urlError" role="alert"></p>
+    </div>
+    <div class="field field-num">
+      <label class="field-label" for="inpUsers">Users</label>
+      <input id="inpUsers" type="number" value="10" min="1" max="100000" title="Number of virtual users (concurrent connections)" aria-describedby="hintUsers">
+      <input class="slider" id="rngUsers" type="range" min="1" max="500" step="1" value="10" title="Drag to adjust the number of virtual users" aria-label="Virtual users slider">
+      <span class="field-hint" id="hintUsers">10 users</span>
+    </div>
+    <div class="field field-num">
+      <label class="field-label" for="inpDuration">Duration</label>
+      <input id="inpDuration" type="number" value="30" min="1" max="86400" title="Run duration in seconds" aria-describedby="hintDuration">
+      <input class="slider" id="rngDuration" type="range" min="5" max="300" step="5" value="30" title="Drag to adjust the run duration" aria-label="Duration slider in seconds">
+      <span class="field-hint" id="hintDuration">30s</span>
     </div>
     <div class="field field-sm">
-      <div class="field-label">Users</div>
-      <input id="inpUsers" type="number" value="10" min="1" aria-label="Virtual users">
-    </div>
-    <div class="field field-sm">
-      <div class="field-label">Duration</div>
-      <input id="inpDuration" type="number" value="30" min="1" aria-label="Duration in seconds">
-    </div>
-    <div class="field field-sm">
-      <div class="field-label">Method</div>
-      <select id="inpMethod" aria-label="HTTP method">
+      <label class="field-label" for="inpMethod">Method</label>
+      <select id="inpMethod" title="HTTP method sent to the target" aria-label="HTTP method">
         <option>GET</option><option>POST</option><option>PUT</option>
         <option>DELETE</option><option>PATCH</option><option>HEAD</option>
       </select>
     </div>
     <div class="field field-sm">
-      <div class="field-label">Rate Limit</div>
-      <input id="inpRate" type="number" value="0" min="0" placeholder="req/s" aria-label="Rate limit in requests per second">
+      <label class="field-label" for="inpRate">Rate Limit</label>
+      <input id="inpRate" type="number" value="0" min="0" placeholder="req/s" title="Maximum requests per second (0 = unlimited)" aria-label="Rate limit in requests per second">
     </div>
     <div class="field">
-      <div class="field-label">Profile</div>
-      <select id="inpProfile" aria-label="Load profile">
+      <label class="field-label" for="inpProfile">Profile</label>
+      <select id="inpProfile" title="Load shape applied over the run duration" aria-label="Load profile">
         <option value="steady">steady</option>
         <option value="soak">soak</option>
         <option value="linear-ramp">linear-ramp</option>
@@ -61,8 +123,8 @@
       </select>
     </div>
     <div class="field">
-      <div class="field-label">TLS Fingerprint</div>
-      <select id="inpFingerprint" aria-label="TLS fingerprint">
+      <label class="field-label" for="inpFingerprint">TLS Fingerprint</label>
+      <select id="inpFingerprint" title="TLS client fingerprint used for the requests" aria-label="TLS fingerprint">
         <option value="">default</option>
         <option value="chrome">chrome</option>
         <option value="chrome_120">chrome_120</option>
@@ -74,13 +136,21 @@
         <option value="golang">golang</option>
       </select>
     </div>
-    <button class="btn btn-start" id="btnStart">&#9654; Start</button>
-    <button class="btn btn-stop" id="btnStop" disabled>&#9632; Stop</button>
-  </div>
+    <button class="btn btn-start" id="btnStart" type="submit" title="Start the run (keyboard shortcut: S)">
+      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
+      <span id="btnStartLabel">Start</span>
+    </button>
+    <button class="btn btn-stop" id="btnStop" type="button" disabled title="Stop the running run — press twice to confirm (keyboard shortcut: E)" aria-label="Stop the current run. Press twice to confirm.">
+      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>
+      <span id="btnStopLabel">Stop</span>
+    </button>
+  </form>
 
   <!-- Progress -->
   <div class="progress-wrap">
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-bar" id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Run progress">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
     <div class="progress-text" id="progressText">0% | 0s / 30s</div>
   </div>
 
@@ -99,41 +169,41 @@
 
   <!-- Metric Cards -->
   <div class="metrics">
-    <div class="card" style="--accent: var(--green)">
+    <div class="card card--green">
       <div class="card-header">
         <div class="card-label">Requests / sec</div>
-        <div class="card-icon">&#9889;</div>
+        <div class="card-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 16 16"><path d="M9.2 1.2 3.4 8.9h3.4L6.6 14.8l5.9-7.7H9.1z" fill="currentColor"/></svg></div>
       </div>
       <div class="card-value green" id="valRPS">0</div>
       <div class="card-sub" id="subRPS">0 total requests</div>
-      <canvas class="card-sparkline" id="sparkRPS" height="36"></canvas>
+      <canvas class="card-sparkline" id="sparkRPS" height="36" role="img" aria-label="Requests per second sparkline"></canvas>
     </div>
-    <div class="card" style="--accent: var(--blue)">
+    <div class="card card--blue">
       <div class="card-header">
         <div class="card-label">Avg Latency</div>
-        <div class="card-icon">&#9201;</div>
+        <div class="card-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8.6" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5.4v3.4l2.3 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 1.6h3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
       </div>
-      <div class="card-value blue" id="valAvg">0 <small style="font-size:14px;font-weight:400">ms</small></div>
+      <div class="card-value blue" id="valAvg">0 <small>ms</small></div>
       <div class="card-sub" id="subLatency">P50: 0 &middot; P95: 0 &middot; P99: 0 ms</div>
-      <canvas class="card-sparkline" id="sparkLatency" height="36"></canvas>
+      <canvas class="card-sparkline" id="sparkLatency" height="36" role="img" aria-label="Average latency sparkline"></canvas>
     </div>
-    <div class="card" style="--accent: var(--red)">
+    <div class="card card--red">
       <div class="card-header">
         <div class="card-label">Error Rate</div>
-        <div class="card-icon">&#9888;</div>
+        <div class="card-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 16 16"><path d="M8 2.2 14.6 13.4H1.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.4v3.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".95" fill="currentColor"/></svg></div>
       </div>
-      <div class="card-value" id="valErrors" style="color:var(--green)">0.00<small style="font-size:14px;font-weight:400">%</small></div>
+      <div class="card-value green" id="valErrors">0.00<small>%</small></div>
       <div class="card-sub" id="subErrors">0 errors / 0 total</div>
-      <canvas class="card-sparkline" id="sparkErrors" height="36"></canvas>
+      <canvas class="card-sparkline" id="sparkErrors" height="36" role="img" aria-label="Error rate sparkline"></canvas>
     </div>
-    <div class="card" style="--accent: var(--yellow)">
+    <div class="card card--yellow">
       <div class="card-header">
         <div class="card-label">Active Users</div>
-        <div class="card-icon">&#9775;</div>
+        <div class="card-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.8" fill="currentColor"/><path d="M2.6 13.8a5.4 5.4 0 0 1 10.8 0z" fill="currentColor"/></svg></div>
       </div>
       <div class="card-value yellow" id="valUsers">0</div>
       <div class="card-sub" id="subUsers">Max: 100K</div>
-      <canvas class="card-sparkline" id="sparkUsers" height="36"></canvas>
+      <canvas class="card-sparkline" id="sparkUsers" height="36" role="img" aria-label="Active users sparkline"></canvas>
     </div>
   </div>
 
@@ -142,13 +212,13 @@
     <!-- RPS Timeline Chart -->
     <div class="panel">
       <div class="panel-title"><span class="dot"></span> RPS Timeline</div>
-      <canvas class="chart-canvas" id="chartRPS" height="200"></canvas>
+      <canvas class="chart-canvas" id="chartRPS" height="200" role="img" aria-label="Requests per second timeline chart"></canvas>
     </div>
     <!-- Status Codes -->
     <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--blue)"></span> Status Codes</div>
+      <div class="panel-title"><span class="dot dot-blue"></span> Status Codes</div>
       <div class="status-bars" id="statusBars">
-        <div style="text-align:center;color:var(--text-3);padding:40px 0;font-size:13px">No data yet</div>
+        <div class="empty-note">No data yet</div>
       </div>
     </div>
   </div>
@@ -157,34 +227,34 @@
   <div class="latency-grid">
     <div class="latency-card">
       <div class="lc-label">P50 Latency</div>
-      <div class="lc-value" style="color:var(--green)" id="latP50">0</div>
+      <div class="lc-value lc-green" id="latP50">0</div>
       <div class="lc-unit">milliseconds</div>
-      <canvas id="chartP50" height="40"></canvas>
+      <canvas id="chartP50" height="40" role="img" aria-label="P50 latency trend"></canvas>
     </div>
     <div class="latency-card">
       <div class="lc-label">P95 Latency</div>
-      <div class="lc-value" style="color:var(--yellow)" id="latP95">0</div>
+      <div class="lc-value lc-yellow" id="latP95">0</div>
       <div class="lc-unit">milliseconds</div>
-      <canvas id="chartP95" height="40"></canvas>
+      <canvas id="chartP95" height="40" role="img" aria-label="P95 latency trend"></canvas>
     </div>
     <div class="latency-card">
       <div class="lc-label">P99 Latency</div>
-      <div class="lc-value" style="color:var(--red)" id="latP99">0</div>
+      <div class="lc-value lc-red" id="latP99">0</div>
       <div class="lc-unit">milliseconds</div>
-      <canvas id="chartP99" height="40"></canvas>
+      <canvas id="chartP99" height="40" role="img" aria-label="P99 latency trend"></canvas>
     </div>
   </div>
 
   <!-- Latency Chart -->
-  <div class="panel" style="margin-bottom:20px">
-    <div class="panel-title"><span class="dot" style="background:var(--cyan)"></span> Latency Timeline</div>
-    <canvas class="chart-canvas" id="chartLatency" height="180"></canvas>
+  <div class="panel panel--last">
+    <div class="panel-title"><span class="dot dot-cyan"></span> Latency Timeline</div>
+    <canvas class="chart-canvas" id="chartLatency" height="180" role="img" aria-label="Latency percentile timeline chart"></canvas>
   </div>
 
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">
     <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--purple)"></span> Worker Nodes</div>
+      <div class="panel-title"><span class="dot dot-purple"></span> Worker Nodes</div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>ID</th><th>Address</th><th>Status</th><th>RPS</th><th>Latency</th><th>Errors</th></tr></thead>
@@ -195,10 +265,10 @@
   </div>
 
   <!-- History -->
-  <div class="history-section" id="historySection" style="display:none">
+  <div class="history-section hidden" id="historySection">
     <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--orange)"></span> Run History</div>
-      <div class="table-wrap" style="overflow-x:auto">
+      <div class="panel-title"><span class="dot dot-orange"></span> Run History</div>
+      <div class="table-wrap">
         <table>
           <thead><tr><th>ID</th><th>Time</th><th>Target</th><th>Users</th><th>Duration</th><th>RPS</th><th>P50</th><th>P99</th><th>Errors</th></tr></thead>
           <tbody id="historyBody"></tbody>
@@ -208,7 +278,8 @@
   </div>
 
   <div class="footer">
-    stress-strike &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank">GitHub</a>
+    stress-strike &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <span class="footer-hint"><kbd>S</kbd> start &middot; <kbd>E</kbd> stop &middot; <kbd>Esc</kbd> cancel confirm</span>
   </div>
 </div>
 

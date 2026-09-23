@@ -327,6 +327,16 @@ func (s *Server) handleStartRun(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Server-side validation (not just frontend): an empty/invalid target
+	// must never silently start a run against a default URL.
+	if strings.TrimSpace(config.TargetURL) == "" {
+		http.Error(w, "target_url is required", http.StatusBadRequest)
+		return
+	}
+	if u, err := url.Parse(config.TargetURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		http.Error(w, "target_url must be an http(s) URL", http.StatusBadRequest)
+		return
+	}
 	if s.onCommand != nil {
 		// The bridge decodes the config as a JSON object (map), not as a typed
 		// struct. Round-trip through JSON so browser overrides (target url,

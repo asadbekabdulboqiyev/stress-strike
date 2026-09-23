@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -14,11 +15,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 )
 
-var version = "0.11.0"
+var version = "0.12.0"
 
 var (
 	listenAddr = flag.String("listen", ":0", "Worker listen address")
@@ -31,7 +33,35 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	// Friendly flag errors + consistent help (exit 2 on usage errors).
+	flag.CommandLine.Init("stress-strike-worker", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
+	workerHelp := func() {
+		cliux.BoxHelp(os.Stderr,
+			"stress-strike worker — distributed load-test worker node",
+			[]string{
+				"stress-strike worker --listen :50052",
+				"stress-strike worker --listen :50052 --master coordinator:50051",
+			},
+			[]string{
+				"# Start a worker on the default ephemeral port",
+				"stress-strike worker",
+				"",
+				"# Fixed port, self-register with a master",
+				"stress-strike worker --listen :50052 --master coordinator:50051",
+				"",
+				"# Shared control-plane token (must match master)",
+				"stress-strike worker --listen :50052 --token secret",
+			},
+			flag.CommandLine)
+	}
+	cliux.Parse(flag.CommandLine, os.Args[1:], workerHelp, cliux.Options{
+		Command: "worker",
+		FlagSet: flag.CommandLine,
+		Examples: []string{
+			"stress-strike worker --listen :50052",
+		},
+	})
 	coordinator.Version = version
 
 	if *workerID == "" {

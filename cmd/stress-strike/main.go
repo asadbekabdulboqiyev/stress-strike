@@ -3,14 +3,25 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 )
 
 // version is overridden at build time via:
 //
-//	go build -ldflags "-X main.version=0.11.0"
+//	go build -ldflags "-X main.version=0.12.0"
 //
 // The default mirrors the latest release tag.
-var version = "0.11.0"
+var version = "0.12.0"
+
+// knownCommands is the source of truth for command suggestions and the
+// "unknown command" listing. Keep in sync with the switch in main().
+var knownCommands = []string{
+	"run", "replay", "scan", "dashboard", "master", "worker",
+	"pentest", "help", "version",
+}
 
 func main() {
 	// Check for subcommands
@@ -45,6 +56,9 @@ func main() {
 		case "version", "--version", "-v":
 			fmt.Printf("stress-strike v%s\n", version)
 			return
+		default:
+			unknownCommand(cmd)
+			os.Exit(2)
 		}
 	}
 
@@ -55,6 +69,26 @@ func main() {
 		return
 	}
 	cmdRun()
+}
+
+// unknownCommand reports an unrecognized subcommand with a "did you mean"
+// suggestion, the command list, and a pointer to --help. Exit code 2 matches
+// the usage-error convention used across the CLI.
+func unknownCommand(cmd string) {
+	w := os.Stderr
+	if cliux.IsColorable(w) {
+		fmt.Fprintf(w, "\x1b[1;31mError:\x1b[0m unknown command %q.\n\n", cmd)
+	} else {
+		fmt.Fprintf(w, "Error: unknown command %q.\n\n", cmd)
+	}
+	if suggs := cliux.Suggestions(cmd, knownCommands, 3); len(suggs) > 0 {
+		fmt.Fprintf(w, "Did you mean: %s?\n\n", strings.Join(suggs, " | "))
+	}
+	fmt.Fprintf(w, "Run '%s' with one of these commands:\n", filepath.Base(os.Args[0]))
+	for _, c := range knownCommands {
+		fmt.Fprintf(w, "   %s\n", c)
+	}
+	fmt.Fprintf(w, "\nRun 'stress-strike --help' to see all commands, flags and examples.\n")
 }
 
 // shouldFailGate reports whether the measured error rate should trip the SLA

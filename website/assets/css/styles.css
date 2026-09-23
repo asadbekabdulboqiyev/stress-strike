@@ -479,3 +479,104 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
 @media print {
   .site-top, .cta, .facts { display: none; }
 }
+/* ==========================================================================
+   v2 — DESIGN POLISH (Dizayn Bo'limi)
+   Conversion UX: hero hierarchy, social proof, button states, nav motion,
+   scroll reveal. Token'lar va kontrast qiymatlari o'zgartirilmadi.
+   ========================================================================== */
+:root {
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+
+/* ---------- buttons: hover / active / focus / disabled ---------- */
+.btn {
+  transition: background .2s ease, border-color .2s ease, color .2s ease,
+              box-shadow .2s ease, transform .2s ease, opacity .2s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  box-shadow: 0 1px 0 rgba(255,255,255,.14) inset, 0 4px 16px -8px rgba(255,180,84,.5);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.14) inset, 0 10px 24px -10px rgba(255,180,84,.7);
+}
+.btn-ghost:hover { transform: translateY(-1px); }
+.btn:disabled, .btn[aria-disabled="true"] {
+  opacity: .45; cursor: not-allowed; transform: none; box-shadow: none;
+}
+
+/* ---------- hero hierarchy ---------- */
+.hero h1 { font-size: clamp(2.05rem, 5vw, 3.35rem); }
+.lede { max-width: 36rem; }
+.hero-cta .btn { padding: .95rem 1.6rem; font-size: .9rem; }
+.hero-note { margin-top: 1.2rem; }
+
+/* social proof badges */
+.hero-badges {
+  list-style: none; display: flex; flex-wrap: wrap; gap: .5rem;
+  margin: 1.1rem 0 0; padding: 0;
+}
+.hero-badges li {
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .01em;
+  color: var(--dim); background: var(--bg-soft);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: .32rem .75rem;
+}
+.hero-badges li:first-child {
+  color: var(--accent);
+  border-color: rgba(255, 180, 84, .4);
+}
+
+/* ---------- sticky header anchor offset ---------- */
+[id] { scroll-margin-top: 72px; }
+
+/* ---------- mobile nav: smooth hamburger + panel ---------- */
+.navtoggle span { transition: transform .22s var(--ease-out), opacity .18s ease; }
+#mobileNav.open { animation: nav-in .28s var(--ease-out) backwards; }
+@keyframes nav-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+#mobileNav a { transition: color .15s ease, padding-left .2s ease; }
+#mobileNav a:hover { color: var(--accent); padding-left: .35rem; }
+
+/* ---------- facts: micro-interaction ---------- */
+.fact { transition: background .2s ease; }
+.fact:hover { background: var(--bg-soft); }
+.fact-n { font-variant-numeric: tabular-nums; }
+
+/* ---------- terminal blocks: subtle hover cue ---------- */
+.term { transition: border-color .25s ease; }
+.term:hover { border-color: var(--line); }
+.cmd pre { transition: background .2s ease; }
+.cmd:hover pre { background: #171a18; }
+.copy:disabled { cursor: default; }
+.copy:disabled:hover { color: var(--mut); border-color: var(--line); background: var(--bg-soft); }
+
+/* ---------- compare table: row hover ---------- */
+.compare-table tbody tr { transition: background .18s ease; }
+.compare-table tbody tr:hover { background: var(--bg-soft); }
+
+/* ---------- faq: answer reveal ---------- */
+.acc-item.open .acc-a { animation: fadeup .28s ease; }
+
+/* ---------- cta: copy button (existing .copy JS re-used) ---------- */
+.cta-code { position: relative; padding-right: 5.4rem; }
+.cta-code .copy { top: .6rem; right: .6rem; }
+.cta-code::first-line { color: var(--accent-dim); }
+
+/* ---------- scroll reveal (CSS scroll-driven; reduced-motion = off) ---------- */
+@keyframes rv-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sec-title, .fact, .step, .acc-item {
+      animation: rv-in linear both;
+      animation-timeline: view();
+      animation-range: entry 6% cover 26%;
+    }
+  }
+}

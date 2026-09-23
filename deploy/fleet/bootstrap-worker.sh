@@ -7,7 +7,7 @@
 # scripts/deploy-fleet.sh runs it over SSH for a whole fleet at once.
 #
 # Usage (as root):
-#   ./bootstrap-worker.sh stress-strike-worker-v0.11.0-linux-amd64.tar.gz [HOST_ID]
+#   ./bootstrap-worker.sh stress-strike-worker-v0.12.0-linux-amd64.tar.gz [HOST_ID]
 #
 # Configuration comes from the environment (defaults in brackets):
 #   SS_ID          worker id                [auto]

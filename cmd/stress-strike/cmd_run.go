@@ -4,12 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
@@ -65,7 +67,9 @@ func cmdRun() {
 		tlsFP         string
 	)
 
-	fs := flag.NewFlagSet("run", flag.ExitOnError)
+	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+	fs.SetOutput(io.Discard) // suppress raw Go flag noise; we render our own
+	fs.Usage = func() {}     // usage dumps are handled explicitly below
 	fs.StringVar(&configPath, "config", "", "YAML/JSON scenario file")
 	fs.StringVar(&configPath, "c", "", "shorthand for --config")
 	fs.StringVar(&url, "url", "", "target URL (quick mode)")
@@ -101,16 +105,15 @@ func cmdRun() {
 	fs.StringVar(&mode, "mode", "cli", "output mode: cli (terminal report) | dashboard (real-time web dashboard)")
 	fs.StringVar(&dashListen, "listen", "127.0.0.1:8888", "dashboard listen address (with --mode dashboard)")
 
-	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
-		fmt.Fprintf(os.Stderr, "Usage:\n  stress-strike run --url https://api.example.com --users 100 --duration 60\n")
-		fmt.Fprintf(os.Stderr, "  stress-strike run --url https://api.example.com --target-rps 1000 --duration 30\n")
-		fmt.Fprintf(os.Stderr, "  stress-strike run --config scenario.yaml\n\n")
-		fs.PrintDefaults()
-	}
-
-	// Parse args: os.Args = ["run", "--url", ...] after slicing in main.go
-	fs.Parse(os.Args[1:])
+	// Parse args: os.Args = ["run", "--url", ...] after slicing in main.go.
+	// Friendly flag errors, consistent help, exit 2 on usage errors.
+	cliux.Parse(fs, os.Args[1:], func() { printRunHelp(fs) }, cliux.Options{
+		Command: "run",
+		FlagSet: fs,
+		Examples: []string{
+			"stress-strike run --url https://api.example.com --users 10 --duration 10",
+		},
+	})
 
 	if showVersion {
 		fmt.Printf("stress-strike v%s\n", version)
@@ -136,7 +139,7 @@ func cmdRun() {
 		scenario = sc
 	} else {
 		if url == "" {
-			fatal(fmt.Errorf("either --config or --url is required"))
+			fatal(fmt.Errorf("either --config or --url is required\n\nExample: stress-strike run --url https://api.example.com --users 10 --duration 10"))
 		}
 		// When --target-rps is set, automatically use constant-rps profile.
 		if targetRPS > 0 && profile == "steady" {
@@ -276,6 +279,14 @@ func cmdRun() {
 		fmt.Fprintln(os.Stderr, "SLA gate FAILED — exiting with code 2")
 		os.Exit(2)
 	}
+
+	// Safety net: a run that failed on 100% of requests (e.g. dead port,
+	// DNS failure, unreachable host) should not look like a success.
+	if r.TotalRequests > 0 && r.TotalErrors == r.TotalRequests {
+		fmt.Fprintln(os.Stderr, "FATAL: 100% of requests failed — target unreachable or refusing connections")
+		fmt.Fprintln(os.Stderr, "  Check the target URL, network, and that the server is up.")
+		os.Exit(1)
+	}
 }
 
 func quickScenario(name, url, method, data string, headers headerFlags, profile string, users, duration, rampUp, spikeUsers, spikeWarmup, spikeHold, wavePeriod, rps, targetRPS, timeout int, keepAlive bool) (*config.Scenario, error) {
@@ -319,6 +330,46 @@ func targetDisplay(scenario *config.Scenario) string {
 		return scenario.Steps[0].URL
 	}
 	return "n/a"
+}
+
+// printRunHelp renders `stress-strike run --help` in the same sectioned,
+// two-dash style as the top-level help, with real examples.
+func printRunHelp(fs *flag.FlagSet) {
+	w := os.Stderr
+	fmt.Fprintf(w, "\n stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
+	fmt.Fprintf(w, " USAGE\n")
+	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --users 100 --duration 60\n")
+	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --target-rps 1000 --duration 30\n")
+	fmt.Fprintf(w, "   stress-strike run --config scenario.yaml\n\n")
+	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
+	fmt.Fprintf(w, " FLAGS\n")
+	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
+	cliux.PrintFlagList(w, fs)
+	fmt.Fprintf(w, "\n═══════════════════════════════════════════════════════════════════\n")
+	fmt.Fprintf(w, " EXAMPLES\n")
+	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
+	for _, e := range []string{
+		"# Simple load test",
+		"stress-strike run --url https://api.example.com --users 100 --duration 60",
+		"",
+		"# Constant RPS mode (1000 requests/sec)",
+		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30",
+		"",
+		"# Compare with a baseline report (exit 2 on regression)",
+		"stress-strike run --url https://api.example.com --users 50 --duration 30 --compare reports/baseline.json",
+		"",
+		"# SLA gate for CI/CD (exit code 2 on failure)",
+		"stress-strike run --url https://api.example.com --users 50 --duration 30 --expect-p99-ms 200 --expect-error-rate 1",
+		"",
+		"# YAML scenario file",
+		"stress-strike run --config examples/login-flow.yaml",
+		"",
+		"# Real-time web dashboard output",
+		"stress-strike run --url https://api.example.com --users 100 --duration 60 --mode dashboard",
+	} {
+		fmt.Fprintf(w, "\n   %s\n", e)
+	}
+	fmt.Fprintf(w, "\n")
 }
 
 func fatal(err error) {

@@ -752,6 +752,11 @@ func interactivePicker() {
 
 	banner()
 	fmt.Println()
+	fmt.Println("Quick start (no wizard needed):")
+	fmt.Println("   stress-strike run --url https://api.example.com --users 10 --duration 10")
+	fmt.Println("   stress-strike dashboard")
+	fmt.Println("   stress-strike --help        # all commands, flags and examples")
+	fmt.Println()
 	fmt.Println("Choose a workspace:")
 	fmt.Println()
 	fmt.Println("  1) CLI    — run a load test and print a report to the terminal")

@@ -7,7 +7,7 @@
 # e.g.:
 #
 #   ./scripts/install.sh                  # @latest
-#   ./scripts/install.sh v0.13.0           # pinned release
+#   ./scripts/install.sh v0.14.0           # pinned release
 #
 # Requirements:
 #   - Go 1.26+ on PATH
@@ -25,7 +25,7 @@ fi
 MODULE="github.com/asadbekabdulboqiyev/stress-strike"
 VERSION="${1:-latest}"
 REF="@${VERSION}"
-# Normalize a bare "0.13.0" to "v0.13.0" for the reference form.
+# Normalize a bare "0.14.0" to "v0.14.0" for the reference form.
 if [[ "${VERSION}" != "latest" && "${VERSION}" != v* ]]; then
   REF="@v${VERSION}"
 fi

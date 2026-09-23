@@ -1,0 +1,39 @@
+{{define "products.html"}}{{template "head" .}}
+<div class="container">
+  <div class="page-head">
+    <h1>Catalog</h1>
+    <p>{{len .Products}} products</p>
+  </div>
+
+  <div class="toolbar">
+    <a class="pill {{if eq .Category ""}}active{{end}}" href="/products">All</a>
+    {{range .Categories}}
+      <a class="pill {{if eq $.Category .}}active{{end}}" href="/products?category={{.}}">{{.}}</a>
+    {{end}}
+    <div class="search">
+      <form method="get" action="/products" style="display:flex; gap:8px;">
+        <input type="search" name="q" value="{{.Query}}" placeholder="Search products&hellip;" aria-label="Search">
+        <button class="btn btn-sm" type="submit">Search</button>
+      </form>
+      <select class="qty" style="width:auto;" onchange="location.href='/products?category={{.Category}}&amp;q={{.Query}}&amp;sort='+this.value" aria-label="Sort">
+        <option value="default" {{if eq .SortBy "default"}}selected{{end}}>Sort: default</option>
+        <option value="price-asc" {{if eq .SortBy "price-asc"}}selected{{end}}>Price: low → high</option>
+        <option value="price-desc" {{if eq .SortBy "price-desc"}}selected{{end}}>Price: high → low</option>
+        <option value="rating" {{if eq .SortBy "rating"}}selected{{end}}>Top rated</option>
+      </select>
+    </div>
+  </div>
+
+  {{if .Products}}
+  <div class="grid">
+    {{range .Products}}{{template "productCard" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">
+    <div class="big">🔍</div>
+    <p>No products match your filter.</p>
+    <p style="margin-top:8px;"><a href="/products">Clear filters</a></p>
+  </div>
+  {{end}}
+</div>
+{{template "foot" .}}{{end}}

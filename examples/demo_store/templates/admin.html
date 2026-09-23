@@ -1,0 +1,64 @@
+{{define "admin.html"}}{{template "head" .}}
+<div class="container" data-page="admin">
+  <div class="page-head">
+    <h1>VeriGate control</h1>
+    <p>Live protection for this VoltStore instance — rate limiting, proof-of-work
+       challenge and IP blocking. Toggle it on and attack the store with
+       stress-strike to watch the difference.</p>
+  </div>
+
+  <div class="admin-grid">
+    <div class="panel">
+      <h3>Protection status</h3>
+      <div class="gate-status">
+        <span class="dot" id="gate-dot"></span>
+        <span id="gate-text">Loading&hellip;</span>
+      </div>
+      <div class="protect-toggle">
+        <label class="switch">
+          <input type="checkbox" id="protect-toggle">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:14px; color:var(--text-2);">Enable / disable VeriGate live (equivalent to <span class="mono">POST /admin/protect</span>)</span>
+      </div>
+      <button class="btn btn-sm" id="reset-gate">Reset counters &amp; unblock IPs</button>
+
+      <div class="kpis">
+        <div class="kpi"><div class="n" id="kpi-requests">0</div><div class="l">Requests</div></div>
+        <div class="kpi"><div class="n" id="kpi-passed">0</div><div class="l">Passed</div></div>
+        <div class="kpi"><div class="n" id="kpi-limited">0</div><div class="l">Rate limited</div></div>
+        <div class="kpi"><div class="n" id="kpi-challenges">0</div><div class="l">Challenges</div></div>
+        <div class="kpi"><div class="n" id="kpi-solved">0</div><div class="l">Solved</div></div>
+        <div class="kpi"><div class="n" id="kpi-blocked">0</div><div class="l">Blocked reqs</div></div>
+      </div>
+      <div class="kpis" style="grid-template-columns:1fr 1fr;">
+        <div class="kpi"><div class="n" id="kpi-blockedips">0</div><div class="l">Blocked IPs</div></div>
+        <div class="kpi">
+          <div class="mono-id" style="margin-top:2px;">/admin/protect</div>
+          <div class="l">Toggle endpoint</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Try the SLA verify gate</h3>
+      <p style="color:var(--text-2); font-size:14px; margin-bottom:12px;">
+        Attack the store with protection ON, then OFF — stress-strike's
+        <span class="mono">--expect-error-rate</span> gate proves the difference:
+      </p>
+      <pre class="mono" style="font-size:12px; line-height:1.7; background:#f5f5f4; border:1px solid var(--line); border-radius:10px; padding:14px; overflow:auto;"># protection ON  → errors &gt; 5%  → SLA FAIL (exit 2)
+stress-strike run --url http://127.0.0.1:8090/ \
+  --users 500 --duration 5 --expect-error-rate 5
+
+curl -s -X POST localhost:8090/admin/protect \
+  -H 'Content-Type: application/json' -d '{"enabled":false}'
+
+# protection OFF → errors ~0% → SLA PASS (exit 0)
+stress-strike run --url http://127.0.0.1:8090/ \
+  --users 500 --duration 5 --expect-error-rate 5</pre>
+      <p style="color:var(--text-3); font-size:12.5px; margin-top:10px;">
+        Or run the whole flow automatically: <span class="mono">scripts/demo-store-sla.sh</span></p>
+    </div>
+  </div>
+</div>
+{{template "foot" .}}{{end}}

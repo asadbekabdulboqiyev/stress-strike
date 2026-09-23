@@ -22,7 +22,7 @@ export GOFLAGS=-buildvcs=false
 
 if [ ! -x "$BIN" ]; then
   echo "[bench] building $BIN ..."
-  ./scripts/build-all.sh 0.13.0 >/dev/null
+  ./scripts/build-all.sh 0.14.0 >/dev/null
 fi
 
 DEMO_ADDR="${DEMO_ADDR:-127.0.0.1:8899}"

@@ -1,0 +1,64 @@
+{{define "home.html"}}{{template "head" .}}
+<div class="container">
+  <section class="hero">
+    <div>
+      <div class="hero-kicker">VoltStore · Demo Target</div>
+      <h1>Premium tech, tested to its limits.</h1>
+      <p>A real-world e-commerce store built to be attacked. Browse, sign in,
+         build a cart, check out — then hit it with stress-strike and watch
+         VeriGate protect (or, toggled off, watch it take the storm).</p>
+      <div style="display:flex; gap:12px;">
+        <a class="btn btn-primary" href="/products">Shop the catalog</a>
+        <a class="btn" href="/admin">VeriGate control</a>
+      </div>
+      <div class="hero-stats">
+        <div><div class="num">12</div><div class="lbl">Products</div></div>
+        <div><div class="num">5</div><div class="lbl">Categories</div></div>
+        <div><div class="num">100k+</div><div class="lbl">RPS target</div></div>
+      </div>
+    </div>
+    <div class="hero-art">{{template "productArt" (index .Products 0)}}</div>
+  </section>
+
+  {{if .Products}}
+  <div class="section-title">Featured <span class="sub">hand-picked hardware</span></div>
+  <div class="grid">
+    {{range .Products}}{{template "productCard" .}}{{end}}
+  </div>
+  {{end}}
+
+  <div class="section-title">Why VoltStore <span class="sub">engineered like a production shop</span></div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:10px;">
+    <div class="panel" style="border:1px solid var(--line); border-radius:var(--radius); padding:20px;">
+      <h3 style="font-size:15px; font-weight:700;">Auth &amp; sessions</h3>
+      <p style="color:var(--text-2); font-size:14px; margin-top:6px;">Cookie-based sessions, register/login/logout, per-account order history.</p>
+    </div>
+    <div class="panel" style="border:1px solid var(--line); border-radius:var(--radius); padding:20px;">
+      <h3 style="font-size:15px; font-weight:700;">Cart &amp; checkout</h3>
+      <p style="color:var(--text-2); font-size:14px; margin-top:6px;">Real cart semantics: add/remove lines, totals, stock decrement, order placement.</p>
+    </div>
+    <div class="panel" style="border:1px solid var(--line); border-radius:var(--radius); padding:20px;">
+      <h3 style="font-size:15px; font-weight:700;">VeriGate protection</h3>
+      <p style="color:var(--text-2); font-size:14px; margin-top:6px;">Rate limit + proof-of-work challenge + IP blocking. Toggle live at <a href="/admin">/admin</a>.</p>
+    </div>
+  </div>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "productCard"}}
+<div class="card">
+  <a href="/product/{{.ID}}" class="card-art" style="background: {{.Accent}}12;">
+    {{if .Badge}}<span class="badge {{if eq .Badge "Hot"}}hot{{else if eq .Badge "New"}}new{{end}}">{{.Badge}}</span>{{end}}
+    {{template "productArt" .}}
+  </a>
+  <div class="card-body">
+    <div class="card-cat">{{.Category}}</div>
+    <a class="card-name" href="/product/{{.ID}}">{{.Name}}</a>
+    <div class="card-rating">{{template "stars" .Rating}} <span class="muted">{{.Reviews}} reviews</span></div>
+    <div class="card-price">{{template "price" .PriceCents}}</div>
+    <div class="card-foot">
+      <button class="btn btn-sm btn-primary" data-add-to-cart="{{.ID}}">Add to cart</button>
+    </div>
+  </div>
+</div>
+{{end}}

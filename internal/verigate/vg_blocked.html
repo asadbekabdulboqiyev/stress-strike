@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access Temporarily Blocked — VeriGate</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#262b36; --txt:#e8eaf0;
+    --muted:#9aa3b2; --warn:#ffb45e;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%, #201b1f 0%, var(--bg) 60%);
+    color:var(--txt); min-height:100vh; display:grid; place-items:center; padding:24px;
+  }
+  .card{
+    width:min(420px,100%); background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:32px; text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,.45);
+  }
+  .icon{width:44px; height:44px; margin:0 auto 18px; display:grid; place-items:center;
+    border-radius:12px; background:linear-gradient(135deg,#4a3524,#241c14); border:1px solid var(--line)}
+  h1{font-size:18px; font-weight:600}
+  p{color:var(--muted); font-size:13.5px; line-height:1.55; margin:8px 0 22px}
+  .retry{
+    display:inline-block; margin-top:6px; padding:10px 18px; border-radius:10px;
+    background:#242a36; border:1px solid var(--line); color:var(--txt);
+    font-size:13.5px; font-weight:500; text-decoration:none}
+  .retry:hover{background:#2b3242}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb45e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 8v4.5"/>
+      <circle cx="12" cy="16.2" r=".4" fill="#ffb45e"/>
+    </svg>
+  </div>
+  <h1>Access Temporarily Blocked</h1>
+  <p>This IP has triggered VeriGate protection too many times. Access will be
+     restored automatically in about {{.RetryAfterSec}} seconds.</p>
+  <a class="retry" href="/">Try again</a>
+</div>
+</body>
+</html>

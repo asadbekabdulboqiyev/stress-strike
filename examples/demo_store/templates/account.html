@@ -1,0 +1,30 @@
+{{define "account.html"}}{{template "head" .}}
+<div class="container">
+  <div class="page-head">
+    <h1>My account</h1>
+    <p>{{.User.Name}} · {{.User.Email}}</p>
+  </div>
+
+  <div class="section-title">Order history <span class="sub">{{len .Orders}} orders</span></div>
+  {{if .Orders}}
+    {{range .Orders}}
+    <div class="order-card">
+      <div class="order-head">
+        <span class="id">{{.ID}}</span>
+        <span>{{.PlacedAt.Format "Jan 02, 2006 15:04"}}</span>
+        <span class="total">{{template "price" .TotalCents}}</span>
+      </div>
+      {{range .Items}}
+      <div class="order-line"><span>• {{.Name}} × {{.Qty}}</span><span>{{template "price" (mult .UnitCents .Qty)}}</span></div>
+      {{end}}
+    </div>
+    {{end}}
+  {{else}}
+  <div class="empty-state">
+    <div class="big">📦</div>
+    <p>No orders yet.</p>
+    <p style="margin-top:10px;"><a class="btn btn-primary" href="/products">Start shopping</a></p>
+  </div>
+  {{end}}
+</div>
+{{template "foot" .}}{{end}}

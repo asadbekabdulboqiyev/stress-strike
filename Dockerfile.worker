@@ -1,14 +1,14 @@
 # Dockerfile.worker — containerized stress-strike distributed worker.
 #
 # Build:
-#   docker build -f Dockerfile.worker -t stress-strike-worker:0.13.0 .
+#   docker build -f Dockerfile.worker -t stress-strike-worker:0.14.0 .
 #
 # Run (static fleet):
-#   docker run --rm -p 50061:50061 stress-strike-worker:0.13.0 \
+#   docker run --rm -p 50061:50061 stress-strike-worker:0.14.0 \
 #     -listen 0.0.0.0:50061 -id docker-1 -max-users 200000
 #
 # Run (auto-discovery, reachable as docker-1:50061 on a shared network):
-#   docker run --rm --network strike -p 50061:50061 stress-strike-worker:0.13.0 \
+#   docker run --rm --network strike -p 50061:50061 stress-strike-worker:0.14.0 \
 #     -listen 0.0.0.0:50061 -advertise docker-1:50061 \
 #     -master master:50051 -id docker-1 -token "$TOKEN"
 #
@@ -17,7 +17,7 @@
 
 FROM golang:1.26 AS build
 
-ARG VERSION=0.13.0
+ARG VERSION=0.14.0
 WORKDIR /src
 
 COPY go.mod go.sum ./

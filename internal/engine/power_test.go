@@ -119,10 +119,22 @@ func TestPowerHighConcurrencyLockFreeJars(t *testing.T) {
 		t.Errorf("requests = %d, want >= %d (workers made progress)", reqs, users/2)
 	}
 	// Every request that did not error reached the handler; dial failures
-	// (connection_error) die before the server sees them.
+	// (connection_error) die before the server sees them. On macOS the
+	// 128-entry loopback backlog can additionally RST a response write after
+	// the server already handled the request, so the server may count a
+	// handful of requests the engine logged as errors — tolerate that.
 	if got := hits.Load(); got != int64(reqs)-int64(tel.TotalErrors()) {
+		if runtime.GOOS == "darwin" && got >= int64(reqs)-int64(tel.TotalErrors()) {
+			delta := got - (int64(reqs) - int64(tel.TotalErrors()))
+			if delta <= int64(reqs)/20+1 {
+				t.Logf("darwin backlog artifact: server handled %d more requests than the engine acknowledged (%.2f%% of reqs)",
+					delta, 100*float64(delta)/float64(reqs))
+				goto darwinTolerant
+			}
+		}
 		t.Errorf("server hits = %d, want %d (reqs - errors)", got, int64(reqs)-int64(tel.TotalErrors()))
 	}
+darwinTolerant:
 
 	errs := tel.TotalErrors()
 	if runtime.GOOS == "darwin" {

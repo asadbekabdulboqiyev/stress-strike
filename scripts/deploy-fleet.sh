@@ -8,7 +8,7 @@
 #   ./scripts/deploy-fleet.sh                            # interactive wizard
 #   ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- user@host...
 #   ./scripts/deploy-fleet.sh --static --token secret -- user@host...
-#   ./scripts/deploy-fleet.sh --tarball dist/.../stress-strike-worker-v0.13.0-linux-amd64.tar.gz -- user@host
+#   ./scripts/deploy-fleet.sh --tarball dist/.../stress-strike-worker-v0.14.0-linux-amd64.tar.gz -- user@host
 #   ./scripts/deploy-fleet.sh -y --master M:50051 -- host1 host2
 #   ./scripts/deploy-fleet.sh --master M:50051 --hosts h1,h2,h3   # comma-separated
 #   ./scripts/deploy-fleet.sh --master M:50051 --parallel 12 -- host1..host100
@@ -36,7 +36,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=deploy/fleet/common.sh
 source "${REPO_ROOT}/deploy/fleet/common.sh"
 
-VERSION="${VERSION:-0.13.0}"
+VERSION="${VERSION:-0.14.0}"
 ASSUME_YES=0
 MASTER_ADDR=""
 TOKEN=""

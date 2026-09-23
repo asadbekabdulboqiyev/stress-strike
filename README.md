@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.13.0-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.14.0-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -28,6 +28,7 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 - **Real-time web dashboard** — live RPS, latency, error charts via WebSocket
 - **Distributed mode** — master/worker architecture over gRPC for multi-machine load
 - **SLA gate** — CI/CD performance gate with exit code 2 on regression
+- **VeriGate protection** — built-in WAF-style gate (rate limit + proof-of-work challenge + IP blocking) with a live on/off toggle, shipped with VoltStore, a real-world e-commerce demo built to be attacked (`docs/VERIGATE.md`)
 - **Baseline comparison** — delta reports against a previous run (RPS, p50/p95/p99, errors)
 - **Go library API** — `import "stress-strike/api"` for embedding in programs and test suites
 - **Timeline CSV** — per-second export for Grafana, Jupyter, or spreadsheet analysis
@@ -72,7 +73,7 @@ when you&rsquo;re done and cleans up the demo site.
 # Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 
-# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.13.0)
+# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.14.0)
 curl -fsSL https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh | bash
 ```
 
@@ -87,7 +88,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 > Upgrade an old install anytime:
 > ```sh
 > go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
-> ./scripts/install.sh   # or: ./scripts/install.sh v0.13.0
+> ./scripts/install.sh   # or: ./scripts/install.sh v0.14.0
 > ```
 
 ### Your first test in 60 seconds
@@ -402,7 +403,7 @@ fault tolerance, security, Docker and systemd deployment, and the Linux worker
 cross-compile script:
 
 ```sh
-./scripts/build-worker-linux.sh 0.13.0   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.14.0   # or: make worker-linux
 ```
 
 ---
@@ -668,7 +669,7 @@ stress-strike-worker -listen :50052 -token "$STRESS_TOKEN" ...
 ### Deploying to real Linux load hosts
 
 ```sh
-./scripts/build-worker-linux.sh 0.13.0   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.14.0   # or: make worker-linux
 ```
 
 Each archive (amd64/arm64) ships the worker, the master, a hardened systemd
@@ -681,10 +682,10 @@ the repo:
 
 ```sh
 # one host manually
-scp dist/linux-worker/stress-strike-worker-v0.13.0-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+scp dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
 ssh root@HOST 'cd /tmp && \
   SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
-  bash bootstrap-worker.sh stress-strike-worker-v0.13.0-linux-amd64.tar.gz'
+  bash bootstrap-worker.sh stress-strike-worker-v0.14.0-linux-amd64.tar.gz'
 
 # a whole fleet (builds packages, scp + installs, prints the master command)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12
@@ -921,7 +922,7 @@ cd stress-strike
 | `make bench` | Run benchmarks |
 | `make clean` | Remove build artifacts |
 | `make install` | Install into `PATH` |
-| `make release VERSION=0.13.0` | Cross-compile all platforms into `./dist` |
+| `make release VERSION=0.14.0` | Cross-compile all platforms into `./dist` |
 
 ### Cross-compilation
 
@@ -974,6 +975,42 @@ Re-run on your own hardware:
 The engine sustains ~100k+ req/s on loopback on a single machine; the
 distributed mode (see [Distributed Mode](#distributed-mode)) scales that
 linearly across worker hosts over gRPC.
+
+---
+
+## VeriGate — Protection Gate (WAF-style) + VoltStore Demo
+
+`internal/verigate` is an embeddable protection gate with three layers —
+**rate limiting** (per-IP token bucket), a **stateless proof-of-work
+challenge** (HMAC-signed, solved in-browser by JavaScript, `429` for API
+clients) and **IP blocking** — wrapped around a real-world e-commerce demo
+store, **VoltStore** (`examples/demo_store`), built specifically to be
+attacked. The gate toggles live via CLI flag or HTTP endpoint:
+
+```sh
+make demo-store-protect     # boot VoltStore with VeriGate ON
+make demo-sla               # SLA verify gate: ON->FAIL, OFF->PASS (one command)
+
+# or toggle at runtime, no restart:
+curl -X POST 127.0.0.1:8090/admin/protect \
+  -H 'Content-Type: application/json' -d '{"enabled":true}'
+curl 127.0.0.1:8090/admin/stats          # live counters
+open http://127.0.0.1:8090/admin          # live dashboard
+```
+
+`scripts/demo-store-sla.sh` runs the same stress-strike SLA gate twice —
+with protection ON the attack is throttled to >99% errors (exit 2), then the
+gate is toggled OFF and the store absorbs ~16k req/s (exit 0). One command
+proves the protection flips a CI gate:
+
+```text
+PHASE 1 — VeriGate ON   -> 99.9% errors  -> SLA FAIL (exit 2)
+PHASE 2 — VeriGate OFF  -> <5% errors    -> SLA PASS (exit 0)
+VERDICT: VeriGate WORKS
+```
+
+Demo accounts: `alice@volt.store` / `bob@volt.store`, password `demo1234`.
+Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 
 ---
 

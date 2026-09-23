@@ -11,10 +11,10 @@ import (
 
 // version is overridden at build time via:
 //
-//	go build -ldflags "-X main.version=0.13.0"
+//	go build -ldflags "-X main.version=0.14.0"
 //
 // The default mirrors the latest release tag.
-var version = "0.13.0"
+var version = "0.14.0"
 
 // knownCommands is the source of truth for command suggestions and the
 // "unknown command" listing. Keep in sync with the switch in main().

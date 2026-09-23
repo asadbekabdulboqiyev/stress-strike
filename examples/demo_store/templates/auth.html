@@ -1,0 +1,52 @@
+{{define "login.html"}}{{template "head" .}}
+<div class="container">
+  <div class="form-card">
+    <h2>Welcome back</h2>
+    <p class="hint">Sign in to check out and view your orders.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+    </form>
+    <div class="form-foot">
+      Demo accounts: <span class="mono">alice@volt.store</span> / <span class="mono">demo1234</span>
+      <br>New here? <a href="/register">Create an account</a>
+    </div>
+  </div>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "register.html"}}{{template "head" .}}
+<div class="container">
+  <div class="form-card">
+    <h2>Create your account</h2>
+    <p class="hint">Free in two minutes — cart, checkout, order history.</p>
+    <form id="register-form">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" required autocomplete="name" placeholder="Alice Demo">
+      </div>
+      <div class="field">
+        <label for="reg-email">Email</label>
+        <input id="reg-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="reg-password">Password</label>
+        <input id="reg-password" name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="6+ characters">
+      </div>
+      <div class="field">
+        <label for="reg-password2">Confirm password</label>
+        <input id="reg-password2" name="password2" type="password" required autocomplete="new-password" placeholder="Repeat password">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Create account</button>
+    </form>
+    <div class="form-foot">Already have an account? <a href="/login">Sign in</a></div>
+  </div>
+</div>
+{{template "foot" .}}{{end}}

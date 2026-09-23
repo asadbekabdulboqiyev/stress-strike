@@ -10,7 +10,7 @@
 #   make run         Build and run demo server
 #   make help        List all targets
 
-VERSION ?= 0.13.0
+VERSION ?= 0.14.0
 
 GO      ?= go
 GOFLAGS ?=
@@ -110,6 +110,18 @@ run: build ## Build and run the demo server
 	$(GO) run ./examples/demo_server.go &
 	@sleep 1
 	$(BIN_DIR)/stress-strike run --url http://localhost:8080 --users 10 --duration 5
+
+.PHONY: demo-store
+demo-store: ## Run the VoltStore e-commerce demo (VeriGate OFF)
+	$(GO) run ./examples/demo_store
+
+.PHONY: demo-store-protect
+demo-store-protect: ## Run the VoltStore demo with VeriGate protection ON
+	$(GO) run ./examples/demo_store -protect
+
+.PHONY: demo-sla
+demo-sla: ## VeriGate SLA verify gate demo (ON->SLA FAIL, OFF->SLA PASS)
+	./scripts/demo-store-sla.sh
 
 .PHONY: help
 help: ## List all available targets

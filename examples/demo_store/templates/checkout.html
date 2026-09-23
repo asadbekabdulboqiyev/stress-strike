@@ -1,0 +1,39 @@
+{{define "checkout.html"}}{{template "head" .}}
+<div class="container">
+  <div class="page-head">
+    <h1>Checkout</h1>
+    <p>Signed in as {{.User.Name}} · {{.User.Email}}</p>
+  </div>
+
+  <div class="cart-layout">
+    <div>
+      <form id="checkout-form" class="panel" style="margin-bottom:18px;">
+        <h3>Shipping details</h3>
+        <div class="field">
+          <label for="full_name">Full name</label>
+          <input id="full_name" name="full_name" type="text" required autocomplete="name" value="{{.User.Name}}">
+        </div>
+        <div class="field">
+          <label for="address">Street address</label>
+          <input id="address" name="address" type="text" required autocomplete="street-address" placeholder="123 Market St, Unit 4B">
+        </div>
+        <h3 style="margin-top:16px;">Payment</h3>
+        <div class="field">
+          <label for="card_last4">Card number (demo — last 4 digits)</label>
+          <input id="card_last4" name="card_last4" type="text" required inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4242">
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Place order — {{template "price" .Cart.TotalCents}}</button>
+      </form>
+    </div>
+    <aside class="summary">
+      <h3>Order summary</h3>
+      <div class="row"><span>Items</span><span>{{.Cart.Count}}</span></div>
+      <div class="row"><span>Shipping</span><span class="ok">Free</span></div>
+      <div class="row total"><span>Total</span><span>{{template "price" .Cart.TotalCents}}</span></div>
+      {{range .Cart.Lines}}
+      <div class="kv"><span class="muted">{{.Product.Name}} × {{.Qty}}</span><span>{{template "price" .LineCents}}</span></div>
+      {{end}}
+    </aside>
+  </div>
+</div>
+{{template "foot" .}}{{end}}

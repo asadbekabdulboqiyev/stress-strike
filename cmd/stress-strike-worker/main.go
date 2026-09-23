@@ -21,7 +21,7 @@ import (
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 )
 
-var version = "0.13.0"
+var version = "0.14.0"
 
 var (
 	listenAddr = flag.String("listen", ":0", "Worker listen address")

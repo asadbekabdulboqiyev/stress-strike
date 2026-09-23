@@ -1,0 +1,58 @@
+{{/* productArt renders a category-specific SVG illustration with the
+     product's accent color. Pure inline SVG — no external images. */}}
+{{define "productArt"}}
+<svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{{.Name}}">
+  <defs>
+    <linearGradient id="bg{{.ID}}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="{{.Accent}}" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="{{.Accent}}" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="fg{{.ID}}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{{.Accent}}"/>
+      <stop offset="100%" stop-color="{{.Accent}}" stop-opacity="0.72"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="90" rx="12" fill="url(#bg{{.ID}})"/>
+  {{if eq .Category "laptops"}}
+    <rect x="26" y="24" width="68" height="44" rx="4" fill="url(#fg{{.ID}})"/>
+    <rect x="30" y="28" width="60" height="26" rx="2" fill="#fff" opacity="0.92"/>
+    <rect x="48" y="68" width="24" height="4" rx="2" fill="url(#fg{{.ID}})"/>
+  {{else if eq .Category "phones"}}
+    <rect x="42" y="16" width="36" height="62" rx="7" fill="url(#fg{{.ID}})"/>
+    <rect x="46" y="24" width="28" height="40" rx="3" fill="#fff" opacity="0.92"/>
+    <circle cx="60" cy="72" r="2.4" fill="#fff"/>
+  {{else if eq .Category "audio"}}
+    <circle cx="42" cy="52" r="15" fill="url(#fg{{.ID}})"/>
+    <circle cx="78" cy="52" r="15" fill="url(#fg{{.ID}})"/>
+    <path d="M42 34c-6-8-24-6-26 8 1 12 10 18 20 18" stroke="url(#fg{{.ID}})" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <path d="M78 34c6-8 24-6 26 8-1 12-10 18-20 18" stroke="url(#fg{{.ID}})" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+  {{else if eq .Category "peripherals"}}
+    <rect x="22" y="30" width="76" height="34" rx="9" fill="url(#fg{{.ID}})"/>
+    <rect x="30" y="37" width="34" height="11" rx="2" fill="#fff" opacity="0.92"/>
+    <rect x="70" y="37" width="12" height="8" rx="2" fill="#fff" opacity="0.75"/>
+  {{else if eq .Category "monitors"}}
+    <rect x="20" y="18" width="80" height="48" rx="5" fill="url(#fg{{.ID}})"/>
+    <rect x="24" y="22" width="72" height="40" rx="2" fill="#fff" opacity="0.92"/>
+    <rect x="54" y="66" width="12" height="8" fill="url(#fg{{.ID}})"/>
+    <rect x="46" y="74" width="28" height="4" rx="2" fill="url(#fg{{.ID}})"/>
+  {{else if eq .Category "wearables"}}
+    <rect x="34" y="20" width="52" height="54" rx="14" fill="url(#fg{{.ID}})"/>
+    <rect x="48" y="24" width="24" height="24" rx="6" fill="#fff" opacity="0.92"/>
+    <circle cx="60" cy="36" r="7" fill="{{.Accent}}" opacity="0.85"/>
+  {{else}}
+    <circle cx="60" cy="45" r="20" fill="url(#fg{{.ID}})"/>
+    <rect x="52" y="38" width="6" height="14" rx="2" fill="#fff" opacity="0.92"/>
+    <rect x="62" y="38" width="6" height="14" rx="2" fill="#fff" opacity="0.92"/>
+  {{end}}
+</svg>
+{{end}}
+
+{{/* stars renders a ★ rating bar */}}
+{{define "stars"}}
+<span class="stars" aria-label="Rated {{.}} out of 5">
+{{if ge . 4.8}}★★★★★{{else if ge . 4.5}}★★★★★{{else if ge . 4.0}}★★★★☆{{else}}★★★☆☆{{end}}
+</span>
+{{end}}
+
+{{/* price formats cents as $1,234.56 */}}
+{{define "price"}}${{printf "%d" (div . 100)}}.{{printf "%02d" (mod . 100)}}{{end}}

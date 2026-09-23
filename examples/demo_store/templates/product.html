@@ -1,0 +1,33 @@
+{{define "product.html"}}{{template "head" .}}
+<div class="container">
+  <div class="crumbs"><a href="/">Home</a> / <a href="/products">Catalog</a> / {{.Product.Name}}</div>
+  <div class="product-layout">
+    <div class="product-art" style="background: {{.Product.Accent}}14;">
+      {{template "productArt" .Product}}
+    </div>
+    <div class="product-info">
+      <div class="card-cat">{{.Product.Category}}{{if .Product.Badge}} · <span class="badge {{if eq .Product.Badge "Hot"}}hot{{else if eq .Product.Badge "New"}}new{{end}}" style="position:static; display:inline-block; margin-left:4px;">{{.Product.Badge}}</span>{{end}}</div>
+      <h1>{{.Product.Name}}</h1>
+      <div class="meta">
+        {{template "stars" .Product.Rating}}
+        <span>{{.Product.Reviews}} reviews</span>
+        <span class="stock {{if le .Product.Stock 5}}low{{else if eq .Product.Stock 0}}out{{else}}ok{{end}}">
+          {{if eq .Product.Stock 0}}Out of stock{{else if le .Product.Stock 5}}Only {{.Product.Stock}} left{{else}}In stock ({{.Product.Stock}}){{end}}
+        </span>
+      </div>
+      <div class="product-price">{{template "price" .Product.PriceCents}}</div>
+      <p class="product-desc">{{.Product.Description}}</p>
+      <div class="product-actions">
+        <input class="qty" type="number" min="1" max="99" value="1" data-qty aria-label="Quantity">
+        <button class="btn btn-primary" data-add-to-cart="{{.Product.ID}}">Add to cart</button>
+      </div>
+      <table class="specs">
+        <tr><td>Category</td><td>{{.Product.Category}}</td></tr>
+        <tr><td>Weight</td><td>1.4 kg (shipping class: standard)</td></tr>
+        <tr><td>Warranty</td><td>2-year limited</td></tr>
+        <tr><td>SKU</td><td class="mono">VS-{{printf "%04d" .Product.ID}}</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+{{template "foot" .}}{{end}}

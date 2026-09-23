@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // --- Unit tests --------------------------------------------------------------
@@ -267,5 +268,44 @@ func TestDoneSignalsProcessExit(t *testing.T) {
 		// expected: process exited
 	default:
 		t.Error("Done channel not closed after process exit")
+	}
+}
+
+// TestStopSkipsKillAfterCrash is the regression for the stale-managed bug: a
+// store that dies on its own must not be re-killed by Stop (its process
+// group is gone and the PID may be recycled), and Status must stop claiming
+// it is managed.
+func TestStopSkipsKillAfterCrash(t *testing.T) {
+	d := newFakeStore(t)
+	if _, _, err := d.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	st := d.Status()
+	if st["running"] != true || st["managed"] != true {
+		t.Fatalf("before crash, status = %v, want running+managed", st)
+	}
+
+	// Kill the store out from under the supervisor, as a real crash would.
+	if err := d.cmd.Process.Kill(); err != nil {
+		t.Fatalf("kill store: %v", err)
+	}
+	select {
+	case <-d.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("Done channel did not close after the process was killed")
+	}
+
+	// Status reflects the crash: neither running nor managed.
+	st = d.Status()
+	if st["running"] != false {
+		t.Errorf("after crash, status = %v, want running=false", st)
+	}
+	if st["managed"] != false {
+		t.Errorf("after crash, status = %v, want managed=false (no live process)", st)
+	}
+
+	// Stop after a crash must succeed without killing anything.
+	if err := d.Stop(); err != nil {
+		t.Errorf("Stop after crash: %v", err)
 	}
 }

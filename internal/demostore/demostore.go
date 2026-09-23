@@ -99,11 +99,28 @@ func (d *DemoStore) Running() bool {
 func (d *DemoStore) Status() map[string]any {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	// A spawned process that crashed is no longer "managed": the supervisor
+	// does not hold a live process, and the Stop button must not claim one.
+	managed := d.managed && !d.exitedClosed()
 	return map[string]any{
 		"url":        d.url,
 		"running":    d.Running(),
-		"managed":    d.managed,
-		"protection": d.managed && d.protect,
+		"managed":    managed,
+		"protection": managed && d.protect,
+	}
+}
+
+// exitedClosed reports whether the reaper goroutine has already reaped the
+// spawned process. Must be called with d.mu held.
+func (d *DemoStore) exitedClosed() bool {
+	if d.exited == nil {
+		return false
+	}
+	select {
+	case <-d.exited:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -200,6 +217,10 @@ func (d *DemoStore) Start() (string, bool, error) {
 
 	// A single goroutine reaps the process (no zombies), signalling exit so
 	// the readiness loop below can distinguish "slow to boot" from "died".
+	// clearSpawned is deliberately NOT called here: Start's readiness loop
+	// holds the mutex while waiting on `exited`, so the reaper can never
+	// take the lock itself (deadlock). Stop/Status detect the closed channel
+	// via exitedClosed() instead.
 	exited := make(chan struct{})
 	go func() { _ = cmd.Wait(); close(exited) }()
 	d.exited = exited
@@ -248,17 +269,22 @@ func (d *DemoStore) clearSpawned() {
 // from Start owns the wait, so we only signal the process here — but we do
 // block until it actually exits, so a closely following Start() cannot adopt
 // the dying process as "already running" and lose supervision over it.
+//
+// A process that already crashed is NOT re-killed: its group is gone, and
+// its PID (or group ID) may have been recycled by an unrelated process.
 func (d *DemoStore) Stop() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if !d.managed || d.cmd == nil || d.cmd.Process == nil {
 		return nil
 	}
-	killProcessGroup(d.cmd)
-	if d.exited != nil {
-		select {
-		case <-d.exited: // process reaped
-		case <-time.After(killWait):
+	if !d.exitedClosed() {
+		killProcessGroup(d.cmd)
+		if d.exited != nil {
+			select {
+			case <-d.exited: // process reaped
+			case <-time.After(killWait):
+			}
 		}
 	}
 	d.clearSpawned()

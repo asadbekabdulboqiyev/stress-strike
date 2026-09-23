@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.12.0-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.13.0-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -37,7 +37,7 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 - **Race-condition strikes** — `--gate` parks every virtual user on a start barrier and fires ONE request per user the instant it opens, maximizing the chance of exploiting check-then-act windows (double-spend, coupon reuse, OTP races). For authorized bug-bounty targets only
 - **BEAST preset** — `--beast` (or wizard mode 3): 100k-user linear ramp with unlimited RPS over 300s, auto-tuned to find breaking points on systems you own or have written permission to test
 - **Warmup period** — `--warmup S` sends load for S seconds without counting it toward metrics, so percentiles reflect the warmed-up steady state
-- **JSON stdout** — `--json` prints the full machine-readable report for jq, CI gates, and dashboards
+- **JSON reports** — every run writes a machine-readable JSON report into `./reports/` (plus a TXT summary) for jq, CI gates, and dashboards
 - **Debug capture** — opt-in `--capture N` saves the first N raw responses (≤100, bodies ≤2KB each) to a private capture file for diagnosing what the target actually returns. Request credentials are never captured; off by default
 - **Payload pools** — `--pool FILE` loads one payload per line; `{{pool}}` gets a unique value per request
 - **Reports** — timestamped JSON and TXT files in `./reports/`, written with private (`0600`) permissions
@@ -72,7 +72,7 @@ when you&rsquo;re done and cleans up the demo site.
 # Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 
-# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.12.0)
+# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.13.0)
 curl -fsSL https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh | bash
 ```
 
@@ -87,7 +87,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 > Upgrade an old install anytime:
 > ```sh
 > go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
-> ./scripts/install.sh   # or: ./scripts/install.sh v0.12.0
+> ./scripts/install.sh   # or: ./scripts/install.sh v0.13.0
 > ```
 
 ### Your first test in 60 seconds
@@ -402,7 +402,7 @@ fault tolerance, security, Docker and systemd deployment, and the Linux worker
 cross-compile script:
 
 ```sh
-./scripts/build-worker-linux.sh 0.12.0   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.13.0   # or: make worker-linux
 ```
 
 ---
@@ -668,7 +668,7 @@ stress-strike-worker -listen :50052 -token "$STRESS_TOKEN" ...
 ### Deploying to real Linux load hosts
 
 ```sh
-./scripts/build-worker-linux.sh 0.12.0   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.13.0   # or: make worker-linux
 ```
 
 Each archive (amd64/arm64) ships the worker, the master, a hardened systemd
@@ -681,10 +681,10 @@ the repo:
 
 ```sh
 # one host manually
-scp dist/linux-worker/stress-strike-worker-v0.12.0-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+scp dist/linux-worker/stress-strike-worker-v0.13.0-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
 ssh root@HOST 'cd /tmp && \
   SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
-  bash bootstrap-worker.sh stress-strike-worker-v0.12.0-linux-amd64.tar.gz'
+  bash bootstrap-worker.sh stress-strike-worker-v0.13.0-linux-amd64.tar.gz'
 
 # a whole fleet (builds packages, scp + installs, prints the master command)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12
@@ -921,7 +921,7 @@ cd stress-strike
 | `make bench` | Run benchmarks |
 | `make clean` | Remove build artifacts |
 | `make install` | Install into `PATH` |
-| `make release VERSION=0.12.0` | Cross-compile all platforms into `./dist` |
+| `make release VERSION=0.13.0` | Cross-compile all platforms into `./dist` |
 
 ### Cross-compilation
 
@@ -940,6 +940,40 @@ docker run --rm --cpus=2 --memory=512m \
   stress-strike run --url http://host.docker.internal:8080/health \
   --users 100 --duration 5
 ```
+
+---
+
+## Benchmark (POWER)
+
+Throughput is measured against the bundled demo server on loopback with the
+engine's lock-free jar path, `keep-alive` + tuned `http.Transport`
+(`MaxIdleConnsPerHost`, idle timeouts), and a pre-warmed connection pool.
+
+| Machine / transport          | Users | req/s   | Errors |
+|------------------------------|-------|---------|--------|
+| macOS arm64 loopback (TCP)   | 500   | ~100-120k | 0    |
+| macOS arm64 unix socket      | 500   | ~165k   | <1%*   |
+| macOS arm64 loopback (TCP)   | 2000  | ~94k    | ~1%*   |
+| Linux loopback (TCP, somaxconn 4096) | 10k | 100k+  | 0      |
+
+\* macOS caps the loopback listen backlog at `SOMAXCONN=128` (no per-socket
+override), so replacement-dial churn occasionally receives an RST — an
+OS-localhost artifact, not an engine defect. The engine's pooled reuse stays
+at 99%+ (verified by `TestPowerPooledReuseDominates`), and on Linux — where
+the backlog is 4096 — the same 10k-user run completes with **zero errors**
+(`TestPowerHighConcurrencyLockFreeJars` enforces this on non-darwin
+builders).
+
+Re-run on your own hardware:
+
+```sh
+./scripts/bench.sh            # sweep: 100 / 500 / 1000 users
+./scripts/bench.sh 500 2000   # custom user counts
+```
+
+The engine sustains ~100k+ req/s on loopback on a single machine; the
+distributed mode (see [Distributed Mode](#distributed-mode)) scales that
+linearly across worker hosts over gRPC.
 
 ---
 

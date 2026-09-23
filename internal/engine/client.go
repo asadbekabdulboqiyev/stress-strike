@@ -74,34 +74,73 @@ func baseTransport(keepAlive bool, tlsFP fingerprint.Profile) *http.Transport {
 	return tr
 }
 
+// maxConnsPerHostCap bounds the per-host connection limit. Go's transport
+// treats MaxConnsPerHost == 0 as "unlimited", but a wide-open limit invites
+// unbounded FD growth when a target stalls; an explicit 100k cap covers 100k+
+// concurrent virtual users while staying bounded. HTTP/2 multiplexes many
+// requests over few connections, so on h2 targets the cap is rarely hit;
+// HTTP/1.1 needs one connection per in-flight request, hence the high ceiling.
+const maxConnsPerHostCap = 100_000
+
+// applyHTTP2Preference forces the transport to negotiate (or skip) HTTP/2.
+// enabled=true keeps Go's default behavior (try h2 via ALPN/h2c). enabled=false
+// pins the stack to HTTP/1.1 in both directions: it disables h2c fallback on
+// cleartext and narrows the TLS ALPN list so h2 is never negotiated either.
+// The fingerprint path already pins NextProtos to "http/1.1" and sets
+// ForceAttemptHTTP2=false, so applying this on top is a no-op there.
+func applyHTTP2Preference(tr *http.Transport, enabled bool) {
+	tr.ForceAttemptHTTP2 = enabled
+	if !enabled && tr.TLSClientConfig != nil {
+		tr.TLSClientConfig.NextProtos = []string{"http/1.1"}
+	}
+}
+
 // newTransport builds the shared connection transport. One instance is reused
 // by every HTTP client (including per-user cookie-jar clients), so pooled
-// sockets, TLS sessions and HTTP/2 state stay shared.
+// sockets, TLS sessions and HTTP/2 state stay shared. An explicit http2=false
+// in the profile is applied by the caller via applyHTTP2Preference after
+// fingerprint dialing is configured (fingerprinting re-pins NextProtos).
 func newTransport(keepAlive bool, maxConnsPerHost int, tlsFP fingerprint.Profile) *http.Transport {
 	if maxConnsPerHost < 256 {
 		maxConnsPerHost = 256
 	}
-	if maxConnsPerHost > 20000 {
-		maxConnsPerHost = 20000
+	if maxConnsPerHost > maxConnsPerHostCap {
+		maxConnsPerHost = maxConnsPerHostCap
 	}
 	tr := baseTransport(keepAlive, tlsFP)
-	tr.MaxIdleConns = maxConnsPerHost * 2
+	// Idle pool is sized generously (4x): MaxConnsPerHost caps live
+	// connections, and idle sockets need headroom so a burst of HTTP/1.1
+	// keep-alive requests never sits behind a fresh dial.
+	tr.MaxIdleConns = maxConnsPerHost * 4
 	tr.MaxIdleConnsPerHost = maxConnsPerHost
 	tr.MaxConnsPerHost = maxConnsPerHost
 	return tr
 }
 
-// clientForJar returns an http.Client bound to jar (nil jar = no cookies).
-// The heavy transport is always shared; only the lightweight Client wrapper
-// differs per virtual user.
-func (e *Engine) clientForJar(jar http.CookieJar, timeout time.Duration) *http.Client {
-	if jar == nil {
+// clientForJar returns the HTTP client bound to userIndex's cookie jar.
+// The client is created once per virtual user and reused for the whole run:
+// the heavy transport is shared and the Jar reference never changes, so
+// caching the lightweight http.Client wrapper removes a per-request heap
+// allocation on the hot path. userIndex < 0 (library calls) or keep-alive
+// disabled share the base client without cookies.
+func (e *Engine) clientForJar(userIndex int) *http.Client {
+	if userIndex < 0 || !e.keepAlive {
 		return e.client
 	}
-	return &http.Client{
-		Transport:     e.transport,
-		Jar:           jar,
-		Timeout:       timeout,
-		CheckRedirect: checkRedirect,
+	clients := e.jarClients
+	if userIndex < len(clients) {
+		if c := clients[userIndex]; c != nil {
+			return c
+		}
 	}
+	// Cold path: pre-run library use, or the slot was dropped via
+	// dropCookieJar. Sessions are built under sessMu; during a run every slot
+	// is pre-populated so this path is never taken by workers.
+	e.ensureUserSession(userIndex)
+	if userIndex < len(e.jarClients) {
+		if c := e.jarClients[userIndex]; c != nil {
+			return c
+		}
+	}
+	return e.client
 }

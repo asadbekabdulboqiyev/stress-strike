@@ -24,7 +24,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
-var version = "0.12.0"
+var version = "0.13.0"
 
 var (
 	listenAddr  = flag.String("listen", ":50051", "Master listen address (for worker registration)")
@@ -47,6 +47,10 @@ var (
 	runTimeout  = flag.Int("run-timeout", 0, "Overall run deadline in seconds (0 = duration + 60s)")
 	quiet       = flag.Bool("quiet", false, "Suppress live progress output")
 	tlsFP       = flag.String("tls-fingerprint", "", "TLS ClientHello fingerprint workers should present (chrome, firefox, ...)")
+	tlsCert     = flag.String("tls-cert", "", "TLS server certificate (serve control-plane gRPC over TLS; pair with -tls-key)")
+	tlsKey      = flag.String("tls-key", "", "TLS server private key (pair with -tls-cert)")
+	tlsCA       = flag.String("tls-ca", "", "CA bundle used to verify workers the master dials (static fleet)")
+	tlsSkip     = flag.Bool("tls-skip-verify", false, "Disable peer verification when dialing workers (self-signed demo fleets only)")
 )
 
 func main() {
@@ -141,6 +145,28 @@ func main() {
 		timeout = time.Duration(scenario.Profile.Duration)*time.Second + 60*time.Second
 	}
 
+	// Optional TLS for the control plane. This master serves workers that
+	// self-register (or CLI clients) over TLS when -tls-cert/-tls-key are set,
+	// and dials static workers over TLS when -tls-ca/-tls-skip-verify are set.
+	// Plaintext remains the default for trusted networks.
+	tlsOpts := coordinator.TLSOptions{
+		CertFile:           *tlsCert,
+		KeyFile:            *tlsKey,
+		CAFile:             *tlsCA,
+		InsecureSkipVerify: *tlsSkip,
+	}
+	serverCreds, err := tlsOpts.ServerCreds()
+	if err != nil {
+		log.Fatal(err)
+	}
+	clientCreds, err := tlsOpts.ClientCreds()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if tlsOpts.Enabled() && clientCreds == nil {
+		log.Printf("WARNING: -tls-cert/-tls-key enable incoming TLS only; outbound dials to static workers stay plaintext unless -tls-ca or -tls-skip-verify is passed")
+	}
+
 	master := coordinator.NewMaster(coordinator.MasterConfig{
 		Scenario:        scenario,
 		Workers:         workerList,
@@ -149,6 +175,7 @@ func main() {
 		RunTimeout:      timeout,
 		AutoWorkers:     *waitWorkers,
 		RegisterTimeout: time.Duration(*waitTimeout) * time.Second,
+		ClientCreds:     clientCreds,
 	})
 	defer master.Close()
 
@@ -156,7 +183,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-	grpcServer := grpc.NewServer(coordinator.ServerOptions(*token)...)
+	serverOpts := coordinator.ServerOptions(*token)
+	if serverCreds != nil {
+		serverOpts = append(serverOpts, grpc.Creds(serverCreds))
+		log.Printf("Master gRPC serving with TLS (cert=%s)", *tlsCert)
+	}
+	grpcServer := grpc.NewServer(serverOpts...)
 	distproto.RegisterMasterWorkerServer(grpcServer, master)
 	go func() {
 		log.Printf("Master gRPC listening on %s", lis.Addr())

@@ -1,15 +1,15 @@
 # Dockerfile.master — containerized stress-strike master/coordinator.
 #
 # Build:
-#   docker build -f Dockerfile.master -t stress-strike-master:0.11.0 .
+#   docker build -f Dockerfile.master -t stress-strike-master:0.13.0 .
 #
 # Run (auto-discovery fleet; workers self-register):
 #   docker run --rm --network strike -p 50051:50051 \
-#     -e SS_TOKEN="$TOKEN" stress-strike-master:0.11.0
+#     -e SS_TOKEN="$TOKEN" stress-strike-master:0.13.0
 
 FROM golang:1.26 AS build
 
-ARG VERSION=0.11.0
+ARG VERSION=0.13.0
 WORKDIR /src
 
 COPY go.mod go.sum ./

@@ -1,0 +1,91 @@
+# branching-flow.yaml
+# Advanced step-control-flow demo: think_time, retries, on_error,
+# skip_on_error, conditional branching (type: if) and stop_on_status.
+#
+# Run it against a compatible API:
+#   stress-strike run --config examples/branching-flow.yaml
+#
+# Semantics recap:
+#   - think_time:     seconds to pause AFTER a step (fractions allowed, 0.1 = 100ms)
+#   - retries:        extra attempts when a step fails (default 0)
+#   - retry_backoff:  seconds between attempts (default 0.1)
+#   - on_error:       "continue" → next step still runs | "stop" → abort iteration
+#   - skip_on_error:  skip THIS step when the previous step errored (iteration continues)
+#   - stop_on_status: halt the whole run when a matching status arrives
+#   - type: if        branch on a single comparison; nested steps run when true
+
+name: branching-flow
+base_url: http://localhost:8080
+
+load_profile:
+  type: steady
+  users: 50
+  duration: 60
+  timeout: 5
+
+steps:
+  # -- 1. Login ----------------------------------------------------------
+  # Failure is tolerated (on_error: continue) and retried up to 2 times.
+  # A 429 (rate limit) stops the ENTIRE run, not just this iteration.
+  - name: login
+    type: http
+    method: POST
+    url: /api/auth/login
+    headers:
+      Content-Type: application/json
+    body: '{"email":"{{email}}","password":"{{pass}}"}'
+    extract:
+      - name: token
+        from: json
+        path: token
+    assertions:
+      - type: status
+        value: "2xx"
+    retries: 2
+    retry_backoff: 0.1
+    on_error: continue
+    stop_on_status: "429"
+    think_time: 0.2          # 200ms breather before the next call
+
+  # -- 2. Conditional dashboard ------------------------------------------
+  # Runs the nested step ONLY when the login produced a token. If the branch
+  # is skipped, the pending error state from login (if any) is preserved, so
+  # a later skip_on_error step still knows the chain failed.
+  - name: dashboard-branch
+    type: if
+    condition: "${token} != ''"
+    steps:
+      - name: dashboard
+        type: http
+        method: GET
+        url: /api/dashboard
+        headers:
+          Authorization: "Bearer {{token}}"
+        assertions:
+          - type: status
+            value: "2xx"
+        think_time: 0.1
+
+  # -- 3. Checkout -------------------------------------------------------
+  # Parked when the previous step errored; otherwise runs as usual.
+  - name: checkout
+    type: http
+    method: POST
+    url: /api/checkout
+    headers:
+      Authorization: "Bearer {{token}}"
+    body: '{"item":"{{item}}","qty":1}'
+    skip_on_error: true
+    on_error: continue
+    think_time: 0.3
+
+  # -- 4. Logout ----------------------------------------------------------
+  # Default on_error ("stop") — any failure here aborts the iteration.
+  - name: logout
+    type: http
+    method: POST
+    url: /api/auth/logout
+    headers:
+      Authorization: "Bearer {{token}}"
+    body: '{"item":"{{item}}"}'
+    think_time: 0.05

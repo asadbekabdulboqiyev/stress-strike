@@ -65,6 +65,7 @@ func cmdRun() {
 		mode          string
 		dashListen    string
 		tlsFP         string
+		noHTTP2       bool
 	)
 
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
@@ -77,7 +78,7 @@ func cmdRun() {
 	fs.StringVar(&data, "data", "", "request body (quick mode)")
 	fs.Var(headers, "header", "request header in Key=Value form (repeatable)")
 	fs.StringVar(&name, "name", "quick-test", "report/test name")
-	fs.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave, constant-rps")
+	fs.StringVar(&profile, "profile", "steady", "load profile: steady, soak, linear-ramp, spike, wave, constant-rps, burst")
 	fs.IntVar(&users, "users", 10, "concurrent virtual users")
 	fs.IntVar(&duration, "duration", 30, "test duration in seconds")
 	fs.IntVar(&rampUp, "ramp-up", 0, "ramp-up duration in seconds")
@@ -90,6 +91,7 @@ func cmdRun() {
 	fs.IntVar(&timeout, "timeout", 5, "per-request timeout in seconds")
 	fs.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections")
 	fs.StringVar(&tlsFP, "tls-fingerprint", "", "TLS ClientHello fingerprint (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...)")
+	fs.BoolVar(&noHTTP2, "no-http2", false, "disable HTTP/2 negotiation (force HTTP/1.1)")
 	fs.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA: max p99 latency (ms)")
 	fs.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA: max avg latency (ms)")
 	fs.Float64Var(&expectErrRate, "expect-error-rate", 0, "SLA: max error rate (%%)")
@@ -126,6 +128,18 @@ func cmdRun() {
 			nameSet = true
 		}
 	})
+
+	durationSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "duration" {
+			durationSet = true
+		}
+	})
+	// burst: a short, maximum-speed volley — every user from t=0, no RPS cap.
+	// Defaults to a 3-second window unless --duration is given explicitly.
+	if profile == "burst" && !durationSet {
+		duration = 3
+	}
 
 	var scenario *config.Scenario
 	if configPath != "" {
@@ -203,6 +217,13 @@ func cmdRun() {
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 	if scenario.Profile.TLSFingerprint != "" {
 		fmt.Fprintf(os.Stderr, "TLS fingerprint: masking ClientHello as %q (JA3-mitigation bypass)\n", scenario.Profile.TLSFingerprint)
+	}
+
+	// --no-http2 maps onto the profile (nil = enabled, true by default).
+	// The transport wiring itself lives in internal/engine/client.go.
+	if noHTTP2 {
+		off := false
+		scenario.Profile.Http2 = &off
 	}
 
 	eng, err := engine.New(scenario)
@@ -340,6 +361,7 @@ func printRunHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, " USAGE\n")
 	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --users 100 --duration 60\n")
 	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --target-rps 1000 --duration 30\n")
+	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --profile burst --users 500\n")
 	fmt.Fprintf(w, "   stress-strike run --config scenario.yaml\n\n")
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	fmt.Fprintf(w, " FLAGS\n")
@@ -354,6 +376,15 @@ func printRunHelp(fs *flag.FlagSet) {
 		"",
 		"# Constant RPS mode (1000 requests/sec)",
 		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30",
+		"",
+		"# Burst: 3s maximum-speed volley, all users at once, no RPS cap",
+		"stress-strike run --url https://api.example.com --profile burst --users 500",
+		"",
+		"# Advanced scenario: branching, retries, think time",
+		"stress-strike run --config examples/branching-flow.yaml",
+		"",
+		"# Client-streaming gRPC load test",
+		"stress-strike run --config examples/streaming.yaml",
 		"",
 		"# Compare with a baseline report (exit 2 on regression)",
 		"stress-strike run --url https://api.example.com --users 50 --duration 30 --compare reports/baseline.json",

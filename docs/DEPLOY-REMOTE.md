@@ -54,15 +54,15 @@ available for scripting.
 
 ### Build the packages once (optional — deploy-fleet does it automatically)
 ```bash
-./scripts/build-worker-linux.sh 0.12.0
-# -> dist/linux-worker/stress-strike-worker-v0.12.0-linux-amd64.tar.gz
+./scripts/build-worker-linux.sh 0.13.0
+# -> dist/linux-worker/stress-strike-worker-v0.13.0-linux-amd64.tar.gz
 ```
 
 ### Deploy one host (manual)
 ```bash
-scp dist/linux-worker/stress-strike-worker-v0.12.0-linux-amd64.tar.gz \
+scp dist/linux-worker/stress-strike-worker-v0.13.0-linux-amd64.tar.gz \
     deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
-ssh root@HOST 'cd /tmp && bash bootstrap-worker.sh stress-strike-worker-v0.12.0-linux-amd64.tar.gz \
+ssh root@HOST 'cd /tmp && bash bootstrap-worker.sh stress-strike-worker-v0.13.0-linux-amd64.tar.gz \
     SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret'
 ```
 Environment knobs of the bootstrap: `SS_ID`, `SS_LISTEN` (default
@@ -77,8 +77,21 @@ writes `/etc/stress-strike/worker.env`, and enables a hardened systemd unit.
 
 # auto-discovery (workers register with your master)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- srv1 root@10.0.0.12
+
+# 30+ hosts: comma-separated list, 10 parallel SSH workers, retries on
+# flaky boxes (the script never blocks the fleet on one dead host)
+./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --parallel 10 \
+  --hosts root@10.0.0.11,root@10.0.0.12,root@10.0.0.13
 ```
 The script prints the exact master command for your control box.
+
+### Check fleet health afterwards
+```bash
+./scripts/fleet-status.sh --master 10.0.0.5:50051 \
+  --workers srv1:root@10.0.0.11:50061,srv2:root@10.0.0.12:50061
+```
+`grpcurl` gives full gRPC answers (worker id, version); without it the script
+falls back to TCP reachability. Exit status 0 = whole fleet up.
 
 ### Firewall / security groups
 - Open the worker gRPC port (`50061` default) from the master's IP.
@@ -86,6 +99,9 @@ The script prints the exact master command for your control box.
   runs, or run the master on your own control box and keep 50051 closed to the
   internet.
 - Always use `-token` (constant-time compared on every RPC).
+- On untrusted networks also encrypt the control plane:
+  `-tls-cert/-tls-key` (serve) + `-tls-ca` or `-tls-skip-verify` (dial), on
+  master and every worker — see docs/DISTRIBUTED.md → *TLS*.
 
 ### Smoke test (before loading real targets)
 ```bash
@@ -119,7 +135,7 @@ Tune `users`/`duration` inside `deploy/docker-compose.yml`. For very high
 connection counts use `network_mode: host` on the workers (bridge NAT
 throttles ephemeral sockets).
 
-Note: both Dockerfiles tag `0.12.0` by default. The compose setup builds from
+Note: both Dockerfiles tag `0.13.0` by default. The compose setup builds from
 source, so it always reflects the current checkout.
 
 ---

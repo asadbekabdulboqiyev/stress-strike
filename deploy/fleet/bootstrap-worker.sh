@@ -7,7 +7,7 @@
 # scripts/deploy-fleet.sh runs it over SSH for a whole fleet at once.
 #
 # Usage (as root):
-#   ./bootstrap-worker.sh stress-strike-worker-v0.12.0-linux-amd64.tar.gz [HOST_ID]
+#   ./bootstrap-worker.sh stress-strike-worker-v0.13.0-linux-amd64.tar.gz [HOST_ID]
 #
 # Configuration comes from the environment (defaults in brackets):
 #   SS_ID          worker id                [auto]
@@ -72,8 +72,8 @@ BIN_SRC="$(find "$WORK_DIR" -name stress-strike-worker -type f | head -n1)"
 install -m 0755 "$BIN_SRC" /usr/local/bin/stress-strike-worker
 log_ok "installed /usr/local/bin/stress-strike-worker"
 
-# 3. worker.env
-SS_ID="${SS_ID:-worker-$(hostname -s)}"
+# 3. worker.env — SS_ID wins, then the HOST_ID argument, then hostname default.
+SS_ID="${SS_ID:-${HOST_ID:-worker-$(hostname -s)}}"
 mkdir -p /etc/stress-strike
 ARGS="-listen ${SS_LISTEN} -id ${SS_ID} -max-users ${SS_MAX_USERS} -max-runs ${SS_MAX_RUNS}"
 if [[ -n "$SS_ADVERTISE" && "$SS_ADVERTISE" != "$SS_LISTEN" ]]; then
@@ -107,9 +107,17 @@ if [[ ! -f "$UNIT" ]]; then
 fi
 
 systemctl daemon-reload
-systemctl enable --now stress-strike-worker.service
-systemctl restart stress-strike-worker.service
-log_ok "enabled + started stress-strike-worker.service"
+# Idempotent start: never create a duplicate unit (guarded by the ! -f check
+# above) and skip the restart when the worker is already running — re-running
+# the bootstrap then just refreshes the env file and config. Force a restart
+# with SS_FORCE=1.
+if systemctl is-active --quiet stress-strike-worker.service 2>/dev/null && [[ "${SS_FORCE:-0}" != "1" ]]; then
+  log_ok "stress-strike-worker.service already active — leaving it running (SS_FORCE=1 to restart)"
+else
+  systemctl enable --now stress-strike-worker.service
+  systemctl restart stress-strike-worker.service
+  log_ok "enabled + started stress-strike-worker.service"
+fi
 
 echo
 echo; log_ok "done. worker status:"

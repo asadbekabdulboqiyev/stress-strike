@@ -1,0 +1,56 @@
+# streaming.yaml
+# Client-streaming gRPC load test (grpc_stream / type: grpc-stream).
+#
+# Each non-empty line of `body` is streamed to the server as one SendMsg,
+# then the stream is half-closed (CloseSend) and one reply is read (RecvMsg).
+# The exchange counts as a single step with one measured latency.
+#
+# Run it against a compatible gRPC service:
+#   stress-strike run --config examples/streaming.yaml
+#
+# The target must implement the IngestEvents client-streaming RPC
+# (unary response). grpc:// is plaintext; grpcs:// enables TLS.
+
+name: grpc-streaming
+base_url: grpc://localhost:50051
+
+load_profile:
+  type: steady
+  users: 20
+  duration: 60
+  timeout: 10
+
+steps:
+  # type: grpc-stream is an alias for type: grpc + grpc_stream: true.
+  - name: ingest
+    type: grpc-stream
+    grpc_method: /ingest.Service/IngestEvents
+    headers:
+      authorization: "Bearer {{token}}"
+      x-tenant: acme
+    # One message per line — a load-testing-friendly way to batch events.
+    body: |
+      {"type":"click","item":"{{item}}","at":1}
+      {"type":"purchase","item":"{{item}}","at":2}
+      {"type":"scroll","item":"{{item}}","at":3}
+    extract:
+      - name: ack
+        from: json
+        path: ack_id
+    assertions:
+      - type: status
+        value: "200"
+      - type: json_path
+        value: ack_id
+    retries: 1
+    retry_backoff: 0.1
+    think_time: 0.05
+    stop_on_status: "429"
+
+  # The extracted ack_id is available to later steps as {{ack}}.
+  - name: verify
+    type: http
+    method: GET
+    url: http://localhost:8080/api/ingest/{{ack}}
+    on_error: continue
+    think_time: 0.1

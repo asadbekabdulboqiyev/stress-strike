@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
@@ -20,7 +21,7 @@ import (
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 )
 
-var version = "0.12.0"
+var version = "0.13.0"
 
 var (
 	listenAddr = flag.String("listen", ":0", "Worker listen address")
@@ -30,6 +31,10 @@ var (
 	maxUsers   = flag.Int("max-users", 100000, "Max virtual users this worker will accept")
 	maxRuns    = flag.Int("max-runs", 4, "Max concurrent runs this worker will accept")
 	token      = flag.String("token", "", "Shared control-plane token (must match master)")
+	tlsCert    = flag.String("tls-cert", "", "TLS server certificate (serve over TLS; pair with -tls-key)")
+	tlsKey     = flag.String("tls-key", "", "TLS server private key (pair with -tls-cert)")
+	tlsCA      = flag.String("tls-ca", "", "CA bundle used to verify the master this worker registers with")
+	tlsSkip    = flag.Bool("tls-skip-verify", false, "Disable master verification when self-registering (self-signed demo fleets only)")
 )
 
 func main() {
@@ -84,7 +89,32 @@ func main() {
 		Token:             *token,
 	})
 
-	grpcServer := grpc.NewServer(coordinator.ServerOptions(*token)...)
+	// Optional TLS: serve over TLS when a cert/key pair is supplied, and dial
+	// the master over TLS when -tls-ca or -tls-skip-verify is supplied.
+	tlsOpts := coordinator.TLSOptions{
+		CertFile:           *tlsCert,
+		KeyFile:            *tlsKey,
+		CAFile:             *tlsCA,
+		InsecureSkipVerify: *tlsSkip,
+	}
+	serverCreds, err := tlsOpts.ServerCreds()
+	if err != nil {
+		log.Fatal(err)
+	}
+	clientCreds, err := tlsOpts.ClientCreds()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if tlsOpts.Enabled() && clientCreds == nil {
+		log.Printf("WARNING: -tls-cert/-tls-key enable incoming TLS only; registration dials to the master stay plaintext unless -tls-ca or -tls-skip-verify is passed")
+	}
+
+	serverOpts := coordinator.ServerOptions(*token)
+	if serverCreds != nil {
+		serverOpts = append(serverOpts, grpc.Creds(serverCreds))
+		log.Printf("Worker gRPC serving with TLS (cert=%s)", *tlsCert)
+	}
+	grpcServer := grpc.NewServer(serverOpts...)
 	distproto.RegisterMasterWorkerServer(grpcServer, worker)
 	go func() {
 		log.Printf("Worker gRPC listening on %s", lis.Addr())
@@ -95,7 +125,7 @@ func main() {
 
 	stop := make(chan struct{})
 	if *masterAddr != "" {
-		go registrationLoop(*masterAddr, *workerID, advertised, *token, worker.Capabilities(), stop)
+		go registrationLoop(*masterAddr, *workerID, advertised, *token, clientCreds, worker.Capabilities(), stop)
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -130,24 +160,55 @@ func resolveAdvertise(explicit string, lis net.Listener) string {
 	return net.JoinHostPort(host, fmt.Sprintf("%d", tcp.Port))
 }
 
+// Registration retry policy. The worker re-registers every regSteadyInterval
+// so a restarted master re-discovers it quickly, but after a failure it backs
+// off through a fixed sequence (1s, 2s, 5s, 10s, 20s, then 30s forever) so a
+// down master is not hammered from a large fleet.
+const (
+	regSteadyInterval = 10 * time.Second
+	regBackoffMax     = 30 * time.Second
+)
+
+var regBackoffSeq = [...]time.Duration{1 * time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second, 20 * time.Second, 30 * time.Second}
+
+// nextRegBackoff returns the wait for the given attempt index and the index
+// for the following attempt (clamped at the maximum backoff).
+func nextRegBackoff(i int) (time.Duration, int) {
+	if i >= len(regBackoffSeq)-1 {
+		return regBackoffSeq[len(regBackoffSeq)-1], len(regBackoffSeq) - 1
+	}
+	return regBackoffSeq[i], i + 1
+}
+
 // registrationLoop keeps this worker visible to the master via the Register
-// RPC, retrying periodically so a master restart re-discovers it.
-func registrationLoop(masterAddr, id, advertised, token string, caps *distproto.CapabilitiesResponse, stop <-chan struct{}) {
-	opts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, coordinator.ClientOptions(token)...)
-	conn, err := grpc.NewClient(masterAddr, opts...)
-	if err != nil {
-		log.Printf("Failed to connect to master %s: %v", masterAddr, err)
+// RPC. The dial is deliberately re-created when the backoff saturates so a
+// master that moved addresses (or a stale connection) is retried from a clean
+// state, not just retried over a dead pipe.
+func registrationLoop(masterAddr, id, advertised, token string, clientCreds credentials.TransportCredentials, caps *distproto.CapabilitiesResponse, stop <-chan struct{}) {
+	creds := insecure.NewCredentials()
+	if clientCreds != nil {
+		creds = clientCreds
+	}
+	dial := func() *grpc.ClientConn {
+		conn, err := grpc.NewClient(masterAddr, append([]grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+		}, coordinator.ClientOptions(token)...)...)
+		if err != nil {
+			return nil
+		}
+		return conn
+	}
+	conn := dial()
+	if conn == nil {
+		log.Printf("Failed to create client for master %s", masterAddr)
 		return
 	}
 	defer conn.Close()
 
 	client := distproto.NewMasterWorkerClient(conn)
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
 	lastErr := ""
+	wait := regSteadyInterval
+	backoffIdx := 0
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		resp, err := client.Register(ctx, &distproto.RegisterRequest{
@@ -162,19 +223,35 @@ func registrationLoop(masterAddr, id, advertised, token string, caps *distproto.
 				log.Printf("Registration with master %s failed: %v", masterAddr, err)
 				lastErr = err.Error()
 			}
+			wait, backoffIdx = nextRegBackoff(backoffIdx)
+			if wait >= regBackoffMax {
+				// Clean-slate re-dial: close the stale connection and open a
+				// fresh one so a restarted/moved master is picked up.
+				_ = conn.Close()
+				conn = dial()
+				if conn == nil {
+					log.Printf("Failed to re-dial master %s; will retry", masterAddr)
+					wait = regBackoffMax
+				} else {
+					client = distproto.NewMasterWorkerClient(conn)
+				}
+			}
 		case resp.GetAccepted():
 			if lastErr != "" {
 				log.Printf("Re-registered with master %s", masterAddr)
 				lastErr = ""
 			}
+			wait = regSteadyInterval
+			backoffIdx = 0
 		default:
 			log.Printf("Master %s rejected registration: %s", masterAddr, resp.GetMessage())
+			wait, backoffIdx = nextRegBackoff(backoffIdx)
 		}
 
 		select {
 		case <-stop:
 			return
-		case <-ticker.C:
+		case <-time.After(wait):
 		}
 	}
 }

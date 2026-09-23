@@ -10,7 +10,7 @@
 #   make run         Build and run demo server
 #   make help        List all targets
 
-VERSION ?= 0.12.0
+VERSION ?= 0.13.0
 
 GO      ?= go
 GOFLAGS ?=
@@ -92,6 +92,10 @@ coverage: ## Run tests with coverage report
 .PHONY: bench
 bench: ## Run all benchmarks
 	$(GO) test -bench=. -benchmem ./...
+
+.PHONY: bench-power
+bench-power: ## Real-world throughput sweep against the demo server (POWER)
+	./scripts/bench.sh
 
 .PHONY: install
 install: ## Build and install stress-strike into PATH

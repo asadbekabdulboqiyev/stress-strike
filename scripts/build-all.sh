@@ -29,7 +29,7 @@
 #   RELEASE=1 VERSION=1.0.0 ./scripts/build-all.sh
 #
 # Environment overrides:
-#   VERSION    release version injected via ldflags (default 0.12.0)
+#   VERSION    release version injected via ldflags (default 0.13.0)
 #   RELEASE    set to 1 for cross-platform release builds with archives
 #   DIST_DIR   alternative dist/ root (default: <repo>/dist)
 
@@ -37,7 +37,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-VERSION="${1:-${VERSION:-0.12.0}}"
+VERSION="${1:-${VERSION:-0.13.0}}"
 LDFLAGS="-s -w -X main.version=${VERSION}"
 
 if ! command -v go >/dev/null 2>&1; then

@@ -167,11 +167,20 @@ type Engine struct {
 	// Per-virtual-user persistent protocol sessions (guarded by sessMu).
 	// Each worker goroutine exclusively touches its own index during the run;
 	// the mutex protects the teardown path in closeSessions.
-	sessMu     sync.Mutex
-	wsConns    map[int]*websocket.Conn
-	wsURLs     map[int]string
-	tcpConns   map[int]net.Conn
-	cookieJars map[int]http.CookieJar
+	sessMu   sync.Mutex
+	wsConns  map[int]*websocket.Conn
+	wsURLs   map[int]string
+	tcpConns map[int]net.Conn
+	// cookieJars and jarClients are parallel, lock-free slices indexed by
+	// virtual user (0..MaxConcurrency-1). They are pre-allocated and fully
+	// populated in Run() before any worker starts, so the hot request path is
+	// a single slice read with no mutex — the previous global sessMu lock on
+	// every request was the throughput bottleneck at 100k+ RPS. The slices
+	// are structurally frozen during a run; the lazy fallback (direct library
+	// use, or a jar dropped via dropCookieJar) takes sessMu and is never on
+	// the hot path. Per-index writes are owned by exactly one worker.
+	cookieJars []http.CookieJar
+	jarClients []*http.Client
 	// grpcConns holds shared ClientConns keyed by target (all workers).
 	grpcConns map[string]*grpc.ClientConn
 
@@ -195,6 +204,8 @@ func New(scenario *config.Scenario) (*Engine, error) {
 	}
 	maxConns := profile.MaxConcurrency() * 2
 	transport := newTransport(keepAlive, maxConns, fingerprint.Profile(scenario.Profile.TLSFingerprint))
+	// Explicit http2: false (or --no-http2) pins the transport to HTTP/1.1.
+	applyHTTP2Preference(transport, scenario.Profile.HTTP2Enabled())
 
 	// For constant-rps mode, the token bucket starts at rate 0 and is
 	// dynamically updated by the controller during ramp-up.
@@ -331,6 +342,11 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 
 	runCtx, runCancel := context.WithTimeout(ctx, e.profile.Duration())
 	defer runCancel()
+	// Fresh run: clear stop_on_status state from any previous run on this
+	// Engine instance (library reuse), and release the package-level flag
+	// registry entry when this run completes.
+	e.stopFlag().reset()
+	defer stopFlags.Delete(e)
 
 	e.capture = opts.Capture
 	e.pool = opts.Pool
@@ -376,6 +392,10 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 
 	var wg sync.WaitGroup
 	maxUsers := e.profile.MaxConcurrency()
+	// Pre-create per-user cookie jars (and their bound clients) before any
+	// worker starts so the hot request path is a lock-free slice read. The
+	// extra slot (+1) guards any index that reaches exactly MaxConcurrency.
+	e.precreateJars(maxUsers + 1)
 	w := &loadWorker{e: e}
 	for i := 0; i < maxUsers; i++ {
 		wg.Add(1)
@@ -393,6 +413,17 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 	} else {
 		go e.controller(runCtx)
 	}
+
+	// Early termination: when stop_on_status fires, close the run window
+	// immediately instead of spinning no-op workers for the remaining
+	// duration (saves CPU and gives CI an accurate elapsed time).
+	go func() {
+		select {
+		case <-e.stopFlag().notifyChan():
+			runCancel()
+		case <-runCtx.Done():
+		}
+	}()
 
 	drained := make(chan struct{})
 	go func() {
@@ -463,6 +494,11 @@ func (e *Engine) controller(ctx context.Context) {
 }
 
 func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
+	// stop_on_status fired in an earlier iteration → the whole run is halted;
+	// every subsequent iteration is a no-op until the run window ends.
+	if e.stopFlag().armed() {
+		return
+	}
 	vars := newVars(e.scenario, userIndex)
 	if len(e.pool) > 0 {
 		idx := e.poolIdx.Add(1) - 1
@@ -470,23 +506,13 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	}
 	iterStart := time.Now()
 	record := e.telemetry.Recording()
-	var lastStatus int
-	var firstErr string
-	for i, step := range e.scenario.Steps {
-		res := e.runStepForUser(reqBase, step, vars, userIndex)
-		if record {
-			e.stepStats[i].Record(res.latency, res.status, res.errName)
-		}
-		if res.errName != "" {
-			if firstErr == "" {
-				firstErr = res.errName
-			}
-			break
-		}
-		lastStatus = res.status
+	state := &flowState{}
+	e.runStepSequence(reqBase, e.scenario.Steps, vars, userIndex, -1, 0, state)
+	if state.stopRun {
+		e.stopFlag().mark("stop_on_status fired")
 	}
 	if record {
-		e.telemetry.Overall.Record(time.Since(iterStart), lastStatus, firstErr)
+		e.telemetry.Overall.Record(time.Since(iterStart), state.lastStatus, state.firstErr)
 	}
 	if e.progress != nil {
 		e.progress.Update(
@@ -553,41 +579,181 @@ func (e *Engine) httpClient(ctx context.Context, fullURL string, step config.Ste
 	return e.httpClientForUser(-1, ctx, fullURL, step, vars, timeout)
 }
 
-// cookieJarFor returns (lazily creating) the per-virtual-user cookie jar used
-// to carry login sessions across scenario steps. Jars only exist when
-// keep-alive is enabled; without it every request is a fresh session.
-func (e *Engine) cookieJarFor(userIndex int) http.CookieJar {
-	if userIndex < 0 || !e.keepAlive {
-		return nil
-	}
-	e.sessMu.Lock()
-	defer e.sessMu.Unlock()
-	if e.cookieJars == nil {
-		e.cookieJars = make(map[int]http.CookieJar)
-	}
-	if jar, ok := e.cookieJars[userIndex]; ok {
-		return jar
-	}
+// newCookieJar builds a fresh per-user cookie jar. cookiejar.New is cheap
+// (no I/O, no allocations beyond one empty map), so pre-creating one per
+// virtual user in Run is negligible.
+func newCookieJar() http.CookieJar {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil
 	}
-	e.cookieJars[userIndex] = jar
 	return jar
 }
 
-// dropCookieJar discards the session cookies of one virtual user.
-func (e *Engine) dropCookieJar(userIndex int) {
+// precreateJars pre-allocates and fully populates the per-user cookie jars
+// (and their bound clients) for indexes 0..n-1. It runs in Run() before any
+// worker goroutine starts, so the slices become structurally frozen and the
+// hot request path never grows or mutates them — no lock required during a
+// run. If a previous library call already created some sessions (e.g. direct
+// cookieJarFor use), those are preserved and the remaining slots filled.
+func (e *Engine) precreateJars(n int) {
+	if n <= 0 {
+		return
+	}
+	if len(e.cookieJars) < n || len(e.jarClients) < n {
+		jars := make([]http.CookieJar, n)
+		clients := make([]*http.Client, n)
+		copy(jars, e.cookieJars)
+		copy(clients, e.jarClients)
+		e.cookieJars = jars
+		e.jarClients = clients
+	}
+	for i := 0; i < n; i++ {
+		if e.cookieJars[i] != nil {
+			continue
+		}
+		jar := newCookieJar()
+		e.cookieJars[i] = jar
+		if jar != nil {
+			e.jarClients[i] = &http.Client{
+				Transport:     e.transport,
+				Jar:           jar,
+				Timeout:       e.timeout,
+				CheckRedirect: checkRedirect,
+			}
+		}
+	}
+}
+
+// ensureUserSession lazily builds the cookie jar (+bound client) for one
+// virtual user. Callers must have missed the lock-free fast path; this is the
+// cold path only (direct library use before Run, or a slot dropped by
+// dropCookieJar). It takes sessMu because it may grow the slices; during a
+// run the fast path always hits, so workers never serialize here.
+func (e *Engine) ensureUserSession(userIndex int) {
 	e.sessMu.Lock()
 	defer e.sessMu.Unlock()
-	delete(e.cookieJars, userIndex)
+	need := userIndex + 1
+	if len(e.cookieJars) < need || len(e.jarClients) < need {
+		jars := make([]http.CookieJar, need)
+		clients := make([]*http.Client, need)
+		copy(jars, e.cookieJars)
+		copy(clients, e.jarClients)
+		e.cookieJars = jars
+		e.jarClients = clients
+	}
+	if e.cookieJars[userIndex] != nil {
+		return
+	}
+	jar := newCookieJar()
+	if jar == nil {
+		return
+	}
+	e.cookieJars[userIndex] = jar
+	e.jarClients[userIndex] = &http.Client{
+		Transport:     e.transport,
+		Jar:           jar,
+		Timeout:       e.timeout,
+		CheckRedirect: checkRedirect,
+	}
+}
+
+// cookieJarFor returns the per-virtual-user cookie jar used to carry login
+// sessions across scenario steps. Jars only exist when keep-alive is enabled;
+// without it every request is a fresh session. The fast path is a single
+// slice read with no lock — the previous implementation took the global
+// sessMu for every request, serializing all workers at high concurrency.
+func (e *Engine) cookieJarFor(userIndex int) http.CookieJar {
+	if userIndex < 0 || !e.keepAlive {
+		return nil
+	}
+	jars := e.cookieJars
+	if userIndex < len(jars) {
+		if jar := jars[userIndex]; jar != nil {
+			return jar
+		}
+	}
+	// Miss: not pre-created yet or the slot was dropped. Cold path only.
+	e.ensureUserSession(userIndex)
+	if userIndex < len(e.cookieJars) {
+		return e.cookieJars[userIndex]
+	}
+	return nil
+}
+
+// dropCookieJar discards the session cookies of one virtual user. Its slot is
+// set to nil and a fresh jar (and client) is lazily recreated on the user's
+// next request. Per-index writes are safe because a user index is owned by
+// exactly one worker goroutine during a run — callers must follow that
+// invariant (never drop another worker's index concurrently).
+func (e *Engine) dropCookieJar(userIndex int) {
+	if userIndex < 0 || !e.keepAlive {
+		return
+	}
+	if userIndex < len(e.cookieJars) {
+		e.cookieJars[userIndex] = nil
+	}
+	if userIndex < len(e.jarClients) {
+		e.jarClients[userIndex] = nil
+	}
+}
+
+// readBodyPooled drains r into a pooled buffer, reading at most bodyReadLimit
+// bytes (same limit as before). The returned *ReusableBuffer must be released
+// with ReleaseBuffer once its bytes are no longer needed; callers that need
+// the body to outlive the buffer must copy it first. hint is a Content-Length
+// hint so the pool picks an appropriately sized tier on the first read.
+func readBodyPooled(r io.Reader, hint int) (*ReusableBuffer, error) {
+	rb := GetBufferMin(hint)
+	buf := rb.Bytes()[:0]
+	total := 0
+	for {
+		avail := cap(buf) - total
+		if avail <= 0 {
+			// Body larger than the biggest pool tier: read the remainder into
+			// a fresh slice (a rare path that the pool intentionally does not
+			// absorb; ReleaseBuffer still handles it via put's default case).
+			rest, err := io.ReadAll(io.LimitReader(r, int64(bodyReadLimit-total)))
+			if err != nil {
+				return rb, err
+			}
+			buf = append(buf, rest...)
+			rb.buf = buf
+			return rb, nil
+		}
+		n, err := r.Read(buf[total:cap(buf)])
+		total += n
+		buf = buf[:total]
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return rb, err
+		}
+		if total >= bodyReadLimit {
+			break
+		}
+	}
+	rb.buf = buf
+	return rb, nil
 }
 
 // httpClientForUser performs one HTTP exchange. When a per-user cookie jar is
 // active, Set-Cookie responses are stored and replayed on later requests,
-// enabling realistic multi-step authenticated flows.
+// enabling realistic multi-step authenticated flows. The response body is
+// read through the tiered buffer pool (see buffer_pool.go) so the hot path
+// performs zero heap allocations for typical small responses; assertion and
+// extract logic is unchanged.
 func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL string, step config.Step, vars map[string]string, timeout time.Duration) (stepResult, []byte) {
-	stepCtx, cancel := context.WithTimeout(ctx, timeout)
+	// http.Client.Timeout already bounds every exchange with e.timeout, so a
+	// per-request context (one allocation) is only created when a step
+	// overrides the timeout. Skipping it on the common path removes a
+	// context.WithTimeout allocation per request.
+	reqCtx := ctx
+	cancel := func() {}
+	if step.Timeout > 0 {
+		reqCtx, cancel = context.WithTimeout(ctx, timeout)
+	}
 	defer cancel()
 
 	var body io.Reader
@@ -595,7 +761,7 @@ func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL s
 		body = strings.NewReader(renderBody(step.Body, vars))
 	}
 
-	req, err := http.NewRequestWithContext(stepCtx, step.Method, fullURL, body)
+	req, err := http.NewRequestWithContext(reqCtx, step.Method, fullURL, body)
 	if err != nil {
 		return stepResult{errName: errOther}, nil
 	}
@@ -608,7 +774,7 @@ func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL s
 	}
 
 	start := time.Now()
-	client := e.clientForJar(e.cookieJarFor(userIndex), timeout)
+	client := e.clientForJar(userIndex)
 	// Prefer a pre-warmed client (established TCP+TLS) when no per-user
 	// cookie jar is required; the round-robin ring distributes them evenly.
 	if client == e.client {
@@ -618,19 +784,29 @@ func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL s
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		res := classifyError(err, time.Since(start))
-		return res, nil
+		return classifyError(err, time.Since(start)), nil
 	}
 	defer resp.Body.Close()
 
-	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, bodyReadLimit))
+	// The body only needs to outlive this function when the caller will run
+	// assertions or capture against it. In the common benchmark path (no
+	// assertions, no capture) the body is drained into a pooled buffer and
+	// discarded, which keeps the keep-alive connection reusable without a
+	// single heap allocation.
+	needBody := e.capture != nil || len(step.Assertions) > 0
+
+	hint := 0
+	if resp.ContentLength > 0 && resp.ContentLength < int64(bodyReadLimit) {
+		hint = int(resp.ContentLength)
+	}
+	pooled, readErr := readBodyPooled(resp.Body, hint)
 	if readErr != nil {
 		res := classifyError(readErr, time.Since(start))
+		ReleaseBuffer(pooled)
 		return res, nil
 	}
-	latency := time.Since(start)
-	status := resp.StatusCode
 
+	status := resp.StatusCode
 	var errName string
 	switch {
 	case status >= 500:
@@ -638,18 +814,29 @@ func (e *Engine) httpClientForUser(userIndex int, ctx context.Context, fullURL s
 	case status >= 400:
 		errName = errStatus4xx
 	}
-	if errName != "" {
-		return stepResult{latency: latency, status: status, errName: errName}, respBody
-	}
-
-	for _, ex := range step.Extract {
-		value, exErr := extractValue(ex.From, ex.Path, respBody, resp.Header.Get(ex.Path))
-		if exErr != nil {
-			return stepResult{latency: latency, status: status, errName: errExtract}, respBody
+	if errName == "" {
+		for _, ex := range step.Extract {
+			value, exErr := extractValue(ex.From, ex.Path, pooled.Bytes(), resp.Header.Get(ex.Path))
+			if exErr != nil {
+				errName = errExtract
+				break
+			}
+			vars[ex.Name] = value
 		}
-		vars[ex.Name] = value
 	}
-	return stepResult{latency: latency, status: status}, respBody
+	latency := time.Since(start)
+
+	if needBody {
+		// Copy before returning the buffer to the pool: assertions/capture
+		// run in the caller and must see the exact body bytes.
+		bodyCopy := append([]byte(nil), pooled.Bytes()...)
+		ReleaseBuffer(pooled)
+		return stepResult{latency: latency, status: status, errName: errName}, bodyCopy
+	}
+	// No consumer — release the pooled buffer. Returning a nil body here is
+	// safe: with no assertions and no capture the caller never touches it.
+	ReleaseBuffer(pooled)
+	return stepResult{latency: latency, status: status, errName: errName}, nil
 }
 
 func classifyError(err error, elapsed time.Duration) stepResult {

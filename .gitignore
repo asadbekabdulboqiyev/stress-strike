@@ -1,6 +1,9 @@
 bin/
 reports/
-dist/
+# Build output only! Root-anchored so source under internal/dist/ (the
+# distributed control plane) is NOT ignored — a bare `dist/` pattern would
+# swallow internal/dist/ and hide the whole subsystem from version control.
+/dist/
 /stress-strike
 *.test
 *.out

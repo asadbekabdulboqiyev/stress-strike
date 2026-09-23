@@ -131,6 +131,7 @@ type Server struct {
 	runState  *RunState
 	history   []HistoryEntry
 	onCommand func(cmd string, args map[string]interface{})
+	store     *DemoStore // bundled VoltStore demo launcher/supervisor
 }
 
 func NewServer() *Server {
@@ -147,6 +148,7 @@ func NewServer() *Server {
 		snapshot: &LiveSnapshot{StatusCodes: make(map[int]uint64)},
 		runState: &RunState{Status: "idle"},
 		history:  make([]HistoryEntry, 0),
+		store:    NewDemoStore(nil),
 	}
 }
 
@@ -193,6 +195,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.handleStartRun(w, r)
 	case path == "/api/run/stop":
 		s.handleStopRun(w, r)
+	case path == "/api/demo-store/start":
+		s.handleDemoStoreStart(w, r)
+	case path == "/api/demo-store/stop":
+		s.handleDemoStoreStop(w, r)
+	case path == "/api/demo-store/status":
+		s.handleDemoStoreStatus(w, r)
 	case path == "/style.css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Write(dashboardCSS)
@@ -366,6 +374,65 @@ func (s *Server) handleStopRun(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "stopped"})
+}
+
+// --- Demo store control plane ------------------------------------------------
+
+// handleDemoStoreStatus reports whether the bundled VoltStore demo is up
+// (and whether this dashboard spawned it).
+func (s *Server) handleDemoStoreStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.store.Status())
+}
+
+// handleDemoStoreStart launches the VoltStore demo (VeriGate protection ON)
+// if nothing is listening yet, then reports the URL. Non-browser clients
+// (curl) and same-origin browser POSTs are allowed; cross-origin POSTs are
+// rejected like every other mutating endpoint.
+func (s *Server) handleDemoStoreStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	if !sameOrigin(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
+	}
+	url, alreadyRunning, err := s.store.Start()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"ok":              true,
+		"url":             url,
+		"already_running": alreadyRunning,
+		"protection":      true,
+	})
+}
+
+// handleDemoStoreStop shuts down the demo store only when this dashboard
+// spawned it (a user-managed store is left running).
+func (s *Server) handleDemoStoreStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	if !sameOrigin(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
+	}
+	if err := s.store.Stop(); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 // --- Security helpers -------------------------------------------------------

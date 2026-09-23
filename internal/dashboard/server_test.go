@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -766,5 +768,133 @@ func TestIsLoopbackAddr(t *testing.T) {
 		if got := IsLoopbackAddr(addr); got != want {
 			t.Errorf("IsLoopbackAddr(%q) = %v, want %v", addr, got, want)
 		}
+	}
+}
+
+// --- Demo store control plane ------------------------------------------------
+
+// TestNewServer wires a DemoStore supervisor so the one-click launcher is
+// always present.
+func TestNewServerWiresDemoStore(t *testing.T) {
+	s := NewServer()
+	if s.store == nil {
+		t.Fatal("NewServer did not create the DemoStore supervisor")
+	}
+	if s.store.URL() != defaultDemoStoreURL {
+		t.Errorf("demo store URL = %q, want %q", s.store.URL(), defaultDemoStoreURL)
+	}
+}
+
+// TestDemoStoreStatus checks the status endpoint shape. `running` is left as
+// observed (a user may already have a store up), the rest is deterministic.
+func TestDemoStoreStatus(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("GET", "/api/demo-store/status", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/demo-store/status status = %d, want 200", w.Code)
+	}
+	var d map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &d); err != nil {
+		t.Fatalf("status body is not JSON: %v", err)
+	}
+	for _, k := range []string{"url", "running", "managed", "protection"} {
+		if _, ok := d[k]; !ok {
+			t.Errorf("status response missing key %q", k)
+		}
+	}
+	if d["url"] != defaultDemoStoreURL {
+		t.Errorf("status url = %v, want %q", d["url"], defaultDemoStoreURL)
+	}
+}
+
+// TestDemoStoreStartWrongMethod: the launcher is POST-only, like run/start.
+func TestDemoStoreStartWrongMethod(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("GET", "/api/demo-store/start", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /api/demo-store/start status = %d, want 405", w.Code)
+	}
+}
+
+// TestDemoStoreStopWrongMethod: the stopper is POST-only too.
+func TestDemoStoreStopWrongMethod(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("GET", "/api/demo-store/stop", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /api/demo-store/stop status = %d, want 405", w.Code)
+	}
+}
+
+// TestDemoStoreStartRejectsCrossOrigin: same CSRF defense as the run control
+// plane — a malicious page must not be able to spawn processes.
+func TestDemoStoreStartRejectsCrossOrigin(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("POST", "/api/demo-store/start", nil)
+	req.Header.Set("Origin", "http://evil.example")
+	req.Header.Set("Host", "127.0.0.1:8888")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("cross-origin demo-store start status = %d, want 403", w.Code)
+	}
+	if s.store.Status()["managed"] == true {
+		t.Error("cross-origin start must not spawn the demo store")
+	}
+}
+
+// TestDemoStoreStopRejectsCrossOrigin: same defense for the stopper.
+func TestDemoStoreStopRejectsCrossOrigin(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("POST", "/api/demo-store/stop", nil)
+	req.Header.Set("Origin", "http://evil.example")
+	req.Header.Set("Host", "127.0.0.1:8888")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("cross-origin demo-store stop status = %d, want 403", w.Code)
+	}
+}
+
+// TestDemoStoreStopNoopWhenNotManaged: stopping a store we did not spawn (or
+// nothing at all) is a successful no-op — never an error.
+func TestDemoStoreStopNoopWhenNotManaged(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest("POST", "/api/demo-store/stop", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/demo-store/stop status = %d, want 200", w.Code)
+	}
+	var d map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &d); err != nil {
+		t.Fatalf("stop body is not JSON: %v", err)
+	}
+	if d["ok"] != true {
+		t.Errorf("stop response ok = %v, want true", d["ok"])
+	}
+	if s.store.Status()["managed"] == true {
+		t.Error("stop must never mark an unmanaged store as managed")
+	}
+}
+
+// TestFindUp walks upward from the working directory; in a checkout it must
+// locate go.mod at the repo root, indexed relative to any nested package dir.
+func TestFindUp(t *testing.T) {
+	p := findUp("go.mod")
+	if p == "" {
+		t.Skip("no go.mod found above the working directory (not a checkout)")
+	}
+	base := filepath.Base(p)
+	if base != "go.mod" {
+		t.Errorf("findUp returned %q, want a path ending in go.mod", p)
+	}
+	if st, err := os.Stat(p); err != nil || st.IsDir() {
+		t.Errorf("findUp(%q) = %q is not a file (err=%v)", "go.mod", p, err)
 	}
 }

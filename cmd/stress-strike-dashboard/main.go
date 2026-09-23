@@ -37,6 +37,7 @@ func main() {
 ║  • Worker node monitoring                                     ║
 ║  • Run history + time-travel replay                           ║
 ║  • Start/stop runs directly from browser                     ║
+║  • One-click VoltStore demo launcher (VeriGate, /admin)      ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 Usage:

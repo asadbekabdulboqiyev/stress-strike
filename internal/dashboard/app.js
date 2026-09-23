@@ -1042,6 +1042,7 @@ document.addEventListener('keydown', function(e) {
 restoreLastConfig();
 connect();
 render();
+refreshDemoStore();
 
 /* ---- Controls wired via addEventListener (strict CSP: no inline handlers) ---- */
 var _cf = document.getElementById('controlsForm');
@@ -1060,6 +1061,50 @@ var _obClose = document.getElementById('onboardingClose');
 if (_obClose) _obClose.addEventListener('click', dismissOnboarding);
 var _obDemo = document.getElementById('btnLoadDemo');
 if (_obDemo) _obDemo.addEventListener('click', loadDemoUrl);
+
+/* ---- Demo store launcher (bundled VoltStore + VeriGate) ---- */
+var _btnDemoStore = document.getElementById('btnDemoStore');
+var _btnDemoLabel = document.getElementById('btnDemoLabel');
+
+function refreshDemoStore() {
+  if (!_btnDemoStore) return;
+  fetch(API + '/api/demo-store/status').then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.running) {
+      _btnDemoLabel.textContent = 'Open Demo Store';
+      _btnDemoStore.classList.add('demo-running');
+      _btnDemoStore.title = 'VoltStore demo is running — open it in a new tab.';
+    } else {
+      _btnDemoLabel.textContent = 'Launch Demo Store';
+      _btnDemoStore.classList.remove('demo-running');
+      _btnDemoStore.title = 'Launch the bundled VoltStore demo (VeriGate protection ON) and open it in a new tab.';
+    }
+  }).catch(function() {});
+}
+
+function demoStoreClick() {
+  if (!_btnDemoStore) return;
+  _btnDemoStore.classList.add('loading');
+  fetch(API + '/api/demo-store/start', { method: 'POST' })
+    .then(function(r) {
+      return r.json().then(function(d) { return { status: r.status, data: d }; });
+    })
+    .then(function(res) {
+      _btnDemoStore.classList.remove('loading');
+      if (res.status !== 200 || !res.data.ok) {
+        toast('Demo store: ' + ((res.data && res.data.error) || 'failed to start'), 'error');
+        return;
+      }
+      toast('VoltStore demo ' + (res.data.already_running ? 'already running — ' : 'launched — ') + res.data.url, 'success');
+      window.open(res.data.url, '_blank', 'noopener');
+      refreshDemoStore();
+    })
+    .catch(function() {
+      _btnDemoStore.classList.remove('loading');
+      toast('Demo store: request failed', 'error');
+    });
+}
+
+if (_btnDemoStore) _btnDemoStore.addEventListener('click', demoStoreClick);
 
 /* ---- Summary ---- */
 var _sumClose = document.getElementById('summaryClose');

@@ -193,6 +193,16 @@ kbd {
 }
 .btn-ghost:hover:not(:disabled) { background: #23233a; border-color: var(--green); }
 
+/* Demo store launcher button (header, compact) */
+.btn-demo {
+  margin-top: 0; padding: 7px 14px; font-size: 12px;
+  background: var(--bg-3); color: var(--text-0); border: 1px solid var(--border-hover);
+}
+.btn-demo:hover:not(:disabled) { background: #23233a; border-color: var(--blue); color: #fff; }
+.btn-demo.demo-running { border-color: var(--green); color: var(--green); }
+.btn-demo.demo-running:hover:not(:disabled) { box-shadow: 0 0 16px var(--green-dim); color: var(--green); }
+.btn-demo.loading::before { border-color: rgba(255,255,255,0.2); border-top-color: var(--blue); }
+
 /* Start: loading state (spinner replaces the icon) */
 .btn.loading { opacity: 0.8; cursor: progress; pointer-events: none; }
 .btn.loading .ico { display: none; }

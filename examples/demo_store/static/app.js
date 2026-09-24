@@ -204,8 +204,8 @@
       setKPI("kpi-solved", stats.challenges_solved);
       setKPI("kpi-blocked", stats.requests_blocked);
       setKPI("kpi-blockedips", stats.blocked_ips);
-      if (toggle && !document.activeElement.closest || document.activeElement !== toggle.querySelector("input")) {
-        toggle.querySelector("input").checked = stats.enabled;
+      if (toggle && document.activeElement !== toggle) {
+        toggle.checked = stats.enabled;
       }
     }
 
@@ -216,7 +216,7 @@
 
     if (toggle) {
       toggle.addEventListener("change", function () {
-        var on = toggle.querySelector("input").checked;
+        var on = toggle.checked;
         postJSON("/admin/protect", { enabled: on }).then(function (res) {
           toast("VeriGate " + (res.enabled ? "ENABLED" : "DISABLED"));
           return getJSON("/admin/stats").then(render);

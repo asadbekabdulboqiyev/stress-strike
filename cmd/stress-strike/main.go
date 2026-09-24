@@ -14,7 +14,7 @@ import (
 //	go build -ldflags "-X main.version=0.14.2"
 //
 // The default mirrors the latest release tag.
-var version = "0.14.2"
+var version = "0.14.3"
 
 // knownCommands is the source of truth for command suggestions and the
 // "unknown command" listing. Keep in sync with the switch in main().

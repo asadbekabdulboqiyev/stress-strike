@@ -24,7 +24,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
-var version = "0.14.2"
+var version = "0.14.3"
 
 var (
 	listenAddr  = flag.String("listen", ":50051", "Master listen address (for worker registration)")

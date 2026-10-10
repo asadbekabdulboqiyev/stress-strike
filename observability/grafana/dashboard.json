@@ -1,0 +1,25 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "stress-strike-min",
+    "title": "Stress-Strike Minimal",
+    "tags": ["stress-strike"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Requests",
+        "targets": [{"expr": "ss_requests_total"}],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "type": "stat",
+        "title": "Errors",
+        "targets": [{"expr": "ss_errors_total"}],
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+      }
+    ]
+  }
+}

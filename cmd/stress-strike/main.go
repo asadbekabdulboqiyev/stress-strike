@@ -20,7 +20,7 @@ var version = "0.14.3"
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"demo-store", "pentest", "help", "version",
+	"demo-store", "pentest", "authorize", "audit", "help", "version",
 }
 
 func main() {
@@ -52,6 +52,12 @@ func main() {
 			return
 		case "demo-store":
 			cmdDemoStore()
+			return
+		case "authorize":
+			cmdAuthorize()
+			return
+		case "audit":
+			cmdAudit()
 			return
 		case "help", "--help", "-h":
 			printFullHelp()
@@ -119,6 +125,8 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    worker      Distributed mode — worker node
    demo-store  Launch bundled VoltStore demo (VeriGate ON)
    pentest     1-click professional security assessment
+   authorize   Manage target authorizations (allow-list + approvals)
+   audit       Show or verify the authorization audit trail
    help        Show this help
    version     Show version
 

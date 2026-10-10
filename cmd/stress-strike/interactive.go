@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
@@ -836,6 +837,8 @@ func interactiveCLI(r *bufio.Reader) {
 		fatal(err)
 	}
 
+	enforceAuthz(authz.OpLoadTest, scenarioTargets(sc), os.Args, gateOptions{})
+
 	eng, err := engine.New(sc)
 	if err != nil {
 		fatal(err)
@@ -897,6 +900,10 @@ func interactiveWizard(r *bufio.Reader) {
 	if ans.gate {
 		sc.Profile.Gate = true
 	}
+
+	// The interactive wizard is another way to start a load test, so it goes
+	// through the same authorization gate as `stress-strike run`.
+	enforceAuthz(authz.OpLoadTest, scenarioTargets(sc), os.Args, gateOptions{})
 
 	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")

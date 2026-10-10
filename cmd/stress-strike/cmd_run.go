@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
@@ -66,6 +67,7 @@ func cmdRun() {
 		dashListen    string
 		tlsFP         string
 		noHTTP2       bool
+		authzOpts     gateOptions
 	)
 
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
@@ -92,6 +94,11 @@ func cmdRun() {
 	fs.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections")
 	fs.StringVar(&tlsFP, "tls-fingerprint", "", "TLS ClientHello fingerprint (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...)")
 	fs.BoolVar(&noHTTP2, "no-http2", false, "disable HTTP/2 negotiation (force HTTP/1.1)")
+	fs.StringVar(&authzOpts.authorized, "authorized", "", "authorization ticket id recorded by an approver")
+	fs.BoolVar(&authzOpts.allowPrivate, "allow-private", false, "allow private/link-local targets explicitly")
+	fs.StringVar(&authzOpts.policyPath, "policy", "", "authorization policy file (default ~/.stress-strike/authz.json)")
+	fs.StringVar(&authzOpts.auditPath, "audit-log", "", "audit log file (default ~/.stress-strike/audit.jsonl)")
+	fs.StringVar(&authzOpts.webhook, "notify-webhook", "", "webhook URL for audit notifications")
 	fs.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA: max p99 latency (ms)")
 	fs.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA: max avg latency (ms)")
 	fs.Float64Var(&expectErrRate, "expect-error-rate", 0, "SLA: max error rate (%%)")
@@ -198,6 +205,10 @@ func cmdRun() {
 	if mode != "cli" && mode != "dashboard" {
 		fatal(fmt.Errorf("invalid --mode %q: must be 'cli' or 'dashboard'", mode))
 	}
+
+	// Authorization gate: nothing is sent until every target passes the policy
+	// and the decision is appended to the audit trail.
+	enforceAuthz(authz.OpLoadTest, scenarioTargets(scenario), os.Args, authzOpts)
 
 	// Dashboard mode: open the real-time WebSocket dashboard and drive the
 	// real load engine from the browser. No terminal report is printed.

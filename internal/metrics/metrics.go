@@ -23,8 +23,8 @@ type StepStats struct {
 	// directly instead of summing the per-name map, which is what the live
 	// progress display and the dashboard call several times a second.
 	errCount atomic.Uint64
-	errors  map[string]*atomic.Uint64
-	mu      sync.Mutex
+	errors   map[string]*atomic.Uint64
+	mu       sync.Mutex
 }
 
 func NewStepStats(name string) *StepStats {

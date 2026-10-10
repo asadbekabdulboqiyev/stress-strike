@@ -31,16 +31,16 @@ func renderRef(tmpl string, vars map[string]string) string {
 
 func TestRenderMatchesRegexpReference(t *testing.T) {
 	vars := map[string]string{
-		"user": "user7",
-		"id":   "7",
-		"item": "item7",
-		"a":    "A",
-		"a.b":  "dotted",
-		"a-b":  "dashed",
-		"a_b":  "underscored",
-		"a1":   "digit",
+		"user":  "user7",
+		"id":    "7",
+		"item":  "item7",
+		"a":     "A",
+		"a.b":   "dotted",
+		"a-b":   "dashed",
+		"a_b":   "underscored",
+		"a1":    "digit",
 		"UPPER": "up",
-		"":     "empty-value",
+		"":      "empty-value",
 	}
 	cases := []string{
 		"{{user}}",
@@ -226,4 +226,3 @@ func TestBodyRegexpCaching(t *testing.T) {
 		t.Fatalf("cached error differs: %q vs %q", badErr, badErr2)
 	}
 }
-

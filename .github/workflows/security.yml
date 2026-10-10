@@ -1,0 +1,152 @@
+name: Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "41 4 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ── known-vulnerable dependencies ─────────────────────────────────────────
+  # go.mod pins golang.org/x/crypto and golang.org/x/net; without this job a
+  # CVE in either surfaces only when something breaks at runtime.
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: govulncheck ./...
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: "1.26"
+          go-package: ./...
+          # Symbol-level analysis, so unused-but-present vulnerable code does
+          # not fail the build while reachable vulnerable code does.
+          check-type: source
+
+  # ── static security analysis ──────────────────────────────────────────────
+  gosec:
+    name: gosec
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: -no-fail -fmt sarif -out gosec.sarif ./...
+        continue-on-error: true
+
+      - name: Fail on findings
+        run: |
+          set -euo pipefail
+          # G204/G304 (subprocess, file inclusion) are expected in a tool that
+          # shells out to nothing but legitimately reads user-supplied pcap
+          # and report paths; they are reported as warnings, not gates.
+          if jq -e '[.runs[].results[] | select(.level=="error")
+                     | .rule_id | select(test("^(G204|G304)$") | not)]
+                     | length > 0' gosec.sarif >/dev/null; then
+            echo "::error::gosec reported blocking findings"
+            exit 1
+          fi
+          echo "gosec: no blocking findings"
+
+  # ── secret leakage ────────────────────────────────────────────────────────
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan history
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── container images ──────────────────────────────────────────────────────
+  trivy:
+    name: Trivy (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [stress-strike, stress-strike-master, stress-strike-worker]
+        include:
+          - image: stress-strike
+            dockerfile: Dockerfile
+          - image: stress-strike-master
+            dockerfile: Dockerfile.master
+          - image: stress-strike-worker
+            dockerfile: Dockerfile.worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image to scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          load: true
+          tags: ${{ matrix.image }}:scan
+          build-args: |
+            VERSION=scan
+
+      - name: Scan filesystem + image
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ matrix.image }}:scan
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          scanners: vuln,misconfig,secret
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
+
+  # ── dependency review on PRs ──────────────────────────────────────────────
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

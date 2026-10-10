@@ -1,37 +1,68 @@
-# Dockerfile.worker — containerized stress-strike distributed worker.
+# syntax=docker/dockerfile:1
+#
+# stress-strike distributed worker. Distroless static + nonroot.
 #
 # Build:
-#   docker build -f Dockerfile.worker -t stress-strike-worker:0.14.0 .
+#   docker build -f Dockerfile.worker -t ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 .
 #
 # Run (static fleet):
-#   docker run --rm -p 50061:50061 stress-strike-worker:0.14.0 \
+#   docker run --rm -p 50061:50061 \
+#     --ulimit nofile=1048576:1048576 \
+#     ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 \
 #     -listen 0.0.0.0:50061 -id docker-1 -max-users 200000
 #
 # Run (auto-discovery, reachable as docker-1:50061 on a shared network):
-#   docker run --rm --network strike -p 50061:50061 stress-strike-worker:0.14.0 \
+#   docker run --rm --network strike -p 50061:50061 \
+#     --ulimit nofile=1048576:1048576 \
+#     ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 \
 #     -listen 0.0.0.0:50061 -advertise docker-1:50061 \
 #     -master master:50051 -id docker-1 -token "$TOKEN"
 #
-# NOTE: a container needs extra capabilities/ulimits to reach very high
-# connection counts: --ulimit nofile=1048576:1048576 --network host.
+# NOTE: reaching very high connection counts needs --ulimit nofile and,
+# preferably, --network host. This image cannot raise its own limits.
 
-FROM golang:1.26 AS build
+FROM golang:1.26 AS builder
 
-ARG VERSION=0.14.0
+ARG VERSION=dev
+ARG REVISION=""
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false \
-      -ldflags="-s -w -X main.version=${VERSION}" \
+
+RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
+    go build -trimpath \
+      -ldflags="-s -w \
+        -X main.version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
       -o /out/stress-strike-worker ./cmd/stress-strike-worker
+
+RUN /out/stress-strike-worker --version || true
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=build /out/stress-strike-worker /usr/local/bin/stress-strike-worker
+ARG VERSION=dev
+ARG REVISION=""
+
+# CA bundle is required: the worker generates HTTPS load.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+COPY --from=builder /out/stress-strike-worker /usr/local/bin/stress-strike-worker
+
+# AGPL-3.0 §4.
+COPY LICENSE /usr/share/doc/stress-strike/LICENSE
+
+USER 65532:65532
 
 EXPOSE 50061
+
+STOPSIGNAL SIGTERM
+
 ENTRYPOINT ["/usr/local/bin/stress-strike-worker"]
 CMD ["-listen", "0.0.0.0:50061"]

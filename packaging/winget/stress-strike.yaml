@@ -1,0 +1,49 @@
+# Windows Package Manager manifest for stress-strike.
+#
+# Put this directory in a winget-pkgs fork as:
+#   manifests/a/asadbekabdulboqiyev/stress-strike/0.14.3/stress-strike.yaml
+#   manifests/a/asadbekabdulboqiyev/stress-strike/0.14.3/
+#       stress-strike.installer.yaml   (see packaging/winget/)
+#
+# Replace both hashes with the values from checksums.txt in the release.
+
+PackageIdentifier: asadbekabdulboqiyev.stress-strike
+PackageVersion: 0.14.3
+DefaultLocale: en-US
+ManifestType: installer
+InstallerType: zip
+License: AGPL-3.0
+Publisher: asadbekabdulboqiyev
+Author: stress-strike maintainers
+Homepage: https://github.com/asadbekabdulboqiyev/stress-strike
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.3
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.3
+InstallationNotes: |
+  Pure Go build: no libpcap, no C runtime, no system dependencies.
+
+  To reach high virtual-user counts, run the distributed worker with a raised
+  file-descriptor limit, or use WSL2 with the Linux worker package and:
+    LimitNOFILE=1048576
+Tags:
+  - load-testing
+  - performance
+  - benchmarking
+  - go
+ReleaseDate: 2026-10-01T00:00:00Z
+Platform:
+  - Windows.Desc
+  - Windows.X64
+Architectures:
+  - x64
+InstallerSwitches:
+  Custom: stress-strike.exe
+
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.3/stress-strike_0.14.3_windows_amd64.zip
+    InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
+
+FileExtensions:
+  - ss
+Commands:
+  - name: stress-strike

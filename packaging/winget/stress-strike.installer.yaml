@@ -1,0 +1,13 @@
+ManifestType: installer
+InstallerType: zip
+MinimumOSVersion: 10.0.17763.0
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.3
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.3
+Installers:
+  - Architecture: arm64
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.3/stress-strike_0.14.3_windows_arm64.zip
+    InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
+FileExtensions:
+  - ss
+Commands:
+  - name: stress-strike

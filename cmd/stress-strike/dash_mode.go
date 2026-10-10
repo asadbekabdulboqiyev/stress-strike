@@ -238,11 +238,12 @@ func snapshotFromTelemetry(e *engine.Engine, sc *config.Scenario) *dashboard.Liv
 		errRate = float64(errs) / float64(reqs) * 100
 	}
 
-	// Percentiles from overall histogram
-	snap := t.Overall.Latency.Snapshot()
-	p50 := snap.Percentile(0.50)
-	p95 := snap.Percentile(0.95)
-	p99 := snap.Percentile(0.99)
+	// Percentiles read live — this runs on every dashboard push, and a full
+	// Snapshot copies all 60000 buckets (480KB) on each call.
+	lat := t.Overall.Latency
+	p50 := lat.Percentile(0.50)
+	p95 := lat.Percentile(0.95)
+	p99 := lat.Percentile(0.99)
 
 	totalDur := sc.Profile.TotalDuration()
 	progress := 0.0
@@ -262,8 +263,8 @@ func snapshotFromTelemetry(e *engine.Engine, sc *config.Scenario) *dashboard.Liv
 		P50Latency:  p50.Seconds() * 1000,
 		P95Latency:  p95.Seconds() * 1000,
 		P99Latency:  p99.Seconds() * 1000,
-		AvgLatency:  snap.Average.Seconds() * 1000,
-		MaxLatency:  snap.Max.Seconds() * 1000,
+		AvgLatency:  lat.Avg().Seconds() * 1000,
+		MaxLatency:  lat.MaxLatency().Seconds() * 1000,
 		ActiveUsers: int(t.ActiveUsers.Load()),
 		StatusCodes: t.StatusCodes(),
 	}

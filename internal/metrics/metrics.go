@@ -7,36 +7,56 @@ import (
 	"time"
 )
 
+// statusArraySize covers the whole HTTP status range (100-599). Codes inside it
+// are counted in a plain array of atomics, so recording one takes no lock at
+// all; anything outside the range falls back to a map.
+const statusArraySize = 600
+
 type StepStats struct {
 	Name    string
 	Latency *Histogram
-	status  map[int]*atomic.Uint64
+	status  [statusArraySize]atomic.Uint64
+	// statusOther holds codes outside the HTTP range (protocol-level results
+	// from the gRPC, WebSocket and raw TCP/UDP clients).
+	statusOther map[int]*atomic.Uint64
+	// errCount is a running total maintained by Record. ErrorCount reads it
+	// directly instead of summing the per-name map, which is what the live
+	// progress display and the dashboard call several times a second.
+	errCount atomic.Uint64
 	errors  map[string]*atomic.Uint64
 	mu      sync.Mutex
 }
 
 func NewStepStats(name string) *StepStats {
 	return &StepStats{
-		Name:    name,
-		Latency: &Histogram{},
-		status:  make(map[int]*atomic.Uint64),
-		errors:  make(map[string]*atomic.Uint64),
+		Name:        name,
+		Latency:     &Histogram{},
+		statusOther: make(map[int]*atomic.Uint64),
+		errors:      make(map[string]*atomic.Uint64),
 	}
 }
 
 func (s *StepStats) Record(latency time.Duration, status int, errName string) {
 	s.Latency.Add(latency)
 	if status > 0 {
-		s.mu.Lock()
-		c, ok := s.status[status]
-		if !ok {
-			c = &atomic.Uint64{}
-			s.status[status] = c
+		if status < statusArraySize {
+			// The common case: an HTTP code, counted without locking.
+			s.status[status].Add(1)
+		} else {
+			s.mu.Lock()
+			c, ok := s.statusOther[status]
+			if !ok {
+				c = &atomic.Uint64{}
+				s.statusOther[status] = c
+			}
+			s.mu.Unlock()
+			c.Add(1)
 		}
-		s.mu.Unlock()
-		c.Add(1)
 	}
 	if errName != "" {
+		// The counter is bumped before the per-name lookup so a reader that
+		// races this update never sees a total lower than the names it sums.
+		s.errCount.Add(1)
 		s.mu.Lock()
 		c, ok := s.errors[errName]
 		if !ok {
@@ -51,8 +71,13 @@ func (s *StepStats) Record(latency time.Duration, status int, errName string) {
 func (s *StepStats) StatusCodes() map[int]uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make(map[int]uint64, len(s.status))
-	for code, c := range s.status {
+	out := make(map[int]uint64, len(s.statusOther)+4)
+	for code := range s.status {
+		if n := s.status[code].Load(); n > 0 {
+			out[code] = n
+		}
+	}
+	for code, c := range s.statusOther {
 		out[code] = c.Load()
 	}
 	return out
@@ -68,12 +93,11 @@ func (s *StepStats) Errors() map[string]uint64 {
 	return out
 }
 
+// ErrorCount returns the total number of errored requests recorded for this
+// step. It is a single atomic load: the counter is maintained by Record, so
+// this no longer walks the per-error-name map.
 func (s *StepStats) ErrorCount() uint64 {
-	var n uint64
-	for _, c := range s.Errors() {
-		n += c
-	}
-	return n
+	return s.errCount.Load()
 }
 
 func (s *StepStats) Requests() uint64 {

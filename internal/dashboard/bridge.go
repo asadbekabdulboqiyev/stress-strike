@@ -143,18 +143,20 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 	if b.totalReqs > 0 {
 		errorRate = float64(b.totalErrors) / float64(b.totalReqs) * 100
 	}
-	hs := b.hist.Snapshot()
+	// Read percentiles live instead of materializing a Snapshot: this path
+	// runs once per push and a full snapshot copies every bucket.
+	hist := &b.hist
 	snap := &LiveSnapshot{
 		Timestamp:   time.Now(),
 		RPS:         rps,
 		TotalReq:    b.totalReqs,
 		TotalErrors: b.totalErrors,
 		ErrorRate:   errorRate,
-		P50Latency:  latencyMillis(hs.Percentile(0.50)),
-		P95Latency:  latencyMillis(hs.Percentile(0.95)),
-		P99Latency:  latencyMillis(hs.Percentile(0.99)),
-		AvgLatency:  latencyMillis(hs.Average),
-		MaxLatency:  latencyMillis(hs.Max),
+		P50Latency:  latencyMillis(hist.Percentile(0.50)),
+		P95Latency:  latencyMillis(hist.Percentile(0.95)),
+		P99Latency:  latencyMillis(hist.Percentile(0.99)),
+		AvgLatency:  latencyMillis(hist.Avg()),
+		MaxLatency:  latencyMillis(hist.MaxLatency()),
 		StatusCodes: cloneStatusCodes(b.statusCodes),
 	}
 	b.mu.Unlock()
@@ -176,18 +178,18 @@ func (b *EngineBridge) SnapshotFromTelemetry(tel *metrics.Telemetry) *LiveSnapsh
 	if reqs > 0 {
 		errorRate = float64(errs) / float64(reqs) * 100
 	}
-	hs := tel.Overall.Latency.Snapshot()
+	lat := tel.Overall.Latency
 	return &LiveSnapshot{
 		Timestamp:   time.Now(),
 		RPS:         tel.RPS(),
 		TotalReq:    reqs,
 		TotalErrors: errs,
 		ErrorRate:   errorRate,
-		P50Latency:  latencyMillis(hs.Percentile(0.50)),
-		P95Latency:  latencyMillis(hs.Percentile(0.95)),
-		P99Latency:  latencyMillis(hs.Percentile(0.99)),
-		AvgLatency:  latencyMillis(hs.Average),
-		MaxLatency:  latencyMillis(hs.Max),
+		P50Latency:  latencyMillis(lat.Percentile(0.50)),
+		P95Latency:  latencyMillis(lat.Percentile(0.95)),
+		P99Latency:  latencyMillis(lat.Percentile(0.99)),
+		AvgLatency:  latencyMillis(lat.Avg()),
+		MaxLatency:  latencyMillis(lat.MaxLatency()),
 		ActiveUsers: int(tel.ActiveUsers.Load()),
 		StatusCodes: tel.StatusCodes(),
 	}

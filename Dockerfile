@@ -1,57 +1,79 @@
 # syntax=docker/dockerfile:1
 
 ###############################################################################
-# Stage 1 — builder: compile all 6 binaries.
-#   replay requires CGO + libpcap (gopacket/pcap); everything else is pure Go.
+# stress-strike — all-in-one image (run CLI + dashboard from one container).
+#
+# Build:
+#   docker build -t ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 .
+#
+# Run (web dashboard):
+#   docker run --rm -p 8888:8888 ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 \
+#     run --url https://example.com --users 100 --duration 60 \
+#          --mode dashboard --listen :8888
+#
+# AGPL-3.0: LICENSE is copied into the image (§4 requires the license text to
+# travel with the binary). The previous image shipped no license file.
 ###############################################################################
+
+# ── Stage 1: build ──────────────────────────────────────────────────────────
 FROM golang:1.26-alpine AS builder
 
-ARG VERSION=0.11.0
-
-# Build deps for CGO (replay binary needs libpcap for gopacket/pcap).
-RUN apk add --no-cache build-base libpcap-dev
+# VERSION is stamped by CI (docker/metadata-action). Never hardcode it here.
+ARG VERSION=dev
+ARG REVISION=""
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 
-# Cache dependency downloads in their own layer.
+# Dependencies first so source edits don't invalidate the module cache.
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
-# Copy the full source tree.
 COPY . .
 
-# Build the 5 pure-Go binaries (no CGO needed).
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike           ./cmd/stress-strike && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-dashboard ./cmd/stress-strike-dashboard && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-master    ./cmd/stress-strike-master && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-worker    ./cmd/stress-strike-worker && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-scan      ./cmd/stress-strike-scan
+# All 6 binaries, pure Go. The previous image built replay with
+# CGO_ENABLED=1 against libpcap and shipped libpcap in the runtime layer —
+# but internal/replay reads PCAP through gopacket/pcapgo, which needs neither.
+# That cost ~2 MB in the image and a build-base install for nothing.
+RUN set -eux; \
+    for pkg in ./cmd/...; do \
+        name="$(basename "$pkg")"; \
+        CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
+        go build -trimpath \
+          -ldflags="-s -w \
+            -X main.version=${VERSION} \
+            -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
+            -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
+          -o "/out/${name}" "$pkg"; \
+    done
 
-# Build replay with CGO (needs libpcap for gopacket/pcap).
-RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-replay ./cmd/stress-strike-replay
+# Verify the binary we are about to ship is not a dev build.
+RUN /out/stress-strike --version
 
-###############################################################################
-# Stage 2 — runtime: minimal Alpine image with all binaries.
-###############################################################################
+# ── Stage 2: runtime ────────────────────────────────────────────────────────
 FROM alpine:3.21
 
-ARG VERSION=0.11.0
+ARG VERSION=dev
+ARG REVISION=""
 
 LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \
       org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.vendor="stress-strike"
+      org.opencontainers.image.vendor="stress-strike" \
+      org.opencontainers.image.source="https://github.com/asadbekabdulboqiyev/stress-strike"
 
-# CA certs for HTTPS targets; libpcap for replay at runtime; non-root user.
-RUN apk add --no-cache ca-certificates libpcap \
-    && adduser -D -H -u 10001 stress
+# ca-certificates only: libpcap is no longer a runtime dependency.
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -H -u 10001 -s /sbin/nologin stress
 
 WORKDIR /app
 
-RUN mkdir -p /app/reports && chown stress:stress /app/reports
+# Reports go to a volume, owned by the unprivileged user.
+RUN mkdir -p /app/reports && chown -R stress:stress /app
 
-# Copy all 6 binaries into the runtime image.
 COPY --from=builder /out/stress-strike           /usr/local/bin/stress-strike
 COPY --from=builder /out/stress-strike-dashboard /usr/local/bin/stress-strike-dashboard
 COPY --from=builder /out/stress-strike-master    /usr/local/bin/stress-strike-master
@@ -59,11 +81,27 @@ COPY --from=builder /out/stress-strike-worker    /usr/local/bin/stress-strike-wo
 COPY --from=builder /out/stress-strike-replay    /usr/local/bin/stress-strike-replay
 COPY --from=builder /out/stress-strike-scan      /usr/local/bin/stress-strike-scan
 
-USER stress
+# AGPL-3.0 §4.
+COPY LICENSE /usr/share/doc/stress-strike/LICENSE
 
-# Ports: 8888 = dashboard UI, 50051 = master gRPC, 50052 = worker gRPC
+USER 10001:10001
+
 EXPOSE 8888 50051 50052
 
 VOLUME ["/app/reports"]
+
+# The Go code installs a SIGTERM handler in every long-running mode
+# (signal.Notify on SIGINT/SIGTERM), so Docker's default stop signal is
+# already the graceful one. Stated explicitly so it is not "fixed" later.
+STOPSIGNAL SIGTERM
+
+# No shell-based probe is possible once the CMD is the load binary, and the
+# dashboard port only opens in `--mode dashboard`. Leaving HEALTHCHECK to the
+# compose deploy (which knows the mode) is deliberate: a probe here would mark
+# healthy CLI invocations as failing and restart them.
+#
+# docker-compose.yml carries the matching probe:
+#   healthcheck:
+#     test: ["CMD", "stress-strike", "dashboard-health", "--listen", "127.0.0.1:8888"]
 
 ENTRYPOINT ["stress-strike"]

@@ -1,0 +1,72 @@
+# Patches for the destructive / correctness bugs found in the audit.
+# Apply with:  git apply patches/0001-audit-fixes.patch
+# (then review; this file is documentation of intent as well as a diff.)
+
+diff --git a/scripts/release.sh b/scripts/release.sh
+--- a/scripts/release.sh
++++ b/scripts/release.sh
+@@
+-rm -rf "${DIST_DIR}"
+-mkdir -p "${DIST_DIR}"
++# BUG: `rm -rf dist` deleted dist/linux-worker/ (the worker tarballs produced
++# by build-worker-linux.sh) AND dist/docker-compose.generated.yml (the file
++# scripts/deploy-docker.sh writes, so `make docker-down` would then fail).
++# Only the release output directory is ours to clean.
++rm -rf "${DIST_DIR}/release"
++mkdir -p "${DIST_DIR}/release"
++DIST_DIR="${DIST_DIR}/release"
+
+diff --git a/scripts/deploy-docker.sh b/scripts/deploy-docker.sh
+--- a/scripts/deploy-docker.sh
++++ b/scripts/deploy-docker.sh
+@@
+-COMPOSE_FILE="${REPO_ROOT}/dist/docker-compose.generated.yml"
++# BUG: this lived under dist/, which `make release` and `make clean` both
++# `rm -rf`, destroying the compose file for an already-running fleet.
++# Keep generated state out of the build output tree.
++GENERATED_DIR="${STRESS_STRIKE_GENERATED_DIR:-${REPO_ROOT}/.generated}"
++COMPOSE_FILE="${GENERATED_DIR}/docker-compose.generated.yml"
+
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@
+-.PHONY: clean
+-clean: ## Remove bin/ and reports/
+-	rm -rf $(BIN_DIR) $(DIST_DIR) reports coverage.out coverage.html
++.PHONY: clean
++clean: ## Remove bin/, reports/ and release output (NOT dist/linux-worker)
++	rm -rf $(BIN_DIR) dist/release reports coverage.out coverage.html
++
++.PHONY: distclean
++distclean: ## Remove the entire dist/ tree, including worker packages
++	rm -rf $(DIST_DIR)
++
++.PHONY: version-check
++version-check: ## Fail if VERSION, the source and the latest tag disagree
++	@echo "VERSION file: $$(cat $(VERSION_FILE))"
++	@grep -rhoE 'var (version|Version) = "0\.[0-9]+\.[0-9]+"' cmd internal \
++		--include='*.go' | sort -u | sed 's/^/source: /'
+
++.PHONY: lint-ci
++lint-ci: ## Run golangci-lint exactly as CI does
++	golangci-lint run --timeout=10m
+
++.PHONY: vuln
++vuln: ## Scan for known-vulnerable dependencies
++	govulncheck ./...
+
++.PHONY: goreleaser-check
++goreleaser-check: ## Validate .goreleaser.yaml
++	goreleaser check
+
++.PHONY: goreleaser-snapshot
++goreleaser-snapshot: ## Build every artifact locally without publishing
++	goreleaser release --snapshot --clean --skip=publish,sign
+
+diff --git a/cmd/stress-strike/main.go b/cmd/stress-strike/main.go
+--- a/cmd/stress-strike/main.go
++++ b/cmd/stress-strike/main.go
+@@
+-//	go build -ldflags "-X main.version=0.14.2"
++//	go build -ldflags "-X main.version=$(cat VERSION)"

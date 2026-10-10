@@ -138,31 +138,39 @@ func (d *DemoStore) Done() <-chan struct{} {
 	return d.exited
 }
 
-// locate finds a way to run the demo store, preferring a pre-built binary,
-// then a binary on PATH, then a `go run` inside a checkout of this repo.
-// The checkout search walks upward from the working directory, so it works
-// from any subdirectory of the repo — not just the root.
+// locate finds a way to run the demo store, preferring a `go run` inside a
+// checkout of this repo, then a pre-built binary in that checkout, and only
+// then a binary on PATH. The checkout search walks upward from the working
+// directory, so it works from any subdirectory of the repo — not just the root.
+//
+// The checkout sources are deliberately tried BEFORE PATH. A PATH lookup
+// resolves the first "demo-store" in any PATH directory, and the Go bin
+// directory (~/go/bin, GOBIN) is a common writable location. Trusting it
+// means a file dropped there would be executed by the dashboard's one-click
+// "Launch Demo Store" button. The checkout and the toolchain are both under
+// the user's own control, so they are the safer place to resolve from.
 func (d *DemoStore) locate() (string, []string, error) {
 	if d.locateOverride != nil {
 		return d.locateOverride()
 	}
-	// 1) Pre-built binary in a checkout: ./bin/demo-store (make build).
-	if p := findUp("bin/demo-store"); p != "" {
-		return p, nil, nil
-	}
-	// 2) A demo-store binary on PATH (installed alongside stress-strike).
-	if p, err := exec.LookPath("demo-store"); err == nil {
-		return p, nil, nil
-	}
-	// 3) Go checkout: `go run ./examples/demo_store` (needs a toolchain).
+	// 1) Go checkout: `go run ./examples/demo_store` (needs a toolchain).
 	// findUp returns the go.mod FILE path — the checkout root is its parent.
 	if mod := findUp("go.mod"); mod != "" {
 		root := filepath.Dir(mod)
-		if _, err := os.Stat(filepath.Join(root, "examples", "demo_store")); err == nil {
+		if st, err := os.Stat(filepath.Join(root, "examples", "demo_store")); err == nil && st.IsDir() {
 			if goBin, err := exec.LookPath("go"); err == nil {
 				return goBin, []string{"run", filepath.Join(root, "examples", "demo_store")}, nil
 			}
 		}
+		// 2) Pre-built binary in the same checkout: ./bin/demo-store
+		// (make build). Checked here so it is used before PATH.
+		if p := findUp("bin/demo-store"); p != "" {
+			return p, nil, nil
+		}
+	}
+	// 3) A demo-store binary on PATH (installed alongside stress-strike).
+	if p, err := exec.LookPath("demo-store"); err == nil {
+		return p, nil, nil
 	}
 	return "", nil, fmt.Errorf(
 		"demo store not found: build it with `make build` (bin/demo-store), install it on PATH, or run the command from the stress-strike checkout")

@@ -39,6 +39,40 @@ func BenchmarkPercentile(b *testing.B) {
 	}
 }
 
+// BenchmarkPercentileLive measures the three percentiles a live caller (the
+// progress panel, the dashboard push) actually reads. Unlike
+// BenchmarkPercentile it does not pay for a Snapshot, because that is the whole
+// point: the live path must not copy the bucket array.
+func BenchmarkPercentileLive(b *testing.B) {
+	h := &Histogram{}
+	for i := 0; i < 1_000_000; i++ {
+		h.Add(time.Duration(i%1000+1) * time.Millisecond)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = h.Percentile(0.50)
+		_ = h.Percentile(0.95)
+		_ = h.Percentile(0.99)
+	}
+}
+
+// BenchmarkLiveReadPattern is the full read a live frame performs: three
+// percentiles plus average and max, with no Snapshot anywhere.
+func BenchmarkLiveReadPattern(b *testing.B) {
+	h := &Histogram{}
+	for i := 0; i < 1_000_000; i++ {
+		h.Add(time.Duration(i%1000+1) * time.Millisecond)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = h.Percentile(0.50)
+		_ = h.Percentile(0.95)
+		_ = h.Percentile(0.99)
+		_ = h.Avg()
+		_ = h.MaxLatency()
+	}
+}
+
 func BenchmarkStepStatsRecord(b *testing.B) {
 	s := NewStepStats("bench")
 	b.ResetTimer()

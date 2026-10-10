@@ -37,7 +37,10 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 				fmt.Fprintf(out, "\r%s\r", strings.Repeat(" ", 120))
 				return
 			case <-ticker.C:
-				snap := t.Overall.Latency.Snapshot()
+				// Live percentiles, read straight from the buckets. A full
+				// Snapshot copies 480KB and this panel redraws five times a
+				// second, so the copy dominated the redraw cost.
+				lat := t.Overall.Latency
 				errs := t.TotalErrors()
 				reqs := t.TotalRequests()
 				errPct := 0.0
@@ -93,7 +96,7 @@ func StartLive(t *metrics.Telemetry, total time.Duration, out io.Writer) func() 
 				// Line 3 — latency percentiles and active users.
 				fmt.Fprint(out, "\r")
 				fmt.Fprintf(out, "  p50=%s p95=%s p99=%s",
-					snap.Percentile(0.50), snap.Percentile(0.95), snap.Percentile(0.99))
+					lat.Percentile(0.50), lat.Percentile(0.95), lat.Percentile(0.99))
 				fmt.Fprintln(out, colorize(colorCyan, true,
 					fmt.Sprintf(" │ active=%d", t.ActiveUsers.Load())))
 			}

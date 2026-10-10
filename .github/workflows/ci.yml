@@ -4,171 +4,251 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    branches: [main, master]
   workflow_dispatch:
+
+# Cancel superseded runs on the same ref, but never cancel a release-gating run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 env:
   GO_VERSION: "1.26"
+  # Pinned tool versions so CI failures are never caused by a tool auto-update.
+  GOLANGCI_LINT_VERSION: "v2.1.6"
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # lint — go vet + gofmt enforcement (fast feedback)
-  # ---------------------------------------------------------------------------
+  # ── gofmt / vet / lint ─────────────────────────────────────────────────────
+  # No libpcap install: internal/replay reads PCAP via gopacket/pcapgo (pure
+  # Go), so the whole module vets and tests without libpcap-dev. The previous
+  # workflow installed it in 3 jobs for no reason.
   lint:
-    name: Lint (vet + gofmt)
+    name: Lint (golangci-lint)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      # internal/replay imports gopacket/pcap, which requires CGO + libpcap.
-      # Without libpcap-dev, `go vet ./...` fails on the replay package.
-      - name: Install libpcap (CGO dep for replay)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpcap-dev
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: gofmt check
+      - name: Check go.mod is tidy
         run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "::error::Unformatted files found:"
-            echo "$unformatted"
+          cp go.mod go.mod.bak
+          cp go.sum go.sum.bak
+          go mod tidy
+          if ! diff -u go.mod.bak go.mod || ! diff -u go.sum.bak go.sum; then
+            echo "::error::go.mod/go.sum are not tidy — run 'go mod tidy' and commit"
             exit 1
           fi
-          echo "gofmt: all files formatted"
 
-  # ---------------------------------------------------------------------------
-  # test — race detector + coverage, coverage.out uploaded as artifact
-  # ---------------------------------------------------------------------------
+      - name: Verify module checksums
+        run: go mod verify
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --timeout=10m
+
+  # ── unit + integration tests, race detector, coverage ──────────────────────
   test:
-    name: Test (race + coverage)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
-      # `go test -race ./...` compiles internal/replay too — it needs CGO +
-      # libpcap (gopacket/pcap). Without libpcap-dev the job is red.
-      - name: Install libpcap (CGO dep for replay)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpcap-dev
-
-      - name: Run tests with race detector
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
-          if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # build — cross-compile smoke test for the primary release platforms
-  # ---------------------------------------------------------------------------
-  build:
-    name: Build (${{ matrix.os }}/${{ matrix.arch }})
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, race)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: darwin, arch: arm64 }
-          - { os: linux,  arch: amd64 }
-          - { os: windows, arch: amd64 }
+        # The race detector only works where cgo works, so keep the matrix to
+        # the platforms CI actually supports well.
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Cross-compile
-        run: |
-          suffix=""
-          if [ "${{ matrix.os }}" = "windows" ]; then suffix=".exe"; fi
-          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
-            go build -trimpath -buildvcs=false \
-            -o "dist/stress-strike-${{ matrix.os }}-${{ matrix.arch }}${suffix}" \
-            ./cmd/stress-strike
+      - name: Race + coverage
+        run: go test -race -timeout 20m -covermode=atomic -coverprofile=coverage.out -coverpkg=./... ./...
+        env:
+          # Keep CI workers from being starved by the engine's own load tests.
+          GOMAXPROCS: 4
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: stress-strike-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/stress-strike-${{ matrix.os }}-${{ matrix.arch }}*
+          name: coverage-${{ matrix.os }}
+          path: coverage.out
           if-no-files-found: error
+          retention-days: 14
 
-  # ---------------------------------------------------------------------------
-  # docker — multi-arch image build; PUSH only when a registry credential is
-  # present (secrets.DOCKER_USERNAME) AND the event is a push to main/master.
-  # No hardcoded credentials anywhere — everything comes from secrets.*.
-  # ---------------------------------------------------------------------------
-  docker:
-    name: Docker multi-arch (${{ matrix.platform }})
+      # Go writes CRLF on Windows; normalise before the toolchain that
+      # verifies the uploaded profile touches it.
+      - name: Normalise coverage profile line endings
+        if: runner.os == 'Windows'
+        run: |
+          $p = "coverage.out"
+          (Get-Content $p -Raw) -replace "`r`n", "`n" | Set-Content -NoNewline $p
+
+  # ── coverage gate ─────────────────────────────────────────────────────────
+  # -coverpkg=./... in the test job is what makes this number meaningful; the
+  # old workflow ran plain `go test` so per-package coverage flattered itself.
+  coverage:
+    name: Coverage gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: Report total
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: Enforce minimum
+        run: |
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')"
+          echo "total coverage: ${total}%"
+          floor=45
+          ok=$(awk -v t="$total" -v f="$floor" 'BEGIN{print (t+0 >= f+0) ? "true" : "false"}')
+          if [ "$ok" != "true" ]; then
+            echo "::error::coverage ${total}% is below the ${floor}% floor"
+            exit 1
+          fi
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        continue-on-error: true
+        with:
+          files: coverage.out
+          fail_ci_if_error: false
+          token: ${{ env.CODECOV_TOKEN }}
+
+  # ── cross-compile smoke: ALL 6 binaries on every release target ────────────
+  build:
+    name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The previous matrix had 3 entries and compiled only
+        # ./cmd/stress-strike — 1 of 6 binaries, missing linux/arm64,
+        # darwin/amd64 and windows/arm64.
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Verify the version package compiles on its own
+        run: go build ./internal/version/
+
+      - name: Cross-compile all binaries
+        run: |
+          set -euo pipefail
+          version="$(cat VERSION)"
+          mkdir -p out
+          for pkg in ./cmd/...; do
+            name="$(basename "$pkg")"
+            out="out/${name}"
+            [ "${{ matrix.os }}" = "windows" ] && out="${out}.exe"
+            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+              go build -trimpath \
+                -ldflags="-s -w -X main.version=${version} \
+                          -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${version}" \
+                -o "$out" "$pkg"
+            echo "  built ${name} (${{ matrix.os }}/${{ matrix.arch }}) $(du -h "$out" | cut -f1)"
+          done
+
+      - name: Run the built CLI (linux/amd64 only)
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: ./out/stress-strike --version && ./out/stress-strike --help > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bins-${{ matrix.os }}-${{ matrix.arch }}
+          path: out/*
+          retention-days: 7
+
+  # ── benchmarks: published, not gating ─────────────────────────────────────
+  bench:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run benchmarks
+        run: go test -run '^$' -bench=. -benchmem -benchtime=1s ./... 2>&1 | tee bench.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmarks
+          path: bench.txt
+          retention-days: 30
+
+  # ── docker: all three images, both architectures, build-only on PRs ────────
+  # The previous workflow only built Dockerfile (the all-in-one) — the master
+  # and worker images shipped completely untested.
+  docker:
+    name: Docker ${{ matrix.dockerfile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: [test]
     strategy:
       fail-fast: false
       matrix:
-        platform: [linux/amd64, linux/arm64]
+        include:
+          - dockerfile: Dockerfile
+            image: stress-strike
+          - dockerfile: Dockerfile.master
+            image: stress-strike-master
+          - dockerfile: Dockerfile.worker
+            image: stress-strike-worker
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        if: github.event_name == 'push' && env.DOCKER_USERNAME != ''
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_TOKEN }}
-
-      - name: Push decision
-        id: push-decision
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ -n "$DOCKER_USERNAME" ]; then
-            echo "should_push=true" >> "$GITHUB_OUTPUT"
-            echo "registry=$DOCKER_USERNAME" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_push=false" >> "$GITHUB_OUTPUT"
-            echo "registry=stress-strike" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build and push
+      - name: Build (no push)
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: ${{ matrix.platform }}
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           build-args: |
             VERSION=${{ github.ref_name }}
-          push: ${{ steps.push-decision.outputs.should_push }}
-          # Image name resolves to either the secret owner or "stress-strike".
-          tags: |
-            ${{ steps.push-decision.outputs.registry }}/stress-strike:latest
-            ${{ steps.push-decision.outputs.registry }}/stress-strike:${{ github.sha }}
+            REVISION=${{ github.sha }}

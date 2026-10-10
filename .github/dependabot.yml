@@ -1,0 +1,51 @@
+version: 2
+
+updates:
+  # Go module graph — golang.org/x/crypto and golang.org/x/net are the two
+  # dependencies most likely to carry a reachable CVE.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    labels: [dependencies, go]
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      golang-x:
+        patterns: ["golang.org/x/*"]
+      grpc:
+        patterns: ["google.golang.org/grpc", "google.golang.org/protobuf"]
+      gopacket:
+        patterns: ["github.com/google/gopacket"]
+
+  # Actions are pinned to @v4/@v5/@v6 — a moving supply-chain surface.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["actions/*", "docker/*", "github/*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]
+    commit-message:
+      prefix: "build(docker)"
+
+  # security.yml pins gosec and trivy to @master / an exact tag respectively;
+  # keep those current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, security]

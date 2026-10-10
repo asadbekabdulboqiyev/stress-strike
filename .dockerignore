@@ -15,21 +15,35 @@ coverage.html
 .gitignore
 .github/
 
-# Secrets
+# Secrets — note the leading slash: a bare `*.env` also swallows files like
+# `worker.env.example`, which the worker systemd packaging needs.
 .env
-*.env
+/.env
+**/.env
+**/*.pem
+**/*.key
 
 # Editor / temporary files
 .DS_Store
 *.swp
 *.tmp
 
-# Docs & meta (not needed at runtime)
-LICENSE
+# Docs & meta (not needed to compile)
+# LICENSE is deliberately NOT excluded: stress-strike is AGPL-3.0 and the
+# Dockerfiles COPY it into the image, because §4 requires the license text to
+# travel with the binary. Excluding it here broke that COPY.
 SECURITY.md
 README.md
 examples/
 scripts/
 
-# Host deployment files (systemd units, fleet templates) — not needed in the image
+# Release/packaging assets — never part of a build context.
+packaging/
+patches/
+.audit-backup/
+.generated/
+
+# Host deployment files (systemd units, fleet templates) — not needed in the
+# image. The worker package ships them via GoReleaser, not via the Docker
+# build context.
 deploy/

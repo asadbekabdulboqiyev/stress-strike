@@ -1,0 +1,125 @@
+name: Docker
+
+# Publishes the three images to GHCR (always) and Docker Hub (when a token is
+# configured).
+#
+# Fixes two bugs in the previous CI docker job:
+#   1. The image name was hardcoded to `<DOCKER_USERNAME>/stress-strike`, with a
+#      fallback of `stress-strike/stress-strike` — a repository that does not
+#      exist, so the push failed.
+#   2. build-args passed VERSION=${{ github.ref_name }}, which on a push to
+#      main is the literal string "main" and got baked into OCI labels and
+#      into the binary's --version output.
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  # cosign keyless signing of the pushed image, plus build provenance.
+  id-token: write
+  attestations: write
+
+env:
+  REGISTRY_GHCR: ghcr.io
+  # Resolved here so the Docker Hub login step can be skipped cleanly when the
+  # secret is unset — GitHub does not allow `secrets.*` inside `if:` directly.
+  DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: stress-strike
+            dockerfile: Dockerfile
+          - image: stress-strike-master
+            dockerfile: Dockerfile.master
+          - image: stress-strike-worker
+            dockerfile: Dockerfile.worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(cat VERSION)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v3
+        if: env.DOCKER_TOKEN != ''
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-
+
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Now a real version instead of "main".
+          build-args: |
+            VERSION=${{ steps.ver.outputs.value }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ github.event.repository.updated_at }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # SLSA provenance: proves the image was built from this commit.
+          provenance: mode=max
+          sbom: true
+
+      - name: Sign images (keyless)
+        env:
+          REGISTRY: ${{ env.REGISTRY_GHCR }}
+          IMAGE: ${{ steps.meta.outputs.tags }}
+        run: |
+          echo "$IMAGE" | tr ' ' '\n' | grep "^${REGISTRY}/" | while read -r ref; do
+            echo "::group::cosign sign ${ref}"
+            cosign sign --yes "$ref"
+            echo "::endgroup::"
+          done
+
+      - name: Summary
+        run: |
+          {
+            echo "### ${{ matrix.image }}"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -500,6 +500,9 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 		return
 	}
 	vars := newVars(e.scenario, userIndex)
+	// Released only after the last read of vars below; every use is on this
+	// goroutine and nothing retains the map, so this is safe to recycle.
+	defer putVars(vars)
 	if len(e.pool) > 0 {
 		idx := e.poolIdx.Add(1) - 1
 		vars["pool"] = e.pool[int(idx%int64(len(e.pool)))]

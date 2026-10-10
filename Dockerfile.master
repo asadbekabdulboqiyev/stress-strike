@@ -1,29 +1,68 @@
-# Dockerfile.master — containerized stress-strike master/coordinator.
+# syntax=docker/dockerfile:1
+#
+# stress-strike master/coordinator. Distroless static + nonroot.
 #
 # Build:
-#   docker build -f Dockerfile.master -t stress-strike-master:0.14.0 .
+#   docker build -f Dockerfile.master -t ghcr.io/asadbekabdulboqiyev/stress-strike-master:0.14.3 .
 #
 # Run (auto-discovery fleet; workers self-register):
 #   docker run --rm --network strike -p 50051:50051 \
-#     -e SS_TOKEN="$TOKEN" stress-strike-master:0.14.0
+#     -e SS_TOKEN="$TOKEN" \
+#     ghcr.io/asadbekabdulboqiyev/stress-strike-master:0.14.3
 
-FROM golang:1.26 AS build
+FROM golang:1.26 AS builder
 
-ARG VERSION=0.14.0
+ARG VERSION=dev
+ARG REVISION=""
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false \
-      -ldflags="-s -w -X main.version=${VERSION}" \
+
+RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
+    go build -trimpath \
+      -ldflags="-s -w \
+        -X main.version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
       -o /out/stress-strike-master ./cmd/stress-strike-master
+
+RUN /out/stress-strike-master --version || true
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=build /out/stress-strike-master /usr/local/bin/stress-strike-master
+ARG VERSION=dev
+ARG REVISION=""
+
+# CA bundle is required: the master dials HTTPS targets over TLS.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+COPY --from=builder /out/stress-strike-master /usr/local/bin/stress-strike-master
+
+# AGPL-3.0 §4.
+COPY LICENSE /usr/share/doc/stress-strike/LICENSE
+
+# :nonroot is already uid 65532; spelling it out keeps `docker inspect` honest.
+USER 65532:65532
 
 EXPOSE 50051
+
+# The master handles SIGTERM via signal.Notify and drains registered workers,
+# so the default stop signal is correct — stated so it stays that way.
+STOPSIGNAL SIGTERM
+
+# distroless has no shell and no curl, so a HEALTHCHECK would need a probe
+# binary inside the image. The gRPC Ping RPC already exists (see
+# scripts/fleet-status.sh) — use:
+#   docker run --rm --network strike ghcr.io/.../stress-strike-master \
+#     healthcheck -master master:50051
+# instead of a shell probe. See deploy/docker-compose.yml for the container
+# healthcheck that talks to it.
+
 ENTRYPOINT ["/usr/local/bin/stress-strike-master"]
 CMD ["-listen", "0.0.0.0:50051"]

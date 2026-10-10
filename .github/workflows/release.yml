@@ -1,78 +1,119 @@
 name: Release
 
-# Builds binaries for every platform and publishes them as a GitHub Release.
-# Trigger: any tag pushed that matches v* (e.g. v0.2.0).
+# GoReleaser owns this pipeline. scripts/release.sh is deprecated: it produced
+# 1 binary on 5 platforms, wrote to dist/ (which it first `rm -rf`'d, deleting
+# the worker packages and the generated docker-compose file), and produced no
+# SBOMs or signatures.
+#
+# Trigger: push a tag matching v*  (git tag v0.14.4 && git push origin v0.14.4)
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
 
 permissions:
   contents: write
+  # cosign keyless signing uses OIDC; attestations and id-token for provenance.
+  id-token: write
+  attestations: write
+  packages: write
 
 env:
   GO_VERSION: "1.26"
+  GORELEASER_VERSION: "v2.5.1"
 
 jobs:
-  release:
-    name: Test + build + GitHub Release
+  # ── gate: never ship a red tree ───────────────────────────────────────────
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      # `go test -race ./...` compiles internal/replay — needs CGO + libpcap
-      # (gopacket/pcap). Without libpcap-dev the release build stays red.
-      - name: Install libpcap (CGO dep for replay)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpcap-dev
+      - name: Ensure the tag matches VERSION
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file="$(cat VERSION)"
+          echo "tag=$tag  VERSION=$file"
+          if [ "$tag" != "$file" ]; then
+            echo "::error::tag $tag does not match VERSION file ($file) — bump VERSION before tagging"
+            exit 1
+          fi
 
-      # Every release is tested before shipping binaries.
-      - name: Run tests
-        run: go test -race ./...
+      - name: Verify the committed version matches the code
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          # internal/version and the three legacy `var version` declarations
+          # must agree with VERSION, otherwise --version lies.
+          found="$(grep -rhoE 'var (version|Version) = "0\.[0-9]+\.[0-9]+"' \
+            cmd internal --include='*.go' | grep -oE '0\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ')"
+          echo "versions declared in source: $found"
+          if [ -n "$found" ] && [ "$(echo "$found" | tr -d ' ' | tr ' ' '\n' | sort -u | wc -l)" -ne 1 ]; then
+            echo "::error::multiple versions declared in source: $found"
+            exit 1
+          fi
+          for v in $found; do
+            [ "$v" = "$tag" ] || { echo "::error::source declares $v but tag is $tag"; exit 1; }
+          done
 
-      - name: Cross-compile and package
+      - name: Tests (race)
+        run: go test -race -timeout 20m ./...
+
+      - name: go mod verify
+        run: go mod verify
+
+  # ── build + publish ───────────────────────────────────────────────────────
+  release:
+    name: GoReleaser
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Keep -trimpath and no cgo so the same tag produces byte-identical
+    # binaries on any runner.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # GoReleaser needs tags + full history
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: ${{ env.GORELEASER_VERSION }}
+          args: release --clean
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: goreleaser-*
+          merge-multiple: true
+
+      - name: Publish assets to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # Strip the leading "v" from the tag (v0.5.1 -> 0.5.1).
-          version="${GITHUB_REF_NAME#v}"
-          platforms=(darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/amd64)
-          mkdir -p dist/pkg
-          for platform in "${platforms[@]}"; do
-            os="${platform%/*}"
-            arch="${platform#*/}"
-            suffix=""
-            if [ "${os}" = "windows" ]; then suffix=".exe"; fi
-            name="stress-strike-v${version}-${os}-${arch}"
-            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
-              go build -trimpath -buildvcs=false \
-              -o "dist/pkg/stress-strike${suffix}" ./cmd/stress-strike
-            if [ "${os}" = "windows" ]; then
-              (cd dist/pkg && zip -q "../${name}.zip" "stress-strike${suffix}")
-            else
-              tar -czf "dist/${name}.tar.gz" -C dist/pkg "stress-strike"
-            fi
-            rm -f "dist/pkg/stress-strike${suffix}"
-          done
-          (
-            cd dist
-            sha256sum ./*.tar.gz ./*.zip > sha256sums.txt
-            rm -rf pkg
-          )
-          echo "artifacts:"
-          ls -l dist
+          gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          gh release edit "${GITHUB_REF_NAME}" --latest || true
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/sha256sums.txt
-          generate_release_notes: true
+      - name: Summary
+        run: |
+          {
+            echo "### Release ${GITHUB_REF_NAME}"
+            echo
+            echo '```'
+            ls -lh dist/
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

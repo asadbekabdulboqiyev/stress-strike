@@ -1,0 +1,15 @@
+master:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/asadbekabdulboqiyev/stress-strike
+    tag: "0.14.3"
+    pullPolicy: IfNotPresent
+worker:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/asadbekabdulboqiyev/stress-strike
+    tag: "0.14.3"
+    pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8080

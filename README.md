@@ -8,7 +8,7 @@
 ```
 
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 [![Version](https://img.shields.io/badge/Version-0.14.2-green.svg)]()
 
@@ -166,6 +166,36 @@ stress-strike <command> [flags]
 | `dashboard` | Real-time web dashboard with WebSocket |
 | `master` | Distributed mode — master coordinator |
 | `worker` | Distributed mode — worker node |
+| `authorize` | Manage target authorizations (allow-list + approvals) |
+| `audit` | Show or verify the authorization audit trail |
+
+### Authorization & consent
+
+Nothing is sent until the target passes the authorization policy. Cloud
+instance-metadata endpoints (`169.254.169.254`, …) are refused unconditionally,
+private ranges need an explicit allow, and `pentest` requires an approval entry
+recorded by someone else plus the ticket name on the command line.
+
+```sh
+# an approver records the authorization
+stress-strike authorize add --pattern shop.example.com \
+  --approver ciso@corp --ticket SEC-77 --until 2026-12-01T00:00:00Z --reason "pre-release soak"
+
+# the operator runs against it
+stress-strike run --url https://shop.example.com --users 200 --duration 300 --authorized SEC-77
+stress-strike pentest --target https://shop.example.com --authorized SEC-77
+```
+
+Every allow and deny is written to a hash-chained, tamper-evident audit log:
+
+```sh
+stress-strike audit show --limit 20
+stress-strike audit verify        # exits 1 if any record was modified
+```
+
+`--notify-webhook <url>` posts each decision to Slack or any webhook; a blocked
+run exits with code `3`. See [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) for
+the target classes, the policy file format, and the audit record.
 
 ### `stress-strike pentest`
 
@@ -1032,11 +1062,17 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 
 ## License
 
-[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) -- Asadbek Abdulboqiyev
+[Apache License 2.0](LICENSE) -- Copyright (c) 2026 Asadbek Abdulboqiyev
 
-AGPL-3.0 is a strong copyleft license: if you run a modified/stripped version
-of stress-strike as a network service, you must make your modifications'
-source code available to its users. See [LICENSE](LICENSE) for full terms.
+The core (CLI, load engine, protocol clients, replay, scanner, dashboard, API,
+and reports) is Apache-2.0: use it, embed it, self-host it, and ship it inside
+closed-source products. A separate **commercial tier** covers enterprise-only
+capabilities (SSO, RBAC, audit log, multi-tenant control plane, managed
+distributed fleet).
+
+See [LICENSING.md](LICENSING.md) for the open-core model and the relicensing
+note for older releases, and [NOTICE](NOTICE) for bundled third-party
+components.
 
 ---
 

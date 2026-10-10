@@ -11,8 +11,8 @@
 #     run --url https://example.com --users 100 --duration 60 \
 #          --mode dashboard --listen :8888
 #
-# AGPL-3.0: LICENSE is copied into the image (§4 requires the license text to
-# travel with the binary). The previous image shipped no license file.
+# Apache-2.0: LICENSE and NOTICE are copied into the image (§4 requires the
+# license text and attributions to travel with the binary).
 ###############################################################################
 
 # ── Stage 1: build ──────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
-      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.vendor="stress-strike" \
       org.opencontainers.image.source="https://github.com/asadbekabdulboqiyev/stress-strike"
 
@@ -81,8 +81,8 @@ COPY --from=builder /out/stress-strike-worker    /usr/local/bin/stress-strike-wo
 COPY --from=builder /out/stress-strike-replay    /usr/local/bin/stress-strike-replay
 COPY --from=builder /out/stress-strike-scan      /usr/local/bin/stress-strike-scan
 
-# AGPL-3.0 §4.
-COPY LICENSE /usr/share/doc/stress-strike/LICENSE
+# Apache-2.0 §4.
+COPY LICENSE NOTICE /usr/share/doc/stress-strike/
 
 USER 10001:10001
 

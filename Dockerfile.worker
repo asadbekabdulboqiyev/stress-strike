@@ -55,8 +55,8 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 
 COPY --from=builder /out/stress-strike-worker /usr/local/bin/stress-strike-worker
 
-# AGPL-3.0 §4.
-COPY LICENSE /usr/share/doc/stress-strike/LICENSE
+# Apache-2.0 §4.
+COPY LICENSE NOTICE /usr/share/doc/stress-strike/
 
 USER 65532:65532
 

@@ -29,9 +29,9 @@ coverage.html
 *.tmp
 
 # Docs & meta (not needed to compile)
-# LICENSE is deliberately NOT excluded: stress-strike is AGPL-3.0 and the
-# Dockerfiles COPY it into the image, because §4 requires the license text to
-# travel with the binary. Excluding it here broke that COPY.
+# LICENSE and NOTICE are deliberately NOT excluded: stress-strike is Apache-2.0
+# and the Dockerfiles COPY them into the image, because §4 requires the license
+# text and attributions to travel with the binary. Excluding them broke that COPY.
 SECURITY.md
 README.md
 examples/

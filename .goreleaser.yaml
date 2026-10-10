@@ -102,8 +102,9 @@ builds:
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
 
 # ── Archives: one per binary per platform ───────────────────────────────────
-# LICENSE is mandatory in every archive: stress-strike is AGPL-3.0, and §4
-# requires recipients of a binary to receive the license text with it.
+# LICENSE and NOTICE are mandatory in every archive: stress-strike is
+# Apache-2.0, and §4 requires recipients of a binary to receive the license
+# text and the attribution notices with it.
 archives:
   - id: stress-strike
     ids: [stress-strike]
@@ -113,6 +114,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
       - README.md
       - src: SECURITY.md
 
@@ -124,6 +126,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
 
   - id: stress-strike-master
     ids: [stress-strike-master]
@@ -133,6 +136,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
       - src: docs/DISTRIBUTED.md
 
   # The worker package carries the systemd unit + env template so a fresh
@@ -146,6 +150,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
       - src: deploy/systemd/stress-strike-worker.service
         dst: stress-strike-worker.service
       - src: deploy/systemd/worker.env.example
@@ -160,6 +165,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
 
   - id: stress-strike-scan
     ids: [stress-strike-scan]
@@ -169,6 +175,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
 
 checksum:
   name_template: "checksums.txt"
@@ -208,7 +215,7 @@ signs:
     artifacts: sbom
     output: true
 
-# ── Deb/RPM for the systemd story (AGPL source must ship too) ───────────────
+# ── Deb/RPM for the systemd story (license + NOTICE must ship too) ──────────
 nfpms:
   - id: packages
     ids: [stress-strike]
@@ -216,7 +223,7 @@ nfpms:
     formats: [deb, rpm]
     maintainer: stress-strike maintainers <maintainers@stress-strike.invalid>
     description: Distributed load testing and network simulator written in Go
-    license: AGPL-3.0
+    license: Apache-2.0
     vendor: stress-strike
     homepage: https://github.com/asadbekabdulboqiyev/stress-strike
     formats_overrides:
@@ -226,6 +233,8 @@ nfpms:
     contents:
       - src: LICENSE
         dst: /usr/share/doc/stress-strike/LICENSE
+      - src: NOTICE
+        dst: /usr/share/doc/stress-strike/NOTICE
       - src: README.md
         dst: /usr/share/doc/stress-strike/README.md
 
@@ -239,7 +248,7 @@ brews:
       branch: main
     description: Distributed load testing and network simulator written in Go
     homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    license: AGPL-3.0
+    license: Apache-2.0
     test: |
       system "#{bin}/stress-strike", "--help"
     install: |
@@ -254,7 +263,7 @@ scoop:
       branch: main
     description: Distributed load testing and network simulator written in Go
     homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    license: AGPL-3.0
+    license: Apache-2.0
 
 release:
   prerelease: auto

@@ -10,7 +10,7 @@ class StressStrike < Formula
   homepage "https://github.com/asadbekabdulboqiyev/stress-strike"
   url "https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.3/stress-strike_0.14.3_darwin_arm64.tar.gz"
   version "0.14.3"
-  license "AGPL-3.0"
+  license "Apache-2.0"
   head "https://github.com/asadbekabdulboqiyev/stress-strike.git", branch: "main"
 
   # Pure Go: no system dependencies, no libpcap.

@@ -8,6 +8,33 @@ help you get started with development, testing, and submitting changes.
 Be respectful, constructive, and inclusive. This project welcomes contributors
 of all experience levels. Harassment or abusive behavior is not tolerated.
 
+## Licensing and sign-off (required)
+
+stress-strike is **open core** — the code in this repository is licensed under
+**Apache-2.0**, and a separate commercial tier is built on top of it. See
+[LICENSING.md](LICENSING.md) for the model.
+
+For the dual license to stay legally sound, every contribution must be
+accompanied by a **Developer Certificate of Origin (DCO)** sign-off: a line
+that states you wrote the code (or have the right to submit it) and that it may
+be distributed under **both** the Apache-2.0 core license and the commercial
+license.
+
+Add the sign-off to every commit with `git commit -s`:
+
+```
+feat: add HTTP/2 support to the replay engine
+
+Signed-off-by: Your Name <you@example.com>
+```
+
+- The name and email must match your git identity.
+- By signing off you confirm the [DCO 1.1](https://developercertificate.org/).
+- Pull requests with commits that lack a sign-off will not be merged.
+
+If you contribute on behalf of an employer, make sure you have permission to
+submit the code under these terms before opening the pull request.
+
 ## Project Overview
 
 stress-strike is a Go module that compiles into several CLI binaries:
@@ -154,6 +181,7 @@ ci: bump Go builder to 1.26
 - [ ] `make coverage` shows new code is covered
 - [ ] No secrets or `.env` files committed
 - [ ] README / CLI help updated for user-facing changes
+- [ ] Every commit has a DCO sign-off (`git commit -s`)
 - [ ] Commit messages follow Conventional Commits
 
 Thank you for contributing!

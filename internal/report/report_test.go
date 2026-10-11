@@ -54,8 +54,10 @@ func TestBuildReport(t *testing.T) {
 	if r.TotalErrors != 1 || r.ErrorRatePct != float64(1)/3*100 {
 		t.Errorf("errors = %d (%.2f%%), want 1 (33.33%%)", r.TotalErrors, r.ErrorRatePct)
 	}
-	if r.Steps[0].P95 != 30*time.Millisecond {
-		t.Errorf("p95 = %s, want 30ms", r.Steps[0].P95)
+	// p95 is the bucket's inclusive upper bound, so it lands within the
+	// histogram's 0.1 % relative error rather than exactly on 30 ms.
+	if p95 := r.Steps[0].P95; p95 < 30*time.Millisecond || p95 > 30*time.Millisecond*1001/1000 {
+		t.Errorf("p95 = %s, want within 0.1%% of 30ms", p95)
 	}
 	if len(r.Status) != 2 || r.Status[200] != 2 || r.Status[500] != 1 {
 		t.Errorf("status codes wrong: %v", r.Status)

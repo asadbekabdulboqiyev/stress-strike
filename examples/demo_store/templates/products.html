@@ -15,7 +15,7 @@
         <input type="search" name="q" value="{{.Query}}" placeholder="Search products&hellip;" aria-label="Search">
         <button class="btn btn-sm" type="submit">Search</button>
       </form>
-      <select class="qty" style="width:auto;" onchange="location.href='/products?category={{.Category}}&amp;q={{.Query}}&amp;sort='+this.value" aria-label="Sort">
+      <select id="sort-select" class="qty" style="width:auto;" aria-label="Sort">
         <option value="default" {{if eq .SortBy "default"}}selected{{end}}>Sort: default</option>
         <option value="price-asc" {{if eq .SortBy "price-asc"}}selected{{end}}>Price: low → high</option>
         <option value="price-desc" {{if eq .SortBy "price-desc"}}selected{{end}}>Price: high → low</option>

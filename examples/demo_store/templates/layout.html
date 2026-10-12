@@ -15,7 +15,7 @@
     <a class="brand" href="/"><span class="brand-mark">V</span>VoltStore</a>
     <div class="nav-links">
       <a href="/" {{if eq .Title "VoltStore — Premium Tech Store"}}class="active"{{end}}>Home</a>
-      <a href="/products" {{if and (ne .Title "VoltStore — Premium Tech Store") (not .Product)}}class="active"{{end}}>Catalog</a>
+      <a href="/products" {{if eq .Title "Catalog — VoltStore"}}class="active"{{end}}>Catalog</a>
       {{if .User}}<a href="/account">Account</a>{{end}}
     </div>
     <div class="nav-actions">

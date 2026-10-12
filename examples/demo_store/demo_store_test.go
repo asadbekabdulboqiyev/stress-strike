@@ -161,6 +161,79 @@ func TestPagesServe(t *testing.T) {
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("/product/999 status=%d want 404", resp.StatusCode)
 	}
+	// Unknown paths must not fall through to the homepage with a 200
+	// ("GET /" is the ServeMux catch-all).
+	resp, _ = get(t, ts.URL+"/nonexistent")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("/nonexistent status=%d want 404", resp.StatusCode)
+	}
+}
+
+func TestPriceFormattingAndHeroStats(t *testing.T) {
+	_, _, ts := newTestSrv(t, false)
+	_, body := get(t, ts.URL+"/")
+	// formatPrice-style output: thousands separators on 4+ digit prices.
+	if !strings.Contains(body, "$3,499.00") {
+		t.Fatalf("home page price missing thousands separator, got: %q", substringAround(body, "$3,4"))
+	}
+	// Hero stats must reflect the real catalog (12 products, 6 categories).
+	if !strings.Contains(body, `>12</div><div class="lbl">Products</div>`) {
+		t.Fatalf("hero product count not 12, got: %q", substringAround(body, "Products"))
+	}
+	if !strings.Contains(body, `>6</div><div class="lbl">Categories</div>`) {
+		t.Fatalf("hero category count not 6, got: %q", substringAround(body, "Categories"))
+	}
+}
+
+func TestEmailCaseNormalization(t *testing.T) {
+	s := NewStore()
+	// Registering with mixed-case email must be treated as the same account
+	// as the lowercase form (and must not hijack an existing lookup key).
+	if _, err := s.Register("Mixed Case", "MiXeD@Volt.Store", "secret1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Register("Dup", "mixed@volt.store", "secret1"); err == nil {
+		t.Fatal("register with same email in different case should fail")
+	}
+	if _, _, err := s.Authenticate("MIXED@VOLT.STORE", "secret1"); err != nil {
+		t.Fatalf("authenticate with different case should work: %v", err)
+	}
+	// Demo accounts (seeded via createUser) resolve case-insensitively too.
+	if _, _, err := s.Authenticate("ALICE@VOLT.STORE", "demo1234"); err != nil {
+		t.Fatalf("alice login with uppercase email failed: %v", err)
+	}
+}
+
+func TestCatalogSortSelectNotInline(t *testing.T) {
+	_, _, ts := newTestSrv(t, false)
+	_, body := get(t, ts.URL+"/products?q=pro&x")
+	// The sort control must not build its URL from raw template values inline.
+	if strings.Contains(body, "onchange=") {
+		t.Fatal("sort select should use app.js handler, not an inline onchange")
+	}
+	if !strings.Contains(body, `id="sort-select"`) {
+		t.Fatal("sort select missing id=sort-select for JS handler")
+	}
+}
+
+// substringAround returns a short window around needle for readable failures.
+func substringAround(s, needle string) string {
+	i := strings.Index(s, needle)
+	if i < 0 {
+		i = 0
+		if len(s) > 80 {
+			s = s[:80]
+		}
+		return s
+	}
+	lo, hi := i-40, i+40
+	if lo < 0 {
+		lo = 0
+	}
+	if hi > len(s) {
+		hi = len(s)
+	}
+	return s[lo:hi]
 }
 
 func TestLoginAndCartAPI(t *testing.T) {

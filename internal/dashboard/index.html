@@ -286,6 +286,29 @@
   <div class="footer">
     stress-strike &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
     <span class="footer-hint"><kbd>S</kbd> start &middot; <kbd>E</kbd> stop &middot; <kbd>Esc</kbd> cancel confirm</span>
+    <span class="ops-links hidden" id="opsLinks" aria-label="Public operations endpoints">
+      <a href="/healthz" target="_blank" rel="noopener">healthz</a>
+      <a href="/metrics" target="_blank" rel="noopener">metrics</a>
+    </span>
+  </div>
+</div>
+
+<!-- Access-locked overlay. Shown when the control API rejects the WebSocket
+     handshake or any control call with 401/403 (operator has set
+     -auth-token / -auth-api-key). Stops the infinite reconnect loop. -->
+<div class="lock-overlay hidden" id="lockOverlay" role="alertdialog" aria-modal="true" aria-labelledby="lockTitle" aria-describedby="lockBody">
+  <div class="lock-card">
+    <div class="lock-icon" aria-hidden="true">
+      <svg class="ico" viewBox="0 0 16 16"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <p class="lock-kicker">Authentication required</p>
+    <h2 class="lock-title" id="lockTitle">Access locked</h2>
+    <p class="lock-body" id="lockBody">The Control API is protected &mdash; the operator has set a password/token, so this dashboard is locked. Contact the operator, or restart the server on loopback with credentials.</p>
+    <div class="lock-actions">
+      <button class="btn btn-ghost" id="btnLockRetry" type="button" title="Re-attempt the connection (use this once the server accepts your session)">Try again</button>
+      <button class="btn btn-ghost" id="btnLockRefresh" type="button" title="Reload the page">Reload</button>
+    </div>
+    <p class="lock-note">No credentials are stored or requested here &mdash; authenticate at the server level (e.g. <code>stress-strike dashboard --auth-token &hellip;</code>) or in a reverse proxy.</p>
   </div>
 </div>
 

@@ -12,12 +12,12 @@
         <a class="btn" href="/admin">VeriGate control</a>
       </div>
       <div class="hero-stats">
-        <div><div class="num">12</div><div class="lbl">Products</div></div>
-        <div><div class="num">5</div><div class="lbl">Categories</div></div>
+        <div><div class="num">{{.ProductCount}}</div><div class="lbl">Products</div></div>
+        <div><div class="num">{{.CategoryCount}}</div><div class="lbl">Categories</div></div>
         <div><div class="num">100k+</div><div class="lbl">RPS target</div></div>
       </div>
     </div>
-    <div class="hero-art">{{template "productArt" (index .Products 0)}}</div>
+    {{if .Products}}<div class="hero-art">{{template "productArt" (index .Products 0)}}</div>{{end}}
   </section>
 
   {{if .Products}}

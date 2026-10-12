@@ -25,9 +25,10 @@ go run . -addr 127.0.0.1:8090 -protect -rate-limit 100 -burst 300 -block-after 6
 
 ## What's inside
 
-- **Catalog** — 12 products, 5 categories (`laptops`, `audio`, `wearables`,
-  `e-readers`, `accessories`), computed accent colors, inline SVG product art
-  (no external images; everything embeds into one binary via `go:embed`)
+- **Catalog** — 12 products, 6 categories (`laptops`, `phones`, `audio`,
+  `peripherals`, `monitors`, `wearables`), computed accent colors, inline SVG
+  product art (no external images; everything embeds into one binary via
+  `go:embed`)
 - **Accounts** — register / login / logout with cookie sessions; demo users
   `alice@volt.store` / `bob@volt.store`, password `demo1234`
 - **Cart & checkout** — add/remove lines, live totals, stock decrement,

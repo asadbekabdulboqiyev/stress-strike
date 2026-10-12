@@ -816,3 +816,65 @@ kbd {
 .table-wrap th { letter-spacing: .08em; }
 .table-wrap th:first-child, .table-wrap td:first-child { padding-left: 20px; }
 .table-wrap th:last-child,  .table-wrap td:last-child  { padding-right: 20px; }
+
+/* ==========================================================================
+   ACCESS-LOCK / AUTH STATE (Control API auth: 401/403 -> lock overlay)
+   ========================================================================== */
+.lock-overlay {
+  position: fixed; inset: 0; z-index: 9990;
+  background: rgba(6, 6, 10, .84);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.lock-card {
+  position: relative;
+  width: 100%; max-width: 460px;
+  background: var(--bg-1); border: 1px solid var(--border-hover);
+  border-top: 2px solid var(--yellow);
+  border-radius: var(--radius); padding: 28px 26px;
+  text-align: center; box-shadow: var(--shadow-2);
+  animation: fade-in .4s ease;
+}
+.lock-icon {
+  width: 46px; height: 46px; border-radius: 50%;
+  margin: 0 auto 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--yellow-dim); color: var(--yellow);
+}
+.lock-icon .ico { width: 20px; height: 20px; }
+.lock-kicker {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--yellow);
+}
+.lock-title { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin-top: 2px; }
+.lock-body { font-size: 13px; color: var(--text-2); margin-top: 8px; }
+.lock-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.lock-actions .btn { margin-top: 0; }
+.lock-actions .btn-ghost:hover:not(:disabled) { border-color: var(--yellow); }
+.lock-note { font-size: 11px; color: var(--text-3); margin-top: 16px; }
+.lock-note code {
+  background: var(--bg-3); color: var(--text-1);
+  padding: 1px 6px; border-radius: 4px; font-size: 11px;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* Connection dot for the locked state */
+.conn-dot.locked { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+
+/* Ops endpoints hint (auth-exempt: /healthz /readyz /metrics) */
+.ops-links { margin-left: 10px; }
+.ops-links a {
+  color: var(--text-3); text-decoration: none;
+  font-family: var(--font-mono); font-size: 11px;
+  margin-right: 8px;
+}
+.ops-links a:hover { color: var(--green); text-decoration: underline; }
+.ops-links::before { content: 'ops:'; color: var(--text-3); font-size: 11px; margin-right: 8px; }
+
+@media (max-width: 768px) {
+  .lock-overlay { padding: 12px; }
+  .lock-card { padding: 22px 18px; }
+  .lock-actions { flex-wrap: wrap; }
+}

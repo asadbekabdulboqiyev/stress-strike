@@ -100,6 +100,24 @@
   }
 
   //--------------------------------------------------------------------------
+  // Catalog sort
+  //--------------------------------------------------------------------------
+  // The sort select used to build its URL from raw template values in an
+  // inline onchange handler, which broke whenever the search query contained
+  // &, #, quotes or other URL-special characters (q=pro&x became q=pro).
+  // Rebuild the URL properly through URLSearchParams so category/search/sort
+  // survive any input.
+  function bindProductSort() {
+    var sel = document.getElementById("sort-select");
+    if (!sel) return;
+    sel.addEventListener("change", function () {
+      var u = new URL(window.location.href);
+      u.searchParams.set("sort", sel.value);
+      window.location.href = u.toString();
+    });
+  }
+
+  //--------------------------------------------------------------------------
   // Auth forms
   //--------------------------------------------------------------------------
   function bindAuthForms() {
@@ -247,5 +265,6 @@
     bindAuthForms();
     bindCheckout();
     bindAdmin();
+    bindProductSort();
   });
 })();

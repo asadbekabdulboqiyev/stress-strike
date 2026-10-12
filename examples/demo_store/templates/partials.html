@@ -54,5 +54,7 @@
 </span>
 {{end}}
 
-{{/* price formats cents as $1,234.56 */}}
-{{define "price"}}${{printf "%d" (div . 100)}}.{{printf "%02d" (mod . 100)}}{{end}}
+{{/* price formats cents as $1,234.56 with thousands separators. It
+     delegates to the formatPrice FuncMap function so money formatting lives
+     in one place (the previous inline div/mod version dropped the commas). */}}
+{{define "price"}}{{formatPrice .}}{{end}}

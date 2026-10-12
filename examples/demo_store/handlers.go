@@ -31,10 +31,11 @@ type demoServer struct {
 // protection itself can be toggled and health probes always work).
 func NewDemoServer(store *Store, gate *verigate.VeriGate) (*demoServer, error) {
 	funcs := template.FuncMap{
-		"div":   func(a, b int) int { return a / b },
-		"mod":   func(a, b int) int { return a % b },
-		"mult":  func(a, b int) int { return a * b },
-		"price": formatPrice,
+		"div":         func(a, b int) int { return a / b },
+		"mod":         func(a, b int) int { return a % b },
+		"mult":        func(a, b int) int { return a * b },
+		"price":       formatPrice,
+		"formatPrice": formatPrice, // used by the "price" template in partials.html
 	}
 	pages, err := template.New("store").Funcs(funcs).ParseFS(viewsFS, "templates/*.html")
 	if err != nil {
@@ -100,6 +101,11 @@ type view struct {
 	Error      string
 	Message    string
 	Gate       verigate.Stats
+
+	// ProductCount / CategoryCount drive the hero stats on home.html so the
+	// numbers stay truthful as the catalog changes.
+	ProductCount  int
+	CategoryCount int
 }
 
 func (s *demoServer) baseView(w http.ResponseWriter, r *http.Request) view {
@@ -108,6 +114,8 @@ func (s *demoServer) baseView(w http.ResponseWriter, r *http.Request) view {
 		Categories: s.store.Categories(),
 		Gate:       s.gate.Stats(),
 	}
+	v.ProductCount = len(s.store.Products())
+	v.CategoryCount = len(v.Categories)
 	v.CartCount = s.store.CartCount(s.cartKey(w, r))
 	return v
 }
@@ -198,6 +206,12 @@ func (s *demoServer) render(w http.ResponseWriter, name string, v view, status i
 //------------------------------------------------------------------------------
 
 func (s *demoServer) handleHome(w http.ResponseWriter, r *http.Request) {
+	// "GET /" is the ServeMux catch-all: without this guard, unknown paths
+	// like /nonexistent would render the homepage with a 200.
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	v := s.baseView(w, r)
 	v.Title = "VoltStore — Premium Tech Store"
 	v.Products = s.store.FeaturedProducts()

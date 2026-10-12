@@ -275,7 +275,7 @@ func (s *Store) createUser(name, email, pw string) *User {
 	}
 	s.nextID++
 	s.users[u.ID] = u
-	s.byEmail[email] = u
+	s.byEmail[strings.ToLower(email)] = u // normalized like Register/Authenticate
 	return u
 }
 

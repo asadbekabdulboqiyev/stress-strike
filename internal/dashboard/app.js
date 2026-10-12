@@ -16,7 +16,9 @@ var S = {
   starting: false,      // start request currently in flight (spinner)
   stopArmed: false,     // two-step stop confirm: first press arms, second stops
   stopArmTimer: null,
-  summaryVisible: false
+  summaryVisible: false,
+  locked: false,        // control API rejected auth (401/403) — lock overlay shown
+  everOpened: false     // WS handshake succeeded at least once in this attempt
 };
 var MAX_HIST = 120;
 var ws = null;
@@ -50,8 +52,11 @@ function connect() {
   var sock;
   try { sock = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
   ws = sock;
+  S.everOpened = false;
   ws.onopen = function() {
     S.connected = true;
+    S.everOpened = true;
+    if (S.locked) closeLocked();
     updateConnStatus();
     toast('Connected to dashboard', 'success');
   };
@@ -109,21 +114,85 @@ function connect() {
   ws.onclose = function() {
     S.connected = false;
     updateConnStatus();
+    if (S.locked) return;                        // already locked — no retry
+    if (!S.everOpened) { probeAuth(); return; }  // handshake never opened — could be auth
     scheduleReconnect();
   };
   ws.onerror = function() {};
 }
 
 function scheduleReconnect() {
+  if (S.locked) return;
   if (wsRetryTimer) return;
   wsRetryTimer = setTimeout(function() { wsRetryTimer = null; connect(); }, 2000);
+}
+
+/* Control-API auth: the server may require a bearer token / API key
+   (-auth-token / -auth-api-key). The browser cannot read the WebSocket
+   handshake status code, so after a handshake that never opened we probe a
+   protected HTTP endpoint: 401/403 means "locked" — stop retrying and show a
+   clear state instead of an infinite "Connecting..." loop. Anything else is a
+   plain connectivity issue and keeps the normal retry path. */
+var authProbeTimer = null;
+
+function probeAuth() {
+  if (S.locked) return;
+  if (authProbeTimer) return;                    // one probe at a time
+  authProbeTimer = setTimeout(function() {
+    authProbeTimer = null;
+    fetch(API + '/api/history')
+      .then(function(r) {
+        if (guardStatus(r)) return;              // 401/403 -> lock
+        scheduleReconnect();
+      })
+      .catch(function() { scheduleReconnect(); }); // network error -> normal retry
+  }, 250);
+}
+
+function guardStatus(r) {
+  if (r && (r.status === 401 || r.status === 403)) { setLocked(); return true; }
+  return false;
+}
+
+function setLocked() {
+  if (S.locked) return;
+  S.locked = true;
+  S.connected = false;
+  if (wsRetryTimer) { clearTimeout(wsRetryTimer); wsRetryTimer = null; }
+  if (authProbeTimer) { clearTimeout(authProbeTimer); authProbeTimer = null; }
+  if (ws) {
+    try { ws.onclose = null; ws.close(); } catch (e) {}
+    ws = null;
+  }
+  updateConnStatus();
+  var ov = document.getElementById('lockOverlay');
+  if (ov) {
+    ov.classList.remove('hidden');
+    var app = document.getElementById('app');
+    if (app) app.setAttribute('aria-hidden', 'true');
+    var first = ov.querySelector('button');
+    if (first) first.focus();
+  }
+  toast('Access locked — authentication required', 'error');
+}
+
+function closeLocked() {
+  S.locked = false;
+  var ov = document.getElementById('lockOverlay');
+  if (ov && !ov.classList.contains('hidden')) ov.classList.add('hidden');
+  var app = document.getElementById('app');
+  if (app) app.removeAttribute('aria-hidden');
 }
 
 // Re-fetch run history after a run finishes. The server only sends history in
 // the WS "init" message, so a completed run would otherwise stay invisible in
 // the table until the page is reloaded.
 function refreshHistory() {
-  fetch(API + '/api/history').then(function(r) { return r.json(); }).then(function(h) {
+  fetch(API + '/api/history').then(function(r) {
+    if (guardStatus(r)) return null;
+    return r.json();
+  }).then(function(h) {
+    if (S.locked) return;
     S.history = h || [];
     renderHistory();
     syncOnboarding();
@@ -195,6 +264,7 @@ function collectConfig() {
 
 function startRun() {
   if (S.starting) return;
+  if (S.locked) return;
   if (S.run && S.run.status === 'running') {
     toast('A run is already in progress', 'info');
     return;
@@ -220,6 +290,7 @@ function startRun() {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(cfg)
   }).then(function(r) {
+    if (guardStatus(r)) throw new Error('authentication required');
     if (!r.ok) throw new Error('server returned ' + r.status);
     return r.json();
   }).then(function() {
@@ -228,7 +299,10 @@ function startRun() {
     dismissOnboarding(); // first run started -> guide hides automatically
     hideSummary();
   }).catch(function(err) {
-    toast('Failed to start run' + (err && err.message ? ': ' + err.message : ''), 'error');
+    // guardStatus already raised the lock overlay; don't double-toast.
+    if (!S.locked) {
+      toast('Failed to start run' + (err && err.message ? ': ' + err.message : ''), 'error');
+    }
   }).then(function() {
     // Runs in both success and error paths (ES5-friendly "finally").
     S.starting = false;
@@ -238,15 +312,17 @@ function startRun() {
 
 function stopRun() {
   fetch(API + '/api/run/stop', { method: 'POST' }).then(function(r) {
+    if (guardStatus(r)) throw new Error('authentication required');
     if (!r.ok) throw new Error('server returned ' + r.status);
     return r.json();
   }).then(function() { toast('Run stopped', 'error'); })
-    .catch(function() { toast('Failed to stop run', 'error'); });
+    .catch(function() { if (!S.locked) toast('Failed to stop run', 'error'); });
 }
 
 /* Two-step stop: first press arms the button, a second press (within 3s)
    actually stops the run. Escape or the run finishing disarms it. */
 function requestStop() {
+  if (S.locked) return;
   if (!S.run || S.run.status !== 'running') return;
   if (S.stopArmed) {
     disarmStop();
@@ -986,6 +1062,14 @@ function updateConnStatus() {
   var dot = document.getElementById('connDot');
   var label = document.getElementById('connLabel');
   if (!dot || !label) return;
+  if (S.locked) {
+    dot.className = 'conn-dot locked';
+    label.textContent = '';
+    label.appendChild(dot);
+    label.appendChild(document.createTextNode(' Access locked'));
+    label.style.color = 'var(--yellow)';
+    return;
+  }
   if (S.connected) {
     dot.className = 'conn-dot connected';
     label.textContent = '';
@@ -1005,8 +1089,13 @@ function updateConnStatus() {
    POLLING FALLBACK (for when the WebSocket is down)
    ========================================================================== */
 setInterval(function() {
+  if (S.locked) return;
   if (!S.connected && S.run && S.run.status === 'running') {
-    fetch(API + '/api/snapshot').then(function(r) { return r.json(); }).then(function(d) {
+    fetch(API + '/api/snapshot').then(function(r) {
+      if (guardStatus(r)) return null;
+      return r.json();
+    }).then(function(d) {
+      if (!d || S.locked) return;
       S.snapshot = d;
       pushHist('rpsHist', d.rps || 0);
       pushHist('latAvgHist', d.avg_latency_ms || 0);
@@ -1068,7 +1157,11 @@ var _btnDemoLabel = document.getElementById('btnDemoLabel');
 
 function refreshDemoStore() {
   if (!_btnDemoStore) return;
-  fetch(API + '/api/demo-store/status').then(function(r) { return r.json(); }).then(function(d) {
+  fetch(API + '/api/demo-store/status').then(function(r) {
+    if (guardStatus(r)) return null;
+    return r.json();
+  }).then(function(d) {
+    if (!d || S.locked) return;
     if (d && d.running) {
       _btnDemoLabel.textContent = 'Open Demo Store';
       _btnDemoStore.classList.add('demo-running');
@@ -1095,6 +1188,10 @@ function demoStoreClick() {
     })
     .then(function(res) {
       _btnDemoStore.classList.remove('loading');
+      if (guardStatus({ status: res.status })) {
+        if (win) { try { win.close(); } catch (e) {} }
+        return;
+      }
       if (res.status !== 200 || !res.data.ok) {
         toast('Demo store: ' + ((res.data && res.data.error) || 'failed to start'), 'error');
         if (win) { try { win.close(); } catch (e) {} }
@@ -1130,3 +1227,27 @@ if (_runAgain) _runAgain.addEventListener('click', startRun);
 bindSlider('inpUsers', 'rngUsers', 'hintUsers', fmtUsersHint);
 bindSlider('inpDuration', 'rngDuration', 'hintDuration', fmtDurationHint);
 updateFieldHints();
+
+/* ---- Lock overlay buttons ---- */
+var _lockRetry = document.getElementById('btnLockRetry');
+if (_lockRetry) {
+  _lockRetry.addEventListener('click', function() {
+    closeLocked();
+    S.everOpened = false;
+    connect();
+  });
+}
+var _lockRefresh = document.getElementById('btnLockRefresh');
+if (_lockRefresh) {
+  _lockRefresh.addEventListener('click', function() {
+    try { window.location.reload(); } catch (e) {}
+  });
+}
+
+/* ---- Ops endpoints (/healthz /readyz /metrics are auth-exempt): show a
+       small hint in the footer only when the server actually exposes them. ---- */
+fetch(API + '/healthz').then(function(r) {
+  if (!r.ok) return;
+  var ops = document.getElementById('opsLinks');
+  if (ops) ops.classList.remove('hidden');
+}).catch(function() {});

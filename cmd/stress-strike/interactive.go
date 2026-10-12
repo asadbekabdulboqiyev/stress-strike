@@ -20,6 +20,7 @@ import (
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
@@ -811,7 +812,7 @@ func interactiveDashboard(r *bufio.Reader) {
 
 	openBrowser("http://" + listen)
 	fmt.Printf("\nWeb Server dashboard: http://%s — already open in your browser. Press Start to run.\n\n", listen)
-	runWithDashboard(sc, listen, "./reports")
+	runWithDashboard(sc, listen, "./reports", dashboard.AuthOptions{})
 }
 
 // interactiveCLI gathers settings on the command line, then runs the real load

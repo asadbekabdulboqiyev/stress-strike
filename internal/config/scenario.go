@@ -29,24 +29,30 @@ const (
 )
 
 type Profile struct {
-	Type            string `yaml:"type" json:"type"`
-	Users           int    `yaml:"users" json:"users"`
-	Duration        int    `yaml:"duration" json:"duration"`
-	Warmup          int    `yaml:"warmup" json:"warmup"`
-	RampUp          int    `yaml:"ramp_up" json:"ramp_up"`
-	SpikeUsers      int    `yaml:"spike_users" json:"spike_users"`
-	SpikeWarmup     int    `yaml:"spike_warmup" json:"spike_warmup"`
-	SpikeHold       int    `yaml:"spike_hold" json:"spike_hold"`
-	WavePeriod      int    `yaml:"wave_period" json:"wave_period"`
-	RPS             int    `yaml:"rps" json:"rps"`
-	TargetRPS       int    `yaml:"target_rps" json:"target_rps"`
-	Timeout         int    `yaml:"timeout" json:"timeout"`
-	KeepAlive       *bool  `yaml:"keep_alive" json:"keep_alive"`
-	Gate            bool   `yaml:"gate" json:"gate"`
-	Http2           *bool  `yaml:"http2" json:"http2"`
-	WAFEnabled      bool   `yaml:"waf_enabled" json:"waf_enabled"`
-	TLSFingerprint  string `yaml:"tls_fingerprint" json:"tls_fingerprint"`
-	RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
+	Type        string `yaml:"type" json:"type"`
+	Users       int    `yaml:"users" json:"users"`
+	Duration    int    `yaml:"duration" json:"duration"`
+	Warmup      int    `yaml:"warmup" json:"warmup"`
+	RampUp      int    `yaml:"ramp_up" json:"ramp_up"`
+	SpikeUsers  int    `yaml:"spike_users" json:"spike_users"`
+	SpikeWarmup int    `yaml:"spike_warmup" json:"spike_warmup"`
+	SpikeHold   int    `yaml:"spike_hold" json:"spike_hold"`
+	WavePeriod  int    `yaml:"wave_period" json:"wave_period"`
+	RPS         int    `yaml:"rps" json:"rps"`
+	TargetRPS   int    `yaml:"target_rps" json:"target_rps"`
+	Timeout     int    `yaml:"timeout" json:"timeout"`
+	KeepAlive   *bool  `yaml:"keep_alive" json:"keep_alive"`
+	Gate        bool   `yaml:"gate" json:"gate"`
+	// CoordinatedOmission enables Gil Tene's coordinated-omission correction
+	// for paced runs: when the generator falls behind its own arrival schedule
+	// (every virtual user blocked on a slow response), the accumulated skew is
+	// added back to the measured latency. Off by default; the reported numbers
+	// change only when explicitly enabled.
+	CoordinatedOmission bool   `yaml:"coordinated_omission" json:"coordinated_omission"`
+	Http2               *bool  `yaml:"http2" json:"http2"`
+	WAFEnabled          bool   `yaml:"waf_enabled" json:"waf_enabled"`
+	TLSFingerprint      string `yaml:"tls_fingerprint" json:"tls_fingerprint"`
+	RateLimitConfig     `yaml:"rate_limit" json:"rate_limit"`
 }
 
 // HTTP2Enabled reports whether HTTP/2 should be negotiated. The zero value

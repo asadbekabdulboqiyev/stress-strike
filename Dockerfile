@@ -7,9 +7,15 @@
 #   docker build -t ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 .
 #
 # Run (web dashboard):
-#   docker run --rm -p 8888:8888 ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 \
+#   docker run --rm -p 127.0.0.1:8888:8888 ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 \
 #     run --url https://example.com --users 100 --duration 60 \
-#          --mode dashboard --listen :8888
+#          --mode dashboard --listen 0.0.0.0:8888 \
+#          --dashboard-auth-token "$(openssl rand -hex 24)"
+#
+# The dashboard's control API starts/stops real load runs, so it refuses to bind
+# a non-loopback address without a credential. Publish the port on host loopback
+# (-p 127.0.0.1:8888:8888) and pass --dashboard-auth-token, or add
+# --dashboard-insecure to acknowledge an unauthenticated, loopback-only demo.
 #
 # Apache-2.0: LICENSE and NOTICE are copied into the image (§4 requires the
 # license text and attributions to travel with the binary).
@@ -86,7 +92,7 @@ COPY LICENSE NOTICE /usr/share/doc/stress-strike/
 
 USER 10001:10001
 
-EXPOSE 8888 50051 50052
+EXPOSE 8888 9090 9091 50051 50052
 
 VOLUME ["/app/reports"]
 
@@ -95,13 +101,17 @@ VOLUME ["/app/reports"]
 # already the graceful one. Stated explicitly so it is not "fixed" later.
 STOPSIGNAL SIGTERM
 
-# No shell-based probe is possible once the CMD is the load binary, and the
-# dashboard port only opens in `--mode dashboard`. Leaving HEALTHCHECK to the
-# compose deploy (which knows the mode) is deliberate: a probe here would mark
-# healthy CLI invocations as failing and restart them.
+# ── liveness probe ──────────────────────────────────────────────────────────
+# This image is based on alpine, so busybox `wget` is available and no extra
+# probe binary is needed. The dashboard HTTP server (default 127.0.0.1:8888)
+# serves GET /healthz (200 while the process is up) and GET /readyz.
 #
-# docker-compose.yml carries the matching probe:
-#   healthcheck:
-#     test: ["CMD", "stress-strike", "dashboard-health", "--listen", "127.0.0.1:8888"]
+# CAVEAT: HEALTHCHECK applies to every invocation of this image, including
+# plain CLI runs (e.g. `stress-strike run --url ... --users 10`) where the
+# dashboard port is never opened. Those will report "unhealthy"; orchestrators
+# that run the image as a one-shot CLI job should disable the probe
+# (`docker run --no-healthcheck`) or point it at the relevant mode.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["/bin/sh", "-c", "wget -qO- http://127.0.0.1:8888/healthz || exit 1"]
 
 ENTRYPOINT ["stress-strike"]

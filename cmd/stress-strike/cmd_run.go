@@ -14,6 +14,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
@@ -28,6 +29,15 @@ func (h headerFlags) Set(value string) error {
 		return fmt.Errorf("header must be in Key=Value form, got %q", value)
 	}
 	h[parts[0]] = parts[1]
+	return nil
+}
+
+// stringListFlags collects a repeatable string flag (e.g. -auth-token a -auth-token b).
+type stringListFlags []string
+
+func (s *stringListFlags) String() string { return strings.Join(*s, ",") }
+func (s *stringListFlags) Set(v string) error {
+	*s = append(*s, v)
 	return nil
 }
 
@@ -67,7 +77,16 @@ func cmdRun() {
 		dashListen    string
 		tlsFP         string
 		noHTTP2       bool
+		coordOmission bool
 		authzOpts     gateOptions
+
+		dashAuthTokens    stringListFlags
+		dashAuthAPIKeys   stringListFlags
+		dashAuthOrigins   stringListFlags
+		dashAuthRateLimit float64
+		dashAuthBurst     int
+		dashAuthProxy     bool
+		dashAuthInsecure  bool
 	)
 
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
@@ -94,6 +113,7 @@ func cmdRun() {
 	fs.BoolVar(&keepAlive, "keep-alive", true, "reuse TCP connections")
 	fs.StringVar(&tlsFP, "tls-fingerprint", "", "TLS ClientHello fingerprint (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...)")
 	fs.BoolVar(&noHTTP2, "no-http2", false, "disable HTTP/2 negotiation (force HTTP/1.1)")
+	fs.BoolVar(&coordOmission, "coordinated-omission", false, "apply coordinated-omission correction to paced runs (constant-rps / --rps)")
 	fs.StringVar(&authzOpts.authorized, "authorized", "", "authorization ticket id recorded by an approver")
 	fs.BoolVar(&authzOpts.allowPrivate, "allow-private", false, "allow private/link-local targets explicitly")
 	fs.StringVar(&authzOpts.policyPath, "policy", "", "authorization policy file (default ~/.stress-strike/authz.json)")
@@ -113,6 +133,13 @@ func cmdRun() {
 	fs.BoolVar(&showVersion, "version", false, "print version")
 	fs.StringVar(&mode, "mode", "cli", "output mode: cli (terminal report) | dashboard (real-time web dashboard)")
 	fs.StringVar(&dashListen, "listen", "127.0.0.1:8888", "dashboard listen address (with --mode dashboard)")
+	fs.Var(&dashAuthTokens, "dashboard-auth-token", "bearer token required for the dashboard control API (repeatable)")
+	fs.Var(&dashAuthAPIKeys, "dashboard-auth-api-key", "SHA-256 hex of an accepted dashboard API key (repeatable)")
+	fs.Var(&dashAuthOrigins, "dashboard-auth-origin", "allowed origin for state-changing requests (repeatable; CSRF)")
+	fs.Float64Var(&dashAuthRateLimit, "dashboard-auth-rate-limit", 0, "per-client-IP request rate limit (0 = disabled)")
+	fs.IntVar(&dashAuthBurst, "dashboard-auth-rate-burst", 0, "rate limiter bucket capacity (default 1)")
+	fs.BoolVar(&dashAuthProxy, "dashboard-auth-trust-proxy", false, "honor X-Forwarded-For / X-Real-IP for the limiter (only behind a trusted proxy)")
+	fs.BoolVar(&dashAuthInsecure, "dashboard-insecure", false, "acknowledge running the unauthenticated dashboard control API on a non-loopback address (demo only)")
 
 	// Parse args: os.Args = ["run", "--url", ...] after slicing in main.go.
 	// Friendly flag errors, consistent help, exit 2 on usage errors.
@@ -180,6 +207,15 @@ func cmdRun() {
 		scenario.Profile.TLSFingerprint = tlsFP
 	}
 
+	// Coordinated-omission correction is only meaningful for paced runs: with
+	// no arrival schedule (no limiter) there is nothing to fall behind.
+	if coordOmission {
+		scenario.Profile.CoordinatedOmission = true
+		if scenario.Profile.RPS <= 0 && !scenario.Profile.IsConstantRPS() {
+			fmt.Fprintln(os.Stderr, "WARNING: --coordinated-omission has no effect without pacing; add --target-rps or --rps")
+		}
+	}
+
 	sla := scenario.SLA
 	if sla == nil {
 		sla = &config.SLA{}
@@ -213,7 +249,16 @@ func cmdRun() {
 	// Dashboard mode: open the real-time WebSocket dashboard and drive the
 	// real load engine from the browser. No terminal report is printed.
 	if mode == "dashboard" {
-		runWithDashboard(scenario, dashListen, reportDir)
+		dashAuth := dashboard.AuthOptions{
+			Tokens:         dashAuthTokens,
+			APIKeyHashes:   dashAuthAPIKeys,
+			AllowedOrigins: dashAuthOrigins,
+			RateLimitRPS:   dashAuthRateLimit,
+			RateLimitBurst: dashAuthBurst,
+			TrustProxy:     dashAuthProxy,
+			AllowAnonymous: dashAuthInsecure,
+		}
+		runWithDashboard(scenario, dashListen, reportDir, dashAuth)
 		return
 	}
 
@@ -387,6 +432,9 @@ func printRunHelp(fs *flag.FlagSet) {
 		"",
 		"# Constant RPS mode (1000 requests/sec)",
 		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30",
+		"",
+		"# Constant RPS with coordinated-omission correction (trustworthy p99 under saturation)",
+		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission",
 		"",
 		"# Burst: 3s maximum-speed volley, all users at once, no RPS cap",
 		"stress-strike run --url https://api.example.com --profile burst --users 500",

@@ -20,7 +20,7 @@ var version = "0.14.3"
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"demo-store", "pentest", "authorize", "audit", "help", "version",
+	"demo-store", "pentest", "authorize", "audit", "healthcheck", "help", "version",
 }
 
 func main() {
@@ -58,6 +58,9 @@ func main() {
 			return
 		case "audit":
 			cmdAudit()
+			return
+		case "healthcheck":
+			cmdHealthcheck()
 			return
 		case "help", "--help", "-h":
 			printFullHelp()
@@ -157,6 +160,10 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    --pre-warm               Pre-establish TCP connections before test
    --pre-warm-conns int     Number of pre-warmed connections (default: users)
    --quiet                  Suppress live progress bar
+
+   Accuracy:
+   --coordinated-omission   Correct paced runs for coordinated omission (adds
+                            the schedule skew a request waited back to latency)
 
    SLA Gate (CI/CD):
    --expect-p99-ms float    Max P99 latency in ms (exit 2 if exceeded)

@@ -2,18 +2,128 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "stress-strike.fullname" . }}-worker
+  labels:
+    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
 spec:
   replicas: {{ .Values.worker.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "stress-strike.fullname" . }}-worker
+      {{- include "stress-strike.worker.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "stress-strike.fullname" . }}-worker
+        {{- include "stress-strike.commonLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      # Pod-level hardening: the image already runs as its own non-root USER
+      # (uid 10001 for the all-in-one image), so we only assert non-root and
+      # stamp the RuntimeDefault seccomp profile here. Container-level
+      # capabilities/readOnlyRootFilesystem live in .Values.worker.securityContext.
+      securityContext:
+        {{- toYaml .Values.worker.podSecurityContext | nindent 8 }}
       containers:
         - name: worker
           image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           command: ["stress-strike", "worker"]
+          args:
+            - "-listen"
+            - "0.0.0.0:{{ .Values.worker.grpcPort }}"
+            - "-http-addr"
+            - "0.0.0.0:{{ .Values.worker.httpPort }}"
+            - "-master"
+            - {{ .Values.worker.masterAddress | default (printf "%s:%v" (include "stress-strike.master.serviceName" .) .Values.master.grpcPort) | quote }}
+            # The master dials the worker back, so it must advertise a routable
+            # address — the pod IP, injected via the downward API below.
+            - "-advertise"
+            - "$(POD_IP):{{ .Values.worker.grpcPort }}"
+            {{- if and .Values.auth .Values.auth.tokenSecret .Values.auth.tokenSecret.name }}
+            - "-token"
+            - "$(SS_TOKEN)"
+            {{- end }}
+            {{- range .Values.worker.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- include "stress-strike.tokenEnv" . | nindent 12 }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.worker.grpcPort }}
+              protocol: TCP
+            # Named so the probes and the metrics Service can reference it.
+            - name: http-metrics
+              containerPort: {{ .Values.worker.httpPort }}
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: {{ .Values.worker.health.path }}
+              port: http-metrics
+            periodSeconds: {{ .Values.worker.health.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.health.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.health.startup.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.worker.health.path }}
+              port: http-metrics
+            initialDelaySeconds: {{ .Values.worker.health.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.health.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.health.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.health.failureThreshold }}
+          readinessProbe:
+            # /readyz is 200 only once the worker has registered with the master.
+            httpGet:
+              path: {{ .Values.worker.health.readyPath }}
+              port: http-metrics
+            initialDelaySeconds: {{ .Values.worker.health.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.health.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.health.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.health.failureThreshold }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.worker.securityContext | nindent 12 }}
+          volumeMounts:
+            # readOnlyRootFilesystem: true — scratch space the process may need.
+            - name: tmp
+              mountPath: /tmp
+            - name: reports
+              mountPath: /app/reports
+            {{- with .Values.worker.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: reports
+          emptyDir: {}
+        {{- with .Values.worker.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

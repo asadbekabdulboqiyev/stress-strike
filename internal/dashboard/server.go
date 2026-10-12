@@ -133,6 +133,15 @@ type Server struct {
 	history   []HistoryEntry
 	onCommand func(cmd string, args map[string]interface{})
 	store     *demostore.DemoStore // bundled VoltStore demo launcher/supervisor
+
+	// Optional operations endpoints and auth, injected by the host binary.
+	// They are plain http.Handler / middleware values so this package does not
+	// depend on the metrics, health or auth packages (no import cycle) and the
+	// CLI can wire exactly what it needs.
+	metricsHandler   http.Handler
+	livenessHandler  http.Handler
+	readinessHandler http.Handler
+	authMiddleware   func(http.Handler) http.Handler
 }
 
 func NewServer() *Server {
@@ -160,6 +169,76 @@ func (s *Server) SetCommandHandler(handler func(cmd string, args map[string]inte
 	s.onCommand = handler
 }
 
+// SetMetricsHandler wires the Prometheus exposition endpoint (/metrics).
+func (s *Server) SetMetricsHandler(h http.Handler) { s.metricsHandler = h }
+
+// SetHealthHandlers wires the liveness (/healthz) and readiness (/readyz)
+// endpoints. Either handler may be nil; the built-in default reports "ok".
+func (s *Server) SetHealthHandlers(live, ready http.Handler) {
+	s.livenessHandler = live
+	s.readinessHandler = ready
+}
+
+// SetAuthMiddleware installs a middleware wrapped around every UI/API/WebSocket
+// route. The operations endpoints (/healthz, /readyz, /metrics) are always
+// exempt so orchestrators can probe a locked-down dashboard. A nil middleware
+// leaves the server open, which is only appropriate on a loopback bind.
+func (s *Server) SetAuthMiddleware(mw func(http.Handler) http.Handler) {
+	s.authMiddleware = mw
+}
+
+// AuthOptions configures the dashboard control-plane gate from CLI flags or
+// environment configuration.
+type AuthOptions struct {
+	// Tokens are accepted verbatim as `Authorization: Bearer <token>`.
+	Tokens []string
+	// APIKeyHashes are lowercase hex SHA-256 digests of accepted API keys.
+	APIKeyHashes []string
+	// AllowedOrigins is the CSRF allowlist for state-changing methods.
+	AllowedOrigins []string
+	// RateLimitRPS refills each client IP's token bucket; 0 disables.
+	RateLimitRPS float64
+	// RateLimitBurst is the limiter capacity; defaults to 1.
+	RateLimitBurst int
+	// TrustProxy makes the limiter honor X-Forwarded-For / X-Real-IP.
+	TrustProxy bool
+	// AllowAnonymous explicitly acknowledges that the control API is reachable
+	// without credentials when bound to a non-loopback address. It is an
+	// opt-in escape hatch (CLI: -insecure / --dashboard-insecure) for demos
+	// whose host port is published on loopback only; it never enables anything
+	// by accident and is ignored when credentials are enrolled.
+	AllowAnonymous bool
+}
+
+// HasCredentials reports whether at least one credential is enrolled. Only
+// bearer tokens and API keys authenticate callers; an origin allowlist alone
+// still rejects every caller (secure by default).
+func (o AuthOptions) HasCredentials() bool {
+	return len(o.Tokens) > 0 || len(o.APIKeyHashes) > 0
+}
+
+// ApplyAuth builds the authentication middleware from opt, installs it on the
+// server and returns the backing *Auth so the caller can Close it (releasing
+// the rate-limit janitor). The operations endpoints stay open for probes and
+// scrapes. When no credential is enrolled it installs nothing and returns nil —
+// callers must decide whether an open dashboard is acceptable for their bind
+// address (loopback, or an explicit -insecure acknowledgement).
+func (s *Server) ApplyAuth(opt AuthOptions) *Auth {
+	if !opt.HasCredentials() {
+		return nil
+	}
+	a := NewAuth(AuthConfig{
+		BearerTokens:   opt.Tokens,
+		APIKeyHashes:   opt.APIKeyHashes,
+		AllowedOrigins: opt.AllowedOrigins,
+		RateLimitRPS:   opt.RateLimitRPS,
+		RateLimitBurst: opt.RateLimitBurst,
+		TrustProxy:     opt.TrustProxy,
+	})
+	s.SetAuthMiddleware(a.Middleware)
+	return a
+}
+
 func (s *Server) UpdateSnapshot(snap *LiveSnapshot) {
 	s.mu.Lock()
 	s.snapshot = snap
@@ -184,6 +263,47 @@ func (s *Server) AddHistoryEntry(entry HistoryEntry) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	securityHeaders(w, r)
+
+	// Operations endpoints are never behind auth: a locked-down dashboard must
+	// still be probeable and scrapeable by the platform.
+	switch r.URL.Path {
+	case "/healthz":
+		s.serveOps(w, r, s.livenessHandler, true)
+		return
+	case "/readyz":
+		s.serveOps(w, r, s.readinessHandler, true)
+		return
+	case "/metrics":
+		s.serveOps(w, r, s.metricsHandler, false)
+		return
+	}
+
+	if s.authMiddleware != nil {
+		s.authMiddleware(http.HandlerFunc(s.serveApp)).ServeHTTP(w, r)
+		return
+	}
+	s.serveApp(w, r)
+}
+
+// serveOps dispatches an operations request to its handler. When no handler
+// was injected, health endpoints answer a minimal 200 and /metrics answers 404,
+// so the server is still useful without the optional packages wired in.
+func (s *Server) serveOps(w http.ResponseWriter, r *http.Request, h http.Handler, defaultOK bool) {
+	if h != nil {
+		h.ServeHTTP(w, r)
+		return
+	}
+	if defaultOK {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		return
+	}
+	http.NotFound(w, r)
+}
+
+// serveApp routes the UI, JSON API and WebSocket traffic.
+func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	switch {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -18,7 +19,18 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
+	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
 )
+
+// flagStrings collects a repeatable string flag (e.g. -auth-token a -auth-token b).
+type flagStrings []string
+
+func (s *flagStrings) String() string { return strings.Join(*s, ",") }
+func (s *flagStrings) Set(v string) error {
+	*s = append(*s, v)
+	return nil
+}
 
 func main() {
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
@@ -26,6 +38,18 @@ func main() {
 	flag.CommandLine.SetOutput(io.Discard)
 
 	listen := flag.String("listen", "127.0.0.1:8888", "Dashboard listen address")
+	var (
+		authTokens  flagStrings
+		authAPIKeys flagStrings
+		authOrigins flagStrings
+	)
+	flag.Var(&authTokens, "auth-token", "Bearer token required for the control API (repeatable)")
+	flag.Var(&authAPIKeys, "auth-api-key", "SHA-256 hex of an accepted API key (repeatable)")
+	flag.Var(&authOrigins, "auth-origin", "Allowed origin for state-changing requests (repeatable; CSRF)")
+	authRateLimit := flag.Float64("auth-rate-limit", 0, "Per-client-IP request rate limit (0 = disabled)")
+	authRateBurst := flag.Int("auth-rate-burst", 0, "Rate limiter bucket capacity (default 1)")
+	authTrustProxy := flag.Bool("auth-trust-proxy", false, "Honor X-Forwarded-For / X-Real-IP for the limiter (only behind a trusted proxy)")
+	insecure := flag.Bool("insecure", false, "Acknowledge running the unauthenticated control API on a non-loopback address (demo only)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
 ╔═══════════════════════════════════════════════════════════════╗
@@ -53,6 +77,9 @@ Examples:
 
   # Custom port
   stress-strike-dashboard -listen :9090
+
+  # Locked down with a bearer token (required beyond loopback)
+  stress-strike-dashboard -listen 0.0.0.0:8888 -auth-token 'change-me' -auth-origin https://team.example.com
 `)
 	}
 	cliux.Parse(flag.CommandLine, os.Args[1:], flag.Usage, cliux.Options{
@@ -73,20 +100,54 @@ Examples:
 		runActive bool
 	)
 
+	// /metrics mirrors the active run; declared here so the command handler can
+	// feed it without waiting for the first run.
+	selfMetrics := prom.NewMetrics()
+
 	// Handle commands from browser
 	srv.SetCommandHandler(func(cmd string, args map[string]interface{}) {
 		switch cmd {
 		case "start":
-			startRun(bridge, srv, &runMu, &runActive, &runCancel, args)
+			startRun(bridge, srv, selfMetrics, &runMu, &runActive, &runCancel, args)
 		case "stop":
 			stopRun(bridge, &runMu, &runCancel)
 		}
 	})
 
-	if !dashboard.IsLoopbackAddr(*listen) {
-		fmt.Fprintln(os.Stderr, "WARNING: dashboard is listening on a non-loopback interface — the control API has NO authentication.")
-		fmt.Fprintln(os.Stderr, "Anyone who can reach this address can start/stop load runs. Prefer 127.0.0.1:8888.")
+	authOpts := dashboard.AuthOptions{
+		Tokens:         authTokens,
+		APIKeyHashes:   authAPIKeys,
+		AllowedOrigins: authOrigins,
+		RateLimitRPS:   *authRateLimit,
+		RateLimitBurst: *authRateBurst,
+		TrustProxy:     *authTrustProxy,
+		AllowAnonymous: *insecure,
 	}
+	var auth *dashboard.Auth
+	switch {
+	case authOpts.HasCredentials():
+		auth = srv.ApplyAuth(authOpts)
+		defer auth.Close()
+		fmt.Printf("  🔒 Control API protected (tokens=%d api-keys=%d origins=%d)\n",
+			len(authTokens), len(authAPIKeys), len(authOrigins))
+	case !dashboard.IsLoopbackAddr(*listen) && !authOpts.AllowAnonymous:
+		fmt.Fprintln(os.Stderr, "FATAL: dashboard is listening on a non-loopback interface with NO authentication.")
+		fmt.Fprintln(os.Stderr, "The control API can start/stop real load runs, so it must be locked down.")
+		fmt.Fprintln(os.Stderr, "Pass -auth-token (or -auth-api-key), bind a loopback address (127.0.0.1:8888),")
+		fmt.Fprintln(os.Stderr, "or pass -insecure to acknowledge the risk (publish the port on loopback only).")
+		// os.Exit here and the deferred auth.Close() above are in mutually
+		// exclusive switch branches; nothing survives to leak when we exit.
+		os.Exit(1) //nolint:gocritic // see note above
+	case !dashboard.IsLoopbackAddr(*listen):
+		fmt.Fprintln(os.Stderr, "WARNING: dashboard is listening on a non-loopback interface with NO authentication (-insecure).")
+		fmt.Fprintln(os.Stderr, "Anyone who can reach this address can start/stop load runs. Publish the port on loopback only.")
+	}
+
+	// Operations endpoints for orchestrators and Prometheus.
+	checker := health.NewChecker()
+	checker.Register("dashboard", func(context.Context) error { return nil })
+	srv.SetHealthHandlers(checker.LivenessHandler(), checker.ReadinessHandler())
+	srv.SetMetricsHandler(selfMetrics.Handler())
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  stress-strike dashboard — real-time load telemetry             ║")
@@ -121,7 +182,7 @@ Examples:
 
 // startRun builds a real config.Scenario from the browser's RunConfig and runs
 // it on the actual load engine, streaming live telemetry to the dashboard.
-func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, runMu *sync.Mutex, runActive *bool, runCancel *context.CancelFunc, args map[string]interface{}) {
+func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, selfMetrics *prom.Metrics, runMu *sync.Mutex, runActive *bool, runCancel *context.CancelFunc, args map[string]interface{}) {
 	runMu.Lock()
 	if *runActive {
 		runMu.Unlock()
@@ -179,7 +240,7 @@ func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, runMu *sync
 	// Poll the engine's live telemetry and push snapshots to the bridge.
 	stopStream := make(chan struct{})
 	streamDone := make(chan struct{})
-	go streamTelemetry(bridge, eng, stopStream, streamDone)
+	go streamTelemetry(bridge, eng, selfMetrics, stopStream, streamDone)
 
 	// Drive the real engine in the background.
 	go func() {
@@ -227,11 +288,18 @@ func markInactive(runMu *sync.Mutex, runActive *bool) {
 }
 
 // streamTelemetry polls the engine's live Telemetry and pushes snapshots to the
-// bridge until stop is closed.
-func streamTelemetry(bridge *dashboard.EngineBridge, eng *engine.Engine, stop <-chan struct{}, done chan<- struct{}) {
+// bridge until stop is closed. It also mirrors the run totals into selfMetrics
+// so the dashboard's own /metrics endpoint reflects the active run without
+// paying one atomic add per request: whole deltas are added per tick, and the
+// tick's average latency is recorded once (the resulting histogram stays
+// truthful for the distribution's average and total, while its sample count is
+// per-tick rather than per-request).
+func streamTelemetry(bridge *dashboard.EngineBridge, eng *engine.Engine, selfMetrics *prom.Metrics, stop <-chan struct{}, done chan<- struct{}) {
 	defer close(done)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
+	var lastCount, lastErr uint64
+	var lastSum uint64 // nanosecond cumulative latency
 	for {
 		select {
 		case <-stop:
@@ -239,6 +307,19 @@ func streamTelemetry(bridge *dashboard.EngineBridge, eng *engine.Engine, stop <-
 		case <-ticker.C:
 			if tel := eng.Telemetry(); tel != nil {
 				bridge.PushSnapshot(bridge.SnapshotFromTelemetry(tel))
+				if selfMetrics != nil {
+					snap := tel.Overall.Latency.Snapshot()
+					if d := snap.Count - lastCount; d > 0 {
+						// d > 0 is guaranteed by the branch condition, so the
+						// division below is safe.
+						selfMetrics.IncRequestsN(d)
+						selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run
+					}
+					if d := tel.TotalErrors() - lastErr; d > 0 {
+						selfMetrics.IncErrorsN(d)
+					}
+					lastCount, lastErr, lastSum = snap.Count, tel.TotalErrors(), snap.Sum
+				}
 			}
 		}
 	}

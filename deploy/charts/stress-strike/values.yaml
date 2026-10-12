@@ -1,15 +1,157 @@
+# Default values for the stress-strike chart.
+#
+# Ports: `grpcPort` is the control plane (worker registration / commands);
+# `httpPort` serves GET /healthz (liveness), GET /readyz (readiness — 200 only
+# once workers are registered/ready) and GET /metrics (Prometheus). Probes and
+# the metrics Service are driven off these values, and the container is started
+# with a matching `-http-addr` / `-listen`, so moving the ports here is enough.
+
+# ── Global ───────────────────────────────────────────────────────────────────
+# Overrides for the generated resource names (see templates/_helpers.tpl).
+nameOverride: ""
+fullnameOverride: ""
+
+# Pull secrets for private registries (ghcr.io packages are private by default).
+imagePullSecrets: []
+#  - name: ghcr-pull
+
+# Annotations added to every stress-strike pod (e.g. prometheus.io/scrape).
+podAnnotations: {}
+
+# Reference an existing ServiceAccount. The chart never creates one, so this is
+# empty by default and falls back to the namespace's "default" account.
+serviceAccount:
+  name: ""
+
+# Optional shared control-plane token (must match between master and workers).
+# When tokenSecret.name is set the value is read from the named Secret key and
+# injected as $(SS_TOKEN) in the container args, so it never appears in the
+# rendered manifest.
+auth:
+  tokenSecret:
+    name: ""
+    key: token
+
 master:
   replicaCount: 1
   image:
     repository: ghcr.io/asadbekabdulboqiyev/stress-strike
     tag: "0.14.3"
     pullPolicy: IfNotPresent
+  grpcPort: 50051
+  httpPort: 9090
+  # Extra CLI args appended verbatim to the master command line (advanced).
+  extraArgs: []
+  health:
+    # livenessProbe + startupProbe endpoint.
+    path: /healthz
+    # readinessProbe endpoint — should not be 200 until workers are ready.
+    readyPath: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+    startup:
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 30
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  securityContext:
+    runAsNonRoot: true
+    # The master is stateless (reports are streamed back to the caller), so the
+    # root filesystem can be read-only.
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+  # Pod-level security context. runAsNonRoot asserts the image USER; the image
+  # itself (uid 10001 for the all-in-one image) provides the concrete UID.
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # Scheduling knobs — rendered verbatim only when non-empty.
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Extra volumes/mounts appended to the pod. emptyDir mounts for /tmp and
+  # /app/reports are always added because the root filesystem is read-only.
+  extraVolumes: []
+  extraVolumeMounts: []
+  metrics:
+    service:
+      # Dedicated ClusterIP Service in front of the httpPort for Prometheus.
+      enabled: true
+      type: ClusterIP
+      annotations: {}
+
 worker:
   replicaCount: 3
   image:
     repository: ghcr.io/asadbekabdulboqiyev/stress-strike
     tag: "0.14.3"
     pullPolicy: IfNotPresent
+  grpcPort: 50061
+  httpPort: 9091
+  extraArgs: []
+  # Address the worker self-registers with. Empty = the in-cluster master
+  # Service (<release>-master:<master.grpcPort>).
+  masterAddress: ""
+  health:
+    path: /healthz
+    readyPath: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+    startup:
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 30
+  resources:
+    requests:
+      cpu: 500m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+  securityContext:
+    runAsNonRoot: true
+    # Workers only push results to the master; nothing is written to disk.
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+  # Pod-level security context. runAsNonRoot asserts the image USER; the image
+  # itself (uid 10001 for the all-in-one image) provides the concrete UID.
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # Scheduling knobs — rendered verbatim only when non-empty.
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Extra volumes/mounts appended to the pod. emptyDir mounts for /tmp and
+  # /app/reports are always added because the root filesystem is read-only.
+  extraVolumes: []
+  extraVolumeMounts: []
+  metrics:
+    service:
+      enabled: true
+      type: ClusterIP
+      annotations: {}
+
 service:
   type: ClusterIP
   port: 8080

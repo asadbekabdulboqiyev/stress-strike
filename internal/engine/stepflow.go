@@ -89,6 +89,12 @@ type flowState struct {
 	firstErr   string // first error name observed in this iteration
 	lastStatus int    // status of the last successful step
 	stopRun    bool   // stop_on_status fired → stop issuing requests globally
+
+	// coExtra is the coordinated-omission schedule skew for this iteration.
+	// It is consumed (reset to zero) by the first step that records a result,
+	// so the delay a request suffered while waiting its turn is attributed to
+	// the request that waited, not smeared across every later step.
+	coExtra time.Duration
 }
 
 // runStepSequence walks a list of steps applying control-flow semantics.
@@ -135,7 +141,7 @@ func (e *Engine) runControlStep(ctx context.Context, step config.Step, vars map[
 		// runStepForUser applies assertions/extract for regular steps; the
 		// streaming client bypasses it, so apply both here (per attempt, so
 		// recorded stats reflect the final outcome like regular steps do).
-		res, _ = e.runWithRetries(ctx, step, slot, func() (stepResult, []byte) {
+		res, _ = e.runWithRetries(ctx, step, slot, state, func() (stepResult, []byte) {
 			r, b := e.grpcStreamClient(ctx, step, vars, timeout)
 			if r.errName == "" && len(step.Assertions) > 0 {
 				if err := checkAssertions(step.Assertions, r.status, b); err != nil {
@@ -157,7 +163,7 @@ func (e *Engine) runControlStep(ctx context.Context, step config.Step, vars map[
 		return e.finishControlStep(ctx, step, vars, res, state)
 	}
 
-	res, _ = e.runWithRetries(ctx, step, slot, func() (stepResult, []byte) {
+	res, _ = e.runWithRetries(ctx, step, slot, state, func() (stepResult, []byte) {
 		res := e.runStepForUser(ctx, step, vars, userIndex)
 		return res, nil
 	})
@@ -169,14 +175,23 @@ func (e *Engine) runControlStep(ctx context.Context, step config.Step, vars map[
 // the stepStats slot (retried requests really did hit the server); the final
 // attempt's result drives iteration-level state. A zero/negative retry_backoff
 // falls back to the documented 0.1s default.
-func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int, dispatch func() (stepResult, []byte)) (stepResult, []byte) {
+//
+// When coordinated-omission correction is active, the iteration's schedule
+// skew (state.coExtra) is added to the first recorded attempt and then cleared,
+// so the hidden queue time lands on the request that actually waited.
+func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int, state *flowState, dispatch func() (stepResult, []byte)) (stepResult, []byte) {
 	attempts := 1 + step.Retries
 	var last stepResult
 	var body []byte
 	for attempt := 0; attempt < attempts; attempt++ {
 		last, body = dispatch()
 		if e.telemetry.Recording() {
-			e.stepStats[slot].Record(last.latency, last.status, last.errName)
+			lat := last.latency
+			if state != nil && state.coExtra > 0 {
+				lat += state.coExtra
+				state.coExtra = 0
+			}
+			e.stepStats[slot].Record(lat, last.status, last.errName)
 		}
 		if last.errName == "" {
 			break

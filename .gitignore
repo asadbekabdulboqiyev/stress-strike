@@ -5,6 +5,10 @@ reports/
 # swallow internal/dist/ and hide the whole subsystem from version control.
 /dist/
 /stress-strike
+/stress-strike-master
+/stress-strike-worker
+/stress-strike-dashboard
+/stress-strike-replay
 *.test
 *.out
 coverage.html

@@ -60,9 +60,24 @@ COPY LICENSE NOTICE /usr/share/doc/stress-strike/
 
 USER 65532:65532
 
-EXPOSE 50061
+EXPOSE 50061 9091
 
 STOPSIGNAL SIGTERM
 
+# ── liveness probe ──────────────────────────────────────────────────────────
+# distroless: no shell, no curl/wget. The probe invokes the worker binary's
+# `healthcheck` subcommand directly (exec form, no shell).
+#
+# The `healthcheck` subcommand GETs --addr and exits 0 on 2xx, 1 on a failed
+# request, 2 on bad usage:
+#   stress-strike-worker healthcheck --addr http://127.0.0.1:9091/healthz
+#
+# The HTTP health/metrics server binds `-http-addr` (default 0.0.0.0:9091) and
+# serves /healthz, /readyz (200 only once registered/ready) and /metrics.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/stress-strike-worker", "healthcheck", "--addr", "http://127.0.0.1:9091/healthz"]
+
 ENTRYPOINT ["/usr/local/bin/stress-strike-worker"]
+# HTTP health/metrics default to 0.0.0.0:9091 (the healthcheck above assumes it).
+# Pass `-http-addr 0.0.0.0:<port>` at run time to move it.
 CMD ["-listen", "0.0.0.0:50061"]

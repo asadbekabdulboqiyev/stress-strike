@@ -1,11 +1,69 @@
+# ── Master control-plane Service ─────────────────────────────────────────────
+# Workers self-register here and (in static-fleet mode) the master dials
+# workers back — see the -advertise arg in worker-deployment.yaml.
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "stress-strike.fullname" . }}-master
+  name: {{ include "stress-strike.master.serviceName" . }}
+  labels:
+    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: master
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 8080
+    - name: grpc
+      port: {{ .Values.master.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
   selector:
-    app: {{ include "stress-strike.fullname" . }}-master
+    {{- include "stress-strike.master.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.master.metrics.service.enabled }}
+# ── Master metrics Service (Prometheus scrape target) ────────────────────────
+# Fronts the named http-metrics port so the scrape config never has to know the
+# pod IP; the /metrics, /healthz and /readyz endpoints are all served there.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "stress-strike.master.serviceName" . }}-metrics
+  labels:
+    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: master-metrics
+  {{- with .Values.master.metrics.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.master.metrics.service.type }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.master.httpPort }}
+      targetPort: http-metrics
+      protocol: TCP
+  selector:
+    {{- include "stress-strike.master.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+{{- if .Values.worker.metrics.service.enabled }}
+# ── Worker metrics Service (Prometheus scrape target) ────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "stress-strike.fullname" . }}-worker-metrics
+  labels:
+    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-metrics
+  {{- with .Values.worker.metrics.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.worker.metrics.service.type }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.worker.httpPort }}
+      targetPort: http-metrics
+      protocol: TCP
+  selector:
+    {{- include "stress-strike.worker.selectorLabels" . | nindent 4 }}
+{{- end }}

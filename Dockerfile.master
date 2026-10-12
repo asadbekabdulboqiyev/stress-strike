@@ -50,19 +50,26 @@ COPY LICENSE NOTICE /usr/share/doc/stress-strike/
 # :nonroot is already uid 65532; spelling it out keeps `docker inspect` honest.
 USER 65532:65532
 
-EXPOSE 50051
+EXPOSE 50051 9090
 
 # The master handles SIGTERM via signal.Notify and drains registered workers,
 # so the default stop signal is correct — stated so it stays that way.
 STOPSIGNAL SIGTERM
 
-# distroless has no shell and no curl, so a HEALTHCHECK would need a probe
-# binary inside the image. The gRPC Ping RPC already exists (see
-# scripts/fleet-status.sh) — use:
-#   docker run --rm --network strike ghcr.io/.../stress-strike-master \
-#     healthcheck -master master:50051
-# instead of a shell probe. See deploy/docker-compose.yml for the container
-# healthcheck that talks to it.
+# ── liveness probe ──────────────────────────────────────────────────────────
+# distroless ships NO shell, curl or wget, so the probe MUST be the binary
+# itself (exec form — no shell is involved).
+#
+# The `healthcheck` subcommand GETs --addr and exits 0 on 2xx, 1 on a failed
+# request, 2 on bad usage:
+#   stress-strike-master healthcheck --addr http://127.0.0.1:9090/healthz
+#
+# The HTTP health/metrics server binds the address in `-http-addr`
+# (default 0.0.0.0:9090) and serves /healthz, /readyz and /metrics.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/stress-strike-master", "healthcheck", "--addr", "http://127.0.0.1:9090/healthz"]
 
 ENTRYPOINT ["/usr/local/bin/stress-strike-master"]
+# HTTP health/metrics default to 0.0.0.0:9090 (the healthcheck above assumes it).
+# Pass `-http-addr 0.0.0.0:<port>` at run time to move it.
 CMD ["-listen", "0.0.0.0:50051"]

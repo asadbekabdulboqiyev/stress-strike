@@ -112,11 +112,22 @@ func (w *loadWorker) Run(runCtx, reqBase context.Context, index int) {
 			continue
 		}
 		if w.e.limiter != nil {
+			if w.e.co {
+				// Coordinated-omission mode: measure how far behind its own
+				// arrival schedule this request had to wait and credit that
+				// skew to the iteration below.
+				extra, err := w.e.limiter.acquire(runCtx)
+				if err != nil {
+					return
+				}
+				w.e.runIteration(reqBase, index, extra)
+				continue
+			}
 			if err := w.e.limiter.wait(runCtx); err != nil {
 				return
 			}
 		}
-		w.e.runIteration(reqBase, index)
+		w.e.runIteration(reqBase, index, 0)
 	}
 }
 
@@ -138,7 +149,7 @@ func (w *loadWorker) runGatedOnce(runCtx, reqBase context.Context, index int) {
 		return
 	case <-w.e.startGate:
 	}
-	w.e.runIteration(reqBase, index)
+	w.e.runIteration(reqBase, index, 0)
 }
 
 type Engine struct {
@@ -149,6 +160,11 @@ type Engine struct {
 	timeout   time.Duration
 	keepAlive bool
 	limiter   *tokenBucket
+	// co enables coordinated-omission correction: when the generator is paced
+	// and falls behind its own arrival schedule, the accumulated skew is added
+	// to the first request of each iteration so a saturated target is not
+	// reported as faster than it really is.
+	co        bool
 	target    atomic.Int64
 	signal    *broadcast
 	startGate chan struct{}
@@ -230,6 +246,7 @@ func New(scenario *config.Scenario) (*Engine, error) {
 		timeout:   time.Duration(scenario.Profile.Timeout) * time.Second,
 		keepAlive: keepAlive,
 		limiter:   limiter,
+		co:        scenario.Profile.CoordinatedOmission,
 		signal:    newBroadcast(),
 		startGate: make(chan struct{}),
 		gate:      scenario.Profile.Gate,
@@ -493,7 +510,7 @@ func (e *Engine) controller(ctx context.Context) {
 	}
 }
 
-func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
+func (e *Engine) runIteration(reqBase context.Context, userIndex int, coExtra time.Duration) {
 	// stop_on_status fired in an earlier iteration → the whole run is halted;
 	// every subsequent iteration is a no-op until the run window ends.
 	if e.stopFlag().armed() {
@@ -509,13 +526,16 @@ func (e *Engine) runIteration(reqBase context.Context, userIndex int) {
 	}
 	iterStart := time.Now()
 	record := e.telemetry.Recording()
-	state := &flowState{}
+	// coExtra is handed to the first executed step so the schedule skew shows
+	// up in the per-step percentiles (the numbers SLAs are written against),
+	// and is also added to the whole-iteration latency below.
+	state := &flowState{coExtra: coExtra}
 	e.runStepSequence(reqBase, e.scenario.Steps, vars, userIndex, -1, 0, state)
 	if state.stopRun {
 		e.stopFlag().mark("stop_on_status fired")
 	}
 	if record {
-		e.telemetry.Overall.Record(time.Since(iterStart), state.lastStatus, state.firstErr)
+		e.telemetry.Overall.Record(time.Since(iterStart)+coExtra, state.lastStatus, state.firstErr)
 	}
 	if e.progress != nil {
 		e.progress.Update(

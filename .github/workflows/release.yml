@@ -117,3 +117,162 @@ jobs:
             ls -lh dist/
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── attest: SLSA build provenance over the published assets ───────────────
+  # GoReleaser already produces cosign keyless signatures over checksums.txt
+  # and over every SBOM (see .goreleaser.yaml `signs`), but nothing attested
+  # *how* those artifacts were built. This attaches GitHub's SLSA build
+  # provenance to the release binaries so a consumer can verify them with
+  # `gh attestation verify`.
+  attest:
+    name: Attest build provenance
+    needs: [release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${GITHUB_REF_NAME}" --dir dist
+
+      - name: Attest build provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+
+  # ── sbom-attest: attach each SPDX SBOM to its archive ─────────────────────
+  # One attestation per primary linux/amd64 archive; `attest-sbom` takes a
+  # single SBOM file, so this is a small matrix rather than a glob.
+  sbom-attest:
+    name: Attest SBOM (${{ matrix.archive }})
+    needs: [release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        archive: [stress-strike, stress-strike-master, stress-strike-worker]
+    steps:
+      - name: Resolve asset names
+        id: names
+        run: |
+          set -euo pipefail
+          # GoReleaser's {{ .Version }} is the tag with the leading "v" removed.
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${GITHUB_REF_NAME}" --dir dist
+
+      - name: Locate archive + SBOM
+        id: probe
+        run: |
+          set -euo pipefail
+          base="dist/${{ matrix.archive }}_${{ steps.names.outputs.version }}_linux_amd64.tar.gz"
+          if [ -f "$base" ] && [ -f "${base}.sbom.spdx.json" ]; then
+            echo "subject=${base}"        >> "$GITHUB_OUTPUT"
+            echo "sbom=${base}.sbom.spdx.json" >> "$GITHUB_OUTPUT"
+            echo "ok=true"                >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::expected pair missing: $base and ${base}.sbom.spdx.json — skipping attestation"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attest SBOM
+        if: steps.probe.outputs.ok == 'true'
+        uses: actions/attest-sbom@v2
+        with:
+          subject-path: ${{ steps.probe.outputs.subject }}
+          sbom-path: ${{ steps.probe.outputs.sbom }}
+
+  # ── verify: re-verify the published cosign signatures + SBOMs ─────────────
+  # Trust but verify: after GoReleaser signs the checksums and every SBOM
+  # keylessly (GitHub OIDC), this job downloads the published assets and
+  # re-verifies each signature with `cosign verify-blob`, pinned to the
+  # release workflow's identity. A tampered asset or SBOM fails the run.
+  verify-release:
+    name: Verify signatures + SBOM
+    needs: [release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CERT_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}
+      CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
+    steps:
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${GITHUB_REF_NAME}" --dir dist
+
+      - name: Verify checksums.txt signature
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --certificate dist/checksums.txt.pem \
+            --signature   dist/checksums.txt.sig \
+            --certificate-identity "$CERT_IDENTITY" \
+            --certificate-oidc-issuer "$CERT_OIDC_ISSUER" \
+            dist/checksums.txt
+          echo "checksums.txt signature verified"
+
+      - name: Verify SBOM signatures
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          checked=0
+          for sbom in dist/*.sbom.spdx.json dist/*.sbom.cdx.json; do
+            cosign verify-blob \
+              --certificate "${sbom}.pem" \
+              --signature   "${sbom}.sig" \
+              --certificate-identity "$CERT_IDENTITY" \
+              --certificate-oidc-issuer "$CERT_OIDC_ISSUER" \
+              "$sbom"
+            echo "verified $(basename "$sbom")"
+            checked=$((checked + 1))
+          done
+          if [ "$checked" -eq 0 ]; then
+            echo "::error::no *.sbom.*.json signatures found in the release assets"
+            exit 1
+          fi
+          echo "verified ${checked} SBOM signature(s)"
+
+      - name: Verify checksums against the artifacts
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum -c checksums.txt --ignore-missing
+
+      - name: Summary
+        run: |
+          {
+            echo "### Verified release ${GITHUB_REF_NAME}"
+            echo
+            echo '- `cosign verify-blob` passed for `checksums.txt` and every SBOM'
+            echo '- `sha256sum -c checksums.txt` passed for all present artifacts'
+          } >> "$GITHUB_STEP_SUMMARY"

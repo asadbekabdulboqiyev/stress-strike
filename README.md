@@ -372,7 +372,18 @@ Start a real-time web dashboard with live telemetry over WebSocket.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--listen` | `:8888` | Dashboard listen address |
+| `--listen` | `127.0.0.1:8888` | Dashboard listen address |
+| `--auth-token` | — | Bearer token required for the control API (repeatable) |
+| `--auth-api-key` | — | SHA-256 hex of an accepted API key (repeatable) |
+| `--auth-origin` | — | Allowed origin for state-changing requests (repeatable; CSRF) |
+| `--auth-rate-limit` | `0` | Per-client-IP request rate limit (0 = disabled) |
+| `--auth-trust-proxy` | `false` | Honor `X-Forwarded-For` / `X-Real-IP` for the limiter |
+| `--insecure` | `false` | Acknowledge an unauthenticated control API on a non-loopback bind (demo only) |
+
+The control API starts/stops real load runs, so the dashboard **refuses to bind
+a non-loopback address without a credential**. To expose it beyond loopback,
+enroll one with `--auth-token` or `--auth-api-key`, or pass `--insecure` to
+explicitly acknowledge an unauthenticated (loopback-only) demo.
 
 Features:
 - Live RPS sparkline graph
@@ -380,10 +391,16 @@ Features:
 - Error rate tracking with history
 - Worker node monitoring in distributed mode
 - Start/stop runs directly from the browser
+- Operations endpoints for orchestrators: `/healthz`, `/readyz`, `/metrics`
+  (always open, never authenticated)
 
 ```sh
-stress-strike dashboard --listen :9090
-# Open http://localhost:9090
+# Local only — loopback bind, no credential needed
+stress-strike dashboard
+
+# Exposed on all interfaces — a bearer token is required
+stress-strike dashboard --listen 0.0.0.0:8888 --auth-token "$(openssl rand -hex 24)"
+# Open http://<host>:8888 and send the token as `Authorization: Bearer <token>`
 ```
 
 ### `stress-strike master`

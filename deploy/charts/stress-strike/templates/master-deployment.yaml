@@ -1,21 +1,119 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "stress-strike.fullname" . }}-master
+  name: {{ include "stress-strike.master.serviceName" . }}
+  labels:
+    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/component: master
 spec:
   replicas: {{ .Values.master.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "stress-strike.fullname" . }}-master
+      {{- include "stress-strike.master.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "stress-strike.fullname" . }}-master
+        {{- include "stress-strike.commonLabels" . | nindent 8 }}
+        app.kubernetes.io/component: master
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      # Pod-level hardening: the image already runs as its own non-root USER
+      # (uid 10001 for the all-in-one image), so we only assert non-root and
+      # stamp the RuntimeDefault seccomp profile here. Container-level
+      # capabilities/readOnlyRootFilesystem live in .Values.master.securityContext.
+      securityContext:
+        {{- toYaml .Values.master.podSecurityContext | nindent 8 }}
       containers:
         - name: master
           image: "{{ .Values.master.image.repository }}:{{ .Values.master.image.tag }}"
           imagePullPolicy: {{ .Values.master.image.pullPolicy }}
           command: ["stress-strike", "master"]
+          args:
+            - "-listen"
+            - "0.0.0.0:{{ .Values.master.grpcPort }}"
+            - "-http-addr"
+            - "0.0.0.0:{{ .Values.master.httpPort }}"
+            {{- if and .Values.auth .Values.auth.tokenSecret .Values.auth.tokenSecret.name }}
+            - "-token"
+            - "$(SS_TOKEN)"
+            {{- end }}
+            {{- range .Values.master.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            {{- include "stress-strike.tokenEnv" . | nindent 12 }}
           ports:
-            - containerPort: 8080
+            - name: grpc
+              containerPort: {{ .Values.master.grpcPort }}
+              protocol: TCP
+            # Named so the probes and the metrics Service can reference it.
+            - name: http-metrics
+              containerPort: {{ .Values.master.httpPort }}
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: {{ .Values.master.health.path }}
+              port: http-metrics
+            periodSeconds: {{ .Values.master.health.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.health.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.health.startup.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.master.health.path }}
+              port: http-metrics
+            initialDelaySeconds: {{ .Values.master.health.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.health.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.health.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.health.failureThreshold }}
+          readinessProbe:
+            # /readyz is 200 only once workers are registered and ready.
+            httpGet:
+              path: {{ .Values.master.health.readyPath }}
+              port: http-metrics
+            initialDelaySeconds: {{ .Values.master.health.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.health.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.health.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.health.failureThreshold }}
+          resources:
+            {{- toYaml .Values.master.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.master.securityContext | nindent 12 }}
+          volumeMounts:
+            # readOnlyRootFilesystem: true — scratch space the process may need.
+            - name: tmp
+              mountPath: /tmp
+            - name: reports
+              mountPath: /app/reports
+            {{- with .Values.master.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: reports
+          emptyDir: {}
+        {{- with .Values.master.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.master.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.master.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.master.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

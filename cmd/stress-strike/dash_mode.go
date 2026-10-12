@@ -14,7 +14,9 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
@@ -22,7 +24,7 @@ import (
 // telemetry built from the actual load engine (no simulation). The run is
 // started from the browser's Start button using the CLI-provided scenario as
 // the default configuration.
-func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
+func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, dashAuth dashboard.AuthOptions) {
 	srv := dashboard.NewServer()
 	bridge := dashboard.NewEngineBridge(srv)
 
@@ -32,6 +34,10 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 		running bool
 		sla     = scenario.SLA
 	)
+
+	// /metrics mirrors the active run; declared here so the command handler can
+	// feed it without waiting for the first run.
+	selfMetrics := prom.NewMetrics()
 
 	// Command handler — start/stop from the browser.
 	srv.SetCommandHandler(func(cmd string, args map[string]interface{}) {
@@ -108,7 +114,7 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 
 			// Stream telemetry live WHILE the engine runs (~ real-time).
 			streamStop := make(chan struct{})
-			go streamTelemetry(srv, e, sc, streamStop)
+			go streamTelemetry(srv, e, sc, selfMetrics, streamStop)
 
 			// Run the engine in the background.
 			go func() {
@@ -143,10 +149,30 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 		}
 	})
 
-	if !dashboard.IsLoopbackAddr(dashListen) {
-		fmt.Fprintln(os.Stderr, "WARNING: dashboard is listening on a non-loopback interface — the control API has NO authentication.")
-		fmt.Fprintln(os.Stderr, "Anyone who can reach this address can start/stop load runs. Prefer 127.0.0.1:8888.")
+	if !dashboard.IsLoopbackAddr(dashListen) && !dashAuth.HasCredentials() && !dashAuth.AllowAnonymous {
+		fmt.Fprintln(os.Stderr, "FATAL: dashboard is listening on a non-loopback interface with NO authentication.")
+		fmt.Fprintln(os.Stderr, "The control API can start/stop real load runs, so it must be locked down.")
+		fmt.Fprintln(os.Stderr, "Pass --dashboard-auth-token (or --dashboard-auth-api-key), bind a loopback")
+		fmt.Fprintln(os.Stderr, "address (--listen 127.0.0.1:8888), or pass --dashboard-insecure to acknowledge the risk.")
+		os.Exit(1)
 	}
+	var auth *dashboard.Auth
+	switch {
+	case dashAuth.HasCredentials():
+		auth = srv.ApplyAuth(dashAuth)
+		defer auth.Close()
+		fmt.Printf("  🔒 Control API protected (tokens=%d api-keys=%d origins=%d)\n",
+			len(dashAuth.Tokens), len(dashAuth.APIKeyHashes), len(dashAuth.AllowedOrigins))
+	case !dashboard.IsLoopbackAddr(dashListen):
+		fmt.Fprintln(os.Stderr, "WARNING: dashboard is listening on a non-loopback interface with NO authentication (--dashboard-insecure).")
+		fmt.Fprintln(os.Stderr, "Anyone who can reach this address can start/stop load runs. Publish the port on loopback only.")
+	}
+
+	// Operations endpoints for orchestrators and Prometheus.
+	checker := health.NewChecker()
+	checker.Register("dashboard", func(context.Context) error { return nil })
+	srv.SetHealthHandlers(checker.LivenessHandler(), checker.ReadinessHandler())
+	srv.SetMetricsHandler(selfMetrics.Handler())
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  stress-strike dashboard — real-time load telemetry             ║")
@@ -198,17 +224,41 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string) {
 }
 
 // streamTelemetry samples the engine's live Telemetry and pushes snapshots to
-// the WebSocket server at a fixed interval until streamStop is closed.
-func streamTelemetry(srv *dashboard.Server, e *engine.Engine, sc *config.Scenario, stop <-chan struct{}) {
+// the WebSocket server at a fixed interval until streamStop is closed. It also
+// mirrors the run totals into selfMetrics so the dashboard's own /metrics
+// endpoint reflects the active run: whole deltas are added per tick, and the
+// tick's average latency is recorded once (the resulting histogram stays
+// truthful for the distribution's average and total, while its sample count is
+// per-tick rather than per-request).
+func streamTelemetry(srv *dashboard.Server, e *engine.Engine, sc *config.Scenario, selfMetrics *prom.Metrics, stop <-chan struct{}) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
+	var lastCount, lastErr uint64
+	var lastSum uint64 // nanosecond cumulative latency
 	for {
 		select {
 		case <-stop:
 			return
 		case <-ticker.C:
 			srv.UpdateSnapshot(snapshotFromTelemetry(e, sc))
+			if selfMetrics == nil {
+				continue
+			}
+			t, ok := engineTelemetry(e)
+			if !ok {
+				continue
+			}
+			snap := t.Overall.Latency.Snapshot()
+			if d := snap.Count - lastCount; d > 0 {
+				// d > 0 is guaranteed by the branch condition.
+				selfMetrics.IncRequestsN(d)
+				selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run
+			}
+			if d := t.TotalErrors() - lastErr; d > 0 {
+				selfMetrics.IncErrorsN(d)
+			}
+			lastCount, lastErr, lastSum = snap.Count, t.TotalErrors(), snap.Sum
 		}
 	}
 }

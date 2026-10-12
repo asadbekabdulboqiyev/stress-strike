@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -21,6 +23,10 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
+	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/opsserver"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
@@ -51,9 +57,17 @@ var (
 	tlsKey      = flag.String("tls-key", "", "TLS server private key (pair with -tls-cert)")
 	tlsCA       = flag.String("tls-ca", "", "CA bundle used to verify workers the master dials (static fleet)")
 	tlsSkip     = flag.Bool("tls-skip-verify", false, "Disable peer verification when dialing workers (self-signed demo fleets only)")
+	httpAddr    = flag.String("http-addr", "0.0.0.0:9090", "HTTP health/metrics listen address (/healthz /readyz /metrics); empty disables")
 )
 
 func main() {
+	// The container HEALTHCHECK / Kubernetes exec probe invokes this binary as
+	// `stress-strike-master healthcheck -addr <url>`. Handle it before any flag
+	// parsing so the probe never needs a shell (distroless images ship none).
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(probe.Run(os.Args[2:], "http://127.0.0.1:9090/healthz"))
+	}
+
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
 	flag.CommandLine.Init("stress-strike-master", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
@@ -190,10 +204,44 @@ func main() {
 	}
 	grpcServer := grpc.NewServer(serverOpts...)
 	distproto.RegisterMasterWorkerServer(grpcServer, master)
+	var serving atomic.Bool
 	go func() {
 		log.Printf("Master gRPC listening on %s", lis.Addr())
+		serving.Store(true)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Printf("Master server error: %v", err)
+		}
+	}()
+
+	// Operations endpoints for orchestrators: /healthz, /readyz, /metrics.
+	// Starts on its own port so probes never share the control-plane listener.
+	var opsSrv *opsserver.Server
+	if *httpAddr != "" {
+		checker := health.NewChecker()
+		checker.Register("grpc-serving", func(context.Context) error {
+			if !serving.Load() {
+				return errors.New("gRPC server not serving yet")
+			}
+			return nil
+		})
+		ops := prom.NewMetrics()
+		opsSrv = opsserver.New(opsserver.Options{
+			Addr:      *httpAddr,
+			Readiness: checker,
+			Metrics:   ops.Handler(),
+		})
+		if err := opsSrv.Start(); err != nil {
+			log.Printf("WARNING: ops server on %s disabled: %v", *httpAddr, err)
+			opsSrv = nil
+		} else {
+			log.Printf("Master ops server listening on %s (/healthz /readyz /metrics)", opsSrv.Addr())
+		}
+	}
+	defer func() {
+		if opsSrv != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = opsSrv.Shutdown(ctx)
 		}
 	}()
 

@@ -541,7 +541,36 @@ func (s *demoServer) adminReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *demoServer) adminStats(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, s.gate.Stats())
+	up, down := s.gate.DifficultySteps()
+	schedule := s.gate.DifficultySchedule()
+	// The tail is enough for a live demo; the whole history is in the bundle
+	// evidence, not in a stats endpoint.
+	const tailLen = 32
+	if len(schedule) > tailLen {
+		schedule = schedule[len(schedule)-tailLen:]
+	}
+	writeJSON(w, http.StatusOK, struct {
+		verigate.Stats
+		// Difficulty is the proof-of-work price the gate is charging now.
+		Difficulty int `json:"difficulty"`
+		// Adaptive is true when that price follows the measured request rate.
+		Adaptive bool `json:"adaptive"`
+		// RateRPS is the smoothed rate the controller reacts to.
+		RateRPS float64 `json:"rate_rps"`
+		// StepsUp / StepsDown count the difficulty changes since startup.
+		StepsUp   uint64 `json:"steps_up"`
+		StepsDown uint64 `json:"steps_down"`
+		// ScheduleTail lists the most recent changes, oldest first.
+		ScheduleTail []verigate.DifficultyEntry `json:"schedule_tail,omitempty"`
+	}{
+		Stats:        s.gate.Stats(),
+		Difficulty:   s.gate.Difficulty(),
+		Adaptive:     s.gate.AdaptiveEnabled(),
+		RateRPS:      s.gate.AdaptiveRateRPS(),
+		StepsUp:      up,
+		StepsDown:    down,
+		ScheduleTail: schedule,
+	})
 }
 
 // formatPrice renders cents as "$1,234.56".

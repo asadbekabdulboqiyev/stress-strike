@@ -184,6 +184,7 @@ func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int,
 	var last stepResult
 	var body []byte
 	for attempt := 0; attempt < attempts; attempt++ {
+		start := time.Now()
 		last, body = dispatch()
 		if e.telemetry.Recording() {
 			lat := last.latency
@@ -192,6 +193,23 @@ func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int,
 				state.coExtra = 0
 			}
 			e.stepStats[slot].Record(lat, last.status, last.errName)
+			if e.samples != nil {
+				// Attested measurement: emitted from the exact point the step
+				// percentiles are recorded, so a verified bundle can never
+				// disagree with the numbers the run reports.
+				bytes := int64(-1)
+				if body != nil {
+					bytes = int64(len(body))
+				}
+				e.samples.Emit(Sample{
+					Seq:       e.sampleSeq.Add(1) - 1,
+					Step:      step.Name,
+					StartNS:   start.UnixNano(),
+					LatencyNS: lat.Nanoseconds(),
+					Status:    last.status,
+					Bytes:     bytes,
+				})
+			}
 		}
 		if last.errName == "" {
 			break

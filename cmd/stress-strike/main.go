@@ -20,7 +20,7 @@ var version = "0.14.3"
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"demo-store", "pentest", "authorize", "audit", "healthcheck", "help", "version",
+	"demo-store", "pentest", "authorize", "audit", "healthcheck", "keygen", "verify", "help", "version",
 }
 
 func main() {
@@ -61,6 +61,12 @@ func main() {
 			return
 		case "healthcheck":
 			cmdHealthcheck()
+			return
+		case "keygen":
+			cmdKeygen()
+			return
+		case "verify":
+			cmdVerify()
 			return
 		case "help", "--help", "-h":
 			printFullHelp()
@@ -130,6 +136,8 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    pentest     1-click professional security assessment
    authorize   Manage target authorizations (allow-list + approvals)
    audit       Show or verify the authorization audit trail
+   keygen      Create a VeriBench coordinator keypair (Ed25519, PEM)
+   verify      Verify a VeriBench (vpmp/v1) evidence bundle
    help        Show this help
    version     Show version
 

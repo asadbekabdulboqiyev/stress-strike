@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/verigate"
 )
@@ -394,5 +395,102 @@ func TestAdminStatsShape(t *testing.T) {
 	}
 	if st.Requests == 0 {
 		t.Fatal("stats.requests should be > 0 after requests")
+	}
+}
+
+// The stats endpoint must report the difficulty the gate is charging and
+// whether an adaptive controller is driving it.
+func TestAdminStatsReportsDifficulty(t *testing.T) {
+	_, _, ts := newTestSrv(t, true)
+	resp, body := get(t, ts.URL+"/admin/stats")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("stats status=%d", resp.StatusCode)
+	}
+	var st struct {
+		Difficulty int     `json:"difficulty"`
+		Adaptive   bool    `json:"adaptive"`
+		RateRPS    float64 `json:"rate_rps"`
+		StepsUp    uint64  `json:"steps_up"`
+		StepsDown  uint64  `json:"steps_down"`
+	}
+	if err := json.Unmarshal([]byte(body), &st); err != nil {
+		t.Fatalf("stats not valid json: %v", err)
+	}
+	if st.Difficulty != 2 {
+		t.Errorf("difficulty = %d, want the configured 2", st.Difficulty)
+	}
+	if st.Adaptive {
+		t.Error("adaptive = true for a gate with no adaptive options")
+	}
+	if st.StepsUp != 0 || st.StepsDown != 0 {
+		t.Errorf("steps = (%d,%d), want (0,0) for a static gate", st.StepsUp, st.StepsDown)
+	}
+}
+
+// The demo's Pillar 3 claim must be observable: traffic raises the charged
+// difficulty, and the stats endpoint shows it moving.
+func TestAdaptiveGateRaisesDifficultyUnderLoad(t *testing.T) {
+	store := NewStore()
+	adaptive := verigate.DefaultAdaptiveOptions()
+	adaptive.HighWaterRPS = 20
+	adaptive.LowWaterRPS = 2
+	adaptive.StepInterval = time.Millisecond
+	adaptive.HalfLife = 5 * time.Millisecond
+
+	gate, err := verigate.New(verigate.Options{
+		Enabled:    true,
+		RateLimit:  1,
+		Burst:      1,
+		Difficulty: 2,
+		Secret:     []byte("adaptive-demo"),
+		Exempt: func(r *http.Request) bool {
+			p := r.URL.Path
+			return p == "/health" || strings.HasPrefix(p, "/admin")
+		},
+		Adaptive: &adaptive,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewDemoServer(store, gate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	srv.Routes(mux)
+	ts := httptest.NewServer(gate.Handler(mux))
+	defer ts.Close()
+
+	// The stats path is exempt from throttling, so it is a clean way to apply
+	// load: the gate still counts and observes every request.
+	for i := 0; i < 500; i++ {
+		resp, _ := get(t, ts.URL+"/admin/stats")
+		resp.Body.Close()
+	}
+
+	_, body := get(t, ts.URL+"/admin/stats")
+	var st struct {
+		Difficulty int                        `json:"difficulty"`
+		Adaptive   bool                       `json:"adaptive"`
+		StepsUp    uint64                     `json:"steps_up"`
+		Schedule   []verigate.DifficultyEntry `json:"schedule_tail"`
+	}
+	if err := json.Unmarshal([]byte(body), &st); err != nil {
+		t.Fatalf("stats not valid json: %v", err)
+	}
+	if !st.Adaptive {
+		t.Fatal("adaptive = false, want true")
+	}
+	if st.StepsUp == 0 {
+		t.Fatalf("difficulty never rose: difficulty=%d, steps_up=%d", st.Difficulty, st.StepsUp)
+	}
+	if st.Difficulty <= 2 {
+		t.Fatalf("difficulty = %d under load, want above the baseline 2", st.Difficulty)
+	}
+	if len(st.Schedule) == 0 {
+		t.Fatal("schedule_tail is empty after difficulty changes")
+	}
+	if last := st.Schedule[len(st.Schedule)-1]; last.Difficulty != st.Difficulty {
+		t.Errorf("schedule ends at %d but difficulty is %d", last.Difficulty, st.Difficulty)
 	}
 }

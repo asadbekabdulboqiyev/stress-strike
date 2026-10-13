@@ -27,6 +27,20 @@ var viewsFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
+// adaptiveOptions returns the load-aware difficulty configuration when the
+// operator asked for it, and nil — a fixed difficulty — otherwise. The baseline
+// set by -difficulty is always the floor: adaptive mode can only make the gate
+// stricter than it was configured to be, never laxer.
+func adaptiveOptions(on bool, high, low float64) *verigate.AdaptiveOptions {
+	if !on {
+		return nil
+	}
+	opts := verigate.DefaultAdaptiveOptions()
+	opts.HighWaterRPS = high
+	opts.LowWaterRPS = low
+	return &opts
+}
+
 func main() {
 	var (
 		addr         = flag.String("addr", "127.0.0.1:8090", "listen address")
@@ -38,6 +52,9 @@ func main() {
 		blockFor     = flag.Duration("block-for", 90*time.Second, "VeriGate: IP block duration")
 		challengeTTL = flag.Duration("challenge-ttl", 10*time.Minute, "VeriGate: solved-challenge cookie TTL")
 		secret       = flag.String("secret", "", "VeriGate: HMAC secret (random when empty)")
+		adaptive     = flag.Bool("adaptive", false, "VeriGate: let the request rate raise the proof-of-work difficulty (never below -difficulty)")
+		adaptiveHigh = flag.Float64("adaptive-high-rps", 200, "VeriGate: request rate at which the difficulty rises")
+		adaptiveLow  = flag.Float64("adaptive-low-rps", 50, "VeriGate: request rate at which it falls back")
 	)
 	flag.Parse()
 
@@ -52,6 +69,7 @@ func main() {
 		BlockDuration: *blockFor,
 		ChallengeTTL:  *challengeTTL,
 		Secret:        []byte(*secret),
+		Adaptive:      adaptiveOptions(*adaptive, *adaptiveHigh, *adaptiveLow),
 		Exempt: func(r *http.Request) bool {
 			p := r.URL.Path
 			// Exact control-plane/probe paths only — a prefix match here

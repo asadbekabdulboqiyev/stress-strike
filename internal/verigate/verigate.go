@@ -93,6 +93,13 @@ type Options struct {
 	// restarts if you want cookies to survive restarts; defaults to a fresh
 	// random key when nil.
 	Secret []byte
+
+	// Adaptive, when non-nil, makes the charged proof-of-work difficulty a
+	// function of the request rate the gate sees: it rises under load and
+	// falls back to the baseline when the pressure passes. The baseline
+	// (Difficulty) is a floor — adaptive mode never makes the gate weaker
+	// than the operator asked for. Nil keeps the difficulty fixed.
+	Adaptive *AdaptiveOptions
 }
 
 const (
@@ -161,6 +168,10 @@ type VeriGate struct {
 	blocks  map[string]time.Time // ip -> block expiry
 	fails   map[string]int       // ip -> consecutive challenge failures
 
+	// adaptive, when non-nil, drives the charged difficulty from the measured
+	// request rate. Nil keeps it fixed at opts.Difficulty.
+	adaptive *difficultyController
+
 	requests, passed, rateLimited, challenges, solved, failed, blocked atomic.Uint64
 }
 
@@ -194,13 +205,17 @@ func New(opts Options) (*VeriGate, error) {
 			return nil, fmt.Errorf("verigate: generate secret: %w", err)
 		}
 	}
-	return &VeriGate{
+	g := &VeriGate{
 		opts:    opts,
 		secret:  secret,
 		buckets: make(map[string]*bucket),
 		blocks:  make(map[string]time.Time),
 		fails:   make(map[string]int),
-	}, nil
+	}
+	if opts.Adaptive != nil {
+		g.adaptive = newDifficultyController(opts.Difficulty, *opts.Adaptive)
+	}
+	return g, nil
 }
 
 // SetEnabled turns protection on (true) or off (false) at runtime.
@@ -231,6 +246,9 @@ func (g *VeriGate) Reset() {
 	g.solved.Store(0)
 	g.failed.Store(0)
 	g.blocked.Store(0)
+	if g.adaptive != nil {
+		g.adaptive.reset()
+	}
 }
 
 // Stats returns a snapshot of the protection counters.
@@ -257,6 +275,52 @@ func (g *VeriGate) Stats() Stats {
 	}
 }
 
+// AdaptiveEnabled reports whether the gate is adjusting its difficulty from the
+// measured request rate.
+func (g *VeriGate) AdaptiveEnabled() bool {
+	return g.adaptive != nil
+}
+
+// Difficulty returns the proof-of-work difficulty the gate is charging right
+// now: the fixed baseline when adaptive mode is off, the controller's current
+// level when it is on.
+func (g *VeriGate) Difficulty() int {
+	if g.adaptive != nil {
+		return g.adaptive.difficulty()
+	}
+	return g.opts.Difficulty
+}
+
+// DifficultySchedule returns the recorded difficulty changes, oldest first. It
+// is empty when adaptive mode is off or when the level has never changed, and
+// it is the evidence a verifier needs to check how hard the target was working:
+// an entry at UnixMS = t means the gate charged Difficulty from t until the
+// next entry.
+func (g *VeriGate) DifficultySchedule() []DifficultyEntry {
+	if g.adaptive == nil {
+		return nil
+	}
+	return g.adaptive.scheduleSnapshot()
+}
+
+// DifficultySteps returns how many times the controller has raised and lowered
+// the charged difficulty since the gate was created or last reset.
+func (g *VeriGate) DifficultySteps() (up, down uint64) {
+	if g.adaptive == nil {
+		return 0, 0
+	}
+	return g.adaptive.counters()
+}
+
+// AdaptiveRateRPS returns the smoothed request rate the controller is reacting
+// to, or 0 when adaptive mode is off. It is a diagnostic, not a statistic.
+func (g *VeriGate) AdaptiveRateRPS() float64 {
+	if g.adaptive == nil {
+		return 0
+	}
+	return g.adaptive.rateEstimate()
+}
+
 // BlockedIPs returns the currently blocked client IPs.
 func (g *VeriGate) BlockedIPs() []string {
 	g.mu.Lock()
@@ -280,6 +344,9 @@ func (g *VeriGate) BlockedIPs() []string {
 func (g *VeriGate) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.requests.Add(1)
+		if g.adaptive != nil {
+			g.adaptive.observe(time.Now())
+		}
 
 		// Internal endpoints are always served by the middleware itself.
 		switch r.URL.Path {
@@ -409,38 +476,57 @@ func (g *VeriGate) makeChallenge(ip string) (string, int, error) {
 	if _, err := rand.Read(rand16); err != nil {
 		return "", 0, fmt.Errorf("verigate: generate challenge: %w", err)
 	}
-	raw := hex.EncodeToString(rand16) + "|" + strconv.FormatInt(time.Now().Unix(), 10) + "|" + ip
-	return raw + "|" + g.sign(raw), g.opts.Difficulty, nil
+	// The difficulty is part of the signed payload, so a client is judged by the
+	// price it was quoted even if the controller moves while it solves.
+	difficulty := g.Difficulty()
+	raw := hex.EncodeToString(rand16) + "|" + strconv.FormatInt(time.Now().Unix(), 10) + "|" + ip + "|" + strconv.Itoa(difficulty)
+	return raw + "|" + g.sign(raw), difficulty, nil
 }
 
-// verifyChallenge checks a client-submitted challenge prefix: it must be
-// correctly signed, fresh (not older than challengeWindow), and bound to the
-// client's IP.
-func (g *VeriGate) verifyChallenge(prefix, ip string) bool {
+// verifyChallengeDetailed checks a client-submitted challenge prefix: it must
+// be correctly signed, fresh (not older than challengeWindow), and bound to the
+// client's IP. On success it returns the difficulty the challenge was issued
+// with — the price the client was quoted, which is what its proof must satisfy.
+func (g *VeriGate) verifyChallengeDetailed(prefix, ip string) (int, bool) {
 	parts := strings.Split(prefix, "|")
-	if len(parts) != 4 {
-		return false
+	if len(parts) != 5 {
+		return 0, false
 	}
 	ts, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		return false
+		return 0, false
 	}
 	if delta := time.Now().Unix() - ts; delta < 0 || delta > int64(challengeWindow.Seconds()) {
-		return false
+		return 0, false
 	}
 	if parts[2] != ip {
-		return false
+		return 0, false
 	}
-	payload := parts[0] + "|" + parts[1] + "|" + parts[2]
-	expected, err := hex.DecodeString(parts[3])
+	difficulty, err := strconv.Atoi(parts[3])
+	if err != nil || difficulty < 1 || difficulty > MaxDifficulty {
+		return 0, false
+	}
+	payload := parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3]
+	expected, err := hex.DecodeString(parts[4])
 	if err != nil {
-		return false
+		return 0, false
 	}
 	got, err := hex.DecodeString(g.sign(payload))
 	if err != nil {
-		return false
+		return 0, false
 	}
-	return hmac.Equal(expected, got)
+	if !hmac.Equal(expected, got) {
+		return 0, false
+	}
+	return difficulty, true
+}
+
+// verifyChallenge reports whether a challenge prefix is one this gate issued to
+// this IP and is still fresh. Callers that need the issued difficulty use
+// verifyChallengeDetailed.
+func (g *VeriGate) verifyChallenge(prefix, ip string) bool {
+	_, ok := g.verifyChallengeDetailed(prefix, ip)
+	return ok
 }
 
 // validProof recomputes the PoW: sha256(prefix+nonce) must start with
@@ -540,11 +626,14 @@ func (g *VeriGate) handleSolve(w http.ResponseWriter, r *http.Request) {
 	ip := g.clientIP(r)
 	// Only accept a challenge we issued: signed, fresh, bound to this IP.
 	// This stops proof sharing across a botnet and replay of old solves.
-	if !g.verifyChallenge(req.Prefix, ip) {
+	difficulty, ok := g.verifyChallengeDetailed(req.Prefix, ip)
+	if !ok {
 		g.solveFail(w, r, "stale_or_foreign_challenge")
 		return
 	}
-	if !validProof(req.Prefix, req.Nonce, g.opts.Difficulty) {
+	// The proof is checked against the difficulty the challenge was issued
+	// with, not the controller's current level.
+	if !validProof(req.Prefix, req.Nonce, difficulty) {
 		g.solveFail(w, r, "invalid_proof")
 		return
 	}

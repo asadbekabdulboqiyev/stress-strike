@@ -11,11 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/evidence"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
@@ -78,6 +80,9 @@ func cmdRun() {
 		tlsFP         string
 		noHTTP2       bool
 		coordOmission bool
+		emitBundle    string
+		bundleKey     string
+		bundleWorker  string
 		authzOpts     gateOptions
 
 		dashAuthTokens    stringListFlags
@@ -114,6 +119,9 @@ func cmdRun() {
 	fs.StringVar(&tlsFP, "tls-fingerprint", "", "TLS ClientHello fingerprint (chrome, firefox, safari, edge, ios, android_okhttp, randomized, golang, ...)")
 	fs.BoolVar(&noHTTP2, "no-http2", false, "disable HTTP/2 negotiation (force HTTP/1.1)")
 	fs.BoolVar(&coordOmission, "coordinated-omission", false, "apply coordinated-omission correction to paced runs (constant-rps / --rps)")
+	fs.StringVar(&emitBundle, "emit-bundle", "", "write a verifiable vpmp/v1 evidence bundle (plus its .samples.jsonl sidecar) to this path")
+	fs.StringVar(&bundleKey, "bundle-key", "", "Ed25519 keypair PEM that seals the bundle (generated ephemerally when omitted)")
+	fs.StringVar(&bundleWorker, "bundle-worker", "", "worker identity recorded in the bundle (default: hostname, sanitised)")
 	fs.StringVar(&authzOpts.authorized, "authorized", "", "authorization ticket id recorded by an approver")
 	fs.BoolVar(&authzOpts.allowPrivate, "allow-private", false, "allow private/link-local targets explicitly")
 	fs.StringVar(&authzOpts.policyPath, "policy", "", "authorization policy file (default ~/.stress-strike/authz.json)")
@@ -306,7 +314,24 @@ func cmdRun() {
 		progress = engine.NewProgressTracker(dur, scenario.Profile.Users)
 	}
 
-	telemetry, err := eng.Run(ctx, engine.RunOptions{Out: os.Stderr, Quiet: quiet, Progress: progress})
+	// VeriBench: when a bundle is requested, every measured request is fed to a
+	// collector as well, so the evidence pack is built from the same
+	// measurements the report is — not from a summary of them.
+	var collector *evidence.Collector
+	runOpts := engine.RunOptions{Out: os.Stderr, Quiet: quiet, Progress: progress}
+	if strings.TrimSpace(emitBundle) != "" {
+		worker := strings.TrimSpace(bundleWorker)
+		if worker == "" {
+			worker = defaultWorkerID()
+		}
+		collector, err = evidence.NewCollector(worker)
+		if err != nil {
+			fatal(err)
+		}
+		runOpts.Samples = collector
+	}
+
+	telemetry, err := eng.Run(ctx, runOpts)
 	if err != nil {
 		fatal(err)
 	}
@@ -349,6 +374,14 @@ func cmdRun() {
 		}
 		if csvPath != "" {
 			fmt.Fprintf(os.Stderr, "  %s\n", csvPath)
+		}
+	}
+
+	// The evidence is written even when the SLA gate fails: a bundle that
+	// proves the target missed its budget is exactly the bundle you want.
+	if collector != nil {
+		if err := emitEvidenceBundle(emitBundle, bundleKey, collector, scenario); err != nil {
+			fatal(err)
 		}
 	}
 
@@ -436,6 +469,12 @@ func printRunHelp(fs *flag.FlagSet) {
 		"# Constant RPS with coordinated-omission correction (trustworthy p99 under saturation)",
 		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission",
 		"",
+		"# SEAL THE RESULT: emit verifiable evidence a third party can check offline",
+		"stress-strike keygen --out operator.key",
+		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission \\",
+		"    --emit-bundle bundle.json --bundle-key operator.key",
+		"stress-strike verify --bundle bundle.json --samples bundle.samples.jsonl   # 0 = valid, 1 = tampered",
+		"",
 		"# Burst: 3s maximum-speed volley, all users at once, no RPS cap",
 		"stress-strike run --url https://api.example.com --profile burst --users 500",
 		"",
@@ -465,4 +504,117 @@ func printRunHelp(fs *flag.FlagSet) {
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)
 	os.Exit(1)
+}
+
+// defaultWorkerID names this process as a worker in an evidence bundle. A
+// bundle records who measured what, so the identity has to be stable enough for
+// an auditor to pin it later: hostname plus pid does that without any
+// configuration.
+func defaultWorkerID() string {
+	host, err := os.Hostname()
+	if err != nil || strings.TrimSpace(host) == "" {
+		host = "local"
+	}
+	return fmt.Sprintf("%s-%d", host, os.Getpid())
+}
+
+// bundleKeypair loads the operator's signing keypair, or mints a throwaway one
+// so that even a one-off run can produce a sealed bundle. The second return
+// value reports whether the key is ephemeral: an ephemeral seal still proves
+// the evidence was fixed before it was published, but nobody can attribute it
+// to a key they already trust, so a real workflow uses --bundle-key with a key
+// from `stress-strike keygen`.
+func bundleKeypair(path string) (*attest.Keypair, bool, error) {
+	if p := strings.TrimSpace(path); p != "" {
+		kp, err := attest.LoadKeypairPEM(p)
+		if err != nil {
+			return nil, false, fmt.Errorf("emit-bundle: %w", err)
+		}
+		return kp, false, nil
+	}
+	kp, err := attest.GenerateKeypair()
+	if err != nil {
+		return nil, false, fmt.Errorf("emit-bundle: %w", err)
+	}
+	return kp, true, nil
+}
+
+// emitEvidenceBundle seals the collected measurements into a signed vpmp/v1
+// bundle and writes it beside its sample sidecar.
+//
+// Nothing here is copied out of the terminal report. Every sealed number is
+// recomputed from the raw records, so the bundle is an independent statement
+// about the same run: if the report and the bundle ever disagree, the report is
+// wrong — not the bundle.
+func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, scenario *config.Scenario) error {
+	plannedMilli := evidence.PlannedRPSMilli(scenario)
+	planned, err := attest.DecimalFromMilli(plannedMilli)
+	if err != nil {
+		return fmt.Errorf("emit-bundle: planned rate %d: %w", plannedMilli, err)
+	}
+
+	kp, ephemeral, err := bundleKeypair(keyPath)
+	if err != nil {
+		return err
+	}
+
+	// The coordinated-omission correction is defined against a pacing schedule.
+	// Asking for it on an unpaced run is a request the evidence cannot honour,
+	// so the bundle says plainly that it carries raw percentiles instead of
+	// inventing a schedule to correct against.
+	co := scenario.Profile.CoordinatedOmission
+	if co && plannedMilli <= 0 {
+		fmt.Fprintln(os.Stderr, "emit-bundle: coordinated-omission correction was requested but the run had no pacing rate")
+		fmt.Fprintln(os.Stderr, "  (no --rps / --target-rps): the bundle records raw percentiles, co_corrected=false.")
+		co = false
+	}
+
+	bundle, err := evidence.BuildBundle(evidence.BundleInput{
+		Collector:      collector,
+		WorkerKey:      kp,
+		CoordinatorKey: kp,
+		Tool:           attest.Tool{Name: "stress-strike", Version: version},
+		Run: attest.Run{
+			Target:     targetDisplay(scenario),
+			Profile:    scenario.Profile.Type,
+			DurationNS: int64(scenario.Profile.TotalDuration()) * int64(time.Second),
+			PlannedRPS: planned,
+		},
+		// In a local run one operator both measures and claims, so the worker
+		// commitment and the coordinator seal share an identity. Distributed
+		// runs give each worker its own key (internal/dist/coordinator).
+		COCorrected: co,
+	})
+	if err != nil {
+		return err
+	}
+
+	sidecar, err := evidence.WriteBundle(bundle, collector.Records(), path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "\nVerifiable evidence written:\n  %s\n  %s\n", path, sidecar)
+	fmt.Fprintf(os.Stderr, "  format:        %s — %d samples, worker %q\n", bundle.Format, bundle.Aggregate.Count, bundle.Workers[0].ID)
+	fmt.Fprintf(os.Stderr, "  coordinator:   %s\n", bundle.Signature.Key)
+	if ephemeral {
+		fmt.Fprintln(os.Stderr, "  note:          the seal key was generated for this run; pin it with --bundle-key to make the claim attributable")
+	}
+	if bundle.Aggregate.COCorrected {
+		fmt.Fprintf(os.Stderr, "  p99:           %s (coordinated-omission corrected, 95%% CI %s)\n",
+			asMillis(bundle.Aggregate.P99NS), millisInterval(bundle.Aggregate.COCI95NS.LowNS, bundle.Aggregate.COCI95NS.HighNS))
+	} else {
+		fmt.Fprintf(os.Stderr, "  p99:           %s (raw, uncorrected)\n", asMillis(bundle.Aggregate.P99NS))
+	}
+	fmt.Fprintf(os.Stderr, "  verify it yourself (exit 0 = valid, 1 = tampered):\n    stress-strike verify --bundle %s --samples %s\n", path, sidecar)
+	return nil
+}
+
+// asMillis renders a nanosecond duration for humans only. The bundle itself is
+// integer nanoseconds throughout; this is display formatting, not a
+// measurement.
+func asMillis(ns int64) string { return fmt.Sprintf("%.3fms", float64(ns)/1e6) }
+
+func millisInterval(lowNS, highNS int64) string {
+	return fmt.Sprintf("[%s, %s]", asMillis(lowNS), asMillis(highNS))
 }

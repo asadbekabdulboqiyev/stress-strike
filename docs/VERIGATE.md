@@ -65,6 +65,48 @@ The `/admin` page itself renders a live dashboard for all of the above.
 `/health`, `/static/*` and `/admin*` are always exempt from the gate so health
 probes, assets and the control plane itself keep working even under attack.
 
+## Adaptive difficulty (load-aware proof of work)
+
+Difficulty is a price, and a fixed price is the wrong one: an idle origin
+charges exactly the same work as a saturated one. With `-adaptive`, the gate
+charges what the moment costs — the proof-of-work difficulty follows the request
+rate the gate sees, rising under load and falling back when the pressure passes.
+
+```bash
+go run ./examples/demo_store -protect -adaptive \
+  -adaptive-high-rps 200 -adaptive-low-rps 50
+```
+
+Three properties make this safe to leave on:
+
+- **The baseline is a floor.** `-difficulty` is the lowest price the gate will
+  ever charge; adaptive mode can only make it stricter than the operator asked
+  for, never laxer. With no traffic the gate behaves exactly like a static one.
+- **A quoted price is honoured.** The difficulty a challenge was issued with is
+  bound into its HMAC signature, so a client that is mid-solve when the level
+  moves is judged by the price it was quoted — not by one that changed under its
+  feet.
+- **Every change is recorded.** The gate keeps a timestamped schedule of the
+  changes. That schedule is evidence: a load generator cannot claim the target
+  was under pressure if the target never charged anyone for it.
+
+`/admin/stats` reports the live state:
+
+```bash
+curl -s http://127.0.0.1:8090/admin/stats | \
+  jq '{difficulty, adaptive, rate_rps, steps_up, steps_down, schedule_tail}'
+```
+
+Spot it by hand: drive traffic at the store with `stress-strike` (or a `curl`
+loop) while watching `difficulty` climb, then stop and watch it settle back to
+the baseline once the rate falls below `-adaptive-low-rps`.
+
+Tuning knobs (all optional, defaults in parentheses) live in
+`internal/verigate/adaptive.go` as `AdaptiveOptions`: `StepInterval` (500ms — the
+minimum time between two changes), `HalfLife` (2s — how the rate estimate is
+smoothed), `HighWaterRPS` / `LowWaterRPS` (100 / 25 — the thresholds that step
+the difficulty), and `ScheduleCap` (1024 — how many changes are retained).
+
 ## The SLA verify gate
 
 "VeriGate" has a second meaning in this project: the **SLA verify gate** in

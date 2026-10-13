@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>VeriBench - Load tests that prove themselves</title>
+<meta name="description" content="VeriBench turns a performance claim into checkable evidence: the plan is fixed before the run, every request becomes a sealed sample, and anyone can recompute the numbers offline.">
+<!-- A blank inline icon keeps the page self-contained and avoids a stray favicon request. -->
+<link rel="icon" href="data:,">
+<!-- Flip the no-js switch before first paint, so reveal animations only ever
+     apply when scripting is available. Without it, everything renders static. -->
+<script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+<!--
+  VeriBench explainer - single file, no external assets, works from file:// offline.
+  Terminology, field names and limits follow docs/INVENTION.md (vpmp/v1), the
+  frozen normative specification, and scripts/demo-verified.sh, the runnable demo.
+  Palette roles:
+    ink      - background
+    gold     - the claim / the seal (what the operator commits to)
+    jade     - verified / PASS
+    danger   - tampered / FAIL
+  Status is never colour-only: every state also carries a glyph and a word.
+-->
+<style>
+/* ============================================================
+   1. Tokens
+   ============================================================ */
+:root{
+  --ink:#0B0C0E;
+  --ink-2:#0E1013;
+  --surface:#121417;
+  --surface-2:#171A1F;
+  --surface-3:#1C2026;
+
+  --line:rgba(255,255,255,.09);
+  --line-strong:rgba(255,255,255,.17);
+
+  --text:#E9ECF0;          /* 17.0:1 on --ink */
+  --text-dim:#AEB6BF;      /*  9.0:1 on --surface */
+  --text-mute:#9AA0A6;     /*  7.0:1 on --surface */
+
+  --gold:#FFB020;          /* the claim / the seal      10.6:1 on --ink */
+  --gold-line:rgba(255,176,32,.42);
+  --gold-soft:rgba(255,176,32,.10);
+
+  --jade:#2FD3A5;          /* verified                  10.2:1 on --ink */
+  --jade-line:rgba(47,211,165,.42);
+  --jade-soft:rgba(47,211,165,.10);
+
+  --danger:#FFA3A3;        /* tampered text              5.9:1 on tinted bg */
+  --danger-line:#FF5C5C;
+  --danger-soft:rgba(255,92,92,.12);
+
+  /* Diagram strokes. A connector or an outline is what says which box belongs
+     to which, so these are structural, not decorative: each is kept above the
+     3:1 non-text contrast requirement of WCAG 1.4.11. */
+  --plate-line:rgba(255,255,255,.34);   /*  3.11:1 on --surface */
+  --edge:rgba(255,255,255,.45);         /*  4.54:1 on --surface */
+  --edge-gold:rgba(255,176,32,.66);     /*  4.96:1 on --surface */
+  --edge-jade:rgba(47,211,165,.66);     /*  4.79:1 on --surface */
+  --edge-danger:rgba(255,92,92,.80);    /*  4.29:1 on --surface */
+
+  --radius:16px;
+  --radius-sm:10px;
+  --measure:68ch;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+/* ============================================================
+   2. Reset & base
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:clamp(1rem,.38vw + .92rem,1.125rem);
+  line-height:1.66;
+  font-synthesis-weight:none;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img,svg{max-width:100%}
+h1,h2,h3,h4{margin:0;line-height:1.1;text-wrap:balance;font-weight:640;letter-spacing:-.02em}
+p{margin:0}
+ul,ol{margin:0;padding:0}
+li{list-style:none}
+a{color:var(--gold);text-decoration-thickness:1px;text-underline-offset:.22em}
+code,kbd,samp,pre{font-family:var(--mono);font-variant-ligatures:none}
+::selection{background:var(--gold);color:var(--ink)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:4px}
+
+/* Visually hidden but available to assistive tech */
+.sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ============================================================
+   3. Chrome: skip link, progress, section rail
+   ============================================================ */
+.skip{
+  position:absolute;left:16px;top:-64px;z-index:90;
+  background:var(--gold);color:var(--ink);font-weight:640;
+  padding:10px 16px;border-radius:0 0 10px 10px;text-decoration:none;
+  transition:top .18s var(--ease);
+}
+.skip:focus{top:0}
+
+.progress{
+  position:fixed;inset:0 0 auto 0;height:2px;z-index:70;
+  background:linear-gradient(90deg,var(--gold),var(--jade));
+  transform:scaleX(0);transform-origin:0 50%;
+  will-change:transform;
+}
+
+.rail{
+  position:sticky;top:2px;z-index:60;
+  background:rgba(11,12,14,.82);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  backdrop-filter:blur(14px) saturate(1.4);
+  border-bottom:1px solid var(--line);
+}
+.rail-in{
+  max-width:1220px;margin:0 auto;padding:12px 24px;
+  display:flex;align-items:center;gap:9px;
+}
+.brand{
+  display:flex;align-items:center;gap:9px;
+  font-weight:680;letter-spacing:-.02em;font-size:.94rem;
+  white-space:nowrap;margin-right:8px;
+}
+.brand .dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 0 4px var(--gold-soft);
+}
+.rail-links{
+  display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.rail-links::-webkit-scrollbar{display:none}
+.rail-links a{
+  display:block;white-space:nowrap;text-decoration:none;
+  color:var(--text-mute);font-size:.83rem;font-weight:560;
+  padding:7px 11px;border-radius:999px;border:1px solid transparent;
+}
+.rail-links a:hover{color:var(--text);background:var(--surface-2)}
+.rail-links a[aria-current="location"]{
+  color:var(--gold);border-color:var(--gold-line);background:var(--gold-soft);
+}
+.rail-meta{margin-left:auto;color:var(--text-mute);font-size:.76rem;font-family:var(--mono);white-space:nowrap}
+@media (max-width:900px){.rail-meta{display:none}}
+
+/* ============================================================
+   4. Layout primitives
+   ============================================================ */
+.wrap{max-width:1220px;margin:0 auto;padding:0 24px}
+.narrow{max-width:var(--measure)}
+
+section{scroll-margin-top:74px}
+.band{padding:clamp(64px,9vw,128px) 0;border-top:1px solid var(--line)}
+.band:first-of-type{border-top:0}
+
+.eyebrow{
+  display:flex;align-items:center;gap:12px;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--text-mute);
+}
+.eyebrow::before{
+  content:"";width:26px;height:1px;background:var(--gold-line);flex:none;
+}
+.eyebrow .num{color:var(--gold)}
+
+h2.title{
+  font-size:clamp(1.75rem,3.4vw,2.7rem);
+  margin:.55rem 0 1rem;
+}
+h3.sub{font-size:clamp(1.08rem,1.5vw,1.28rem);margin-bottom:.5rem}
+.lede{color:var(--text-dim);font-size:clamp(1.05rem,1.2vw,1.2rem);line-height:1.6}
+.body-txt{color:var(--text-dim);max-width:var(--measure)}
+.body-txt + .body-txt{margin-top:1rem}
+strong{color:var(--text);font-weight:620}
+
+.grid{display:grid;gap:24px}
+@media (min-width:860px){
+  .g-2{grid-template-columns:1fr 1fr}
+  .g-3{grid-template-columns:repeat(3,1fr)}
+  .g-side{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:44px;align-items:start}
+}
+
+/* ============================================================
+   5. Hero
+   ============================================================ */
+.hero{position:relative;padding:clamp(72px,11vw,132px) 0 clamp(56px,7vw,88px);overflow:hidden}
+.hero::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(1150px 520px at 10% -12%,rgba(255,176,32,.15),transparent 62%),
+    radial-gradient(880px 460px at 92% 4%,rgba(47,211,165,.10),transparent 60%);
+}
+.hero::after{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.65;
+  background-image:
+    linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:76px 76px;
+  -webkit-mask-image:radial-gradient(1000px 620px at 50% -6%,#000,transparent 78%);
+  mask-image:radial-gradient(1000px 620px at 50% -6%,#000,transparent 78%);
+}
+.hero .wrap{position:relative;z-index:1}
+
+h1{
+  font-size:clamp(2.5rem,7.4vw,5.1rem);
+  letter-spacing:-.035em;line-height:.98;
+  margin:1.1rem 0 0;max-width:20ch;
+}
+.tagline{
+  margin-top:1.15rem;
+  font-size:clamp(1.15rem,2.1vw,1.6rem);
+  font-weight:600;color:var(--gold);letter-spacing:-.02em;
+}
+.hero-lede{margin-top:1.4rem;max-width:60ch;color:var(--text-dim)}
+.hero-grid{display:grid;gap:40px;align-items:center}
+@media (min-width:1000px){
+  .hero-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:56px}
+}
+
+.tldr{
+  margin-top:2.1rem;display:grid;gap:10px;
+  counter-reset:tl;
+}
+.tldr li{
+  counter-increment:tl;
+  display:flex;gap:14px;align-items:baseline;
+  padding:11px 0;border-top:1px solid var(--line);
+  color:var(--text-dim);font-size:.97rem;
+}
+.tldr li::before{
+  content:counter(tl,decimal-leading-zero);
+  font-family:var(--mono);font-size:.72rem;color:var(--gold);
+  flex:none;padding-top:.15em;
+}
+
+/* Certificate card (the artifact) */
+.cert{
+  position:relative;
+  border:1px solid var(--line-strong);border-radius:var(--radius);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.045),transparent 42%),
+    var(--surface);
+  padding:22px;overflow:hidden;
+  box-shadow:0 30px 70px -40px rgba(0,0,0,.95);
+}
+.cert::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(420px 200px at 96% -14%,var(--gold-soft),transparent 70%);
+}
+.cert-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:16px;padding-bottom:16px;border-bottom:1px solid var(--line);
+}
+.cert-kind{
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--text-mute);
+}
+.cert-id{font-family:var(--mono);font-size:.94rem;color:var(--text);margin-top:5px}
+.cert-rows{margin-top:4px}
+.cert-row{
+  display:flex;justify-content:space-between;gap:18px;
+  padding:9px 0;border-bottom:1px dashed var(--line);
+  font-size:.85rem;
+}
+.cert-row:last-child{border-bottom:0}
+.cert-row dt{color:var(--text-mute);flex:none}
+.cert-row dd{
+  margin:0;font-family:var(--mono);font-size:.8rem;color:var(--text);
+  text-align:right;word-break:break-all;
+}
+.seal{
+  position:absolute;right:-14px;bottom:-18px;width:132px;opacity:.9;
+  transform:rotate(-9deg);pointer-events:none;
+}
+@media (max-width:420px){.seal{width:104px;right:-16px}}
+
+/* Verdict chips - glyph + word + colour */
+.chip{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:.74rem;font-weight:640;
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:6px 11px;border-radius:999px;border:1px solid;
+}
+.chip-pass{color:var(--jade);background:var(--jade-soft);border-color:var(--jade-line)}
+.chip-fail{color:var(--danger);background:var(--danger-soft);border-color:var(--danger-line)}
+.chip-seal{color:var(--gold);background:var(--gold-soft);border-color:var(--gold-line)}
+
+/* ============================================================
+   6. Staged explanation blocks (plain words -> under the hood)
+   ============================================================ */
+.staged{display:grid;gap:16px;margin-top:1.6rem}
+@media (min-width:820px){.staged.wide{grid-template-columns:1fr 1fr;gap:22px}}
+.stage{
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:18px 20px;background:var(--surface);
+}
+.stage.plain{background:var(--surface)}
+.stage.tech{background:var(--surface-2)}
+.stage .tag{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.19em;
+  text-transform:uppercase;color:var(--text-mute);margin-bottom:.6rem;
+}
+.stage p{color:var(--text-dim);font-size:.95rem}
+.stage p + p{margin-top:.7rem}
+.stage.tech p{font-size:.9rem}
+.stage.tech code{font-size:.87em;color:var(--gold);background:var(--gold-soft);padding:.1em .38em;border-radius:4px}
+
+/* ============================================================
+   7. Figures & diagrams
+   ============================================================ */
+figure{margin:2.4rem 0 0}
+figure svg{display:block;width:100%;height:auto}
+figcaption{
+  margin-top:14px;color:var(--text-mute);font-size:.85rem;
+  max-width:82ch;padding-left:14px;border-left:2px solid var(--line-strong);
+}
+figcaption b{color:var(--text-dim);font-weight:620}
+
+.d-plate{fill:var(--surface);stroke:var(--plate-line);stroke-width:1}
+.d-plate-accent{fill:var(--gold-soft);stroke:var(--edge-gold);stroke-width:1}
+.d-plate-jade{fill:var(--jade-soft);stroke:var(--edge-jade);stroke-width:1}
+.d-plate-danger{fill:var(--danger-soft);stroke:var(--edge-danger);stroke-width:1}
+.d-edge{stroke:var(--edge);stroke-width:1.6;fill:none}
+.d-edge-accent{stroke:var(--edge-gold);stroke-width:1.8;fill:none}
+.d-edge-danger{stroke:var(--edge-danger);stroke-width:2;fill:none;stroke-dasharray:5 4}
+.d-dash{stroke:var(--edge);stroke-width:1.4;stroke-dasharray:6 6;fill:none}
+.t{font-family:var(--sans);fill:var(--text);font-size:15px;font-weight:600}
+.t-sm{font-family:var(--sans);fill:var(--text-mute);font-size:12.5px;font-weight:500}
+.t-mono{font-family:var(--mono);fill:var(--text-dim);font-size:12.5px}
+.t-mono-gold{font-family:var(--mono);fill:var(--gold);font-size:12.5px}
+.t-mono-jade{font-family:var(--mono);fill:var(--jade);font-size:12.5px}
+.t-mono-danger{font-family:var(--mono);fill:var(--danger);font-size:12.5px}
+.t-ok{font-family:var(--sans);fill:var(--jade);font-size:15px;font-weight:700}
+.t-no{font-family:var(--sans);fill:var(--danger);font-size:15px;font-weight:700}
+.t-label{font-family:var(--mono);fill:var(--text-mute);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.t-center{text-anchor:middle}
+.t-end{text-anchor:end}
+
+/* Diagrams keep their label size on narrow screens: instead of scaling the
+   SVG down until the 12.5px labels become unreadable, the figure pans. */
+.d-scroll{overflow-x:auto}
+.d-scroll>svg{min-width:960px}
+@media (min-width:1010px){.d-scroll{overflow-x:hidden}.d-scroll>svg{min-width:0}}
+@media (max-width:1009px){
+  figure:has(.d-scroll) figcaption::after{
+    content:"Scroll horizontally to pan the diagram.";
+    display:block;margin-top:6px;color:var(--text-dim);font-style:italic;
+  }
+}
+
+/* Drawing animation: pathLength="1" normalises every stroke to one dash.
+   Gated behind .js so that with scripting off the strokes are simply drawn. */
+@media (prefers-reduced-motion:no-preference){
+  .js .draw{
+    stroke-dasharray:1;stroke-dashoffset:1;
+    transition:stroke-dashoffset 1.05s var(--ease);
+    transition-delay:var(--d,0ms);
+  }
+  .js .is-in .draw{stroke-dashoffset:0}
+}
+
+/* ============================================================
+   8. Diptych: self-reported vs certified
+   ============================================================ */
+.dip{display:grid;gap:18px;margin-top:2.2rem}
+@media (min-width:820px){.dip{grid-template-columns:1fr 1fr;gap:22px}}
+.pane{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface)}
+.pane.warn{border-color:rgba(255,92,92,.34)}
+.pane.good{border-color:var(--jade-line)}
+.pane-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 16px;border-bottom:1px solid var(--line);
+  font-size:.78rem;font-weight:620;letter-spacing:.05em;text-transform:uppercase;
+}
+.pane.warn .pane-head{color:var(--danger);background:var(--danger-soft)}
+.pane.good .pane-head{color:var(--jade);background:var(--jade-soft)}
+.pane pre{
+  margin:0;padding:15px 16px;font-size:.79rem;line-height:1.85;
+  overflow-x:auto;color:var(--text-dim);
+}
+.pane-note{
+  padding:12px 16px;border-top:1px solid var(--line);
+  font-size:.83rem;color:var(--text-mute);background:var(--surface-2);
+}
+.bad{color:var(--danger);font-weight:600}
+.good{color:var(--jade);font-weight:600}
+del{color:var(--danger);text-decoration-color:var(--danger-line)}
+
+/* ============================================================
+   9. Cards, pillars, tables, lists
+   ============================================================ */
+.cards{display:grid;gap:18px;margin-top:2.2rem}
+@media (min-width:760px){.cards{grid-template-columns:repeat(auto-fit,minmax(258px,1fr))}}
+.card{
+  position:relative;border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;background:var(--surface);
+  transition:border-color .22s var(--ease),background .22s var(--ease);
+}
+.card:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.card .idx{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;
+  color:var(--gold);display:block;margin-bottom:12px;
+}
+.card h3{font-size:1.06rem;margin-bottom:.55rem}
+.card p{color:var(--text-dim);font-size:.93rem}
+.card .kicker{
+  margin-top:1rem;padding-top:.9rem;border-top:1px dashed var(--line);
+  font-family:var(--mono);font-size:.74rem;color:var(--text-mute);
+}
+.icon{width:26px;height:26px;margin-bottom:14px;color:var(--gold)}
+.icon-jade{color:var(--jade)}
+
+.tbl-wrap{margin-top:2rem;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.9rem}
+caption{
+  text-align:left;padding:16px 18px;font-weight:620;color:var(--text);
+  border-bottom:1px solid var(--line);font-size:.95rem;
+}
+th,td{padding:14px 18px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+thead th{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--text-mute);font-weight:600;background:var(--surface-2);
+}
+tbody tr:last-child td{border-bottom:0}
+tbody th{font-weight:620;color:var(--text);border-bottom:1px solid var(--line)}
+td{color:var(--text-dim)}
+td.mono,th.mono{font-family:var(--mono);font-size:.82rem}
+
+/* Honest-limits / what-it-proves lists */
+.limits{margin-top:1.6rem;display:grid;gap:12px}
+.limits li{
+  display:flex;gap:13px;align-items:flex-start;
+  padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text-dim);font-size:.92rem;
+}
+.limits li::before{
+  content:"";flex:none;width:8px;height:8px;margin-top:.52em;
+  border-radius:2px;background:var(--gold);transform:rotate(45deg);
+}
+.limits.prove li::before{background:var(--jade)}
+.limits.caveat li::before{
+  background:transparent;border:1.5px solid var(--danger-line);
+}
+.limits li strong{color:var(--text)}
+.limits li code{font-size:.85em;color:var(--gold);background:var(--gold-soft);padding:.08em .36em;border-radius:4px}
+
+/* ============================================================
+   10. Terminal blocks
+   ============================================================ */
+.term-wrap{margin-top:2rem}
+.term{
+  border:1px solid var(--line-strong);border-radius:var(--radius);
+  background:var(--ink-2);overflow:hidden;
+  box-shadow:0 24px 60px -44px rgba(0,0,0,.95);
+}
+.term-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.term-bar .bulb{width:10px;height:10px;border-radius:50%;background:var(--surface-3);border:1px solid var(--line-strong)}
+.term-bar .fname{margin-left:6px;font-family:var(--mono);font-size:.74rem;color:var(--text-mute)}
+pre.term-body{
+  margin:0;padding:18px 18px 20px;font-size:.8rem;line-height:1.95;
+  overflow-x:auto;color:var(--text-dim);tab-size:2;
+}
+.t-prompt{color:var(--jade);font-weight:640;user-select:none}
+.t-flag{color:var(--gold)}
+.t-key{color:var(--text);font-weight:600}
+.t-dim{color:var(--text-mute)}
+.t-ok{color:var(--jade);font-weight:600}
+.t-fail{color:var(--danger);font-weight:600}
+.t-cmt{color:#7C848D;font-style:italic}
+.t-num{font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   11. Steps
+   ============================================================ */
+.steps{counter-reset:s;display:grid;gap:14px;margin-top:2rem}
+@media (min-width:820px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{
+  counter-increment:s;position:relative;
+  padding:22px;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--surface);
+}
+.step::before{
+  content:"0" counter(s);
+  display:block;font-family:var(--mono);font-size:.7rem;
+  letter-spacing:.18em;color:var(--jade);margin-bottom:10px;
+}
+.step h3{font-size:1rem;margin-bottom:.45rem}
+.step p{color:var(--text-dim);font-size:.9rem}
+
+/* ============================================================
+   12. Footer
+   ============================================================ */
+footer{
+  border-top:1px solid var(--line);padding:clamp(44px,6vw,72px) 0 64px;
+  background:var(--ink-2);
+}
+.foot-grid{display:grid;gap:28px}
+@media (min-width:820px){.foot-grid{grid-template-columns:1.3fr 1fr}}
+.foot-note{color:var(--text-mute);font-size:.86rem;max-width:62ch}
+.foot-note + .foot-note{margin-top:.9rem}
+.foot-meta{
+  font-family:var(--mono);font-size:.76rem;color:var(--text-mute);
+  display:grid;gap:8px;align-content:start;
+}
+.foot-meta b{color:var(--text-dim);font-weight:600}
+
+/* ============================================================
+   13. Reveal transitions (JS-gated, motion-safe)
+   ============================================================ */
+@media (prefers-reduced-motion:no-preference){
+  .js [data-reveal]{
+    opacity:0;transform:translateY(16px);
+    transition:opacity .62s var(--ease),transform .62s var(--ease);
+    transition-delay:var(--d,0ms);
+  }
+  .js [data-reveal].is-in{opacity:1;transform:none}
+}
+
+/* ============================================================
+   14. Print
+   ============================================================ */
+@media print{
+  :root{
+    --ink:#fff;--ink-2:#fff;--surface:#fff;--surface-2:#fff;--surface-3:#fff;
+    --text:#111;--text-dim:#222;--text-mute:#444;--line:#ccc;--line-strong:#999;
+    --gold:#7a4a00;--jade:#0a6b4d;--danger:#8a1f1f;
+    --gold-soft:#fff;--jade-soft:#fff;--danger-soft:#fff;
+    /* Diagram strokes must stay visible on paper too. */
+    --plate-line:#8a8a8a;--edge:#777;--edge-gold:#7a4a00;--edge-jade:#0a6b4d;--edge-danger:#8a1f1f;
+  }
+  body{background:#fff;color:#111}
+  .rail,.progress,.skip{display:none}
+  .hero::before,.hero::after,.cert::before{display:none}
+  .d-scroll{overflow-x:visible}
+  .d-scroll>svg{min-width:0}
+  figure:has(.d-scroll) figcaption::after{content:none}
+  .band{padding:24px 0;break-inside:avoid}
+  figure,.term,.tbl-wrap,table{break-inside:avoid}
+  pre{white-space:pre-wrap}
+}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<nav class="rail" aria-label="Section navigation">
+  <div class="rail-in">
+    <span class="brand"><span class="dot" aria-hidden="true"></span>VeriBench</span>
+    <ul class="rail-links">
+      <li><a href="#problem">01 Problem</a></li>
+      <li><a href="#idea">02 The idea</a></li>
+      <li><a href="#business">03 Business</a></li>
+      <li><a href="#pillars">04 Three pillars</a></li>
+      <li><a href="#demo">05 Demo</a></li>
+      <li><a href="#who">06 Who it is for</a></li>
+    </ul>
+    <span class="rail-meta">offline &middot; single file</span>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- ==========================================================
+       HERO
+       ========================================================== -->
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow"><span class="num">VeriBench</span> <span>evidence layer for performance testing</span></p>
+          <h1>Load tests that prove themselves.</h1>
+          <p class="tagline">Numbers nobody can quietly rewrite.</p>
+          <p class="hero-lede">
+            A load-test report today is a claim you have to take on faith. The same person
+            runs the test <em>and</em> writes the result - and the result is a text file
+            anyone can edit. VeriBench changes the shape of the artifact: the measurement
+            plan is fixed <strong>before</strong> the run, every request becomes a sealed
+            sample, and the summary numbers are forced to equal what the raw stream actually
+            says. A customer, a procurement officer, an auditor or a CI pipeline can
+            recompute all of it <strong>offline</strong>, without trusting the tester at all.
+          </p>
+
+          <ol class="tldr">
+            <li>Fix the plan <strong>before</strong> you measure anything.</li>
+            <li>Lock every request into one fingerprint tree.</li>
+            <li>Anyone can check the seal - and one changed byte breaks it.</li>
+          </ol>
+        </div>
+
+        <!-- The artifact the whole document is about -->
+        <aside class="cert" data-reveal aria-label="Example VeriBench measurement bundle">
+          <div class="cert-head">
+            <div>
+              <p class="cert-kind">VeriBench bundle</p>
+              <p class="cert-id">vb-1f7c9a3d5e21</p>
+            </div>
+            <span class="chip chip-pass"><span aria-hidden="true">&#10003;</span> Pass</span>
+          </div>
+
+          <dl class="cert-rows">
+            <div class="cert-row"><dt>Format</dt><dd>vpmp/v1</dd></div>
+            <div class="cert-row"><dt>Target origin</dt><dd>127.0.0.1:8090</dd></div>
+            <div class="cert-row"><dt>Window</dt><dd>10:14:50Z - 10:15:00Z</dd></div>
+            <div class="cert-row"><dt>scenario_hash</dt><dd>4d2f...a91c</dd></div>
+            <div class="cert-row"><dt>Claim, CO-corrected</dt><dd>p99 41.0 ms [39.2-44.1]</dd></div>
+            <div class="cert-row"><dt>Samples</dt><dd>1500 &middot; root 6b1e8d40...c4a9</dd></div>
+            <div class="cert-row"><dt>Signature</dt><dd>Ed25519 &middot; 64 bytes</dd></div>
+            <div class="cert-row"><dt>key_id</dt><dd>sha256 9f2c...7b0e</dd></div>
+            <div class="cert-row"><dt>Verified</dt><dd>offline, no account</dd></div>
+          </dl>
+
+          <!-- Wax-seal glyph: the private stamp, decorative -->
+          <svg class="seal" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+            <circle cx="60" cy="60" r="54" fill="rgba(255,176,32,.09)" stroke="var(--edge-gold)" stroke-width="1.5"/>
+            <circle cx="60" cy="60" r="42" fill="none" stroke="var(--gold)" stroke-width="1.2" stroke-dasharray="3 5"/>
+            <path d="M42 61.5l12.5 12.5L79 47" fill="none" stroke="var(--gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" class="draw" pathLength="1" style="--d:520ms"/>
+          </svg>
+        </aside>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================
+       01 PROBLEM
+       ========================================================== -->
+  <section class="band" id="problem" aria-labelledby="problem-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">01</span> <span>The problem</span></p>
+      <h2 class="title" id="problem-h">The scoreboard is written by the player.</h2>
+      <p class="lede narrow" data-reveal>
+        A bakery announces: &ldquo;We served 100 customers in one hour.&rdquo; There is no
+        receipt. The baker kept the books, the books are a spreadsheet, and the baker can
+        edit the spreadsheet at any time.
+      </p>
+
+      <div class="grid g-side" style="margin-top:2.4rem">
+        <div data-reveal>
+          <h3 class="sub">Four ways that hole shows up</h3>
+          <ul class="limits" style="margin-top:1.1rem">
+            <li><span><strong>1. Reporting you cannot check.</strong> A summary is all you get. There is no path back to the raw measurements.</span></li>
+            <li><span><strong>2. Measurement that flatters.</strong> The tool stops measuring exactly when the system is worst.</span></li>
+            <li><span><strong>3. No provenance.</strong> Nothing binds the report to who, what, when, or how.</span></li>
+            <li><span><strong>4. Fabrication you cannot see.</strong> A generator can emit numbers that were never measured.</span></li>
+          </ul>
+        </div>
+        <div data-reveal>
+          <div class="staged wide" style="margin-top:0">
+            <div class="stage plain">
+              <p class="tag">In plain words</p>
+              <p>
+                A load test measures how a system behaves under pressure. Today the same
+                person runs the test <em>and</em> writes the report. The report is not a
+                measurement that was witnessed - it is a claim that was typed.
+              </p>
+              <p>
+                A student hands in the exam and grades it themselves, with a pencil, on the
+                same sheet. A world record with no referee, no photo finish, no timing
+                system. A scale the market trader carries in their own pocket.
+              </p>
+            </div>
+            <div class="stage tech">
+              <p class="tag">Under the hood</p>
+              <p>
+                <code>report.json</code> is text. One command turns
+                <code>"p99_ns": 41000000</code> into <code>"p99_ns": 4100000</code>. Nothing
+                in the file notices. Nothing in the process stops it. The customer has no
+                independent copy of the truth to compare against.
+              </p>
+              <p>
+                Mainstream tools - k6, Locust, JMeter, Gatling, BlazeMeter, LoadRunner - do
+                throughput and orchestration well, and integrity not at all. The consumer of
+                a report still has to trust the producer.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="body-txt" style="margin-top:2.2rem" data-reveal>
+        This matters because performance evidence is used to make expensive decisions -
+        capacity purchases, vendor acceptance, SLA compliance, launch approvals, refunds.
+        Those decisions deserve the same standard of proof we already apply to a tax return
+        or a land title: a record that someone else can independently check.
+      </p>
+
+      <!-- Figure 1 - diptych -->
+      <figure style="margin:2.2rem 0 0" data-reveal>
+        <div class="dip" style="margin-top:0">
+          <div class="pane warn">
+            <p class="pane-head"><span>Today - self-reported</span><span aria-hidden="true">&#9888;</span></p>
+            <pre tabindex="0" role="region" aria-label="Self-reported report example, editable text">{
+  "target":  "127.0.0.1:8090",
+  "p99_ns":  <del>41000000</del> <ins class="bad">4100000</ins>,
+  "rps_milli": 150000,
+  "error_rate_ppm": 2000
+}</pre>
+            <p class="pane-note">
+              <span class="bad">No integrity check.</span> The file is authoritative only
+              because everyone agreed to believe it.
+            </p>
+          </div>
+          <div class="pane good">
+            <p class="pane-head"><span>VeriBench - sealed</span><span aria-hidden="true">&#10003;</span></p>
+            <pre tabindex="0" role="region" aria-label="VeriBench manifest example, sealed record">{
+  "format": "vpmp/v1",
+  "claims": { "p99_ns": 41000000,
+              "rps_milli": 150000 },
+  "samples": { "count": 1500,
+               "merkle": { "root": "6b1e...c4a9" } },
+  "signature": { "alg": "Ed25519",
+                 "value_b64": "..." }
+}</pre>
+            <p class="pane-note">
+              <span class="good">Sealed at creation.</span> Change one byte and the
+              signature, the root, or both stop matching - loudly.
+            </p>
+          </div>
+        </div>
+        <figcaption>
+          <b>Figure 1.</b> The gap VeriBench closes. Both sides can quote a p99. Only one side
+          can prove it.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       02 THE IDEA
+       ========================================================== -->
+  <section class="band" id="idea" aria-labelledby="idea-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">02</span> <span>The idea</span></p>
+      <h2 class="title" id="idea-h">Commit to the plan, then reveal the evidence.</h2>
+      <p class="lede narrow" data-reveal>
+        VeriBench does not ask you to trust a better dashboard. It changes the shape of the
+        artifact. A result becomes three things at once: a plan fixed in advance, a
+        fingerprint that covers every single request, and a seal that only the operator
+        could have produced.
+      </p>
+
+      <!-- 2a. Commit then reveal -->
+      <h3 class="sub" style="margin-top:2.8rem" data-reveal>
+        <span class="eyebrow" style="margin-bottom:.5rem">2a</span><br>
+        Commit, then reveal
+      </h3>
+
+      <div class="staged wide" data-reveal>
+        <div class="stage plain">
+          <p class="tag">In plain words</p>
+          <p>
+            Before you measure anything, you write down what you are going to test, where,
+            when and how - and you lock that page. Then you run the test and publish the
+            numbers. Nobody can move the goalposts afterwards, not even by accident.
+          </p>
+        </div>
+        <div class="stage tech">
+          <p class="tag">Under the hood</p>
+          <p>
+            The run configuration is canonicalised (<code>json-sort-keys-compact-utf8</code>:
+            keys sorted, no insignificant whitespace, UTF-8) and hashed into
+            <code>scenario_hash</code>. The manifest fixes <code>scenario_hash</code>,
+            <code>target.url_origin</code>, <code>run.started_at</code>, the declared
+            <code>method</code> block and the tool identity <em>before</em> the first request.
+            This is the sealed envelope. Everything published later - samples, claims,
+            signature - is bound to it.
+          </p>
+        </div>
+      </div>
+
+      <!-- Figure 2 - commit then reveal -->
+      <figure data-reveal>
+        <div class="d-scroll" tabindex="0" role="region" aria-label="Diagram, scrollable on narrow screens">
+        <svg viewBox="0 0 960 268" role="img" aria-label="Diagram: before the load, the plan is fixed into the manifest as a hash of the target, window and method; the load runs under that seal; afterwards the samples, the Merkle root and the signature are revealed and a verifier recomputes them.">
+          <!-- left panel: COMMIT -->
+          <rect class="d-plate-accent" x="30" y="46" width="386" height="176" rx="16"/>
+          <text class="t-label" x="58" y="78">1 &middot; commit - before the load</text>
+          <!-- envelope, closed -->
+          <rect x="58" y="98" width="86" height="58" rx="6" class="d-plate" stroke="var(--edge-gold)"/>
+          <path class="d-edge-accent draw" pathLength="1" d="M58 102l43 30 43-30"/>
+          <text class="t-mono-gold" x="164" y="116">scenario_hash 4d2f...</text>
+          <text class="t-mono" x="164" y="140">target + window fixed</text>
+          <text class="t-mono" x="164" y="162">method fixed: CO on,</text>
+          <text class="t-mono" x="164" y="184">nearest-rank, CI 95%</text>
+          <text class="t-sm" x="58" y="206">nothing here can change after this point</text>
+
+          <!-- centre: the run happens behind the seal -->
+          <path class="d-dash draw" pathLength="1" d="M420 134h112" style="--d:120ms"/>
+          <circle cx="476" cy="106" r="15" class="d-plate"/>
+          <path d="M470 106v-5a6 6 0 0 1 12 0v5" fill="none" stroke="var(--gold)" stroke-width="1.6"/>
+          <rect x="469" y="106" width="14" height="11" rx="2" fill="none" stroke="var(--gold)" stroke-width="1.6"/>
+          <text class="t-sm t-center" x="476" y="158">the load runs</text>
+          <text class="t-sm t-center" x="476" y="176">under this seal</text>
+
+          <!-- right panel: REVEAL -->
+          <rect class="d-plate-jade" x="544" y="46" width="386" height="176" rx="16"/>
+          <text class="t-label" x="572" y="78">2 &middot; reveal - after the load</text>
+          <!-- envelope, open + document -->
+          <path class="d-edge draw" pathLength="1" d="M572 98l43-26 43 26" style="--d:200ms"/>
+          <rect x="572" y="98" width="86" height="58" rx="6" class="d-plate" stroke="var(--edge-jade)"/>
+          <rect x="592" y="86" width="46" height="52" rx="3" fill="var(--surface-2)" stroke="var(--plate-line)"/>
+          <path class="d-edge draw" pathLength="1" d="M600 98h30M600 108h30M600 118h20" style="--d:320ms"/>
+          <text class="t-mono" x="678" y="116">samples: 1500 lines</text>
+          <text class="t-mono" x="678" y="140">root: 6b1e 8d40...</text>
+          <text class="t-mono-jade" x="678" y="162">signature: Ed25519</text>
+          <text class="t-mono-jade" x="678" y="184">recompute -&gt; PASS</text>
+          <text class="t-sm" x="572" y="206">a mismatch would read FAIL, publicly</text>
+        </svg>
+        </div>
+        <figcaption>
+          <b>Figure 2.</b> Commit-then-reveal. The plan - target, window, method - is fixed in
+          the manifest before the first request. The raw samples and the signature only exist
+          afterwards. A verifier never has to trust the ordering: it is part of the evidence.
+        </figcaption>
+      </figure>
+
+      <!-- 2b. Merkle -->
+      <h3 class="sub" style="margin-top:3.4rem" data-reveal>
+        <span class="eyebrow" style="margin-bottom:.5rem">2b</span><br>
+        A fingerprint tree over every request
+      </h3>
+
+      <div class="staged wide" data-reveal>
+        <div class="stage plain">
+          <p class="tag">In plain words</p>
+          <p>
+            Every single request gets its own fingerprint. Fingerprints are combined in
+            pairs, going upwards, until one root fingerprint stands for the whole run. Change
+            one byte anywhere and that root changes. One small value protects everything
+            underneath it.
+          </p>
+        </div>
+        <div class="stage tech">
+          <p class="tag">Under the hood</p>
+          <p>
+            A leaf is one request sample:
+            <code>leaf(i) = SHA-256(0x00 || be64(i) || canonical(sample_i))</code>. Interior
+            nodes are <code>SHA-256(0x01 || left || right)</code>. The leaf list is padded to
+            a power of two by <em>repeating the last leaf</em>, and an empty list hashes to
+            <code>SHA-256("")</code>. The result is <code>samples.merkle.root</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Figure 3 - Merkle tree -->
+      <figure data-reveal>
+        <div class="d-scroll" tabindex="0" role="region" aria-label="Diagram, scrollable on narrow screens">
+        <svg viewBox="0 0 960 486" role="img" aria-label="Diagram: each per-request sample is a leaf, hashed with its index; leaves pair up into parent nodes; parents combine into a single Merkle root which is what gets signed.">
+          <!-- edges: leaves -> parents -->
+          <path class="d-edge draw" pathLength="1" d="M120 386L185 313" style="--d:60ms"/>
+          <path class="d-edge draw" pathLength="1" d="M340 386L315 313" style="--d:120ms"/>
+          <path class="d-edge draw" pathLength="1" d="M620 386L645 313" style="--d:180ms"/>
+          <path class="d-edge draw" pathLength="1" d="M840 386L775 313" style="--d:240ms"/>
+          <!-- edges: parents -> root -->
+          <path class="d-edge-accent draw" pathLength="1" d="M250 258L420 190" style="--d:300ms"/>
+          <path class="d-edge-accent draw" pathLength="1" d="M710 258L540 190" style="--d:360ms"/>
+
+          <!-- leaves -->
+          <rect class="d-plate" x="45" y="386" width="150" height="60" rx="10"/>
+          <text class="t" x="120" y="412" text-anchor="middle">sample 0</text>
+          <text class="t-mono" x="120" y="432" text-anchor="middle">a1f3...</text>
+
+          <rect class="d-plate" x="265" y="386" width="150" height="60" rx="10"/>
+          <text class="t" x="340" y="412" text-anchor="middle">sample 1</text>
+          <text class="t-mono" x="340" y="432" text-anchor="middle">9c2d...</text>
+
+          <rect class="d-plate" x="545" y="386" width="150" height="60" rx="10"/>
+          <text class="t" x="620" y="412" text-anchor="middle">sample 2</text>
+          <text class="t-mono" x="620" y="432" text-anchor="middle">4e77...</text>
+
+          <rect class="d-plate" x="765" y="386" width="150" height="60" rx="10"/>
+          <text class="t" x="840" y="412" text-anchor="middle">sample 3</text>
+          <text class="t-mono" x="840" y="432" text-anchor="middle">b108...</text>
+
+          <text class="t-label" x="45" y="376">leaves - one digest per request sample</text>
+
+          <!-- parents -->
+          <rect class="d-plate" x="155" y="258" width="190" height="55" rx="10"/>
+          <text class="t-mono" x="250" y="291" text-anchor="middle">H(0x01 | l | r)</text>
+
+          <rect class="d-plate" x="615" y="258" width="190" height="55" rx="10"/>
+          <text class="t-mono" x="710" y="291" text-anchor="middle">H(0x01 | l | r)</text>
+
+          <!-- root -->
+          <rect class="d-plate-accent" x="350" y="126" width="260" height="64" rx="12"/>
+          <text class="t-label" x="366" y="150">samples.merkle.root</text>
+          <text class="t-mono-gold" x="366" y="174">6b1e 8d40 ... c4a9</text>
+          <!-- small seal on the root -->
+          <circle cx="578" cy="158" r="17" fill="rgba(255,176,32,.12)" stroke="var(--edge-gold)"/>
+          <path class="d-edge-accent draw" pathLength="1" d="M570 159l6 6 12-13" style="--d:620ms"/>
+
+          <text class="t-sm t-center" x="480" y="222">one value covers all 1500 samples</text>
+        </svg>
+        </div>
+        <figcaption>
+          <b>Figure 3.</b> The Merkle tree: a fingerprint tree. Each leaf is one request
+          sample, hashed together with its own index. Pairs combine upward into one root,
+          which is what gets signed - so sealing is cheap, and checking a single sample stays
+          cheap at any size. Binding the index into each leaf removes a known ambiguity (the
+          same defect class as CVE-2012-2459): the list <code>[a, b, c]</code> and the padded
+          list <code>[a, b, c, c]</code> can no longer be made to collide.
+        </figcaption>
+      </figure>
+
+      <!-- Figure 4 - attack matrix -->
+      <figure data-reveal>
+        <div class="d-scroll" tabindex="0" role="region" aria-label="Diagram, scrollable on narrow screens">
+        <svg viewBox="0 0 960 440" role="img" aria-label="Diagram: three attacks compared. Editing a sample leaves the signature valid but breaks the Merkle root. Editing the manifest's Merkle root breaks the signature. Editing both forces a re-sign, which is where the external witness of Pillar 3 takes over.">
+          <text class="t-label" x="30" y="34">three attacks, and which check catches each one</text>
+
+          <!-- Row 1 -->
+          <rect class="d-plate" x="30" y="56" width="290" height="104" rx="10"/>
+          <text class="t" x="48" y="86">Attack A</text>
+          <text class="t-sm" x="48" y="110">edit one sample line</text>
+          <text class="t-mono" x="48" y="134">bundle.samples.jsonl</text>
+
+          <rect class="d-plate" x="336" y="56" width="344" height="104" rx="10"/>
+          <text class="t-sm" x="354" y="88">the manifest is untouched, so its</text>
+          <text class="t-sm" x="354" y="110">signature still verifies - but the</text>
+          <text class="t-sm" x="354" y="132">recomputed Merkle root now differs</text>
+
+          <rect class="d-plate-danger" x="696" y="56" width="234" height="104" rx="10"/>
+          <text class="t-no" x="714" y="92">&#10007; FAIL</text>
+          <text class="t-sm" x="714" y="120">INTEGRITY FAIL:</text>
+          <text class="t-sm" x="714" y="142">merkle</text>
+
+          <!-- Row 2 -->
+          <rect class="d-plate" x="30" y="170" width="290" height="104" rx="10"/>
+          <text class="t" x="48" y="200">Attack B</text>
+          <text class="t-sm" x="48" y="224">edit samples.merkle.root</text>
+          <text class="t-mono" x="48" y="248">one nibble, in the manifest</text>
+
+          <rect class="d-plate" x="336" y="170" width="344" height="104" rx="10"/>
+          <text class="t-sm" x="354" y="202">the signed payload now differs, so</text>
+          <text class="t-sm" x="354" y="224">the signature check fails first; the</text>
+          <text class="t-sm" x="354" y="246">sample tree is never even reached</text>
+
+          <rect class="d-plate-danger" x="696" y="170" width="234" height="104" rx="10"/>
+          <text class="t-no" x="714" y="206">&#10007; FAIL</text>
+          <text class="t-sm" x="714" y="234">INTEGRITY FAIL:</text>
+          <text class="t-sm" x="714" y="256">signature</text>
+
+          <!-- Row 3 -->
+          <rect class="d-plate" x="30" y="284" width="290" height="104" rx="10"/>
+          <text class="t" x="48" y="314">Attack C</text>
+          <text class="t-sm" x="48" y="338">edit both, then re-sign</text>
+          <text class="t-mono" x="48" y="362">requires the private key</text>
+
+          <rect class="d-plate" x="336" y="284" width="344" height="104" rx="10"/>
+          <text class="t-sm" x="354" y="316">every check passes: the bundle is</text>
+          <text class="t-sm" x="354" y="338">internally consistent, and attributable</text>
+          <text class="t-sm" x="354" y="360">to one key_id</text>
+
+          <rect class="d-plate-jade" x="696" y="284" width="234" height="104" rx="10"/>
+          <text class="t-ok" x="714" y="320">&#10003; PASS</text>
+          <text class="t-sm" x="714" y="348">attributable to key_id;</text>
+          <text class="t-sm" x="714" y="370">handed to Pillar 3</text>
+
+          <text class="t-sm t-center" x="480" y="420">Only the last attack survives the checks - and that is exactly the case Pillar 3 exists to catch.</text>
+        </svg>
+        </div>
+        <figcaption>
+          <b>Figure 4.</b> Two locks, two different failures. Editing a sample breaks the
+          Merkle root; editing the manifest breaks the signature, because
+          <code>samples.merkle.root</code> is inside the signed payload. To pass both checks
+          an attacker has to hold the private key and re-sign - which leaves a bundle
+          attributable to a <code>key_id</code>, and moves the question from maths to
+          corroboration.
+        </figcaption>
+      </figure>
+
+      <!-- 2c. Ed25519 -->
+      <h3 class="sub" style="margin-top:3.4rem" data-reveal>
+        <span class="eyebrow" style="margin-bottom:.5rem">2c</span><br>
+        A personal seal
+      </h3>
+
+      <div class="staged wide" data-reveal>
+        <div class="stage plain">
+          <p class="tag">In plain words</p>
+          <p>
+            The whole manifest gets stamped with the operator&rsquo;s private seal. The stamp
+            proves the operator produced it, and that nothing in it has moved since. Anyone
+            can check the stamp using the public key that travels inside the bundle - no
+            account, no server, no permission needed.
+          </p>
+        </div>
+        <div class="stage tech">
+          <p class="tag">Under the hood</p>
+          <p>
+            <code>signature.value_b64 = Ed25519_sign(SK, canonical(manifest minus signature))</code>.
+            A 32-byte public key and a 64-byte signature, deterministic and fast, with no
+            parameter choices to get wrong. The public key is <em>embedded</em>, so
+            verification needs no key server and no network. Which key signed is named by
+            <code>key_id = SHA-256(public_key)</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Figure 5 - Ed25519 -->
+      <figure data-reveal>
+        <div class="d-scroll" tabindex="0" role="region" aria-label="Diagram, scrollable on narrow screens">
+        <svg viewBox="0 0 960 428" role="img" aria-label="Diagram: on the private side the manifest minus its signature is canonicalised and signed with the operator's Ed25519 private key to produce a 64-byte signature; on the public side anyone can verify the bundle and its embedded public key offline and get PASS or FAIL.">
+          <!-- Row A - signing, private side -->
+          <rect class="d-plate-accent" x="30" y="52" width="150" height="96" rx="10"/>
+          <text class="t" x="105" y="88" text-anchor="middle">manifest</text>
+          <text class="t-mono" x="105" y="112" text-anchor="middle">minus signature</text>
+
+          <path class="d-edge-accent draw" pathLength="1" d="M182 100h46"/>
+          <rect class="d-plate" x="230" y="52" width="190" height="96" rx="10"/>
+          <text class="t" x="325" y="86" text-anchor="middle">canonicalise</text>
+          <text class="t-mono" x="325" y="110" text-anchor="middle">sorted keys, no spaces</text>
+          <text class="t-sm" x="325" y="132" text-anchor="middle">both sides must agree byte for byte</text>
+
+          <path class="d-edge-accent draw" pathLength="1" d="M422 100h46" style="--d:120ms"/>
+          <rect class="d-plate-accent" x="470" y="42" width="250" height="116" rx="10"/>
+          <text class="t" x="595" y="74" text-anchor="middle">Ed25519 sign</text>
+          <text class="t-mono-gold" x="595" y="98" text-anchor="middle">private key (sk)</text>
+          <text class="t-sm" x="595" y="124" text-anchor="middle">never leaves the operator&rsquo;s host</text>
+          <!-- wax stamp glyph -->
+          <circle cx="595" cy="142" r="9" fill="rgba(255,176,32,.16)" stroke="var(--edge-gold)"/>
+          <path d="M591 142l3 3 6-7" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round"/>
+
+          <path class="d-edge-accent draw" pathLength="1" d="M722 100h46" style="--d:240ms"/>
+          <rect class="d-plate-jade" x="770" y="62" width="160" height="76" rx="10"/>
+          <text class="t" x="850" y="94" text-anchor="middle">signature</text>
+          <text class="t-mono-jade" x="850" y="116" text-anchor="middle">value_b64, 64 bytes</text>
+
+          <text class="t-sm" x="30" y="182">private side - signing happens once, on the operator&rsquo;s machine</text>
+
+          <!-- Trust boundary -->
+          <path class="d-dash" d="M10 212h940"/>
+          <text class="t-label t-end" x="950" y="206">trust boundary</text>
+
+          <!-- Row B - verification, public side -->
+          <rect class="d-plate" x="30" y="252" width="250" height="106" rx="10"/>
+          <text class="t" x="52" y="282">what the verifier has</text>
+          <text class="t-mono" x="52" y="308">bundle + samples</text>
+          <text class="t-mono" x="52" y="330">public key (embedded)</text>
+
+          <path class="d-edge draw" pathLength="1" d="M282 305h46" style="--d:320ms"/>
+          <rect class="d-plate-jade" x="330" y="262" width="230" height="106" rx="10"/>
+          <text class="t" x="445" y="296" text-anchor="middle">Ed25519 verify</text>
+          <text class="t-mono-jade" x="445" y="320" text-anchor="middle">recompute the payload</text>
+          <text class="t-sm" x="445" y="344" text-anchor="middle">no account, no network</text>
+
+          <path class="d-edge draw" pathLength="1" d="M562 315h46" style="--d:420ms"/>
+          <rect class="d-plate" x="610" y="252" width="320" height="106" rx="10"/>
+          <text class="t-ok" x="634" y="288">&#10003; PASS</text>
+          <text class="t-sm" x="720" y="288">signature matches, every leaf recomputes</text>
+          <text class="t-no" x="634" y="322">&#10007; FAIL</text>
+          <text class="t-sm" x="720" y="322">any byte, any leaf, any key mismatch</text>
+
+          <text class="t-sm" x="30" y="404">public side - repeatable by a customer, an auditor, or a CI job</text>
+        </svg>
+        </div>
+        <figcaption>
+          <b>Figure 5.</b> The private seal never crosses the boundary. What travels is the
+          bundle, its samples and an embedded public key - which is exactly why a customer can
+          check the claim without being given the ability to forge one. Verification also
+          re-derives <code>key_id = SHA-256(public_key)</code>, so a swapped key is caught
+          rather than silently accepted.
+        </figcaption>
+      </figure>
+
+      <!-- The verifier's checklist -->
+      <h3 class="sub" style="margin-top:3.4rem" data-reveal>The verifier&rsquo;s checklist</h3>
+      <p class="body-txt" data-reveal>
+        That is the whole idea in one table. Verification is eight checks, all offline, and
+        the verdict is a word plus an exit code - so the same object settles a contract and
+        gates a pipeline.
+      </p>
+
+      <div class="tbl-wrap" data-reveal>
+        <table>
+          <caption>What <code>verify</code> actually checks, in order</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Check</th>
+              <th scope="col">What it establishes</th>
+              <th scope="col">Failure label</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="mono">1</th>
+              <td>Format</td>
+              <td>The file claims to implement <code>vpmp/v1</code>.</td>
+              <td class="mono">FAIL</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">2</th>
+              <td>Key binding</td>
+              <td><code>key_id</code> equals <code>SHA-256(public_key)</code>.</td>
+              <td class="mono">FAIL</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">3</th>
+              <td>Signature</td>
+              <td>Ed25519 over the canonical manifest, minus its own signature.</td>
+              <td class="mono">INTEGRITY FAIL: signature</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">4</th>
+              <td>Sample count</td>
+              <td>The number of non-empty sample lines equals <code>samples.count</code>.</td>
+              <td class="mono">FAIL</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">5</th>
+              <td>Merkle root</td>
+              <td>Every leaf is rebuilt and the tree recomputed, then compared.</td>
+              <td class="mono">INTEGRITY FAIL: merkle</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">6</th>
+              <td>Claims</td>
+              <td>Every published number is recomputed from the raw stream. Integers must match exactly.</td>
+              <td class="mono">CLAIM MISMATCH</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">7</th>
+              <td>Internal consistency</td>
+              <td><code>seq</code> strictly increasing; <code>lat_ns == t_end_ns - t_start_ns</code>; times inside the run window; <code>ok == (status &lt; 400)</code>.</td>
+              <td class="mono">CONSISTENCY FAIL</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">8</th>
+              <td>Verdict</td>
+              <td>All of the above pass -&gt; <code>PASS</code>, exit 0. Any failure -&gt; <code>FAIL</code>, exit 1, naming the first failing check.</td>
+              <td class="mono">PASS / FAIL</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="body-txt" style="margin-top:2.4rem" data-reveal>
+        Three of those checks are cryptographic and one is arithmetic, so a bundle cannot be
+        edited after signing without failing check 3, and its raw data cannot be altered
+        without failing check 5. A dishonest operator who wants to publish fake numbers must
+        therefore sign them at creation time - which is precisely the attack that Pillar 3
+        exists to detect.
+      </p>
+      <p class="body-txt" data-reveal>
+        And to be clear about what a seal is worth: <strong>signing a lie still yields a
+        well-signed lie.</strong> Cryptography is the integrity half of the story, not the
+        whole of it - which is why there are three pillars, not one.
+      </p>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       03 BUSINESS
+       ========================================================== -->
+  <section class="band" id="business" aria-labelledby="business-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">03</span> <span>Why it matters</span></p>
+      <h2 class="title" id="business-h">Disputes become arithmetic.</h2>
+      <p class="lede narrow" data-reveal>
+        Performance numbers are already used as commercial promises. VeriBench makes them
+        checkable, which changes what both sides can say in a room.
+      </p>
+
+      <div class="cards">
+        <article class="card" data-reveal style="--d:0ms">
+          <span class="idx">SLA DISPUTES</span>
+          <h3>&ldquo;You promised p99 under 200 ms.&rdquo;</h3>
+          <p>
+            When the vendor&rsquo;s report and the customer&rsquo;s monitoring disagree, the
+            argument is about whose spreadsheet wins. With a bundle it becomes a matter of
+            arithmetic: recompute the root, check the signature, read the verdict.
+          </p>
+        </article>
+        <article class="card" data-reveal style="--d:90ms">
+          <span class="idx">PROCUREMENT</span>
+          <h3>A checkable line in the RFP</h3>
+          <p>
+            A buyer can require a VeriBench bundle as an acceptance artifact, with the exact
+            verification command written into the contract. A vendor who can prove the numbers
+            has an advantage over one who asks to be believed.
+          </p>
+        </article>
+        <article class="card" data-reveal style="--d:180ms">
+          <span class="idx">TRUST</span>
+          <h3>The bundle is the deliverable</h3>
+          <p>
+            Not a dashboard screenshot, not a PDF rendered by the tool under test. A
+            tamper-evident record with a chain of custody: what was measured, when, under
+            which declared method, and who sealed it.
+          </p>
+        </article>
+      </div>
+
+      <div class="tbl-wrap" data-reveal>
+        <table>
+          <caption>Inside the manifest: the fields that carry the evidence</caption>
+          <thead>
+            <tr>
+              <th scope="col">Field</th>
+              <th scope="col">Example</th>
+              <th scope="col">What it pins down</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="mono">format</th>
+              <td class="mono">vpmp/v1</td>
+              <td>The protocol version a verifier has to implement.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">bundle_id</th>
+              <td class="mono">vb-1f7c9a3d5e21</td>
+              <td>Identifies this one bundle and nothing else.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">target.url_origin</th>
+              <td class="mono">127.0.0.1:8090</td>
+              <td>What was measured - a specific origin, not a vague product name.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">run.started_at / ended_at</th>
+              <td class="mono">10:14:50Z - 10:15:00Z</td>
+              <td>When. Evidence about the wrong hour is not evidence.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">scenario_hash</th>
+              <td class="mono">sha256 4d2f...a91c</td>
+              <td>The exact configuration, hashed before the run started.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">method</th>
+              <td class="mono">CO on, nearest-rank, CI 95%</td>
+              <td>How the numbers were computed. Stops a redefined metric from passing.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">claims.p99_ns_ci95</th>
+              <td class="mono">[39200000, 44100000]</td>
+              <td>The claim itself, error bars included, sealed inside the signed payload.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">samples.count / samples.merkle.root</th>
+              <td class="mono">1500 / 6b1e8d40...c4a9</td>
+              <td>The raw evidence, the whole of it, locked to one root.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">signature.value_b64</th>
+              <td class="mono">Ed25519, 64 bytes</td>
+              <td>The seal over everything above.</td>
+            </tr>
+            <tr>
+              <th scope="row" class="mono">signer.key_id</th>
+              <td class="mono">sha256 9f2c...7b0e</td>
+              <td>Which key signed - <code>SHA-256(public_key)</code>, so it can be checked.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" style="margin-top:3rem" data-reveal>What a VeriBench bundle does prove</h3>
+      <ul class="limits prove" data-reveal>
+        <li><span><strong>Integrity and tamper-evidence.</strong> Change the manifest and check 3 fails; change a sample and check 5 fails; change both coherently and you need the private key.</span></li>
+        <li><span><strong>Attribution.</strong> The bundle was signed by the holder of the key whose fingerprint is <code>key_id</code>, embedded in the bundle.</span></li>
+        <li><span><strong>Non-repudiation.</strong> An operator cannot later disown a signed bundle, or alter it, without detection.</span></li>
+        <li><span><strong>Claim-to-evidence binding.</strong> The published summary numbers are forced to equal what the raw sample stream actually says. Lying in the summary is reduced to lying in the raw data, which is a harder and more auditable act.</span></li>
+        <li><span><strong>Honesty of the reported distribution.</strong> The coordinated-omission correction inputs are part of the signed, Merkle-locked stream, so the correction is auditable rather than a black box.</span></li>
+        <li><span><strong>Reproducibility of derived statistics.</strong> The percentiles and the bootstrap confidence interval are recomputable from the raw stream under a declared, seeded method.</span></li>
+      </ul>
+
+      <h3 class="sub" style="margin-top:3rem" data-reveal>What it does not prove, stated plainly</h3>
+      <ul class="limits caveat" data-reveal>
+        <li><span><strong>A valid signature is not proof that packets were sent.</strong> A worker can fabricate internally consistent samples and sign them, and checks 3 and 5 will pass. This is the single most important limitation of the MVP, and it is stated here without hedging.</span></li>
+        <li><span><strong>It does not establish who the signer is.</strong> The public key is embedded, and nothing in v1 binds it to a legal entity or a domain. Key-to-identity binding needs an external certificate authority, or key pinning by the verifier out of band.</span></li>
+        <li><span><strong>It does not corroborate server-side latency.</strong> The bundle records the client&rsquo;s view; the server&rsquo;s own view of the same requests can differ, through queuing in intermediate proxies or clock skew.</span></li>
+        <li><span><strong>It does not detect host-level interference.</strong> A throttled CPU, a shaped network link, or a co-tenant stealing cycles can be real and invisible to any client-side evidence.</span></li>
+        <li><span><strong>It does not protect against a compromised signing host.</strong> If the private key and the sample generator are both attacker-controlled, the attacker controls the evidence. The mitigation is hardware key custody, not a change to the bundle format.</span></li>
+        <li><span><strong>The confidence interval is conditional on the sample stream.</strong> It quantifies sampling uncertainty given the observed samples. It cannot repair a systematically wrong sampling process, and it is not a claim about the future.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       04 PILLARS
+       ========================================================== -->
+  <section class="band" id="pillars" aria-labelledby="pillars-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">04</span> <span>The three pillars</span></p>
+      <h2 class="title" id="pillars-h">Sealing is only worth anything if the numbers are honest.</h2>
+      <p class="lede narrow" data-reveal>
+        Cryptographic proof of a rigged measurement is proof of nothing. VeriBench stands on
+        three pillars: what was measured, how the latency was counted, and whether the claim
+        survives being attacked.
+      </p>
+
+      <div class="cards">
+        <!-- Pillar 1 -->
+        <article class="card" data-reveal style="--d:0ms" aria-labelledby="p1">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M3 8h18M6 8v10M18 8v10M3 8l4-4h10l4 4"/>
+            <path d="M9 12h6"/>
+          </svg>
+          <span class="idx">PILLAR 01</span>
+          <h3 id="p1">Attested Measurement (VPMP v1)</h3>
+          <p>
+            An Ed25519-signed manifest, bound by a Merkle root to the raw per-request sample
+            stream, with the run configuration committed before the load starts.
+          </p>
+          <div class="staged in-card" style="margin-top:1rem">
+            <div class="stage plain">
+              <p class="tag">In plain words</p>
+              <p>You write down what you are going to measure, and how, and you lock it. You cannot move the goalposts afterwards - not even by accident, and not even with good intentions.</p>
+            </div>
+            <div class="stage tech">
+              <p class="tag">Under the hood</p>
+              <p>Addresses failure modes 1 (unverifiable reporting) and 3 (absent provenance). <code>scenario_hash</code>, <code>target.url_origin</code>, <code>run.started_at</code>, the <code>method</code> block and the tool identity are fixed into the manifest first; the samples and the signature come after.</p>
+            </div>
+          </div>
+          <p class="kicker">sealed first &middot; cannot be edited after the fact</p>
+        </article>
+
+        <!-- Pillar 2 -->
+        <article class="card" data-reveal style="--d:110ms" aria-labelledby="p2">
+          <svg class="icon icon-jade" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="13" r="7"/>
+            <path d="M12 9v5l3 2M9 3h6M4 21l4-3M20 21l-4-3"/>
+          </svg>
+          <span class="idx">PILLAR 02</span>
+          <h3 id="p2">Honest Latency</h3>
+          <p>
+            A stall must not be able to turn itself into a beautiful average by pausing the
+            clock.
+          </p>
+          <div class="staged in-card" style="margin-top:1rem">
+            <div class="stage plain">
+              <p class="tag">In plain words</p>
+              <p>If the server freezes for two seconds, a closed-loop tool simply stops sending - and therefore stops measuring - exactly when things are worst. The reported percentiles get better as the system gets worse. VeriBench adds the missed schedule skew back, request by request, and signs it.</p>
+            </div>
+            <div class="stage tech">
+              <p class="tag">Under the hood</p>
+              <p>Addresses failure mode 2 (coordinated omission, Tene 2013). Honest latency is <code>lat_ns + co_extra_ns</code>. Percentiles are nearest-rank over that value; the confidence interval is a seeded bootstrap at 95%. Every unit is an integer - nanoseconds, parts-per-million, milli-requests-per-second - because a float has no single textual rendering, and a producer and a verifier in different languages must agree on the exact bytes.</p>
+            </div>
+          </div>
+          <p class="kicker">measured on schedule &middot; correction auditable &middot; error bars included</p>
+        </article>
+
+        <!-- Pillar 3 -->
+        <article class="card" data-reveal style="--d:220ms" aria-labelledby="p3">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/>
+            <path d="M9 12l2 2 4-5"/>
+          </svg>
+          <span class="idx">PILLAR 03</span>
+          <h3 id="p3">Adversarial-in-the-loop</h3>
+          <p>
+            A second, independent account of the same run - kept by the party that has no
+            reason to flatter the tester.
+          </p>
+          <div class="staged in-card" style="margin-top:1rem">
+            <div class="stage plain">
+              <p class="tag">In plain words</p>
+              <p>Two books are kept of the same test: what the generator says it sent, and what the target itself saw arrive. The party being tested has no incentive to confirm a fake test. If the two accounts disagree, somebody is lying.</p>
+            </div>
+            <div class="stage tech">
+              <p class="tag">Under the hood</p>
+              <p>Addresses failure mode 4 (undetectable fabrication). VeriGate&rsquo;s adaptive difficulty acts as an independent witness: as the generator ramps difficulty, the target counts arrivals and challenge-solve rates, and those observed numbers must agree with the generator&rsquo;s claimed cadence. The reserved <code>extensions.challenge_response</code> field is where the target&rsquo;s evidence attaches. Honestly labelled: this is <em>evidence-based suspicion and corroboration, not proof</em> - a colluding generator and target can fabricate both accounts together.</p>
+            </div>
+          </div>
+          <p class="kicker">two accounts must agree &middot; raises the cost of the cheat</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       05 DEMO
+       ========================================================== -->
+  <section class="band" id="demo" aria-labelledby="demo-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">05</span> <span>The demo</span></p>
+      <h2 class="title" id="demo-h">Three commands, and one byte of sabotage.</h2>
+      <p class="lede narrow" data-reveal>
+        The whole story fits in a terminal, which is deliberate: if the proof of a performance
+        claim needs a proprietary viewer, it is not proof.
+      </p>
+
+      <ol class="steps">
+        <li class="step" data-reveal style="--d:0ms">
+          <h3>Keygen</h3>
+          <p>One Ed25519 keypair. The private key is written with mode 0600 and never leaves the operator&rsquo;s host; the public fingerprint is <code>key_id</code>.</p>
+        </li>
+        <li class="step" data-reveal style="--d:90ms">
+          <h3>Run</h3>
+          <p>The plan is sealed, one sample is streamed per request and never rewritten, then the manifest is signed and the two-file bundle is emitted.</p>
+        </li>
+        <li class="step" data-reveal style="--d:180ms">
+          <h3>Verify</h3>
+          <p>Anyone recomputes the tree and checks the signature locally. The verdict is a word, and an exit code: PASS is 0, FAIL is 1.</p>
+        </li>
+      </ol>
+
+      <figure class="term-wrap" data-reveal>
+        <div class="term">
+          <div class="term-bar">
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="fname" aria-hidden="true">veribench - the honest bundle</span>
+          </div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal session: create the key, run the test and emit the bundle, then verify successfully"><span class="t-cmt"># 1. keygen - create the Ed25519 keypair (the private seal)</span>
+<span class="t-prompt">$</span> <span class="t-key">stress-strike keygen</span> <span class="t-flag">--out</span> <span class="t-dim">veribench.key</span>
+  <span class="t-dim">key_id (public fingerprint)</span>  <span class="t-num">9f2c41d7...7b0e</span>
+  <span class="t-dim">private key written mode 0600 - it never leaves this host</span>
+
+<span class="t-cmt"># 2. run - the plan is sealed, then one sample per request is streamed</span>
+<span class="t-cmt">#    (the real flag takes a full origin; its scheme is left out here on purpose)</span>
+<span class="t-prompt">$</span> <span class="t-key">stress-strike run</span> <span class="t-flag">--url</span> <span class="t-dim">127.0.0.1:8090</span> <span class="t-flag">--duration</span> <span class="t-dim">10s</span> <span class="t-flag">--emit-bundle</span> <span class="t-dim">veribench-bundle.json</span>
+  <span class="t-dim">scenario_hash</span>  <span class="t-ok">4d2f8c1a...a91c</span>  <span class="t-dim">(sealed before the first request)</span>
+  <span class="t-dim">samples</span>        <span class="t-num">1500</span> <span class="t-dim">lines, streamed and never rewritten</span>
+  <span class="t-dim">claims</span>         <span class="t-num">p99 41.0 ms [39.2-44.1]</span> <span class="t-dim">&middot;</span> <span class="t-num">150.000 rps</span> <span class="t-dim">&middot; errors 0.2%</span>
+  <span class="t-dim">wrote</span>          <span class="t-dim">veribench-bundle.json + veribench-bundle.samples.jsonl</span>
+
+<span class="t-cmt"># 3. verify - offline, no account, no vendor server in the loop</span>
+<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+veribench verify (vpmp/v1)
+  <span class="t-ok">[PASS]</span> <span class="t-dim">format identifier is vpmp/v1</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">key_id binds to the embedded public key</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">Ed25519 signature over the manifest</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">sample count matches the manifest</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">Merkle root matches the recomputed tree</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">claims match the recomputed statistics</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">per-sample internal consistency</span>
+<span class="t-dim">VERDICT:</span> <span class="t-ok">PASS</span> <span class="t-dim">(exit 0)</span></pre>
+        </div>
+        <figcaption>
+          <b>Figure 6.</b> The pass path. Note the ordering on the <code>scenario_hash</code>
+          line: sealed before the first request. The seal came first, and the verifier can say
+          so.
+        </figcaption>
+      </figure>
+
+      <figure class="term-wrap" data-reveal>
+        <div class="term">
+          <div class="term-bar">
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="bulb" aria-hidden="true"></span>
+            <span class="fname" aria-hidden="true">veribench - one byte of sabotage</span>
+          </div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal session: flip one nibble of the Merkle root inside the manifest, verify and get a FAIL verdict, restore the byte and verify again"><span class="t-cmt"># flip exactly one nibble inside samples.merkle.root in the manifest</span>
+<span class="t-prompt">$</span> <span class="t-key">perl</span> <span class="t-dim">-0777 -i -pe 's{("root":")([0-9a-f])}{$1 . ($2 ne "0" ? "0" : "1")}e'</span> <span class="t-dim">veribench-bundle.json</span>
+
+<span class="t-prompt">$</span> <span class="t-key">cmp</span> <span class="t-dim">-l veribench-bundle.json.bak veribench-bundle.json | wc -l</span>
+<span class="t-num">1</span>   <span class="t-cmt"># exactly one byte differs; the samples file is untouched</span>
+
+<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+veribench verify (vpmp/v1)
+  <span class="t-ok">[PASS]</span> <span class="t-dim">format identifier is vpmp/v1</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">key_id binds to the embedded public key</span>
+  <span class="t-fail">[FAIL]</span> <span class="t-dim">Ed25519 signature over the manifest - manifest bytes do not match the signed payload</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">sample count matches the manifest</span>
+  <span class="t-fail">[FAIL]</span> <span class="t-dim">Merkle root matches the recomputed tree - recomputed 6b1e8d40... vs manifest 0b1e8d40...</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">claims match the recomputed statistics</span>
+  <span class="t-ok">[PASS]</span> <span class="t-dim">per-sample internal consistency</span>
+<span class="t-dim">VERDICT:</span> <span class="t-fail">FAIL</span> <span class="t-dim">- 2 check(s) failed (exit 1)</span>
+
+<span class="t-cmt"># restore the one byte, and the verdict comes back</span>
+<span class="t-prompt">$</span> <span class="t-key">cp</span> <span class="t-dim">veribench-bundle.json.bak veribench-bundle.json</span>
+<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+<span class="t-dim">VERDICT:</span> <span class="t-ok">PASS</span> <span class="t-dim">(exit 0)</span>
+
+<span class="t-ok">RESULT</span>
+  <span class="t-dim">intact bundle</span>     <span class="t-dim">-&gt;</span> <span class="t-ok">PASS</span> <span class="t-dim">(exit 0)</span>
+  <span class="t-dim">one byte changed</span>  <span class="t-dim">-&gt;</span> <span class="t-fail">FAIL</span> <span class="t-dim">(exit 1)</span>
+  <span class="t-dim">byte restored</span>     <span class="t-dim">-&gt;</span> <span class="t-ok">PASS</span> <span class="t-dim">(exit 0)</span></pre>
+        </div>
+        <figcaption>
+          <b>Figure 7.</b> The tamper path. One nibble in the manifest produces two specific,
+          named failures - and because the verdict is an exit code, the identical check can
+          block a deploy.
+        </figcaption>
+      </figure>
+
+      <p class="body-txt" style="margin-top:2rem" data-reveal>
+        <strong>Honest note.</strong> The demo script probes the binary before it starts. If a
+        build does not yet expose the frozen contract, the script says so out loud and emits a
+        spec-conformant bundle from an embedded reference implementation - and in that mode
+        <em>no load is generated and no traffic reaches any target</em>. The verification half
+        of the demo is real either way, which is the half that carries the claim.
+      </p>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       06 WHO IT IS FOR
+       ========================================================== -->
+  <section class="band" id="who" aria-labelledby="who-h">
+    <div class="wrap">
+      <p class="eyebrow"><span class="num">06</span> <span>Who it is for</span></p>
+      <h2 class="title" id="who-h">One artifact, four very different readers.</h2>
+      <p class="lede narrow" data-reveal>
+        The bundle is deliberately boring. That is what lets a sales engineer, a lawyer, an
+        auditor and a build pipeline all use the same file without a translation layer.
+      </p>
+
+      <div class="tbl-wrap" data-reveal>
+        <table>
+          <caption>Who gets what</caption>
+          <thead>
+            <tr>
+              <th scope="col">Who</th>
+              <th scope="col">What they get</th>
+              <th scope="col">Why it matters to them</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Cloud &amp; SaaS vendors</th>
+              <td>A bundle to attach to a launch review, an RFP answer, or a status page.</td>
+              <td>&ldquo;We sustained 10k rps&rdquo; stops being a slogan and starts being an attachment.</td>
+            </tr>
+            <tr>
+              <th scope="row">Procurement &amp; legal</th>
+              <td>An acceptance artifact with the verification command written into the contract.</td>
+              <td>Disagreements resolve by recomputation, not by escalation.</td>
+            </tr>
+            <tr>
+              <th scope="row">Auditors &amp; compliance</th>
+              <td>A signed, tamper-evident record with a chain of custody for the run.</td>
+              <td>It fits how evidence already works: dated, reproducible, independently checkable.</td>
+            </tr>
+            <tr>
+              <th scope="row">Platform &amp; CI teams</th>
+              <td>A nonzero exit code when a declared SLO regresses.</td>
+              <td>The same object seals the run and gates the pipeline, so nobody re-types thresholds.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g-3" style="margin-top:3rem">
+        <div data-reveal>
+          <span class="chip chip-seal">Sealed first</span>
+          <p class="body-txt" style="margin-top:1rem">
+            The plan is committed before the load starts, so the goalposts cannot move while
+            the ball is in the air.
+          </p>
+        </div>
+        <div data-reveal style="--d:90ms">
+          <span class="chip chip-pass"><span aria-hidden="true">&#10003;</span> One byte</span>
+          <p class="body-txt" style="margin-top:1rem">
+            A single changed byte anywhere in the bundle turns a PASS into a named FAIL - and
+            the check is an exit code, so it is CI-ready.
+          </p>
+        </div>
+        <div data-reveal style="--d:180ms">
+          <span class="chip chip-seal">No network</span>
+          <p class="body-txt" style="margin-top:1rem">
+            Verification is a local computation with the public key inside the bundle. The
+            evidence does not depend on a vendor, an account, or a service still existing.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ==========================================================
+     FOOTER
+     ========================================================== -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <p class="eyebrow" style="margin-bottom:1rem"><span class="num">VeriBench</span> <span>in one line</span></p>
+        <p class="lede" style="max-width:38ch">
+          A load test that fixes its plan before the run, signs every sample, and lets anyone
+          check the seal offline.
+        </p>
+        <p class="foot-note" style="margin-top:1.4rem">
+          This page is a single HTML file with no external requests: no fonts, no scripts, no
+          images, no CDNs. It renders the same way on a laptop, on a phone, and after being
+          copied onto a USB stick, opened from a local file, or printed.
+        </p>
+        <p class="foot-note">
+          Terminology, field names and limits follow the normative specification
+          (<span class="t-mono">vpmp/v1</span>) and the runnable demo, so a reader can
+          cross-check every claim on this page against the code.
+        </p>
+      </div>
+      <div class="foot-meta">
+        <p><b>Accessibility:</b> semantic landmarks, keyboard focus visible throughout, all
+          diagrams labelled, no state conveyed by colour alone, motion suppressed when the
+          reader asks for reduced motion. Contrast meets WCAG 2.1 AA.</p>
+        <p><b>Colour roles:</b> gold = the claim and the seal; jade = verified; red = tampered.</p>
+        <p><b>Reading time:</b> about six minutes. Figures carry the argument on their own.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* VeriBench explainer - progressive enhancement only. No external deps.
+   Everything here is additive: without it the document is fully readable. */
+(function () {
+  'use strict';
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var revealables = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+
+  function showAll() {
+    revealables.forEach(function (el) { el.classList.add('is-in'); });
+  }
+
+  /* Safety net first: content must never be able to stay invisible. */
+  window.setTimeout(showAll, 4000);
+
+  if (reduce || !('IntersectionObserver' in window)) {
+    showAll();
+  } else {
+    try {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-in');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.14, rootMargin: '0px 0px -6% 0px' });
+
+      revealables.forEach(function (el) { io.observe(el); });
+    } catch (err) {
+      showAll();
+    }
+  }
+
+  /* Progress bar: one passive scroll listener, transform only. */
+  try {
+    var bar = document.getElementById('progress');
+    if (bar) {
+      var ticking = false;
+      var paint = function () {
+        var doc = document.documentElement;
+        var max = doc.scrollHeight - doc.clientHeight;
+        var ratio = max > 0 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0;
+        bar.style.transform = 'scaleX(' + ratio.toFixed(4) + ')';
+        ticking = false;
+      };
+      var request = function () {
+        if (!ticking) { ticking = true; window.requestAnimationFrame(paint); }
+      };
+      window.addEventListener('scroll', request, { passive: true });
+      window.addEventListener('resize', request, { passive: true });
+      paint();
+    }
+  } catch (err) { /* the bar is decorative; never let it break the page */ }
+
+  /* Mark the section currently in view in the rail navigation. */
+  try {
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.rail-links a'));
+    var sections = navLinks.map(function (a) {
+      var id = (a.getAttribute('href') || '').replace(/^#/, '');
+      return id ? document.getElementById(id) : null;
+    }).filter(Boolean);
+
+    if (sections.length && 'IntersectionObserver' in window) {
+      var navIo = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) { return; }
+          navLinks.forEach(function (a) {
+            if (a.getAttribute('href') === '#' + entry.target.id) {
+              a.setAttribute('aria-current', 'location');
+            } else {
+              a.removeAttribute('aria-current');
+            }
+          });
+        });
+      }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+      sections.forEach(function (s) { navIo.observe(s); });
+    }
+  } catch (err) { /* navigation highlighting is a nicety */ }
+})();
+</script>
+</body>
+</html>

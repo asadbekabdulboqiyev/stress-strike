@@ -45,6 +45,9 @@ type RunOptions struct {
 	Capture  ResponseCapture
 	Pool     []string
 	Progress *ProgressTracker
+	// Samples, when non-nil, receives every measurement the engine records
+	// (one per executed request attempt) for attestation. See sink.go.
+	Samples SampleSink
 }
 
 type stepResult struct {
@@ -201,6 +204,13 @@ type Engine struct {
 	grpcConns map[string]*grpc.ClientConn
 
 	capture ResponseCapture
+
+	// samples, when set, receives every attested measurement in real time so a
+	// verifiable evidence bundle can be assembled without trusting the
+	// reporting layer (see sink.go). Nil disables sampling; the per-request
+	// cost is then a single nil check.
+	samples   SampleSink
+	sampleSeq atomic.Uint64
 
 	pool    []string
 	poolIdx atomic.Int64
@@ -367,6 +377,8 @@ func (e *Engine) Run(ctx context.Context, opts RunOptions) (*metrics.Telemetry, 
 
 	e.capture = opts.Capture
 	e.pool = opts.Pool
+	e.samples = opts.Samples
+	e.sampleSeq.Store(0)
 
 	e.teleMu.Lock()
 	e.telemetry = metrics.NewTelemetry()

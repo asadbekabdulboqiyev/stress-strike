@@ -94,7 +94,7 @@ exit 1 = FAIL, CI-gateable).
 | Ships in: CLI + bundle format `vpmp/v1` | Ships in: engine + manifest `method` block | Ships in: VeriGate middleware + witness counters |
 
 **MVP status:** Pillar 1 protocol + Pillar 2 correction logic implemented in the
-engine today; the `bundle`/`verify` CLI surface is specified and in integration
+engine today; the `bundle`/`verify` CLI surface is **implemented and shipping**
 (see Slide 10). Pillar 3 machinery (VeriGate) ships in the product today; its
 witness-corroboration wiring into the bundle is **[ROADMAP] v1.1**.
 
@@ -213,17 +213,18 @@ shape as certificate authorities and timestamping services.
 - **Pillar 3 machinery live:** VeriGate rate limiting + PoW challenge + IP
   blocking, with concurrency/race tests, demonstrated live by
   `scripts/demo-store-sla.sh`.
+- **Pillar 1 live:** the `vpmp/v1` bundle format, `keygen` / `verify` / `run --emit-bundle`
+  CLI surface, Merkle-locked raw samples, Ed25519 seal, and the full
+  verification algorithm (`verify` exit 0/1) are implemented and shipping.
+  Bundle-level CI computation and claim-recomputation gate are in the `verify`
+  binary.
 - Tamper-evident, hash-chained **audit log** for authorization decisions
   (`audit verify`) — the same tamper-evidence discipline applied to a different
   artifact, already shipped.
 - CLI, packaging (Homebrew/Scoop/Winget), K8s manifests, CI/CD.
 
-**Specified, in integration (not shipped):**
+**Next on the roadmap:**
 
-- The `vpmp/v1` bundle itself, and the `keygen` / `verify` / `run --emit-bundle`
-  CLI surface. The protocol, canonicalisation, Merkle rules, and verification
-  algorithm are fully specified in `docs/INVENTION.md`.
-- Bundle-level CI computation and the claim-recomputation gate.
 - **[ROADMAP] v1.1:** challenge–response nonce corroboration and transparency-log
   anchoring of Merkle roots.
 
@@ -301,7 +302,7 @@ v1.1 with 5 design partners).*
 | Ed25519/Merkle verification detects single-byte tampering | **Technical claim** | Mechanically demonstrated by `scripts/demo-verified.sh` |
 | CO correction + 95% CI are implemented in the engine | **Status claim** | CO correction: yes (code + tests). Bundle-level CI: **not shipped** |
 | VeriGate adaptive difficulty works (rate limit, PoW, block) | **Status claim** | Yes — VeriGate tests + `demo-store-sla.sh` |
-| `keygen` / `verify` / `--emit-bundle` exist today | **No** | **Not shipped** — specified only |
+| `keygen` / `verify` / `--emit-bundle` exist today | **Yes** | Shipped in v0.14.3; `scripts/demo-verified.sh` demonstrates the full cycle |
 | Market size figures | **ESTIMATE** | No — re-verify against named analyst sources |
 | Pricing tiers and ranges | **Designed pricing** | No — not validated with buyers |
 | SOM = USD 2.4M ARR (120 × USD 20k) | **ESTIMATE / internal model** | No — falsifiable bottom-up arithmetic |

@@ -259,3 +259,160 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
+
+  # ── verifiable evidence: prove the product claim end to end ────────────────
+  # VeriBench's entire promise is that a third party can verify a load-test
+  # result offline: `stress-strike verify` exits 0 for a genuine bundle and 1
+  # for one whose evidence was altered after signing. This job exercises that
+  # against a real target and asserts BOTH directions — the positive gate would
+  # catch a verifier that rejects good evidence, the negative gate the far worse
+  # case of a verifier that accepts tampered evidence. Without the negative gate
+  # the claim is untested, because a `verify` stub that always exits 0 would
+  # pass the positive gate alone.
+  #
+  # Deliberately independent of the other jobs (no `needs:`): it shares nothing
+  # with them, and its failure should be unambiguous. Nothing is written into
+  # the repo tree — the binary, keys, bundles and reports all live under /tmp.
+  verifiable-evidence:
+    name: Verifiable evidence (run -> verify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build the CLI
+        run: go build -o /tmp/ss ./cmd/stress-strike
+
+      - name: Generate a coordinator key
+        run: /tmp/ss keygen --out /tmp/coord.key
+
+      - name: Start the demo target
+        run: |
+          set -euo pipefail
+          go run ./examples/demo_server.go > /tmp/demo_server.log 2>&1 &
+          echo $! > /tmp/demo_server.pid
+
+          # Poll /health with a bounded retry loop rather than a bare `sleep`:
+          # a fixed delay either races a slow first compile (flake) or wastes
+          # seconds on every run.
+          for attempt in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8080/health; then
+              echo "target ready after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::target never became ready; last log lines:"
+          tail -n 40 /tmp/demo_server.log || true
+          exit 1
+
+      - name: Run a paced load and seal the evidence
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/reports /tmp/ev
+          /tmp/ss run \
+            --url http://127.0.0.1:8080/health \
+            --target-rps 100 --duration 3 --users 4 \
+            --coordinated-omission --allow-private --quiet \
+            --report-dir /tmp/reports \
+            --emit-bundle /tmp/ev/bundle.json \
+            --bundle-key /tmp/coord.key
+
+      - name: Positive gate — pristine evidence verifies (exit 0)
+        run: |
+          set -euo pipefail
+          if ! /tmp/ss verify --bundle /tmp/ev/bundle.json --samples /tmp/ev/bundle.samples.jsonl; then
+            echo "::error::VERIFIABLE-EVIDENCE FAILED: a freshly sealed bundle did not verify"
+            exit 1
+          fi
+          echo "positive gate passed: bundle and sidecar verify (exit 0)"
+
+      - name: Negative gate — tampered evidence is rejected (exit 1)
+        run: |
+          set -euo pipefail
+          # Bump one value inside one line of the sidecar while keeping the JSON
+          # valid, so the record still parses and the rejection can only come
+          # from the commitment itself (recomputed Merkle root, aggregates) —
+          # which is exactly the property the product claims. The edit is done
+          # in python3 (present on runners) to avoid the macOS/GNU `sed -i`
+          # portability trap.
+          python3 - /tmp/ev/bundle.samples.jsonl <<'PY'
+          import json, sys
+          path = sys.argv[1]
+          with open(path, "rb") as fh:
+              before = fh.read().splitlines()
+          if not before:
+              sys.exit("tamper: the sidecar is empty")
+          lines = list(before)
+          rec = json.loads(lines[0])
+          rec["latency_ns"] = int(rec.get("latency_ns", 0)) + 1
+          lines[0] = json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()
+          if lines[1:] != before[1:]:
+              sys.exit("tamper: more than one line changed")
+          with open(path, "wb") as fh:
+              fh.write(b"\n".join(lines) + b"\n")
+          print("tampered one value in line 1: latency_ns -> %d" % rec["latency_ns"])
+          PY
+
+          # Fail closed means exit 1. Exit 0 here would mean the tool accepted
+          # evidence that was altered after it was signed — the one thing it
+          # must never do.
+          set +e
+          /tmp/ss verify --bundle /tmp/ev/bundle.json --samples /tmp/ev/bundle.samples.jsonl
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "SECURITY GATE FAILED: tampered evidence verified"
+            exit 1
+          fi
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::tampered verification exited ${rc}, want 1"
+            exit 1
+          fi
+          echo "negative gate passed: tampered evidence rejected (exit 1)"
+
+      - name: Sealed summary
+        run: |
+          python3 - /tmp/ev/bundle.json <<'PY'
+          import json, sys
+          # No %-formatting here: f-strings keep a literal "95%" from colliding
+          # with the escape syntax (and the heredoc is quoted, so { } are safe).
+          b = json.load(open(sys.argv[1]))
+          agg, integ = b["aggregate"], b["integrity"]
+          ci = agg.get("co_ci95_ns", {})
+          print(f"  format:                {b['format']}")
+          print(f"  sample count:          {agg['count']}")
+          # p99_ns is the corrected percentile only when co_corrected is true;
+          # otherwise it is the raw one. Label it accurately, never assume.
+          print(f"  p99_ns:                {agg['p99_ns']}")
+          print(f"  co_corrected:          {agg['co_corrected']}")
+          if agg.get("co_corrected"):
+              print(f"  95% CI (ns):           [{ci.get('low_ns')}, {ci.get('high_ns')}]")
+          else:
+              print("  95% CI (ns):           not claimed — co_corrected=false, the run did not keep its arrival schedule")
+          print(f"  dropped_samples:       {integ['dropped_samples']}")
+          print(f"  schedule_accuracy_ppm: {integ['schedule_accuracy_ppm']}")
+          PY
+
+      - name: Stop the demo target
+        if: always()
+        run: |
+          set +e
+          if [ -f /tmp/demo_server.pid ]; then
+            kill "$(cat /tmp/demo_server.pid)" 2>/dev/null
+          fi
+          # `go run` compiles to a temporary binary and runs it as a child, so
+          # killing the parent alone leaves the server listening. Worse, the
+          # child's path is not stable across Go versions (it is
+          # $GOCACHE/<hash>-d/demo_server on Go 1.26, not .../exe/demo_server),
+          # so match the process *name* exactly and, as a final backstop, kill
+          # whatever still holds the port.
+          pkill -f 'go run ./examples/demo_server.go' 2>/dev/null
+          pkill -x demo_server 2>/dev/null
+          lsof -ti tcp:8080 2>/dev/null | while read -r p; do kill "$p" 2>/dev/null; done
+          echo "demo target stopped"

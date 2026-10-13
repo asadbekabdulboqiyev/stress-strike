@@ -518,6 +518,42 @@ func defaultWorkerID() string {
 	return fmt.Sprintf("%s-%d", host, os.Getpid())
 }
 
+// coCorrectionGate reports why the coordinated-omission correction may not be
+// claimed for a run, or "" when it may.
+//
+// The correction answers one question: a request was served late after waiting
+// for its slot; how long did the user actually wait? That question only has an
+// answer when the client kept a *fixed arrival schedule*. A steady (or soak)
+// profile with a fixed --rps cap is the one shape where that holds: the profile
+// maps to a fixed number of workers for the whole run, and the rate cap applies
+// from the first millisecond. Every other shape moves its own target —
+// constant-rps ramps over half the run by default, and linear-ramp, spike and
+// wave vary it by construction — so arrivals are late *by design* and the same
+// arithmetic would manufacture queue time nobody waited for. Observed on a
+// ramped run: a raw p99 of 0.8 ms became a "corrected" p99 of 1.35 s, entirely
+// generator lag.
+//
+// Note what the gate deliberately does NOT require: that the client kept up.
+// Falling behind is the very situation the correction exists to measure, so a
+// saturated run still gets a corrected tail. The shortfall stays visible instead
+// of being hidden: the integrity block seals the planned and achieved rates and
+// the dropped-sample count either way.
+//
+// The check keys off the profile, not off Profile.RampUp: Normalize fills
+// RampUp with Duration/2 for *every* scenario, including steady ones, and the
+// steady profile never reads it (it holds a fixed worker count for the whole
+// run). Testing the ramp field would therefore reject exactly the runs whose
+// schedule is provably constant.
+func coCorrectionGate(scenario *config.Scenario, plannedMilli int64) string {
+	switch {
+	case plannedMilli <= 0:
+		return "the run had no pacing rate (no --rps / --target-rps)"
+	case scenario.Profile.Type != config.ProfileSteady && scenario.Profile.Type != config.ProfileSoak:
+		return fmt.Sprintf("the %q profile moves its own arrival target over the run, so its schedule is not constant", scenario.Profile.Type)
+	}
+	return ""
+}
+
 // bundleKeypair loads the operator's signing keypair, or mints a throwaway one
 // so that even a one-off run can produce a sealed bundle. The second return
 // value reports whether the key is ephemeral: an ephemeral seal still proves
@@ -558,15 +594,24 @@ func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, sce
 		return err
 	}
 
-	// The coordinated-omission correction is defined against a pacing schedule.
-	// Asking for it on an unpaced run is a request the evidence cannot honour,
-	// so the bundle says plainly that it carries raw percentiles instead of
-	// inventing a schedule to correct against.
+	// The coordinated-omission correction is defined against a pacing schedule,
+	// so it may only be claimed when the run actually had one and kept it (see
+	// coCorrectionGate). Otherwise the bundle says plainly that it carries raw
+	// percentiles instead of inventing a schedule to correct against.
 	co := scenario.Profile.CoordinatedOmission
-	if co && plannedMilli <= 0 {
-		fmt.Fprintln(os.Stderr, "emit-bundle: coordinated-omission correction was requested but the run had no pacing rate")
-		fmt.Fprintln(os.Stderr, "  (no --rps / --target-rps): the bundle records raw percentiles, co_corrected=false.")
-		co = false
+	durationNS := int64(scenario.Profile.TotalDuration()) * int64(time.Second)
+	// The correction may only be claimed when the run had a pacing schedule and
+	// kept it. When it did not — no pacing rate, a ramped run, or a client that
+	// fell behind — the same arithmetic adds queue time nobody waited for, so the
+	// claim is withheld with the reason stated. The gate reads the same raw count
+	// and rate the integrity block seals, so the claim and the sealed numbers
+	// always agree.
+	if co {
+		if reason := coCorrectionGate(scenario, plannedMilli); reason != "" {
+			fmt.Fprintln(os.Stderr, "emit-bundle: coordinated-omission correction withheld —", reason)
+			fmt.Fprintln(os.Stderr, "  The bundle records raw percentiles, co_corrected=false: honest, but uncorrected.")
+			co = false
+		}
 	}
 
 	bundle, err := evidence.BuildBundle(evidence.BundleInput{
@@ -577,7 +622,7 @@ func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, sce
 		Run: attest.Run{
 			Target:     targetDisplay(scenario),
 			Profile:    scenario.Profile.Type,
-			DurationNS: int64(scenario.Profile.TotalDuration()) * int64(time.Second),
+			DurationNS: durationNS,
 			PlannedRPS: planned,
 		},
 		// In a local run one operator both measures and claims, so the worker

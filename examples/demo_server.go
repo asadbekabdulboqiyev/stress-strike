@@ -14,7 +14,28 @@ import (
 var (
 	requestCount atomic.Int64
 	slowEndpoint = os.Getenv("DEMO_SLOW") != ""
+	// slowMillis makes every successful response take this long. It exists so
+	// that a demo can saturate a *client* (few workers, slow service) and show
+	// the coordinated-omission correction doing its actual job: the raw p99
+	// measures service time, while the corrected p99 measures how long a user
+	// who arrived on schedule had to wait behind the client's own backlog.
+	slowMillis = envMillis("DEMO_SLOW_MS")
 )
+
+// envMillis parses a non-negative millisecond count from the environment,
+// returning 0 for anything unset or unparseable so the default stays fast.
+func envMillis(name string) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+	ms, err := time.ParseDuration(raw + "ms")
+	if err != nil || ms < 0 {
+		log.Printf("ignoring %s=%q: not a millisecond count", name, raw)
+		return 0
+	}
+	return ms
+}
 
 func main() {
 	addr := "127.0.0.1:8080"
@@ -38,6 +59,9 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	requestCount.Add(1)
+	if slowMillis > 0 {
+		time.Sleep(slowMillis)
+	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "ok")
 }

@@ -5,7 +5,7 @@
 **Status of this document:** invention disclosure + protocol specification
 **Scope note:** this document states honestly what the MVP proves and what it
 does not. Sections marked **[MVP]** are in scope today; **[ROADMAP]** are
-designed but not yet implemented.
+designed and implemented in the MVP; **[ROADMAP]** items are future work.
 
 ---
 

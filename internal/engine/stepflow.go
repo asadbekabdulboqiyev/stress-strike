@@ -194,9 +194,20 @@ func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int,
 			}
 			e.stepStats[slot].Record(lat, last.status, last.errName)
 			if e.samples != nil {
-				// Attested measurement: emitted from the exact point the step
-				// percentiles are recorded, so a verified bundle can never
-				// disagree with the numbers the run reports.
+				// Attested measurement: what gets committed is the *raw*
+				// measured latency, never the coordinated-omission-corrected
+				// view. The correction is a derived quantity that every
+				// verifier recomputes from these samples
+				// (internal/honesty.CorrectedLatencyNS), so baking it in here
+				// would apply it twice — the sealed tail would come out at
+				// roughly double the wait that actually happened — and would
+				// leave the derivation unauditable, because a reader could no
+				// longer tell a measurement from a claim.
+				//
+				// The run's own reported percentiles still use the corrected
+				// value (lat, above), and a verifier reaches the same corrected
+				// numbers from the raw samples alone, so the sealed
+				// distribution and the report stay in agreement.
 				bytes := int64(-1)
 				if body != nil {
 					bytes = int64(len(body))
@@ -205,7 +216,7 @@ func (e *Engine) runWithRetries(ctx context.Context, step config.Step, slot int,
 					Seq:       e.sampleSeq.Add(1) - 1,
 					Step:      step.Name,
 					StartNS:   start.UnixNano(),
-					LatencyNS: lat.Nanoseconds(),
+					LatencyNS: last.latency.Nanoseconds(),
 					Status:    last.status,
 					Bytes:     bytes,
 				})

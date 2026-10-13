@@ -144,6 +144,13 @@ func DroppedSamples(plannedMilli int64, durationNS int64, count uint64) (uint64,
 // rate, as parts per million: 1e6 means exact, 0 means off by 100% or more. A
 // non-positive planned rate returns 1e6 when nothing was achieved and 0
 // otherwise, so the function is total.
+//
+// The deviation is computed in unsigned arithmetic whose magnitude is exact
+// even when the two rates sit at opposite ends of the int64 range, and a
+// deviation too large to represent in 64 bits is reported as the minimum
+// accuracy rather than the maximum: an unrepresentable miss is still a miss.
+// Reporting perfect accuracy for a wildly wrong run would let the integrity
+// block bless exactly the failures it exists to expose.
 func ScheduleAccuracyPPM(plannedMilli, achievedMilli int64) int64 {
 	if plannedMilli <= 0 {
 		if achievedMilli <= 0 {
@@ -151,12 +158,17 @@ func ScheduleAccuracyPPM(plannedMilli, achievedMilli int64) int64 {
 		}
 		return 0
 	}
-	diff := achievedMilli - plannedMilli
-	if diff < 0 {
-		diff = -diff
+	// Subtract in uint64 space: the difference of two int64 values always fits,
+	// and the unsigned wrap-around yields the exact magnitude even when
+	// achievedMilli is negative.
+	var diff uint64
+	if achievedMilli >= plannedMilli {
+		diff = uint64(achievedMilli) - uint64(plannedMilli)
+	} else {
+		diff = uint64(plannedMilli) - uint64(achievedMilli)
 	}
-	deviation := mulDivRoundU(uint64(diff), uint64(ppmScale), uint64(plannedMilli))
-	if deviation >= uint64(ppmScale) {
+	deviation, err := mulDivRound(diff, uint64(ppmScale), uint64(plannedMilli))
+	if err != nil || deviation >= uint64(ppmScale) {
 		return 0
 	}
 	return int64(ppmScale) - int64(deviation)

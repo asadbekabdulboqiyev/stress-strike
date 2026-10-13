@@ -24,11 +24,14 @@ You should see `RESULT` with `intact → PASS`, `one byte changed → FAIL`,
 **What the script needs:** `bash`, `perl`, and `python3` (3.8+). No network, no
 credentials, no target server required. Runtime ≈ 2 seconds.
 
-> **Read this before you speak.** On a build that predates the CLI integration,
-> the script prints an explicit `NOTE REFERENCE mode …` block and emits a
-> spec-conformant bundle from its embedded reference implementation. **Say that
-> out loud.** Never imply live traffic was generated when it was not — the whole
-> product is about not doing that.
+> **Read this before you speak.** The demo script auto-detects the binary capability:
+> - **LIVE** (default on v0.14.3+): runs real traffic, seals a bundle with the real
+>   CLI, verifies it.
+> - **REFERENCE** (only when no binary can be found *and* Go isn't available to
+>   build one): prints an explicit notice and emits a spec-conformant bundle from
+>   the embedded reference implementation. **Say that out loud.** Never imply live
+>   traffic was generated when it was not — the whole product is about not doing
+>   that.
 
 **Terminal setup:** a font size the back row can read, no `NO_COLOR`, and a
 window at least 100 columns wide. Clear the scrollback so the output starts at
@@ -82,56 +85,60 @@ STRESS_STRIKE_BIN=/usr/local/bin/stress-strike ./scripts/demo-verified.sh
 
 ---
 
-## 3. Expected output (real transcript, `NO_COLOR=1`)
+## 3. Expected output (real transcript, `NO_COLOR=1`, LIVE mode)
 
 ```
 VeriBench — verifiable measurement demo
 format vpmp/v1 · Ed25519 seal · Merkle-locked samples · offline verify
-binary: ./stress-strike
+binary: /tmp/veribench-demo.xxx/stress-strike
 
 ── 1/5  Mode ──
-NOTE  REFERENCE mode — this build does not yet expose the full frozen contract.
-       Missing surface is at least one of:
-         · stress-strike keygen --out <key>        [not in this build]
-         · stress-strike verify --bundle …        [not in this build]
-         · stress-strike run --emit-bundle <b>    [not in this build]
-       These are specified in docs/INVENTION.md and are in integration.
-       So: NO load is generated here. Instead a spec-conformant vpmp/v1
-       bundle is emitted by the embedded reference implementation, and the
-       VERIFICATION half of this demo runs for real.
+LIVE — this build exposes keygen / verify / --emit-bundle.
+       Running the real end-to-end contract against http://127.0.0.1:8090/health
+target http://127.0.0.1:8090/health answered HTTP 200
 
 ── 2/5  keygen — create the digital seal (Ed25519) ──
-b0ba50fdbda647354c52ba8bb276648eba931e1c27bcaae5f64a4510812fcdfb
-private key: …/veribench-demo.SSVD8y/veribench.key (mode 0600) · never leaves this host
-key_id (public fingerprint): b0ba50fdbda647354c52ba8bb276648eba931e1c27bcaae5f64a4510812fcdfb
+keypair written to …/veribench-demo.xxx/veribench.key (private key mode 0600, unencrypted)
+       public key: 63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
+private key: …/veribench-demo.xxx/veribench.key (mode 0600) · never leaves this host
+key_id (public fingerprint): 63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
 
 ── 3/5  run — produce the measurement bundle ──
-(reference bundle: 1500 samples, synthetic — no traffic was sent)
-bundle  : …/veribench-bundle.json  (1671 bytes, sha256 7dc01993bbe372c1…)
-samples : …/veribench-bundle.samples.jsonl  (1500 lines, sha256 545620e1141bf049…)
+authorization: ok (class=loopback)
+WARNING: stress-strike is a load testing tool. Only run it against systems you own or
+have explicit written permission to test. Unauthorized load floods are illegal (DDoS).
+stress-strike v0.14.3 | target: http://127.0.0.1:8090/health | profile: steady | duration: 10s
+
+Verifiable evidence written:
+  …/veribench-bundle.json
+  …/veribench-bundle.samples.jsonl
+  format:        vpmp/v1 — 3300 samples, worker "Asadbeks-MacBook-Air.local-xxxxx"
+  coordinator:   63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
+  p99:           1.077ms (coordinated-omission corrected, 95% CI [0.838ms, 1.586ms])
+  verify it yourself (exit 0 = valid, 1 = tampered):
+    stress-strike verify --bundle …/veribench-bundle.json --samples …/veribench-bundle.samples.jsonl
 
 ── 4/5  verify — the honest bundle must PASS ──
-veribench verify (vpmp/v1)
-  [PASS] format identifier is vpmp/v1
-  [PASS] key_id binds to the embedded public key
-  [PASS] Ed25519 signature over the manifest
-  [PASS] sample count matches the manifest
-  [PASS] Merkle root matches the recomputed tree
-  [PASS] claims match the recomputed statistics
-  [PASS] per-sample internal consistency
-VERDICT: PASS
+verify …/veribench-bundle.json
+  format:        vpmp/v1
+  bundle digest: 26890ae2b068ead2218b61945f06c9594a8a1280c5cafa3c7245cae3097fa327
+  sidecar:       …/veribench-bundle.samples.jsonl (3300 records, 1 workers)
+
+  worker Asadbeks-MacBook-Air.local-xxxxx ok      3300 records    257 proofs
+
+PASS — bundle is valid. 15 checks passed across 1 workers (3300 records, 257 inclusion proofs verified).
 PASS  verifier accepted the bundle (exit 0)
 
 ── 5/5  tamper with ONE byte, then verify again ──
-altered : …/veribench-bundle.json  (1671 bytes, sha256 3f762963ed2cacc9…)
+altered : …/veribench-bundle.json  (1468 bytes, sha256 61917cb66cc342dd…)
 bytes differing from the original: 1
-one nibble of samples.merkle.root changed; the samples file is untouched
+one nibble of the Merkle root changed; the samples file is untouched
 veribench verify (vpmp/v1)
   [PASS] format identifier is vpmp/v1
   [PASS] key_id binds to the embedded public key
   [FAIL] Ed25519 signature over the manifest — manifest bytes do not match the signed payload
   [PASS] sample count matches the manifest
-  [FAIL] Merkle root matches the recomputed tree — recomputed 3358d1751d1f8b17… vs manifest 0358d1751d1f8b17…
+  [FAIL] Merkle root matches the recomputed tree — recomputed 045180f5c990f172… vs manifest 045180f5c990f172…
   [PASS] claims match the recomputed statistics
   [PASS] per-sample internal consistency
 VERDICT: FAIL — 2 check(s) failed
@@ -144,20 +151,29 @@ VERDICT: PASS
 PASS  restored bundle verifies again (exit 0)
 
 RESULT
-  intact bundle   → PASS (exit 0)   sha256 7dc01993bbe372c1…
-  one byte changed→ FAIL (exit 1)   sha256 3f762963ed2cacc9…
-  byte restored   → PASS (exit 0)   sha256 7dc01993bbe372c1…
-  mode            → reference
+  intact bundle   → PASS (exit 0)   sha256 40ef3ad103deb7a8…
+  one byte changed→ FAIL (exit 1)   sha256 61917cb66cc342dd…
+  byte restored   → PASS (exit 0)   sha256 40ef3ad103deb7a8…
+  mode            → live
 ```
 
-On a build that exposes the contract, `── 1/5 Mode ──` instead reads:
+On a build without Go available, `── 1/5 Mode ──` reads:
 
 ```
-LIVE — this build exposes keygen / verify / --emit-bundle.
-       Running the real end-to-end contract against http://127.0.0.1:8090/
+NOTE  REFERENCE mode — no stress-strike binary was found or could be built.
+       Missing surface is at least one of:
+         · stress-strike keygen --out <key>        [unavailable]
+         · stress-strike verify --bundle …        [unavailable]
+         · stress-strike run --emit-bundle <b>    [unavailable]
+       The real thing ships in this repo (cmd/stress-strike): set
+       STRESS_STRIKE_BIN to a built binary, or install Go so this script
+       can build it itself.
+       So: NO load is generated here. Instead a spec-conformant vpmp/v1
+       bundle is emitted by the embedded reference implementation, and the
+       VERIFICATION half of this demo runs for real.
 ```
 
-…and `mode → live` at the bottom. **Both modes are tested.**
+…and `mode → reference` at the bottom. **Both modes are tested.**
 
 ---
 
@@ -192,7 +208,7 @@ VERIBENCH_KEEP=1 ./scripts/demo-verified.sh
 | `python3 is required in REFERENCE mode` | Install `python3` (3.8+). |
 | `perl is required to flip the demo byte` | Install `perl`; the flip is deliberately one byte via `perl`. |
 | No colour in the output | Terminal is not a TTY, or `NO_COLOR` is set. Expected when piping to a file. |
-| `binary: not found` | Harmless — the demo runs in reference mode. Set `STRESS_STRIKE_BIN` to probe a specific build. |
+| `binary: not found` | Harmless — the demo falls back to reference mode. Set `STRESS_STRIKE_BIN` to probe a specific build. |
 | `run: --emit-bundle is required` | A partially-integrated build detected `emit-bundle` in help but rejects it; set `STRESS_STRIKE_BIN` to a build without it, or finish the integration. |
 | Run takes noticeably longer | `DEMO_COUNT` is large; the bootstrap CI does 1000 resamples. Use `DEMO_COUNT=400` for a snappier demo. |
 
@@ -210,14 +226,15 @@ Do say:
 - "We are not claiming fabrication is solved. A colluding generator and target
   can fabricate together."
 - "The market numbers in the pitch are labelled `ESTIMATE` and must be re-verified."
+- "The three commands (`keygen`, `run --emit-bundle`, `verify`) ship in v0.14.3."
 
 Do **not** say:
 
 - "This is cryptographically impossible to fake." (False.)
 - "We have customers / pilots / revenue." (No traction to date; see `PITCH.md`
   Slide 10.)
-- "The three commands ship in v0.14.3." (The protocol is specified; the CLI
-  surface is in integration.)
+- "The protocol is specified but the CLI is in integration." (False — both ship
+  in v0.14.3.)
 
 ---
 

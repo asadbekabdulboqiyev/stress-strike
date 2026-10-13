@@ -61,19 +61,38 @@ jobs:
           args: -no-fail -fmt sarif -out gosec.sarif ./...
         continue-on-error: true
 
-      - name: Fail on findings
+      - name: Report gosec findings
         run: |
           set -euo pipefail
           # G204/G304 (subprocess, file inclusion) are expected in a tool that
           # shells out to nothing but legitimately reads user-supplied pcap
-          # and report paths; they are reported as warnings, not gates.
-          if jq -e '[.runs[].results[] | select(.level=="error")
-                     | .rule_id | select(test("^(G204|G304)$") | not)]
-                     | length > 0' gosec.sarif >/dev/null; then
-            echo "::error::gosec reported blocking findings"
-            exit 1
+          # and report paths; they are recorded as warnings, not gates.
+          #
+          # This step counts and annotates the remaining error-level findings.
+          # It deliberately does NOT fail the build: `main` carries pre-existing
+          # HIGH findings that are expected here (G115 bounds-checked integer
+          # conversions, G114 example servers without timeouts, G402 example
+          # clients, ...), and ratcheting this into a gate is a policy decision
+          # for the maintainer, not something a drive-by edit should decide.
+          # To ratchet: add the rules you accept to the allowlist regex below
+          # and change the final `exit 0` to `exit 1`.
+          #
+          # NOTE: gosec's SARIF spells the field `ruleId` (camelCase). An
+          # earlier revision of this step read `.rule_id`, which is always null;
+          # `null | test(...)` is a jq type error, so under `set -e` the `if`
+          # took its else-branch and the step reported "no blocking findings"
+          # whatever gosec found — a permanently green gate. Reading the real
+          # field fixes that; a malformed report now aborts the step loudly
+          # (set -e) instead of passing.
+          findings=$(jq '[.runs[].results[] | select(.level=="error")
+                          | .ruleId | select(test("^(G204|G304)$") | not)]' gosec.sarif)
+          count=$(jq 'length' <<<"$findings")
+          if [ "$count" -gt 0 ]; then
+            rules=$(jq -r 'group_by(.) | map("\(.[0])=\(length)") | join(", ")' <<<"$findings")
+            echo "::warning title=gosec::$count error-level finding(s) outside the G204/G304 allowlist: $rules"
           fi
-          echo "gosec: no blocking findings"
+          echo "gosec: $count error-level finding(s) outside the G204/G304 allowlist (reported, not blocking)"
+          exit 0
 
   # ── secret leakage ────────────────────────────────────────────────────────
   gitleaks:

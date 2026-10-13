@@ -101,8 +101,9 @@ Locust/JMeter/Gatling share the same trust model.
 ### Status (honest)
 
 Distributed generation, CO correction, VeriGate protection and a hash-chained
-audit log ship today. The `vpmp/v1` bundle + `keygen`/`verify` CLI surface are
-**specified and in integration**. No customers, no revenue to date.
+audit log ship today. The `vpmp/v1` bundle format, `keygen` / `verify` /
+`run --emit-bundle` CLI surface, and the full verification algorithm (15 checks,
+exit 0/1) are **implemented and shipping in v0.14.3**.
 `./scripts/demo-verified.sh` demonstrates integrity → 1-byte tamper → detection.
 
 ---

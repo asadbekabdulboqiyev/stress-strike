@@ -10,22 +10,30 @@
 #   4. Restoring the byte restores the verdict              -> PASS, exit 0
 #
 # Two modes, chosen automatically:
-#   LIVE      — uses the real CLI if this build exposes the frozen contract:
+#   LIVE      — the real CLI, end to end:
 #                 stress-strike keygen --out <key>
-#                 stress-strike run --url <t> --duration 10s --emit-bundle <b>
+#                 stress-strike run --url <t> --rps 300 --users 30 --duration 10 \
+#                                    --coordinated-omission --allow-private \
+#                                    --emit-bundle <b> --bundle-key <key>
 #                 stress-strike verify --bundle <b> --samples <b.samples.jsonl>
-#   REFERENCE — if the build does not expose that surface yet, this script says
-#               so out loud and emits a spec-conformant bundle from the embedded
-#               reference implementation, so the VERIFICATION half of the demo
-#               is real today. In REFERENCE mode NO load is generated and NO
-#               traffic reaches any target.
+#               The binary is taken from STRESS_STRIKE_BIN, ./stress-strike, or
+#               PATH; failing all of those, this script builds it from the
+#               checkout, so a fresh clone with Go installed runs LIVE.
+#   REFERENCE — only when no binary can be found *and* none can be built. Then
+#               this script says so out loud and emits a spec-conformant bundle
+#               from the embedded reference implementation, so the VERIFICATION
+#               half of the demo is real even there. In REFERENCE mode NO load
+#               is generated and NO traffic reaches any target.
 #
 # Idempotent: every run uses a fresh temp dir and removes it on exit.
 #
 # Env overrides:
 #   STRESS_STRIKE_BIN   path to the binary to probe
 #   DEMO_URL            target URL                (default http://127.0.0.1:8090/)
-#   DEMO_DURATION       duration token/integer    (default 10s)
+#   DEMO_DURATION       seconds, "10s" also works (default 10s)
+#   DEMO_RPS            LIVE pacing cap, rps       (default 300)
+#   DEMO_USERS          LIVE concurrent users     (default 30)
+#   DEMO_ALLOW_PRIVATE=1  also allow --allow-private for a non-loopback target
 #   DEMO_COUNT          samples in REFERENCE mode (default 1500)
 #   VERIBENCH_KEEP=1    keep the temp dir instead of deleting it
 #   NO_COLOR=1          disable ANSI colour
@@ -53,9 +61,26 @@ banner() {
 }
 
 # ─────────────────────────────── environment ─────────────────────────────────
-URL="${DEMO_URL:-http://127.0.0.1:8090/}"
+URL="${DEMO_URL:-http://127.0.0.1:8090/health}"
 DURATION="${DEMO_DURATION:-10s}"
 COUNT="${DEMO_COUNT:-1500}"
+# Live-mode knobs. The load is a steady profile with a fixed --rps cap on
+# purpose: that is the one schedule shape whose coordinated-omission correction
+# this tool will claim (see coCorrectionGate in cmd/stress-strike/cmd_run.go),
+# so the demo shows a corrected tail with its 95% interval rather than a
+# withheld claim.
+RPS="${DEMO_RPS:-300}"
+USERS="${DEMO_USERS:-30}"
+# `run` accepts an integer number of seconds; the demo also accepts the "10s"
+# spelling in DEMO_DURATION for readability.
+DURATION_SECS="${DURATION%s}"
+# `run` refuses private/loopback targets unless told otherwise. Only the
+# loopback case is auto-allowed here, so the flag keeps its meaning for a real
+# target; a private-LAN address needs DEMO_ALLOW_PRIVATE=1.
+case "${URL}" in
+  http://127.0.0.1:*|http://localhost:*|http://\[::1\]:*) PRIVATE_OK="--allow-private" ;;
+  *) PRIVATE_OK="${DEMO_ALLOW_PRIVATE:+--allow-private}" ;;
+esac
 
 TMPROOT="${TMPDIR:-/tmp}"
 TMPROOT="${TMPROOT%/}"
@@ -85,11 +110,27 @@ PY
 }
 
 # ──────────────────────────── CLI capability probe ───────────────────────────
+# find_bin — the binary to drive. A candidate is accepted only if it exposes the
+# VeriBench surface: a stale ./stress-strike left over from an older build
+# predates `keygen`/`--emit-bundle`, and accepting one silently downgraded this
+# demo to synthetic data once already. If nothing usable is found, build from
+# this checkout (so a fresh clone with Go installed runs LIVE); failing that,
+# return 1 and let the caller fall back to the reference implementation.
 find_bin() {
-  local cand
+  local cand root
   for cand in "${STRESS_STRIKE_BIN:-}" "./stress-strike" "$(command -v stress-strike 2>/dev/null || true)"; do
-    if [ -n "${cand}" ] && [ -x "${cand}" ]; then printf '%s' "${cand}"; return 0; fi
+    if [ -n "${cand}" ] && [ -x "${cand}" ] && "$cand" run --help 2>&1 | grep -q -- '--emit-bundle'; then
+      printf '%s' "${cand}"
+      return 0
+    fi
   done
+  root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+  if [ -f "${root}/cmd/stress-strike/main.go" ] && command -v go >/dev/null 2>&1; then
+    if (cd "${root}" && go build -o "${WORK}/stress-strike" ./cmd/stress-strike) >/dev/null 2>&1; then
+      printf '%s' "${WORK}/stress-strike"
+      return 0
+    fi
+  fi
   return 1
 }
 
@@ -103,9 +144,12 @@ probe_sub() {
   case "${out}" in *"unknown command"*) return 1 ;; *) return 0 ;; esac
 }
 
+# probe_emit_bundle — true if `run` can seal a bundle. Ask the subcommand
+# itself: the top-level help lists commands, not their flags, so grepping it
+# reports the capability missing on a build that has it.
 probe_emit_bundle() {
   local out
-  out="$("$BIN" help 2>&1 || true)"
+  out="$("$BIN" run --help 2>&1 || true)"
   case "${out}" in *"--emit-bundle"*) return 0 ;; *) return 1 ;; esac
 }
 
@@ -628,15 +672,38 @@ if [ "${MODE}" = "live" ]; then
   say "LIVE — this build exposes keygen / verify / --emit-bundle."
   say "       Running the real end-to-end contract against ${URL}"
 else
-  warn "REFERENCE mode — this build does not yet expose the full frozen contract."
+  warn "REFERENCE mode — no stress-strike binary was found or could be built."
   say  "       Missing surface is at least one of:"
-  probe_sub keygen            || say "         · stress-strike keygen --out <key>        [not in this build]"
-  probe_sub verify            || say "         · stress-strike verify --bundle …        [not in this build]"
-  probe_emit_bundle           || say "         · stress-strike run --emit-bundle <b>    [not in this build]"
-  say  "       These are specified in docs/INVENTION.md and are in integration."
+  probe_sub keygen            || say "         · stress-strike keygen --out <key>        [unavailable]"
+  probe_sub verify            || say "         · stress-strike verify --bundle …        [unavailable]"
+  probe_emit_bundle           || say "         · stress-strike run --emit-bundle <b>    [unavailable]"
+  say  "       The real thing ships in this repo (cmd/stress-strike): set"
+  say  "       STRESS_STRIKE_BIN to a built binary, or install Go so this script"
+  say  "       can build one itself."
   say  "       So: NO load is generated here. Instead a spec-conformant vpmp/v1"
   say  "       bundle is emitted by the embedded reference implementation, and the"
   say  "       VERIFICATION half of this demo runs for real."
+fi
+
+# A live run that cannot reach its target still seals a bundle — the CLI always
+# writes what it measured — and that bundle verifies perfectly, because its
+# records honestly say every request failed. The demo would look like a success
+# while proving nothing, so check reachability first and refuse to continue.
+# An error status (4xx/5xx) is only a warning: some targets answer 404 on one
+# path and 200 on another, and a sealed pile of errors is still honest evidence.
+if [ "${MODE}" = "live" ] && command -v curl >/dev/null 2>&1; then
+  code="$(curl -s -o /dev/null -m 5 -w '%{http_code}' "${URL}" || true)"
+  if [ "${code}" = "000" ] || [ -z "${code}" ]; then
+    bad "no target reachable at ${URL}"
+    say "       Start one first, e.g.:"
+    say "         go run ./examples/demo_server.go 127.0.0.1:8090 &"
+    say "         DEMO_URL=http://127.0.0.1:8090/health $0"
+    exit 3
+  fi
+  case "${code}" in
+    2*) note "target ${URL} answered HTTP ${code}" ;;
+    *)  warn "target ${URL} answered HTTP ${code} — is DEMO_URL the right endpoint?" ;;
+  esac
 fi
 
 command -v perl >/dev/null 2>&1 || { bad "perl is required to flip the demo byte"; exit 3; }
@@ -648,20 +715,46 @@ fi
 
 step "2/5  keygen — create the digital seal (Ed25519)"
 if [ "${MODE}" = "live" ]; then
-  "$BIN" keygen --out "${KEY}"
+  # `keygen` writes a PEM keypair to --out and prints the public key; the
+  # fingerprint is that printed key, not a field inside the file.
+  KEYGEN_OUT="$("$BIN" keygen --out "${KEY}")"
+  printf '%s\n' "${KEYGEN_OUT}" | sed 's/^/       /'
+  KEY_ID="$(printf '%s' "${KEYGEN_OUT}" | sed -n 's/^public key: *\(.*\)$/\1/p')"
+  [ -n "${KEY_ID}" ] || { bad "could not read the public key from keygen output"; exit 3; }
 else
   python3 "${REF}" keygen --out "${KEY}"
+  KEY_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["key_id"])' "${KEY}")"
 fi
-KEY_ID="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["key_id"])' "${KEY}")"
 say "${DIM}private key: ${KEY} (mode 0600) · never leaves this host${R}"
 say "key_id (public fingerprint): ${KEY_ID}"
 
 step "3/5  run — produce the measurement bundle"
 if [ "${MODE}" = "live" ]; then
-  # VERIBENCH_KEY is an integration hint for builds whose `run` needs to know
-  # which signing key to use (the frozen contract has no --key flag). Builds
-  # that discover the key themselves simply ignore it.
-  VERIBENCH_KEY="${KEY}" "$BIN" run --url "${URL}" --duration "${DURATION}" --emit-bundle "${BUNDLE}"
+  # The real contract: a paced steady run against ${URL}, sealed with the key
+  # minted above. --bundle-key is what binds this bundle to KEY_ID; without it
+  # the CLI mints an ephemeral signing key and the fingerprint printed above
+  # would not be the one in the evidence.
+  #
+  # A run whose target is slow or erroring still seals its bundle *before*
+  # exiting non-zero, and that non-zero code reports the test outcome, not a
+  # demo failure. The evidence is the product here, so record the code, say so,
+  # and carry on to verification.
+  run_status=0
+  "$BIN" run \
+    --url "${URL}" \
+    --rps "${RPS}" \
+    --users "${USERS}" \
+    --duration "${DURATION_SECS}" \
+    --coordinated-omission \
+    ${PRIVATE_OK} \
+    --emit-bundle "${BUNDLE}" \
+    --bundle-key "${KEY}" \
+    --report-dir "${WORK}/report" || run_status=$?
+  if [ "${run_status}" -ne 0 ]; then
+    warn "run exited ${run_status} — SLA missed or requests failed"
+    say  "       The bundle below still seals exactly what was measured. That is"
+    say  "       the point of the exercise: a bad result is recorded, not hidden."
+  fi
 else
   VERIBENCH_KEY="${KEY}" python3 "${REF}" emit \
     --out "${BUNDLE}" --samples "${SAMPLES}" --count "${COUNT}" \
@@ -699,10 +792,12 @@ fi
 
 step "5/5  tamper with ONE byte, then verify again"
 cp "${BUNDLE}" "${BUNDLE}.bak"
-# Flip exactly one hexadecimal nibble inside samples.merkle.root. This changes
-# the manifest while keeping it valid JSON, so the failure is cryptographic, not
-# syntactic.
-perl -0777 -i -pe 's{("root":")([0-9a-f])}{$1 . ($2 ne "0" ? "0" : "1")}e' "${BUNDLE}" \
+# Flip exactly one hexadecimal nibble inside the Merkle root. This changes the
+# committed root while keeping the manifest valid JSON, so the failure the
+# verifier reports is cryptographic rather than syntactic. The key is spelled
+# `merkle_root` in the CLI's bundle and `root` in the reference emitter, so
+# accept either.
+perl -0777 -i -pe 's{("(?:merkle_root|root)"\s*:\s*")([0-9a-f])}{$1 . ($2 ne "0" ? "0" : "1")}e' "${BUNDLE}" \
   || { bad "could not perform the byte flip"; exit 3; }
 
 # cmp exits 1 when the files differ, so swallow it inside the pipeline (the
@@ -715,7 +810,7 @@ if [ "${DIFF_BYTES}" != "1" ]; then
   bad "expected exactly 1 differing byte, saw ${DIFF_BYTES} — aborting"
   exit 1
 fi
-say "${DIM}one nibble of samples.merkle.root changed; the samples file is untouched${R}"
+say "${DIM}one nibble of the Merkle root changed; the samples file is untouched${R}"
 
 if verify_now; then
   bad "TAMPERING WAS NOT DETECTED (verifier exit ${VERIFY_RC}) — the guarantee is broken"

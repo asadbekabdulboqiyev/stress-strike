@@ -1066,6 +1066,63 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 
 ---
 
+## VeriBench — Verifiable, Honest Load-Test Evidence
+
+**VeriBench** turns a load-test run into a cryptographic receipt. A judge, auditor, or CI gate can verify the evidence **offline** — no trust in the runner required.
+
+### Three pillars
+
+| Pillar | What it means |
+|--------|---------------|
+| **Attested Measurement (VPMP v1)** | Every request is committed *before* it's sent (Ed25519, Merkle tree). The sealed bundle proves the runner couldn't cherry-pick samples. |
+| **Honest Latency** | Coordinated-omission-corrected percentiles with a 95% confidence interval. When the generator falls behind, the correction *adds* the schedule lag, so the tail reflects what a user arriving on schedule actually waited. |
+| **Adversarial-in-the-loop** | A self-tuning VeriGate difficulty bound into the evidence. The goodput is protection-adjusted, not raw. |
+
+### Quick start (LIVE demo)
+
+```sh
+# 1. Start a target (local demo server on loopback)
+go run ./examples/demo_server.go
+
+# 2. Run the VeriBench demo — builds the CLI, runs paced traffic, seals & verifies
+./scripts/demo-verified.sh
+# → keygen → run (coordinated-omission corrected) → verify PASS
+# → one-byte tamper → verify FAIL → restore → verify PASS
+```
+
+### The contract (frozen)
+
+- **Format**: `vpmp/v1` — Ed25519 seal, RFC-6962-style Merkle tree (odd-level duplication, `0x00` leaf domain, `0x01` node domain, empty root = `SHA-256("")`)
+- **Samples**: raw wire measurements (JSONL sidecar). The coordinated-omission correction is *derived* by any verifier from those samples (`internal/honesty.CorrectedLatencyNS`), not baked in — so the derivation is auditable.
+- **CLI**:
+  ```sh
+  stress-strike keygen --out <file>
+  stress-strike run --url <t> --rps <N> --users <M> --duration <S> \
+      --coordinated-omission --emit-bundle <b.json> --bundle-key <key>
+  stress-strike verify --bundle <b.json> [--samples <s.jsonl>] [--json] [--expect-key <hex>]
+  # exit 0 = valid, 1 = tampered (fail-closed)
+  ```
+
+### When is CO correction claimed?
+
+Only when the schedule is *provably constant*: `--profile steady` or `soak` **with a fixed `--rps` cap**. Ramped, spiked, or unpaced runs print raw percentiles and withhold the correction (see `coCorrectionGate` in `cmd/stress-strike/cmd_run.go`). This is structural — an accuracy threshold would withhold the correction precisely when it matters most.
+
+### Honesty limits (what this proves, what it doesn't)
+
+| Proven by the bundle | Not proven |
+|----------------------|------------|
+| The runner committed to the measurement *before* the request was sent | That packets were truly transmitted (a colluding generator + target can fabricate together) |
+| The sealed percentiles are recomputable from the committed samples | That the target's clock is correct or that network asymmetry didn't skew RTT |
+| The Merkle root commits the exact set and order of records | That the CPU scheduler didn't delay the generator between commit and send |
+
+The bundle is **tamper-evidence + pre-commitment binding**, not a proof of physical network activity. The verifier is a pure consistency checker — it validates the bundle's internal logic, not the world outside it.
+
+### Demo script
+
+`scripts/demo-verified.sh` is idempotent: every run uses a fresh temp dir, cleans up on exit, and exits 0 only on the full PASS → tamper-FAIL → restore-PASS cycle. It auto-builds the CLI from source if no binary is on PATH, so a fresh clone with Go installed runs the real contract immediately.
+
+---
+
 ## Engineering Notes
 
 - **Coordinated omission** — workers fire on schedule, not waiting for responses; in-flight requests drain gracefully at test end

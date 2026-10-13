@@ -1,10 +1,15 @@
 package engine
 
 // Sample is one attested measurement: a single executed request attempt,
-// captured with the exact latency the engine feeds into the step percentiles
-// (coordinated-omission corrected when that mode is active). It is the atomic
+// captured with the raw latency the request actually took. It is the atomic
 // unit a VeriBench evidence bundle commits to, so a third party can recompute
-// the run's numbers from the raw samples instead of trusting the report.
+// the run's numbers — including any coordinated-omission correction, which is
+// derived from these samples rather than stored in them — instead of trusting
+// the report.
+//
+// The raw measurement is deliberate: baking a derived value into the committed
+// data would make the derivation unauditable and let a producer hide a claim
+// among its measurements.
 type Sample struct {
 	// Seq is a monotonic, run-unique, 0-based index in emission order. The
 	// vpmp/v1 wire format numbers records from 1, so a producer shifts this by
@@ -14,8 +19,9 @@ type Sample struct {
 	Step string
 	// StartNS is the wall-clock request start in Unix nanoseconds.
 	StartNS int64
-	// LatencyNS is the measured latency in nanoseconds (CO-corrected when the
-	// run has coordinated-omission correction enabled).
+	// LatencyNS is the raw measured latency in nanoseconds, from request start
+	// to response completion, with no coordinated-omission correction applied:
+	// a verifier applies that correction itself, from this field.
 	LatencyNS int64
 	// Status is the protocol status code, or 0 when the attempt produced none.
 	Status int

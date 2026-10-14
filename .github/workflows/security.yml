@@ -56,43 +56,40 @@ jobs:
           cache: true
 
       - name: Run gosec
-        uses: securego/gosec@master
+        uses: securego/gosec@v2.29.0
         with:
+          # -no-fail: the gate is the ratchet step below, which can tell a new
+          # finding from one that predates this branch; a bare gosec failure
+          # cannot. continue-on-error keeps the SARIF report even when gosec
+          # itself exits non-zero, and the ratchet treats a missing or
+          # unparsable report as a failure, so this cannot go quietly green.
           args: -no-fail -fmt sarif -out gosec.sarif ./...
         continue-on-error: true
 
-      - name: Report gosec findings
-        run: |
-          set -euo pipefail
-          # G204/G304 (subprocess, file inclusion) are expected in a tool that
-          # shells out to nothing but legitimately reads user-supplied pcap
-          # and report paths; they are recorded as warnings, not gates.
-          #
-          # This step counts and annotates the remaining error-level findings.
-          # It deliberately does NOT fail the build: `main` carries pre-existing
-          # HIGH findings that are expected here (G115 bounds-checked integer
-          # conversions, G114 example servers without timeouts, G402 example
-          # clients, ...), and ratcheting this into a gate is a policy decision
-          # for the maintainer, not something a drive-by edit should decide.
-          # To ratchet: add the rules you accept to the allowlist regex below
-          # and change the final `exit 0` to `exit 1`.
-          #
-          # NOTE: gosec's SARIF spells the field `ruleId` (camelCase). An
-          # earlier revision of this step read `.rule_id`, which is always null;
-          # `null | test(...)` is a jq type error, so under `set -e` the `if`
-          # took its else-branch and the step reported "no blocking findings"
-          # whatever gosec found — a permanently green gate. Reading the real
-          # field fixes that; a malformed report now aborts the step loudly
-          # (set -e) instead of passing.
-          findings=$(jq '[.runs[].results[] | select(.level=="error")
-                          | .ruleId | select(test("^(G204|G304)$") | not)]' gosec.sarif)
-          count=$(jq 'length' <<<"$findings")
-          if [ "$count" -gt 0 ]; then
-            rules=$(jq -r 'group_by(.) | map("\(.[0])=\(length)") | join(", ")' <<<"$findings")
-            echo "::warning title=gosec::$count error-level finding(s) outside the G204/G304 allowlist: $rules"
-          fi
-          echo "gosec: $count error-level finding(s) outside the G204/G304 allowlist (reported, not blocking)"
-          exit 0
+      - name: Self-test the ratchet
+        # A gate that cannot fail is not a gate: this proves the ratchet's own
+        # logic (new finding fails, allowlisted rule passes, fixed finding
+        # reported, unreadable input exits 2) against synthetic reports, before
+        # it is allowed to gate anything.
+        run: bash scripts/gosec-ratchet-test.sh
+
+      - name: Ratchet gosec findings
+        # Policy: a NEW error-level finding outside the G204/G304 allowlist fails
+        # the build. The findings that predate the ratchet are frozen in
+        # .gosec-baseline.json as debt — recorded, not accepted — so new code
+        # cannot add one unnoticed, and this change does not block on 116
+        # pre-existing findings. Identity is (ruleId, file, normalised source
+        # line): line numbers move, so they are deliberately not part of it.
+        #
+        # G204/G304 (subprocess, file inclusion) are allowlisted because this
+        # tool reads user-supplied pcap/report paths by design and never spawns
+        # a shell from untrusted input. G115, G114, G402 &c. in the baseline are
+        # real debt: fix them when you touch the code, and do not add to them.
+        #
+        # NOTE: the script reads SARIF's `ruleId` (camelCase). Reading `.rule_id`
+        # yields null for every result, which is how an earlier revision of this
+        # step managed to report "no blocking findings" whatever gosec found.
+        run: bash scripts/gosec-ratchet.sh gosec.sarif
 
   # ── secret leakage ────────────────────────────────────────────────────────
   gitleaks:

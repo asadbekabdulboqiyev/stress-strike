@@ -4,6 +4,9 @@
 #   make build       Build all stress-strike binaries into ./bin
 #   make test        Run tests with the race detector
 #   make lint        go vet + gofmt check
+#   make verifier    Verify the browser verifier (tests + drift guard + Go<=>JS parity)
+#   make gosec       Run the gosec ratchet (new error-level findings fail)
+#   make gosec-test  Self-test the ratchet's own logic (no gosec needed)
 #   make clean       Remove bin/ and reports/
 #   make release     Cross-compile for all platforms
 #   make docker      Build Docker image
@@ -54,9 +57,25 @@ verifier-page: ## Regenerate docs/VERIFIER.html from the tested verifier module
 demo-verified: ## Run the LIVE VeriBench demo (seal -> verify -> one-byte tamper -> restore)
 	bash scripts/demo-verified.sh
 
+GOSEC ?= gosec
+
+.PHONY: gosec-test
+gosec-test: ## Self-test the gosec ratchet's own logic (synthetic reports; needs only jq)
+	bash scripts/gosec-ratchet-test.sh
+
+.PHONY: gosec
+gosec: ## Run the gosec ratchet: new error-level findings outside G204/G304 fail
+	@command -v $(GOSEC) >/dev/null || { \
+		echo "gosec: not on PATH. Install the version CI pins (v2.29.0):"; \
+		echo "  GOBIN=$$(go env GOPATH)/bin go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0"; \
+		exit 1; \
+	}
+	$(GOSEC) -no-fail -fmt sarif -out gosec.sarif ./...
+	bash scripts/gosec-ratchet.sh gosec.sarif
+
 .PHONY: clean
 clean: ## Remove bin/ and reports/
-	rm -rf $(BIN_DIR) $(DIST_DIR) reports coverage.out coverage.html
+	rm -rf $(BIN_DIR) $(DIST_DIR) reports coverage.out coverage.html gosec.sarif
 
 .PHONY: release
 release: ## Cross-compile for all platforms into ./dist

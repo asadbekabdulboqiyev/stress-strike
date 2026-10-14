@@ -1124,6 +1124,15 @@ node web/verifier/verify-cli.mjs --bundle run.json --json   # exit 0 valid / 1 t
 
 Unlike the Go CLI, this front end auto-detects a sibling `run.samples.jsonl` when `--samples` is omitted. All three gates run in CI (the `verifier` job), and the page is uploaded as a build artifact so a judge can download a runnable verifier.
 
+Static analysis (gosec) is a **ratchet, not a report**: `make gosec` runs it and compares the result against the committed `.gosec-baseline.json`. The 116 error-level findings that predate the gate (100 distinct source lines) are frozen there as *recorded debt*, so a **new** finding fails the build while the old ones do not block unrelated work — a reporter that can never fail is a gate that can never hold. `G204`/`G304` are allowlisted because this tool reads user-supplied pcap and report paths by design and never spawns a shell from untrusted input. Finding identity is `(ruleId, file, normalised source line)`, deliberately not a line number, so unrelated edits above a frozen finding do not churn the baseline into meaninglessness. Refresh it only after a reviewed change:
+
+```sh
+make gosec                                                  # check; exit 1 on new findings
+scripts/gosec-ratchet.sh --update gosec.sarif               # freeze after review
+```
+
+The same check runs in the `Security` workflow (gosec pinned to v2.29.0, the version the baseline was generated with, so the two cannot drift apart), preceded by `scripts/gosec-ratchet-test.sh`, which proves the gate's own logic against 19 synthetic reports using nothing but `jq` — a gate that cannot fail is not a gate.
+
 ### When is CO correction claimed?
 
 Only when the schedule is *provably constant*: `--profile steady` or `soak` **with a fixed `--rps` cap**. Ramped, spiked, or unpaced runs print raw percentiles and withhold the correction (see `coCorrectionGate` in `cmd/stress-strike/cmd_run.go`). This is structural — an accuracy threshold would withhold the correction precisely when it matters most.

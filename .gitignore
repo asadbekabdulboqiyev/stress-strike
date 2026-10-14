@@ -12,6 +12,9 @@ reports/
 # `go build ./examples/demo_store/...` from the repo root drops a binary here.
 /demo_store
 /demo-store
+# gosec writes its SARIF report here (make gosec, and the Security workflow).
+# The ratchet baseline, .gosec-baseline.json, IS committed on purpose.
+/gosec.sarif
 *.test
 *.out
 coverage.html

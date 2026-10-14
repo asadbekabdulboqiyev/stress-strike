@@ -1,0 +1,606 @@
+{
+  "policy": "Ratchet, not a report: a gosec error-level finding outside the G204/G304 allowlist fails the build unless it matches an entry below by (ruleId, file, normalised source line). These entries are frozen debt, not accepted risk - fix them when you touch the code, and do not add to them. Line numbers are deliberately not stored (they move); the occurrence count is, so an extra copy of a known line is still a new finding. Refresh after a reviewed change with: scripts/gosec-ratchet.sh --update gosec.sarif",
+  "generated_by": "scripts/gosec-ratchet.sh --update",
+  "findings": [
+    {
+      "rule": "G101",
+      "file": "internal/store/postgres/apikeys.go",
+      "code": "const apiKeyCols = `id, tenant_id, user_id, key_hash, name, expires_at, revoked_at, created_at` //nolint:gosec // SQL column list, not a credential",
+      "count": 1
+    },
+    {
+      "rule": "G114",
+      "file": "examples/demo_server.go",
+      "code": "if err := http.ListenAndServe(addr, port); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G114",
+      "file": "examples/demo_store/main.go",
+      "code": "if err := http.ListenAndServe(lnAddr, handler); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike-dashboard/main.go",
+      "code": "selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike-master/main.go",
+      "code": "formatCount(uint64(max64(agg.TotalErrors, 0))),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike-master/main.go",
+      "code": "formatCount(uint64(max64(agg.TotalRequests, 0))),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike/dash_mode.go",
+      "code": "selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike/limit_unix.go",
+      "code": "need := uint64(profile.Users * 4)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "cmd/stress-strike/limit_unix.go",
+      "code": "need = uint64(profile.SpikeUsers * 4)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "examples/demo_store/store.go",
+      "code": "got := argon2.IDKey([]byte(pw), salt, iterations, memory, uint8(parallelism), uint32(len(want)))",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/merkle.go",
+      "code": "binary.BigEndian.PutUint64(prefix[1:], uint64(index))",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/record.go",
+      "code": "if rec.StartNS < prev[0] || (rec.StartNS == prev[0] && int64(rec.Seq) < prev[1]) {",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/record.go",
+      "code": "lastKey[rec.Worker] = [2]int64{rec.StartNS, int64(rec.Seq)}",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/verify.go",
+      "code": "if st.SumLatencyNS > math.MaxUint64-uint64(val) {",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/verify.go",
+      "code": "return int64((uint64(1) << bits.Len64(uint64(latencyNS))) - 1)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/verify.go",
+      "code": "st.SumLatencyNS += uint64(val)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/attest/verify.go",
+      "code": "sum += uint64(r.LatencyNS)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "a.avgNum += int64(s.Avg) * int64(s.Requests)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "agg.ErrorTypes[name] += uint64(n)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "agg.StatusCodes[int(code)] += uint64(n)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "out.Avg = time.Duration(a.avgNum / int64(a.avgDen))",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "sa.ErrorTypes[name] += uint64(n)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/aggregator.go",
+      "code": "sa.StatusCodes[int(code)] += uint64(n)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Duration: int32(sc.Profile.Duration),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Errors: int64(s.Errors),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Errors: int64(step.ErrorCount()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Errors: uint64(s.Errors),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Errors: uint64(s.ErrorsTotal),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "ErrorsTotal: int64(s.Errors),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "RampUp: int32(sc.Profile.RampUp),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Requests: int64(s.Requests),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Requests: int64(step.Requests()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Requests: uint64(s.Requests),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Requests: uint64(s.RequestsTotal),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "RequestsTotal: int64(s.Requests),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Rps: int32(sc.Profile.RPS),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Second: int32(s.Second),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "SpikeHold: int32(sc.Profile.SpikeHold),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "SpikeUsers: int32(sc.Profile.SpikeUsers),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "SpikeWarmup: int32(sc.Profile.SpikeWarmup),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TargetRps: int32(sc.Profile.TargetRPS),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Timeout: int32(s.Timeout),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Timeout: int32(sc.Profile.Timeout),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalErrors: int64(r.TotalErrors),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalErrors: int64(tel.TotalErrors()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalErrors: uint64(r.TotalErrors),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalRequests: int64(r.TotalRequests),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalRequests: int64(tel.TotalRequests()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "TotalRequests: uint64(r.TotalRequests),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "Users: int32(sc.Profile.Users),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "WavePeriod: int32(sc.Profile.WavePeriod),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "out[int(k)] = uint64(v)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "out[int32(k)] = int64(v)",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "out[k] = int64(v)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/convert.go",
+      "code": "out[k] = uint64(v)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/master.go",
+      "code": "TotalWorkers: int32(total),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/worker.go",
+      "code": "MaxUsers: int32(w.cfg.MaxUsers),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/dist/coordinator/worker.go",
+      "code": "MemoryBytes: int64(m.Alloc),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/engine/progress.go",
+      "code": "avgLat = time.Duration(sumNs / count)",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/engine/progress.go",
+      "code": "maxLat := time.Duration(maxNs)",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/engine/progress.go",
+      "code": "nsMax := uint64(latency.Nanoseconds())",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/engine/progress.go",
+      "code": "nsec := uint64(latency.Nanoseconds())",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/engine/token_bucket.go",
+      "code": "nominal := t.anchor.Add(time.Duration(t.issued) * interval) //nolint:gosec // issued-token counter fits int64",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/ci.go",
+      "code": "delta := int64(mulDivRoundU(uint64(z95), uint64(sdS), ppmScale))",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/ci.go",
+      "code": "func (r *rng) intn(n int) int { return int(r.next() % uint64(n)) }",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/ci.go",
+      "code": "sdS := int64(isqrt(varSq))",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/integrity.go",
+      "code": "diff = uint64(achievedMilli) - uint64(plannedMilli)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/integrity.go",
+      "code": "diff = uint64(plannedMilli) - uint64(achievedMilli)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/honesty/percentile.go",
+      "code": "asInt[i] = int64(v)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/exporter/prom.go",
+      "code": "p.line(\"%s_sum %s\\n\", metricDuration, formatSeconds(time.Duration(rep.histSum))) //nolint:gosec // nanosecond sum fits int64",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "Max: time.Duration(h.max.Load()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "Min: time.Duration(h.min.Load()),",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "idx := subBucketCount + (shift-1)*subBucketHalf + int(mantissa-subBucketHalf)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "ns = uint64(d.Nanoseconds())",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "return time.Duration(h.max.Load())",
+      "count": 3
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "return time.Duration(h.min.Load())",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "return time.Duration(h.sum.Load() / count)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "return time.Duration(upper) - 1",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "return uint64(idx)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/metrics/histogram.go",
+      "code": "s.Average = time.Duration(s.Sum / s.Count)",
+      "count": 1
+    },
+    {
+      "rule": "G115",
+      "file": "internal/report/compare.go",
+      "code": "cr.ErrorDiff = int64(current.TotalErrors) - int64(baseline.TotalErrors)",
+      "count": 2
+    },
+    {
+      "rule": "G115",
+      "file": "internal/report/compare.go",
+      "code": "cr.RequestDiff = int64(current.TotalRequests) - int64(baseline.TotalRequests)",
+      "count": 2
+    },
+    {
+      "rule": "G118",
+      "file": "cmd/stress-strike-dashboard/main.go",
+      "code": "runCtx, cancel := context.WithCancel(context.Background())",
+      "count": 1
+    },
+    {
+      "rule": "G124",
+      "file": "examples/demo_store/handlers.go",
+      "code": "http.SetCookie(w, &http.Cookie{",
+      "count": 3
+    },
+    {
+      "rule": "G124",
+      "file": "internal/verigate/verigate.go",
+      "code": "return &http.Cookie{",
+      "count": 1
+    },
+    {
+      "rule": "G301",
+      "file": "cmd/stress-strike-master/main.go",
+      "code": "if err := os.MkdirAll(dir, 0755); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G301",
+      "file": "cmd/stress-strike-replay/main.go",
+      "code": "if err := os.MkdirAll(*reportDir, 0755); err != nil {",
+      "count": 2
+    },
+    {
+      "rule": "G301",
+      "file": "cmd/stress-strike/cmd_pentest.go",
+      "code": "if err := os.MkdirAll(output, 0o755); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G301",
+      "file": "internal/evidence/bundle.go",
+      "code": "if err := os.MkdirAll(dir, 0o755); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G301",
+      "file": "internal/report/pdf.go",
+      "code": "if err := os.MkdirAll(dir, 0o755); err != nil {",
+      "count": 1
+    },
+    {
+      "rule": "G301",
+      "file": "internal/report/report.go",
+      "code": "if err := os.MkdirAll(dir, 0o755); err != nil {",
+      "count": 3
+    },
+    {
+      "rule": "G401",
+      "file": "internal/fingerprint/fingerprint.go",
+      "code": "sum := md5.Sum([]byte(ja3))",
+      "count": 1
+    },
+    {
+      "rule": "G402",
+      "file": "internal/replay/types.go",
+      "code": "InsecureSkipVerify: skipVerify,",
+      "count": 1
+    },
+    {
+      "rule": "G402",
+      "file": "internal/scanner/owasp.go",
+      "code": "InsecureSkipVerify: true,",
+      "count": 2
+    },
+    {
+      "rule": "G402",
+      "file": "internal/scanner/scanner.go",
+      "code": "InsecureSkipVerify: true,",
+      "count": 1
+    },
+    {
+      "rule": "G402",
+      "file": "internal/scanner/scanner.go",
+      "code": "config := &tls.Config{InsecureSkipVerify: true}",
+      "count": 1
+    },
+    {
+      "rule": "G404",
+      "file": "internal/siem/webhook.go",
+      "code": "func randFloat() float64 { return rand.Float64() } //nolint:gosec // backoff jitter only; not security-sensitive",
+      "count": 1
+    },
+    {
+      "rule": "G501",
+      "file": "internal/fingerprint/fingerprint.go",
+      "code": "\"crypto/md5\"",
+      "count": 1
+    },
+    {
+      "rule": "G702",
+      "file": "cmd/stress-strike/cmd_sub.go",
+      "code": "cmd := exec.Command(\"go\", goArgs...)",
+      "count": 1
+    },
+    {
+      "rule": "G702",
+      "file": "cmd/stress-strike/cmd_sub.go",
+      "code": "cmd := exec.Command(bin, args...)",
+      "count": 1
+    }
+  ]
+}

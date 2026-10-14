@@ -401,6 +401,51 @@ the cost of the cheat and gives a verifier a second, independent signal; it
 does not make fabrication mathematically impossible. The MVP does **not** fully
 solve the "worker never measured anything" case — see §8.
 
+### 7.4 Adversarial input hardening, and why there are two implementations
+
+The verifier is the tool an auditor points at a stranger's file, so the verifier
+is itself attack surface: a hostile bundle or sidecar must not be able to crash
+it, hang it, or — worst of all — make the two independent implementations
+disagree about whether a file is acceptable.
+
+An independent review of the Go verifier, the JavaScript verifier and the
+browser page found five such defects. Each is fixed and covered by a regression
+test:
+
+1. **Prototype-key smuggling (`__proto__`).** The JavaScript reader built plain
+   objects, so a worker (or a sidecar record) hidden behind a `__proto__` key
+   stayed readable through the prototype chain: the browser verifier accepted a
+   file the Go verifier rejected, and two byte-distinct files could report the
+   *same* `bundle_digest`, which breaks the digest-as-identity property. The
+   reader now builds prototype-less objects, and validation reads own
+   properties only.
+2. **Unbounded record length.** Go caps a sidecar line at 16 KiB; JavaScript had
+   no cap, so a 20 KB-per-line file verified in the browser while the CLI
+   refused to read it. The cap is now enforced identically, with the same
+   message.
+3. **Integer ranges.** Go decodes `seq` as `uint64` and the remaining fields as
+   `int64`; JavaScript accepted arbitrary-precision integers. Out-of-range
+   values are now rejected in O(1), which also removes a quadratic BigInt
+   bucketing cost reachable from a single ~100 KB line.
+4. **A crash reachable from the bundle alone.** The Go verifier sized an
+   allocation from the decoded, attacker-controlled `aggregate.count`; a bundle
+   claiming 2^62 samples panicked (`makeslice: cap out of range`), so the CLI
+   exited 2 with no report at all — breaking the documented exit-code contract.
+   The buffer is now sized from the records actually in hand, and a `recover` at
+   the `VerifyWith` boundary turns any panic into a failed check and a
+   structured invalid verdict.
+5. **A verifier that threw instead of judging.** A bundle whose worker has no
+   `commit` object made the JavaScript verifier raise a `TypeError`, so `--json`
+   printed nothing. `verifyBundle` is now total: it records a schema failure and
+   returns a report.
+
+The claim is not that the MVP was flawless. It is that the **accept sets of two
+independent implementations are asserted equal** — five tamper cases plus five
+hostile-input cases in `scripts/verify-html-parity.sh`, run in CI — and that
+neither implementation can be made to accept a file the other rejects. What this
+hardening does **not** change is §7.2: a hostile producer that signs its own
+internally-consistent fiction is still outside what v1 can refute.
+
 ---
 
 ## 8. Limitations and future work

@@ -1100,7 +1100,7 @@ go run ./examples/demo_server.go
   stress-strike run --url <t> --rps <N> --users <M> --duration <S> \
       --coordinated-omission --emit-bundle <b.json> --bundle-key <key>
   stress-strike verify --bundle <b.json> [--samples <s.jsonl>] [--json] [--expect-key <hex>]
-  # exit 0 = valid, 1 = tampered (fail-closed)
+  # exit 0 = valid, 1 = tampered (fail-closed) or unreadable input, 2 = usage error
   ```
 
 ### Verify it yourself — in a browser, offline
@@ -1113,7 +1113,7 @@ Two implementations exist so that agreement is evidence rather than a promise:
 |------|---------|----------------|
 | Unit tests | `node --test web/verifier/vpmp.test.mjs` | SHA-256 and the Merkle tree match Node's own crypto as an independent oracle |
 | No drift | `node web/verifier/build-html.mjs --check` | The shipped page contains exactly the tested module — its SHA-256 is printed in the page footer, so anyone can confirm the code they ran |
-| Parity | `bash scripts/verify-html-parity.sh` | A real signed bundle, tampered four ways, gets the **same verdict from Go and JavaScript**: same `valid`, same checks run/failed, same bundle digest, same failing check names |
+| Parity | `bash scripts/verify-html-parity.sh` | A real signed bundle, tampered five ways, gets the **same verdict from Go and JavaScript**: same `valid`, same checks run/failed, same bundle digest, same failing check names — and five *hostile* inputs (a `__proto__`-wrapped worker or record, an oversized sidecar line, a bundle claiming 2^62 samples, a worker with no `commit`) are refused by **both**, with neither crashing |
 
 There is also a command-line front end, useful on a machine with no Go toolchain:
 

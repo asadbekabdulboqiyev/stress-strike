@@ -51,7 +51,30 @@ if (samplesPath && !existsSync(samplesPath)) usage(`sidecar not found: ${samples
 const bundleText = readFileSync(bundlePath, 'utf8');
 const samplesText = samplesPath ? readFileSync(samplesPath, 'utf8') : null;
 
-const r = await verifyBundle(bundleText, samplesText, { skipCi });
+let r;
+try {
+  r = await verifyBundle(bundleText, samplesText, { skipCi });
+} catch (e) {
+  // verifyBundle is total by contract; if it ever throws anyway, still honour
+  // the --json contract with a structured, invalid verdict instead of a stack
+  // trace on stderr and no machine-readable output.
+  r = {
+    valid: false,
+    format: '',
+    bundle_digest: '',
+    samples_absent: samplesText == null,
+    workers: [],
+    samples_total: 0,
+    non_canonical_lines: 0,
+    proofs_verified: 0,
+    checks_run: 1,
+    checks_failed: 1,
+    co_corrected: false,
+    aggregate: null,
+    errors: [{ check: 'internal-error', worker: '', detail: `verifier threw: ${e && e.message ? e.message : e}`, index: null }],
+    warnings: [],
+  };
+}
 
 if (json) {
   console.log(
@@ -65,6 +88,7 @@ if (json) {
         samples_absent: r.samples_absent,
         workers: r.workers.length,
         samples_total: r.samples_total,
+        non_canonical_lines: r.non_canonical_lines || 0,
         checks_run: r.checks_run,
         checks_failed: r.checks_failed,
         proofs_verified: r.proofs_verified,

@@ -183,7 +183,14 @@ export function parseJSONStrict(text) {
 
   function parseObject() {
     i++; // {
-    const out = {};
+    // A null-prototype object, so that a JSON key named "__proto__" becomes an
+    // ordinary own property instead of silently setting the prototype. With a
+    // plain `{}`, `out["__proto__"] = v` goes through the inherited accessor:
+    // the fields stay readable through the prototype chain but vanish from the
+    // key set. Go's struct decode then sees an empty worker and rejects the
+    // file while this verifier accepts it — and two byte-distinct files would
+    // share one canonical digest, so a digest pin no longer identifies bytes.
+    const out = Object.create(null);
     ws();
     if (text[i] === '}') { i++; return out; }
     for (;;) {
@@ -357,6 +364,20 @@ const PROOF_SAMPLE_WIDTH = 256;
 const BOOTSTRAP_ITERATIONS = 400;
 const BOOTSTRAP_SEED = 0x9E3779B97F4A7C15n;
 const PPM_SCALE = 1_000_000n;
+
+// Mirror of internal/attest/record.go's caps and of the integer ranges Go's
+// encoding/json decode imposes (uint64 for seq, int64 for the rest). Without
+// them the JS verifier accepts sidecar files that the Go verifier refuses, and
+// an unbounded BigInt latency is a CPU denial-of-service in the browser tab.
+const MAX_LINE_BYTES = 16 << 10;
+const MAX_INT64 = (1n << 63n) - 1n;
+const MAX_UINT64 = (1n << 64n) - 1n;
+
+function sameBytes(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 function isHexFixed(s, hexLen) {
   return typeof s === 'string' && hexLen % 2 === 0 && s.length === hexLen && /^[0-9a-f]*$/.test(s);
@@ -747,6 +768,7 @@ export async function verifyBundle(bundleText, samplesText, opts = {}) {
     samples_absent: samplesText == null,
     workers: [],
     samples_total: 0,
+    non_canonical_lines: 0,
     proofs_verified: 0,
     checks_run: 0,
     checks_failed: 0,
@@ -782,7 +804,17 @@ export async function verifyBundle(bundleText, samplesText, opts = {}) {
   else fail('format', `format is ${JSON.stringify(b.format)}, want ${FORMAT_ID}`);
 
   // 3. structural validation (mirrors attest.Bundle.Validate)
-  const schemaErr = validateBundle(b);
+  //
+  // validateBundle dereferences nested objects (worker.commit, .aggregate), so
+  // a bundle that omits one makes it throw. verifyBundle must stay total: catch
+  // it and record the failure, exactly as the Go verifier reports a schema
+  // error instead of crashing.
+  let schemaErr;
+  try {
+    schemaErr = validateBundle(b);
+  } catch (e) {
+    schemaErr = `bundle is malformed: ${e && e.message ? e.message : e}`;
+  }
   if (schemaErr) fail('bundle-schema', schemaErr);
   else pass('bundle-schema', 'structure, cross-sums, rate identities and pacing bookkeeping hold');
 
@@ -831,6 +863,7 @@ export async function verifyBundle(bundleText, samplesText, opts = {}) {
     } else {
       samples = loaded.grouped;
       report.samples_total = loaded.total;
+      report.non_canonical_lines = loaded.nonCanonical;
       for (const w of loaded.warnings) warn(w);
     }
   }
@@ -839,7 +872,15 @@ export async function verifyBundle(bundleText, samplesText, opts = {}) {
   let total = 0;
   const ws = Array.isArray(b.workers) ? b.workers : [];
   for (const w of ws) {
-    const n = await verifyWorker(w, samples);
+    // A worker object that passed structural validation can still be missing a
+    // nested field if the bundle is malformed; keep the verifier total.
+    let n = 0;
+    try {
+      n = await verifyWorker(w, samples);
+    } catch (e) {
+      const id = w && typeof w.id === 'string' ? w.id : '';
+      fail('worker-schema', `worker ${JSON.stringify(id)} could not be verified: ${e && e.message ? e.message : e}`);
+    }
     total += n;
   }
   if (samples != null && total > MAX_SAMPLES_TOTAL) {
@@ -848,7 +889,11 @@ export async function verifyBundle(bundleText, samplesText, opts = {}) {
 
   // 10. run-wide aggregate
   if (samples != null) {
-    verifyGlobalAggregate(samples);
+    try {
+      verifyGlobalAggregate(samples);
+    } catch (e) {
+      fail('aggregate-percentiles', `recomputation failed: ${e && e.message ? e.message : e}`);
+    }
   }
 
   return finalize();
@@ -1186,15 +1231,20 @@ function sortRecords(entries) {
     });
 }
 
+// validateRecord mirrors attest.Record.Validate. Every field must be an *own*
+// property: with the null-prototype reader in parseObject, a "__proto__"
+// wrapper yields an object whose fields live on the prototype and would
+// otherwise pass here while Go rejects the same line.
 function validateRecord(r) {
-  if (typeof r.worker !== 'string' || r.worker === '') return 'record: worker id is empty';
+  const own = (k) => Object.prototype.hasOwnProperty.call(r, k);
+  if (!own('worker') || typeof r.worker !== 'string' || r.worker === '') return 'record: worker id is empty';
   if (te.encode(r.worker).length > MAX_WORKER_ID_LEN) return 'record: worker id is too long';
   if (!isValidUTF8String(r.worker)) return 'record: worker id is not valid UTF-8';
-  if (typeof r.seq !== 'bigint' || r.seq <= 0n) return 'record: seq must be >= 1';
-  if (typeof r.start_ns !== 'bigint' || r.start_ns < 0n) return 'record: start_ns is negative or missing';
-  if (typeof r.latency_ns !== 'bigint' || r.latency_ns < 0n) return 'record: latency_ns is negative or missing';
-  if (typeof r.bytes !== 'bigint' || r.bytes < 0n) return 'record: bytes is negative or missing';
-  if (typeof r.status !== 'bigint' || r.status < 0n || r.status > BigInt(MAX_STATUS)) return 'record: status is out of range';
+  if (!own('seq') || typeof r.seq !== 'bigint' || r.seq <= 0n || r.seq > MAX_UINT64) return 'record: seq must be >= 1';
+  if (!own('start_ns') || typeof r.start_ns !== 'bigint' || r.start_ns < 0n || r.start_ns > MAX_INT64) return 'record: start_ns is negative or missing';
+  if (!own('latency_ns') || typeof r.latency_ns !== 'bigint' || r.latency_ns < 0n || r.latency_ns > MAX_INT64) return 'record: latency_ns is negative or missing';
+  if (!own('bytes') || typeof r.bytes !== 'bigint' || r.bytes < 0n || r.bytes > MAX_INT64) return 'record: bytes is negative or missing';
+  if (!own('status') || typeof r.status !== 'bigint' || r.status < 0n || r.status > BigInt(MAX_STATUS)) return 'record: status is out of range';
   return null;
 }
 
@@ -1207,37 +1257,51 @@ export function loadSamples(text) {
   const warnings = [];
   const seenSeq = new Map();
   let total = 0;
+  let nonCanonical = 0;
+  const bail = (error) => ({ error, grouped, warnings, total, nonCanonical });
   const lines = text.split('\n');
   for (let ln = 0; ln < lines.length; ln++) {
     const line = lines[ln].replace(/\r$/, '');
     if (line.trim() === '') continue;
+    // Mirror of internal/attest/record.go MaxSampleLineBytes (16 KiB). A
+    // canonical record is about 120 bytes; the cap stops a hostile sidecar from
+    // handing the verifier a multi-megabyte "record" line that Go refuses to
+    // read, which would otherwise make the two verifiers disagree on one file.
+    if (te.encode(line).length > MAX_LINE_BYTES) {
+      return bail(`samples: line ${ln + 1} exceeds the ${MAX_LINE_BYTES} byte limit`);
+    }
     let rec;
     try {
       rec = parseJSONStrict(line);
     } catch (e) {
-      return { error: `samples: line ${ln + 1} is not a valid record: ${e.message}`, grouped, warnings, total };
+      return bail(`samples: line ${ln + 1} is not a valid record: ${e.message}`);
     }
     if (!rec || typeof rec !== 'object' || Array.isArray(rec)) {
-      return { error: `samples: line ${ln + 1} is not a JSON object`, grouped, warnings, total };
+      return bail(`samples: line ${ln + 1} is not a JSON object`);
     }
     const err = validateRecord(rec);
-    if (err) return { error: `samples: line ${ln + 1}: ${err}`, grouped, warnings, total };
+    if (err) return bail(`samples: line ${ln + 1}: ${err}`);
     if (seenSeq.get(rec.worker)?.has(rec.seq)) {
-      return { error: `samples: line ${ln + 1}: worker ${JSON.stringify(rec.worker)} repeats seq ${rec.seq}`, grouped, warnings, total };
+      return bail(`samples: line ${ln + 1}: worker ${JSON.stringify(rec.worker)} repeats seq ${rec.seq}`);
     }
     if (!seenSeq.has(rec.worker)) seenSeq.set(rec.worker, new Set());
     seenSeq.get(rec.worker).add(rec.seq);
     total++;
     if (total > MAX_SAMPLES_TOTAL) {
-      return { error: `samples: file exceeds the ${MAX_SAMPLES_TOTAL} record limit`, grouped, warnings, total };
+      return bail(`samples: file exceeds the ${MAX_SAMPLES_TOTAL} record limit`);
     }
     if (!grouped.has(rec.worker)) grouped.set(rec.worker, []);
     if (grouped.get(rec.worker).length >= MAX_SAMPLES_PER_WORKER) {
-      return { error: `samples: worker ${JSON.stringify(rec.worker)} exceeds the ${MAX_SAMPLES_PER_WORKER} record limit`, grouped, warnings, total };
+      return bail(`samples: worker ${JSON.stringify(rec.worker)} exceeds the ${MAX_SAMPLES_PER_WORKER} record limit`);
     }
+    // Count lines that are not in canonical form, mirroring Go's
+    // SampleLoadStats.NonCanonicalLines: a diagnostic, never a failure, because
+    // verification is defined over the record's *values* and the leaf is
+    // re-canonicalized before it is hashed.
+    if (!sameBytes(te.encode(line), encodeCanonical(recordCanonical(rec)))) nonCanonical++;
     grouped.get(rec.worker).push({ record: rec, rawLine: line, validateErr: null });
   }
-  return { error: null, grouped, warnings, total };
+  return { error: null, grouped, warnings, total, nonCanonical };
 }
 
 /* -------------------------------------------------------------------------- */

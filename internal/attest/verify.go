@@ -239,6 +239,28 @@ func VerifyWith(b Bundle, samples map[string][]Record, opts VerifyOptions) Verif
 	v := &verifier{opts: opts}
 	v.res.Format = b.Format
 	v.res.SamplesAbsent = samples == nil
+	// A hostile bundle must never take the process down: any panic raised while
+	// verifying is converted into a failed check and an invalid verdict, so the
+	// verifier always has a structured result to report. (Inputs that cannot be
+	// *loaded* at all — an unparsable bundle, an unreadable sidecar — still fail
+	// before this point, with a fatal error and exit code 1.)
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		// Fail closed, and never let the reporting path crash in turn: whatever
+		// happens below, the verdict is invalid, because a verifier that panics
+		// cannot certify anything.
+		func() {
+			defer func() {
+				_ = recover()
+				v.res.Valid = false
+			}()
+			v.globalFail("internal-error", fmt.Sprintf("verifier panicked on this evidence: %v", r))
+			v.finish()
+		}()
+	}()
 	v.run(b, samples)
 	v.finish()
 	return v.res
@@ -599,7 +621,15 @@ func (v *verifier) verifyGlobalAggregate(b Bundle, samples map[string][]Record) 
 		}
 	}
 
-	values := make([]int64, 0, b.Aggregate.Count)
+	// Size the buffer from the records actually in hand, never from a decoded
+	// claim. b.Aggregate.Count is attacker-controlled and may be as large as
+	// 2^62; using it as a capacity hint panics ("makeslice: cap out of range"),
+	// which aborts the process with exit code 2 and no JSON report at all.
+	totalRecords := 0
+	for i := range b.Workers {
+		totalRecords += len(samples[b.Workers[i].ID])
+	}
+	values := make([]int64, 0, totalRecords)
 	var count uint64
 	var sum uint64
 	for i := range b.Workers {

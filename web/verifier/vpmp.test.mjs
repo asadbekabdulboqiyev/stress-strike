@@ -1,6 +1,6 @@
 // vpmp.test.mjs — unit tests for the independent JavaScript verifier.
 //
-// Run with:  node --test web/verifier/
+// Run with:  node --test web/verifier/vpmp.test.mjs
 //
 // These tests treat Node's own crypto as an oracle: the SHA-256 and Merkle
 // implementations here are compared against an independently written
@@ -25,6 +25,7 @@ import {
   ci95OrderStatistic,
   ci95Bootstrap,
   loadSamples,
+  verifyBundle,
 } from './vpmp.mjs';
 
 const dec = (b) => new TextDecoder().decode(b);
@@ -246,6 +247,96 @@ test('loadSamples rejects malformed and out-of-range records', () => {
   assert.match(loadSamples('{"bytes":1,"latency_ns":-1,"seq":1,"start_ns":0,"status":200,"worker":"w"}').error, /latency_ns is negative/);
   assert.match(loadSamples('{"bytes":1,"latency_ns":1,"seq":1,"start_ns":0,"status":1000,"worker":"w"}').error, /status is out of range/);
   assert.match(loadSamples('not json').error, /not a valid record/);
+});
+
+/* --------------------- verifier hardening (parity/DoS) -------------------- */
+
+test('strict reader keeps "__proto__" as an own property, never the prototype', () => {
+  const o = parseJSONStrict('{"__proto__":{"polluted":true},"id":"w1"}');
+  assert.equal(Object.getPrototypeOf(o), null, 'parsed objects must have no prototype');
+  assert.deepEqual(Object.keys(o).sort(), ['__proto__', 'id']);
+  assert.equal({}.polluted, undefined, 'Object.prototype must not be polluted');
+  assert.equal(o.id, 'w1');
+});
+
+test('loadSamples rejects a line whose fields hide behind "__proto__"', () => {
+  // Go's struct decode sees an empty worker and refuses this file. Without the
+  // null-prototype reader the fields stay readable through the prototype chain,
+  // so the JS verifier accepted a file the Go verifier rejected — and two
+  // byte-distinct files shared one canonical digest.
+  const line = '{"__proto__":{"bytes":10,"latency_ns":1,"seq":1,"start_ns":1000,"status":200,"worker":"w1"}}';
+  const r = loadSamples(line + '\n');
+  assert.match(r.error, /worker id is empty/);
+  assert.equal(r.total, 0);
+});
+
+test('loadSamples enforces the 16 KiB per-line limit, like the Go loader', () => {
+  const padded =
+    '{"bytes":10,"latency_ns":1,"seq":1,"start_ns":1000,"status":200,"worker":"w1","pad":"' +
+    'x'.repeat(20000) +
+    '"}';
+  const r = loadSamples(padded + '\n');
+  assert.match(r.error, /exceeds the 16384 byte limit/);
+});
+
+test('loadSamples rejects integer values outside the ranges Go decodes', () => {
+  // Also the DoS regression: an unbounded BigInt latency used to be pushed
+  // through a per-bit bucketing loop (~0.6 s for a 100k-digit value, and the
+  // cost grows quadratically). It is rejected in O(1) now.
+  const tooBig = (1n << 64n).toString();
+  const line = `{"bytes":0,"latency_ns":${tooBig},"seq":1,"start_ns":0,"status":200,"worker":"w1"}`;
+  assert.match(loadSamples(line + '\n').error, /latency_ns is negative or missing/);
+  const maxSeq = (1n << 64n).toString();
+  const l2 = `{"bytes":0,"latency_ns":1,"seq":${maxSeq},"start_ns":0,"status":200,"worker":"w1"}`;
+  assert.match(loadSamples(l2 + '\n').error, /seq must be >= 1/);
+});
+
+test('loadSamples counts non-canonical lines but still accepts them', () => {
+  const canonical = '{"bytes":10,"latency_ns":1,"seq":1,"start_ns":1000,"status":200,"worker":"w1"}';
+  const padded = '{"bytes":11,"latency_ns":2,"seq":2,"start_ns":2000,"status":200,"worker":"w1","pad":1}';
+  const r = loadSamples(`${canonical}\n${padded}\n`);
+  assert.equal(r.error, null);
+  assert.equal(r.total, 2);
+  assert.equal(r.nonCanonical, 1);
+});
+
+test('verifyBundle never throws: a bundle with no commit object is invalid, not a crash', async () => {
+  const key = 'aa'.repeat(32);
+  const bundle = JSON.stringify({
+    format: 'vpmp/v1',
+    run: {},
+    workers: [{ id: 'w1', public_key: key }],
+    aggregate: {},
+    integrity: {},
+    signature: {},
+  });
+  const r = await verifyBundle(bundle, null);
+  assert.equal(r.valid, false);
+  assert.ok(r.errors.length >= 1, 'must record at least one failure');
+  assert.ok(r.errors.some((e) => e.check === 'bundle-schema'), 'schema failure must be reported');
+});
+
+test('verifyBundle reports a verdict for a hostile aggregate count instead of hanging', async () => {
+  // 2^62 samples: Go used to size an allocation from this claim and panic.
+  const key = 'aa'.repeat(32);
+  const bundle = JSON.stringify({
+    format: 'vpmp/v1',
+    run: { target: 'http://127.0.0.1:8080/', profile: 'constant-rps', duration_ns: 1000000000n.toString(), planned_rps: '1000.000' },
+    workers: [
+      {
+        id: 'w1',
+        public_key: key,
+        commit: { merkle_root: key, sample_count: '4611686018427387904', window_start_ns: 0, window_end_ns: 1, signature: 'bb'.repeat(64) },
+        aggregate: { count: '4611686018427387904', sum_latency_ns: 0, min_ns: 0, max_ns: 0, hist: { 1: '4611686018427387904' } },
+      },
+    ],
+    aggregate: { count: '4611686018427387904', sum_latency_ns: 0, p50_ns: 0, p95_ns: 0, p99_ns: 0, rps: '1000.000', co_corrected: false, co_ci95_ns: { low_ns: 0, high_ns: 0 } },
+    integrity: { schedule_accuracy_ppm: 1000000, dropped_samples: 0, achieved_rps: '1000.000', planned_rps: '1000.000' },
+    signature: { alg: 'ed25519', key, sig: 'bb'.repeat(64), covers: 'sha256(canonical-bundle-without-signature)' },
+  });
+  const sidecar = '{"bytes":1,"latency_ns":2,"seq":1,"start_ns":0,"status":200,"worker":"w1"}\n';
+  const r = await verifyBundle(bundle, sidecar);
+  assert.equal(r.valid, false);
 });
 
 /* ------------------------------- helpers --------------------------------- */

@@ -19,9 +19,15 @@ permissions:
   pull-requests: read
 
 env:
-  GO_VERSION: "1.26"
+  # Patch-pinned, not "1.26": net/http has a reachable advisory that is fixed in
+  # the standard library at go1.26.9, which only a patch-level pin can pick up
+  # (govulncheck reports it as `Found in: net/http@go1.26.5`).
+  GO_VERSION: "1.26.9"
   # Pinned tool versions so CI failures are never caused by a tool auto-update.
-  GOLANGCI_LINT_VERSION: "v2.1.6"
+  # Must be built with a Go >= the module's, or the linter refuses to load the
+  # config: "the Go language version (go1.24) used to build golangci-lint is
+  # lower than the targeted Go version (1.26)". v2.14.0 declares go 1.26.0.
+  GOLANGCI_LINT_VERSION: "v2.14.0"
   CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
 jobs:
@@ -84,6 +90,12 @@ jobs:
           cache: true
 
       - name: Race + coverage
+        # Force bash instead of the Windows default (pwsh). PowerShell does not
+        # pass these argv items through verbatim: `-coverprofile=coverage.out`
+        # reached `go` mangled, so go saw a package named `.out` and died with
+        # "no required module provides package .out". bash preserves argv on
+        # every runner, so one command works on ubuntu, macOS and Windows.
+        shell: bash
         run: go test -race -timeout 20m -covermode=atomic -coverprofile=coverage.out -coverpkg=./... ./...
         env:
           # Keep CI workers from being starved by the engine's own load tests.
@@ -177,15 +189,21 @@ jobs:
           set -euo pipefail
           version="$(cat VERSION)"
           mkdir -p out
-          for pkg in ./cmd/...; do
-            name="$(basename "$pkg")"
+          # `./cmd/...` is a Go package pattern, not a shell glob — in bash `...`
+          # means "exactly three characters" (`???`), so it never matched, and
+          # basename turned the literal argument into "..." -> `go build -o out/...`
+          # -> "cannot write multiple packages to non-directory". Iterate the
+          # directories themselves and name the package explicitly.
+          for dir in ./cmd/*/; do
+            [ -d "$dir" ] || continue
+            name="$(basename "$dir")"
             out="out/${name}"
             [ "${{ matrix.os }}" = "windows" ] && out="${out}.exe"
             CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
               go build -trimpath \
                 -ldflags="-s -w -X main.version=${version} \
                           -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${version}" \
-                -o "$out" "$pkg"
+                -o "$out" "./cmd/${name}"
             echo "  built ${name} (${{ matrix.os }}/${{ matrix.arch }}) $(du -h "$out" | cut -f1)"
           done
 

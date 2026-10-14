@@ -40,21 +40,27 @@ jobs:
       - uses: actions/setup-go@v5
         if: matrix.language == 'go'
         with:
-          go-version: "1.26"
+          go-version: "1.26.9"
           cache: true
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          language: ${{ matrix.language }}
+          # `languages`, not `language`. The action's input is plural; with the
+          # singular spelling it is silently ignored ("Unexpected input(s)
+          # 'language'"), so CodeQL fell back to autodetecting every language in
+          # the repo (go, javascript, ruby, actions) and then died on
+          # "Go does not support the none build mode".
+          languages: ${{ matrix.language }}
           queries: security-and-quality
-          # stress-strike is a server *and* a CLI; the default/autobuild path
-          # does not know to build ./cmd/..., so build explicitly.
-          build-mode: ${{ matrix.language == 'go' && 'none' || 'none' }}
+          # Go supports only autobuild/manual, never "none". This repo is a
+          # server *and* a CLI, so build manually: the explicit `go build ./...`
+          # below also compiles ./cmd/..., which the autobuilder skips.
+          build-mode: ${{ matrix.language == 'go' && 'manual' || 'none' }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-        if: matrix.language != 'go'
+      - name: Build for CodeQL
+        if: matrix.language == 'go'
+        run: go build ./...
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3

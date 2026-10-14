@@ -6,7 +6,6 @@ import (
 	"log"
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
@@ -47,10 +46,12 @@ type Worker struct {
 	activeRuns map[string]*runContext
 	sendMu     sync.Mutex
 
-	// CPU sampler state: last rusage sample + wall-clock timestamp. Used to
-	// fill SystemMetrics.CpuPercent in heartbeats (process CPU, % of one core).
+	// CPU sampler state: the last CPU-seconds sample + wall-clock timestamp.
+	// Used to fill SystemMetrics.CpuPercent in heartbeats (process CPU, % of one
+	// core). Seconds rather than a syscall.Rusage so the sampler can have a
+	// per-platform implementation (see cpu_unix.go / cpu_windows.go).
 	cpuMu    sync.Mutex
-	lastCPU  syscall.Rusage
+	lastCPU  float64
 	lastCPUT time.Time
 }
 
@@ -283,12 +284,13 @@ func (w *Worker) sendStatus(stream distproto.MasterWorker_CoordinateServer) {
 
 // cpuPercent returns the worker process's CPU usage since the previous sample
 // as a percentage of one core (e.g. 250 = 2.5 cores on a multi-core host).
-// The first sample returns 0 because there is no baseline yet.
+// The first sample returns 0 because there is no baseline yet, and a platform
+// whose CPU counters are unavailable also returns 0.
 func (w *Worker) cpuPercent() float64 {
 	w.cpuMu.Lock()
 	defer w.cpuMu.Unlock()
-	var now syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &now); err != nil {
+	now, ok := processCPUSeconds()
+	if !ok {
 		return 0
 	}
 	nowT := time.Now()
@@ -301,7 +303,7 @@ func (w *Worker) cpuPercent() float64 {
 	if wall <= 0 {
 		return 0
 	}
-	cpuDelta := rusageCPUSeconds(&now) - rusageCPUSeconds(&w.lastCPU)
+	cpuDelta := now - w.lastCPU
 	w.lastCPU = now
 	w.lastCPUT = nowT
 	pct := cpuDelta / wall * 100
@@ -309,11 +311,6 @@ func (w *Worker) cpuPercent() float64 {
 		return 0
 	}
 	return pct
-}
-
-func rusageCPUSeconds(ru *syscall.Rusage) float64 {
-	return float64(ru.Utime.Sec) + float64(ru.Utime.Usec)/1e6 +
-		float64(ru.Stime.Sec) + float64(ru.Stime.Usec)/1e6
 }
 
 // Ping implements the health probe.

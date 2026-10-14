@@ -19,7 +19,9 @@ permissions:
   packages: write
 
 env:
-  GO_VERSION: "1.26"
+  # Patch-level pin: net/http advisories are fixed in the standard library at
+  # go1.26.9, which "1.26" cannot guarantee it picks up.
+  GO_VERSION: "1.26.9"
   GORELEASER_VERSION: "v2.5.1"
 
 jobs:

@@ -30,13 +30,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.26.9"
           cache: true
 
       - name: govulncheck ./...
         uses: golang/govulncheck-action@v1
         with:
-          go-version-input: "1.26"
+          go-version-input: "1.26.9"
           go-package: ./...
           # Symbol-level analysis, so unused-but-present vulnerable code does
           # not fail the build while reachable vulnerable code does.
@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.26.9"
           cache: true
 
       - name: Run gosec
@@ -138,7 +138,7 @@ jobs:
             VERSION=scan
 
       - name: Scan filesystem + image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: ${{ matrix.image }}:scan
           format: sarif
@@ -189,7 +189,7 @@ jobs:
             VERSION=scan
 
       - name: Scan image (fail on fixable HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: ${{ matrix.image }}:gate
           format: sarif

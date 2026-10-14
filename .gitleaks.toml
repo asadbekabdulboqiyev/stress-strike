@@ -1,0 +1,63 @@
+# gitleaks configuration — reviewed exceptions only.
+#
+# The Security workflow checks out the full history (fetch-depth: 0), so gitleaks
+# also sees branches that were never merged. That is deliberate: a secret is a
+# secret the moment it is pushed, whether or not the branch lands. Both entries
+# below are therefore about *values that are not secrets*, not about files we
+# would rather not scan, and each one is scoped as tightly as the false positive
+# allows — a real credential in the same file, or the same shape with different
+# digits, still fails the build.
+#
+# Adding an entry here is a security decision. Say what the value is and why it
+# is public, and keep the match narrow.
+#
+# These are attached to the `generic-api-key` rule rather than set as a global
+# [allowlist], because only per-rule allowlists can require that the path AND the
+# line shape both match (`condition = "AND"`); a global allowlist is OR-only, so
+# naming a path there would exempt the whole file.
+
+[extend]
+# Keep every built-in rule and merge into it. An allowlist must never mean "stop
+# looking"; it means "this particular value has been reviewed".
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+# ── 1. The demo transcript prints a public key ────────────────────────────────
+# docs/DEMO.md is a captured transcript of scripts/demo-verified.sh. `keygen`
+# mints a fresh Ed25519 keypair on every run, and the transcript prints the
+# *public* key, its fingerprint (key_id) and the coordinator key — the same 32
+# bytes, three ways. Public keys are public by construction (that is the whole
+# point of the VeriBench seal), and the private key is written mode 0600, never
+# leaves the host, and never appears in a transcript. gitleaks' generic-api-key
+# rule matches any 64-character hex string, so it flags the public key.
+#
+# Scoped to this one file AND to the three lines that can print a key, so a real
+# credential elsewhere — or a non-key secret inside DEMO.md — still fails.
+[[rules.allowlists]]
+description = "docs/DEMO.md transcript: ephemeral Ed25519 public key / key_id / coordinator key, printed by keygen"
+condition = "AND"
+paths = ['''docs/DEMO\.md''']
+regexTarget = "line"
+regexes = [
+	'''public key: [0-9a-f]{64}''',
+	'''key_id \(public fingerprint\): [0-9a-f]{64}''',
+	'''coordinator: +[0-9a-f]{64}''',
+]
+
+# ── 2. The TEP fixtures share a dummy HMAC secret ─────────────────────────────
+# The dummy secret is the literal 0123456789abcdef twice, chosen to look fake.
+# Both sides of the round-trip test must share it ("a mismatched secret is
+# refused" only means something if the matching one is in the test), and the
+# examples/README show the same placeholder as sample configuration. It appears
+# on the unmerged branch feat/tep-integration (examples/tep.yaml, README.md,
+# internal/config/scenario_test.go, internal/engine/tep_client_test.go), which a
+# full-history scan reaches.
+#
+# Matched by the literal value only: the same shape with any other digits is
+# still a finding, and every other file is untouched.
+[[rules.allowlists]]
+description = "dummy HMAC placeholder shared by the TEP fixtures (0123456789abcdef repeated) — not a credential"
+regexTarget = "match"
+regexes = ['''0123456789abcdef0123456789abcdef''']

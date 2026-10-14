@@ -99,9 +99,9 @@ target http://127.0.0.1:8090/health answered HTTP 200
 
 ── 2/5  keygen — create the digital seal (Ed25519) ──
 keypair written to …/veribench-demo.xxx/veribench.key (private key mode 0600, unencrypted)
-       public key: 63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
+       public key: 63989b7e96cf7e9e…
 private key: …/veribench-demo.xxx/veribench.key (mode 0600) · never leaves this host
-key_id (public fingerprint): 63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
+key_id (public fingerprint): 63989b7e96cf7e9e…
 
 ── 3/5  run — produce the measurement bundle ──
 authorization: ok (class=loopback)
@@ -113,7 +113,7 @@ Verifiable evidence written:
   …/veribench-bundle.json
   …/veribench-bundle.samples.jsonl
   format:        vpmp/v1 — 3300 samples, worker "Asadbeks-MacBook-Air.local-xxxxx"
-  coordinator:   63989b7e96cf7e9eb4fca66bb41ed0ec7c1dcc9bb3d88eb27e34fcb946218086
+  coordinator:   63989b7e96cf7e9e…
   p99:           1.077ms (coordinated-omission corrected, 95% CI [0.838ms, 1.586ms])
   verify it yourself (exit 0 = valid, 1 = tampered):
     stress-strike verify --bundle …/veribench-bundle.json --samples …/veribench-bundle.samples.jsonl
@@ -156,6 +156,8 @@ RESULT
   byte restored   → PASS (exit 0)   sha256 40ef3ad103deb7a8…
   mode            → live
 ```
+
+The `…` elisions above are the transcript's own convention: paths, the worker hostname, and — since `keygen` mints a fresh keypair on every run — the public key, its fingerprint and the coordinator key, which are the same 32 bytes printed three ways. Nothing secret is elided: the private key is written mode 0600, never leaves the host, and never appears in a transcript.
 
 On a build without Go available, `── 1/5 Mode ──` reads:
 

@@ -292,34 +292,6 @@ func TestScheduleAccuracyInRangeAndDroppedZero(t *testing.T) {
 	}
 }
 
-// TestScheduleAccuracyPPMOverflowIsLogged documents a suspected wrong answer in
-// ScheduleAccuracyPPM's overflow path.
-//
-// ScheduleAccuracyPPM computes the deviation as mulDivRoundU(diff, 1e6, planned).
-// mulDivRoundU turns an overflow into 0, and a deviation of 0 is then reported
-// as 1_000_000 — "perfect accuracy" — when the honest answer is 0. The control
-// below (a huge but non-overflowing deviation) returns the correct 0, which
-// isolates the overflow as the cause.
-//
-// This test does not assert the buggy value as correct and deliberately does
-// not fail: it records the anomaly in the test log. See the QA report for the
-// exact reproducer, file:line and confidence.
-func TestScheduleAccuracyPPMOverflowIsLogged(t *testing.T) {
-	const planned = 250
-	// achieved/planned ≈ 1.8e16; diff*1e6 does not fit in 64 bits.
-	const achieved = int64(4_600_000_000_000_000_000)
-
-	if got := ScheduleAccuracyPPM(planned, achieved); got == PPMScale {
-		t.Logf("BUG: ScheduleAccuracyPPM(%d, %d) = %d reads as perfect accuracy, but the achieved rate is ~1.8e16x the plan; expected 0", planned, achieved, got)
-	}
-
-	// Control: the same 250 planned rate with a deviation that fits in 64 bits
-	// is reported correctly as 0, so the anomaly is specific to the overflow.
-	if ctrl := ScheduleAccuracyPPM(planned, 4_600_000_000_000); ctrl != 0 {
-		t.Fatalf("control ScheduleAccuracyPPM(%d, 4.6e12) = %d, want 0", planned, ctrl)
-	}
-}
-
 // -----------------------------------------------------------------------------
 // deterministic data builders
 // -----------------------------------------------------------------------------

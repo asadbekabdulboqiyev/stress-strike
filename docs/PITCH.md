@@ -223,6 +223,12 @@ shape as certificate authorities and timestamping services.
   artifact, already shipped.
 - CLI, packaging (Homebrew/Scoop/Winget), K8s manifests, CI/CD.
 
+- **Independent verification, not a promise:** a self-contained offline page
+  (`docs/VERIFIER.html`) re-checks bundles in the browser using the browser's own
+  SHA-256 and Ed25519, and `scripts/verify-html-parity.sh` asserts it reaches the
+  same verdict as the Go verifier on a genuine bundle and four tampered ones
+  (`make verifier`: 23 unit tests + drift guard + parity, all wired into CI).
+
 **Next on the roadmap:**
 
 - **[ROADMAP] v1.1:** challenge–response nonce corroboration and transparency-log

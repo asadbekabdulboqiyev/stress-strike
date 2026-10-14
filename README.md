@@ -1103,6 +1103,27 @@ go run ./examples/demo_server.go
   # exit 0 = valid, 1 = tampered (fail-closed)
   ```
 
+### Verify it yourself — in a browser, offline
+
+`docs/VERIFIER.html` is a **second, independent implementation** of `vpmp/v1`: one self-contained page (no network, no dependencies, no build step, ~72 KB). Open it, drop in the bundle and its sidecar, and it recomputes the fingerprint, checks the Ed25519 signatures through the browser's own WebCrypto, re-derives the coordinated-omission correction, the percentiles and the bootstrap confidence interval, and re-verifies every Merkle inclusion proof — then prints PASS or FAIL **with the exact failing check named**.
+
+Two implementations exist so that agreement is evidence rather than a promise:
+
+| Gate | Command | What it proves |
+|------|---------|----------------|
+| Unit tests | `node --test web/verifier/vpmp.test.mjs` | SHA-256 and the Merkle tree match Node's own crypto as an independent oracle |
+| No drift | `node web/verifier/build-html.mjs --check` | The shipped page contains exactly the tested module — its SHA-256 is printed in the page footer, so anyone can confirm the code they ran |
+| Parity | `bash scripts/verify-html-parity.sh` | A real signed bundle, tampered four ways, gets the **same verdict from Go and JavaScript**: same `valid`, same checks run/failed, same bundle digest, same failing check names |
+
+There is also a command-line front end, useful on a machine with no Go toolchain:
+
+```sh
+node web/verifier/verify-cli.mjs --bundle run.json --samples run.samples.jsonl
+node web/verifier/verify-cli.mjs --bundle run.json --json   # exit 0 valid / 1 tampered
+```
+
+Unlike the Go CLI, this front end auto-detects a sibling `run.samples.jsonl` when `--samples` is omitted. All three gates run in CI (the `verifier` job), and the page is uploaded as a build artifact so a judge can download a runnable verifier.
+
 ### When is CO correction claimed?
 
 Only when the schedule is *provably constant*: `--profile steady` or `soak` **with a fixed `--rps` cap**. Ramped, spiked, or unpaced runs print raw percentiles and withhold the correction (see `coCorrectionGate` in `cmd/stress-strike/cmd_run.go`). This is structural — an accuracy threshold would withhold the correction precisely when it matters most.

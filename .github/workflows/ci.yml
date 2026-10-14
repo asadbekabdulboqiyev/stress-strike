@@ -416,3 +416,51 @@ jobs:
           pkill -x demo_server 2>/dev/null
           lsof -ti tcp:8080 2>/dev/null | while read -r p; do kill "$p" 2>/dev/null; done
           echo "demo target stopped"
+
+  # ── verifier: a second, independent implementation of the same protocol ─────
+  # The point of a verification format is that more than one program can
+  # implement it. docs/VERIFIER.html is a self-contained page that verifies a
+  # bundle offline in the browser — no dependencies, no network, no build step —
+  # and it must agree with the Go verifier case by case. This job holds that to
+  # three tests:
+  #   1. unit tests: SHA-256 and the Merkle tree are checked against Node's own
+  #      crypto as an independent oracle;
+  #   2. a drift gate: the page is generated from the tested module, so CI fails
+  #      if docs/VERIFIER.html has fallen behind it (a stale page would ship code
+  #      that no test ever ran);
+  #   3. a parity gate: a real signed bundle, tampered four ways, must produce
+  #      the same verdict from both verifiers — same valid flag, same counts,
+  #      same digest, same failing check names.
+  # Node 26 is pinned because the page verifies Ed25519 through WebCrypto.
+  verifier:
+    name: Verifier (Go == JavaScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      - name: Unit tests for the JavaScript verifier
+        run: node --test web/verifier/vpmp.test.mjs
+
+      - name: The shipped page matches the tested module (no drift)
+        run: node web/verifier/build-html.mjs --check
+
+      - name: Go and JavaScript verifiers agree on real evidence
+        run: bash scripts/verify-html-parity.sh
+
+      - name: Upload the offline verifier page
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verifier-page
+          path: docs/VERIFIER.html
+          if-no-files-found: error

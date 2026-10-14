@@ -57,6 +57,14 @@ seal the identity     measure + commit   7 checks, exit 0/1
 Ed25519 signature · sample count · Merkle root · claim recomputation ·
 per-sample consistency. Any failure → `FAIL`, exit `1`.
 
+**The format is real, not a promise: there are two independent verifiers.**
+`docs/VERIFIER.html` is a self-contained offline page (no dependencies, no
+network) that re-checks a bundle in the browser using the browser's own SHA-256
+and Ed25519. `scripts/verify-html-parity.sh` asserts, case by case, that it
+reaches the **same verdict as the Go verifier** — on a genuine bundle and on four
+tampered ones. One implementation agreeing with itself proves nothing; two
+agreeing is what "anyone can verify" has to mean.
+
 ---
 
 ### What it does *not* do (stated plainly)
@@ -105,6 +113,12 @@ audit log ship today. The `vpmp/v1` bundle format, `keygen` / `verify` /
 `run --emit-bundle` CLI surface, and the full verification algorithm (15 checks,
 exit 0/1) are **implemented and shipping in v0.14.3**.
 `./scripts/demo-verified.sh` demonstrates integrity → 1-byte tamper → detection.
+
+Verification rests on two independent implementations and three CI gates
+(`make verifier`): 23 JavaScript unit tests, a drift guard that fails the build
+if the shipped offline page stops matching the tested module, and a parity test
+that compares Go and JavaScript verdicts on a genuine bundle and four tampered
+ones.
 
 ---
 

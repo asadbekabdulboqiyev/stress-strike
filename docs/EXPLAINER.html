@@ -1503,6 +1503,23 @@ veribench verify (vpmp/v1)
         <em>no load is generated and no traffic reaches any target</em>. The verification half
         of the demo is real either way, which is the half that carries the claim.
       </p>
+      <p class="body-txt" style="margin-top:2rem" data-reveal>
+        <strong>Check it yourself, with nothing installed.</strong> <code>docs/VERIFIER.html</code>
+        is one page that opens in any browser with no internet connection. Drop in the bundle and
+        its raw receipt roll, and it does the whole job in front of you: recompute the fingerprint,
+        check the seal, re-derive the numbers, and re-verify every receipt against the fingerprint
+        tree. Green PASS or red FAIL &mdash; and on a FAIL it names the check that broke.
+      </p>
+
+      <p class="body-txt" data-reveal>
+        <strong>Why a second implementation.</strong> Anyone can ship a program that says
+        &ldquo;trust me, it&rsquo;s valid&rdquo;. That page is an independent implementation of the
+        same written rules, written separately in a different language, and
+        <code>scripts/verify-html-parity.sh</code> proves case by case that it reaches the same
+        verdict as the Go verifier &mdash; on a genuine bundle and on four tampered ones. Two
+        implementations agreeing is what &ldquo;anyone can verify&rdquo; has to mean; one
+        implementation agreeing with itself means nothing.
+      </p>
     </div>
   </section>
 

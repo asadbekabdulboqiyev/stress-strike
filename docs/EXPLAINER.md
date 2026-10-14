@@ -221,6 +221,39 @@ refusing it with exit code `1`, then restores the file and shows `PASS` again.
 
 ---
 
+## 6b. Checking it yourself — no trust, no tools, no internet
+
+Here is the part that surprises people. To check a VeriBench pack you do **not**
+need our software, an account, or an internet connection.
+
+`docs/VERIFIER.html` is a single web page. Double-click it and it opens in your
+browser like any other file. Then drag in the two files from your test:
+
+- `veribench-bundle.json` — the sealed report
+- `veribench-bundle.samples.jsonl` — the raw receipt roll
+
+The page does the whole job in front of you, inside the browser, with nothing
+sent anywhere. It recomputes the fingerprint, checks the digital seal, re-derives
+the latency numbers and their confidence interval from the raw receipts, and
+checks every single receipt against the fingerprint tree. You get either a green
+**PASS** or a red **FAIL** — and on a FAIL it names the exact check that broke,
+in plain words, so you are never left guessing which part was tampered with.
+
+**Why the page matters more than the tool.** Anyone can write a program that says
+"trust me, it's valid." This page is a *second, independent* implementation of
+the same written rules, written separately, in a different language. And
+`scripts/verify-html-parity.sh` proves, case by case, that it reaches the same
+verdict as the Go verifier — on a genuine pack and on four tampered ones. Two
+implementations agreeing is what "anyone can verify" has to mean; one
+implementation agreeing with itself means nothing.
+
+> If the page ever says it cannot check the signature, your browser is blocking
+> that feature for files opened directly from disk. Serve the folder with any
+> local web server and open the page over `http://localhost` — still no internet
+> needed.
+
+---
+
 ## 7. One-sentence summary
 
 **VeriBench turns a load-test report from a claim you must trust into evidence

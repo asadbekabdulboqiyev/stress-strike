@@ -39,6 +39,21 @@ lint: vet ## go vet + gofmt formatting check (fails on any unformatted file)
 	fi
 	@echo "gofmt: all files formatted"
 
+.PHONY: verifier
+verifier: ## Verify the browser verifier: unit tests + drift guard + Go<=>JS parity
+	@command -v node >/dev/null || { echo "verifier: node is required (the JavaScript verifier runs on it)"; exit 1; }
+	node --test web/verifier/vpmp.test.mjs
+	node web/verifier/build-html.mjs --check
+	bash scripts/verify-html-parity.sh
+
+.PHONY: verifier-page
+verifier-page: ## Regenerate docs/VERIFIER.html from the tested verifier module
+	node web/verifier/build-html.mjs
+
+.PHONY: demo-verified
+demo-verified: ## Run the LIVE VeriBench demo (seal -> verify -> one-byte tamper -> restore)
+	bash scripts/demo-verified.sh
+
 .PHONY: clean
 clean: ## Remove bin/ and reports/
 	rm -rf $(BIN_DIR) $(DIST_DIR) reports coverage.out coverage.html

@@ -199,6 +199,33 @@ VERIBENCH_KEEP=1 ./scripts/demo-verified.sh
 
 ---
 
+## 4b. Second act (30 s) — let the judge verify it themselves
+
+The strongest moment in the demo is the one where you stop talking. Hand over
+`docs/VERIFIER.html` — a single offline file — and let the judge drive it.
+
+1. Open `docs/VERIFIER.html` (double-clicking works; nothing is uploaded and the
+   page has no network access).
+2. Drop in `run.json` and `run.samples.jsonl` from the run you just sealed →
+   **PASS**, with the bundle digest, 15 checks run, and the recomputed
+   p50/p95/p99 plus the 95% confidence interval.
+3. Change **one** byte of the JSON and drop it in again → **FAIL**, and the page
+   names the failing check (`bundle-signature`, `commit-root`, …).
+
+Say: *"That page is not our verifier. It is a second implementation of the same
+published rules, written from the spec, and it agrees with the Go verifier on
+every case. That is what 'anyone can verify' has to mean."*
+
+Reproduce that claim yourself in one command:
+
+```bash
+bash scripts/verify-html-parity.sh
+# ok genuine / ok tampered merkle root / ok tampered p99 claim /
+# ok tampered sidecar / ok sidecar absent → the two verifiers agree
+```
+
+---
+
 ## 5. Troubleshooting
 
 | Symptom | Cause / fix |
@@ -250,7 +277,10 @@ Do **not** say:
   non-colluding attestors.
 - **"Can a verifier recompute without our tool?"** Yes — that is the point of
   publishing the canonicalisation, Merkle, percentile, and bootstrap rules.
-  `vpmp/v1` is specified in `docs/INVENTION.md` §5–6.
+  `vpmp/v1` is specified in `docs/INVENTION.md` §5–6 — and we did more than
+  specify it: `docs/VERIFIER.html` is an independent JavaScript implementation,
+  and `scripts/verify-html-parity.sh` asserts it reaches the same verdict as the
+  Go verifier on a genuine bundle and four tampered ones.
 - **"What's the business?"** Verification workflows, enterprise self-hosted, and
   certificate-as-a-service — the neutral party that issues and anchors the
   attestation. `PITCH.md` Slide 8.

@@ -878,3 +878,48 @@ kbd {
   .lock-card { padding: 22px 18px; }
   .lock-actions { flex-wrap: wrap; }
 }
+
+/* Attestation card */
+.attestation {
+  margin-bottom: 20px;
+}
+.attest-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.attest-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.attest-label {
+  color: var(--text-2);
+  font-size: 12px;
+}
+.attest-value {
+  color: var(--text-0);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+.attest-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.attest-status {
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  min-height: 16px;
+}
+.attest-ok {
+  color: var(--green);
+}
+.attest-bad {
+  color: var(--red);
+}

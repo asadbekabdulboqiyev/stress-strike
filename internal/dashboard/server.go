@@ -7,10 +7,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
 	"github.com/gorilla/websocket"
 )
@@ -121,6 +124,40 @@ type RunResult struct {
 	StatusCodes   map[int]uint64 `json:"status_codes"`
 }
 
+// AttestationInfo holds the latest attestation state produced by a completed run.
+type AttestationInfo struct {
+	Exists      bool   `json:"exists"`
+	RunID       string `json:"runID,omitempty"`
+	PubKeyHex   string `json:"pubKeyHex,omitempty"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+
+	// COCorrected reports whether the bundle's percentiles carry the
+	// coordinated-omission correction. Dashboard runs never set
+	// profile.coordinated_omission, so this is false and the UI must say the
+	// percentiles are raw — claiming the correction would be the exact
+	// dishonesty this tool exists to expose.
+	COCorrected bool `json:"coCorrected"`
+
+	// BundlePath and SamplesPath are absolute, server-local filesystem paths.
+	// They are deliberately NOT serialised. The browser fetches the artifacts
+	// through /api/attestation/download?type=..., so it never needs to learn
+	// where they live on disk — and because the dashboard can be bound beyond
+	// loopback, a remote client must not be handed the host's directory layout.
+	BundlePath  string `json:"-"`
+	SamplesPath string `json:"-"`
+}
+
+// AttestationVerifyRequest is the body of POST /api/attestation/verify. It is
+// deliberately empty: the endpoint verifies the attestation the dashboard
+// itself produced for the latest run.
+//
+// It must never grow a caller-supplied path field. verify loads and parses a
+// file from disk, so honouring a caller-supplied path would turn the local
+// control plane into an arbitrary-file-read oracle. Decoding uses
+// DisallowUnknownFields, so a body that names a path is rejected (400) rather
+// than silently ignored.
+type AttestationVerifyRequest struct{}
+
 // --- Dashboard Server -------------------------------------------------------
 
 type Server struct {
@@ -142,6 +179,9 @@ type Server struct {
 	livenessHandler  http.Handler
 	readinessHandler http.Handler
 	authMiddleware   func(http.Handler) http.Handler
+
+	attestMu   sync.RWMutex
+	attestInfo AttestationInfo
 }
 
 func NewServer() *Server {
@@ -185,6 +225,18 @@ func (s *Server) SetHealthHandlers(live, ready http.Handler) {
 // leaves the server open, which is only appropriate on a loopback bind.
 func (s *Server) SetAuthMiddleware(mw func(http.Handler) http.Handler) {
 	s.authMiddleware = mw
+}
+
+func (s *Server) GetAttestationInfo() AttestationInfo {
+	s.attestMu.RLock()
+	defer s.attestMu.RUnlock()
+	return s.attestInfo
+}
+
+func (s *Server) SetAttestationInfo(info AttestationInfo) {
+	s.attestMu.Lock()
+	defer s.attestMu.Unlock()
+	s.attestInfo = info
 }
 
 // AuthOptions configures the dashboard control-plane gate from CLI flags or
@@ -319,6 +371,12 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleStartRun(w, r)
 	case path == "/api/run/stop":
 		s.handleStopRun(w, r)
+	case path == "/api/attestation":
+		s.handleAttestationGet(w, r)
+	case path == "/api/attestation/download":
+		s.handleAttestationDownload(w, r)
+	case path == "/api/attestation/verify":
+		s.handleAttestationVerify(w, r)
 	case path == "/api/demo-store/start":
 		s.handleDemoStoreStart(w, r)
 	case path == "/api/demo-store/stop":
@@ -685,4 +743,169 @@ func (s *Server) broadcastRunState() {
 		}
 		s.mu.Unlock()
 	}
+}
+
+func verifyAttestation(bundlePath, samplesPath string) map[string]interface{} {
+	bundle, err := attest.LoadBundle(bundlePath)
+	if err != nil {
+		return map[string]interface{}{
+			"valid":      false,
+			"reason":     fmt.Sprintf("load bundle failed: %v", err),
+			"bundlePath": bundlePath,
+		}
+	}
+
+	var samples map[string][]attest.Record
+	var loadStats attest.SampleLoadStats
+	if samplesPath != "" {
+		samples, loadStats, err = attest.LoadSamples(samplesPath, attest.DefaultSampleLoadOptions())
+		if err != nil {
+			return map[string]interface{}{
+				"valid":        false,
+				"reason":       fmt.Sprintf("load samples failed: %v", err),
+				"bundlePath":   bundlePath,
+				"samplesPath":  samplesPath,
+				"samplesStats": map[string]interface{}{"lines": loadStats.Lines},
+			}
+		}
+	}
+
+	res := attest.VerifyWith(bundle, samples, attest.VerifyOptions{})
+	out := map[string]interface{}{
+		"valid":         res.Valid,
+		"format":        res.Format,
+		"samplesAbsent": res.SamplesAbsent,
+		"bundleDigest":  res.BundleDigest,
+		"workers":       len(res.Workers),
+		"summary": map[string]interface{}{
+			"workers":        res.Summary.Workers,
+			"workersOK":      res.Summary.WorkersOK,
+			"workersFailed":  res.Summary.WorkersFailed,
+			"samplesTotal":   res.Summary.SamplesTotal,
+			"checksRun":      res.Summary.ChecksRun,
+			"checksFailed":   res.Summary.ChecksFailed,
+			"proofsVerified": res.Summary.ProofsVerified,
+		},
+	}
+	if !res.Valid {
+		reasons := make([]string, 0, len(res.Checks)+len(res.Workers))
+		for _, c := range res.Checks {
+			if !c.OK {
+				reasons = append(reasons, "bundle/"+c.Name+": "+c.Detail)
+			}
+		}
+		for _, w := range res.Workers {
+			for _, e := range w.Errors {
+				reasons = append(reasons, e.Error())
+			}
+		}
+		if len(reasons) > 0 {
+			out["reason"] = strings.Join(reasons, "; ")
+		} else {
+			out["reason"] = "verification failed"
+		}
+	}
+	if loadStats.Lines > 0 {
+		out["samplesStats"] = map[string]interface{}{
+			"lines":        loadStats.Lines,
+			"records":      loadStats.Records,
+			"blankLines":   loadStats.BlankLines,
+			"nonCanonical": loadStats.NonCanonicalLines,
+			"unsorted":     loadStats.UnsortedLines,
+			"bytes":        loadStats.Bytes,
+			"workers":      loadStats.Workers,
+		}
+	}
+	return out
+}
+
+func (s *Server) handleAttestationGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+	s.attestMu.RLock()
+	info := s.attestInfo
+	s.attestMu.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(info)
+}
+
+func (s *Server) handleAttestationDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+	typ := r.URL.Query().Get("type")
+	s.attestMu.RLock()
+	info := s.attestInfo
+	s.attestMu.RUnlock()
+	if !info.Exists {
+		http.NotFound(w, r)
+		return
+	}
+	var path string
+	if typ == "bundle" {
+		path = info.BundlePath
+	} else if typ == "samples" {
+		path = info.SamplesPath
+	} else {
+		http.Error(w, "type must be bundle|samples", http.StatusBadRequest)
+		return
+	}
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, path)
+}
+
+func (s *Server) handleAttestationVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	if !sameOrigin(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxAPIRequestBody)
+	// DisallowUnknownFields makes this contract fail-closed: a body that tries
+	// to name a path ({"bundlePath": "..."}) is rejected with 400 instead of
+	// being silently ignored. See AttestationVerifyRequest.
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var req AttestationVerifyRequest
+	if err := dec.Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.attestMu.RLock()
+	info := s.attestInfo
+	s.attestMu.RUnlock()
+	if !info.Exists || info.BundlePath == "" {
+		http.Error(w, "no attestation available to verify", http.StatusBadRequest)
+		return
+	}
+	res := verifyAttestation(info.BundlePath, info.SamplesPath)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
+
+func getDashboardDataDir() (string, error) {
+	if d, err := os.UserConfigDir(); err == nil && d != "" {
+		dir := filepath.Join(d, "stress-strike", "dashboard")
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+	if h, err := os.UserHomeDir(); err == nil && h != "" {
+		dir := filepath.Join(h, ".stress-strike", "dashboard")
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+	return "", fmt.Errorf("cannot determine user config/home dir")
 }

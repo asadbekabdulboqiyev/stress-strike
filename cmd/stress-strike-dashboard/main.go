@@ -244,7 +244,11 @@ func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, selfMetrics
 
 	// Drive the real engine in the background.
 	go func() {
-		tel, runErr := eng.Run(runCtx, engine.RunOptions{Quiet: true, Out: io.Discard})
+		opts := engine.RunOptions{Quiet: true, Out: io.Discard}
+		if coll := bridge.AttachEngineSink(); coll != nil {
+			opts.Samples = coll
+		}
+		tel, runErr := eng.Run(runCtx, opts)
 		close(stopStream)
 		<-streamDone
 

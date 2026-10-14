@@ -108,6 +108,9 @@ function connect() {
         refreshHistory();
         showSummary('stopped');
       }
+      if (st === 'completed' || st === 'stopped') {
+        fetchAttestation();
+      }
     }
     render();
   };
@@ -1251,3 +1254,73 @@ fetch(API + '/healthz').then(function(r) {
   var ops = document.getElementById('opsLinks');
   if (ops) ops.classList.remove('hidden');
 }).catch(function() {});
+
+
+/* ---- Attestation ---- */
+function fetchAttestation() {
+  fetch(API + '/api/attestation').then(function(r) {
+    if (guardStatus && guardStatus(r)) return null;
+    return r.json();
+  }).then(function(d) {
+    if (!d) return;
+    renderAttestation(d);
+  }).catch(function() {});
+}
+
+function renderAttestation(d) {
+  var card = document.getElementById('attestationCard');
+  var fp = document.getElementById('attestFingerprint');
+  var bs = document.getElementById('attestBundleStatus');
+  var st = document.getElementById('attestVerifyStatus');
+  if (!d.exists) {
+    if (card) card.classList.add('hidden');
+    return;
+  }
+  if (card) card.classList.remove('hidden');
+  if (fp) fp.textContent = d.fingerprint || d.pubKeyHex || '—';
+  if (bs) bs.textContent = 'exists';
+  var pc = document.getElementById('attestPercentiles');
+  if (pc) pc.textContent = d.coCorrected ? 'coordinated-omission corrected' : 'raw (uncorrected)';
+  if (st) { st.textContent = '—'; st.className = 'attest-status'; }
+  var b = document.getElementById('btnAttestDownloadBundle');
+  var sbtn = document.getElementById('btnAttestDownloadSamples');
+  if (b) { b.disabled = false; b.onclick = function() { window.location = API + '/api/attestation/download?type=bundle'; }; }
+  if (sbtn) { sbtn.disabled = false; sbtn.onclick = function() { window.location = API + '/api/attestation/download?type=samples'; }; }
+}
+
+function refreshAttestation() {
+  fetchAttestation();
+}
+
+var _btnAttestVerify = document.getElementById('btnAttestVerify');
+if (_btnAttestVerify) {
+  _btnAttestVerify.addEventListener('click', function() {
+    var st = document.getElementById('attestVerifyStatus');
+    if (st) { st.textContent = 'Verifying...'; st.className = 'attest-status'; }
+    fetch(API + '/api/attestation/verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    }).then(function(r) {
+      if (guardStatus && guardStatus(r)) return null;
+      return r.json();
+    }).then(function(res) {
+      if (!res) return;
+      var st = document.getElementById('attestVerifyStatus');
+      if (!st) return;
+      if (res.valid) {
+        st.textContent = 'valid';
+        st.className = 'attest-status attest-ok';
+      } else {
+        var reason = res.reason || 'invalid';
+        st.textContent = 'invalid: ' + reason;
+        st.className = 'attest-status attest-bad';
+      }
+    }).catch(function() {
+      var st = document.getElementById('attestVerifyStatus');
+      if (st) { st.textContent = 'verify error'; st.className = 'attest-status attest-bad'; }
+    });
+  });
+}
+
+setInterval(refreshAttestation, 2000);

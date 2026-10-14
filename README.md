@@ -391,6 +391,10 @@ Features:
 - Error rate tracking with history
 - Worker node monitoring in distributed mode
 - Start/stop runs directly from the browser
+- **Verifiable evidence for every run** — a finished run seals a `vpmp/v1`
+  bundle you can download and check offline (see *web mode* under VeriBench
+  below); the UI shows the operator-key fingerprint and offers a server-side
+  `verify`
 - Operations endpoints for orchestrators: `/healthz`, `/readyz`, `/metrics`
   (always open, never authenticated)
 
@@ -1102,6 +1106,47 @@ go run ./examples/demo_server.go
   stress-strike verify --bundle <b.json> [--samples <s.jsonl>] [--json] [--expect-key <hex>]
   # exit 0 = valid, 1 = tampered (fail-closed) or unreadable input, 2 = usage error
   ```
+
+### The dashboard is a producer too (web mode)
+
+The web dashboard is not only a viewer: a run started from it **seals the same
+`vpmp/v1` bundle**, so the operator never has to drop to the CLI to obtain
+verifiable evidence.
+
+- **Persistent operator key** — the coordinator key is minted once and reused
+  (`~/.stress-strike/dashboard/operator.key`, written `0600`), so every run from
+  this dashboard carries a **stable fingerprint** you can pin with
+  `--expect-key` on any other machine.
+- **Artifacts** — each completed run writes `bundle.json` and
+  `bundle.json.samples.jsonl` under
+  `~/.stress-strike/dashboard/bundles/<runID>/`.
+- **In the UI** — an *Attestation* card shows the fingerprint, the artifact
+  status, whether the percentiles are raw or corrected, and one-click
+  **Download** for the bundle and its sidecar.
+- **Verify on the server** — the card runs `verify` in-process and shows the
+  verdict; a CLI or CI gate can produce the identical answer from the
+  downloaded files.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/attestation` | `GET` | Fingerprint, run id, artifact status (never host paths) |
+| `/api/attestation/download?type=bundle\|samples` | `GET` | Download the sealed bundle or its sidecar |
+| `/api/attestation/verify` | `POST` | Verify the run's **own** stored attestation |
+
+`POST /api/attestation/verify` verifies only the attestation the dashboard
+itself produced. It deliberately accepts **no caller-supplied path** — honouring
+one would turn the control plane into an arbitrary-file-read oracle — and
+rejects such a body with `400`.
+
+Dashboard bundles record `co_corrected: false`: dashboard scenarios never set
+`profile.coordinated_omission`, which is exactly what
+`stress-strike run --emit-bundle` does for the same scenario, so the percentiles
+are labelled **raw** rather than falsely corrected.
+
+The bundle the dashboard writes is byte-for-byte the format the CLI verifies —
+verified end-to-end: a dashboard run reported *N* requests, its bundle contained
+*N* records, and `stress-strike verify` returned exit `0` (`valid: true`,
+`checks_failed: 0`) while a one-byte edit of the sidecar returned exit `1`.
 
 ### Verify it yourself — in a browser, offline
 

@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
 )
 
 // --- NewServer Tests --------------------------------------------------------
@@ -878,5 +882,497 @@ func TestDemoStoreStopNoopWhenNotManaged(t *testing.T) {
 	}
 	if s.store.Status()["managed"] == true {
 		t.Error("stop must never mark an unmanaged store as managed")
+	}
+}
+
+// --- Attestation API Tests ---------------------------------------------------
+
+func TestAttestationGet_NoBundle(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/attestation status = %d, want 200", w.Code)
+	}
+	var info map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&info); err != nil {
+		t.Fatalf("decode attestation info: %v", err)
+	}
+	if exists, ok := info["exists"].(bool); !ok || exists {
+		t.Errorf("exists = %v, want false", info["exists"])
+	}
+}
+
+func TestAttestationGet_WithBundle(t *testing.T) {
+	s := NewServer()
+	s.SetAttestationInfo(AttestationInfo{
+		Exists:      true,
+		RunID:       "run-123",
+		BundlePath:  "/tmp/bundle.json",
+		SamplesPath: "/tmp/samples.jsonl",
+		PubKeyHex:   "abcd1234",
+		Fingerprint: "deadbeef",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/attestation status = %d, want 200", w.Code)
+	}
+	// Decode as a raw map so we assert on wire presence, not just Go fields:
+	// the absolute server-side paths must not cross the wire at all.
+	var info map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&info); err != nil {
+		t.Fatalf("decode attestation info: %v", err)
+	}
+	if info["exists"] != true {
+		t.Errorf("exists = %v, want true", info["exists"])
+	}
+	if info["runID"] != "run-123" {
+		t.Errorf("runID = %v, want run-123", info["runID"])
+	}
+	if info["pubKeyHex"] != "abcd1234" {
+		t.Errorf("pubKeyHex = %v, want abcd1234", info["pubKeyHex"])
+	}
+	if info["fingerprint"] != "deadbeef" {
+		t.Errorf("fingerprint = %v, want deadbeef", info["fingerprint"])
+	}
+	// Hardening: never leak the host's filesystem layout to the client.
+	for _, k := range []string{"bundlePath", "samplesPath"} {
+		if v, present := info[k]; present {
+			t.Errorf("response must not contain %q (server-local path leak): %v", k, v)
+		}
+	}
+}
+
+func TestAttestationGet_MethodNotAllowed(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/api/attestation", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /api/attestation status = %d, want 405", w.Code)
+	}
+}
+
+func TestAttestationDownload_NoBundle(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/download", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("GET /api/attestation/download status = %d, want 404", w.Code)
+	}
+}
+
+func TestAttestationDownload_MethodNotAllowed(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/api/attestation/download", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /api/attestation/download status = %d, want 405", w.Code)
+	}
+}
+
+func TestAttestationDownload_InvalidType(t *testing.T) {
+	s := NewServer()
+	s.SetAttestationInfo(AttestationInfo{
+		Exists:     true,
+		BundlePath: "/tmp/bundle.json",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=invalid", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("GET /api/attestation/download?type=invalid status = %d, want 400", w.Code)
+	}
+}
+
+func TestAttestationVerify_MethodNotAllowed(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/verify", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET /api/attestation/verify status = %d, want 405", w.Code)
+	}
+}
+
+func TestAttestationVerify_CrossOriginRejected(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/api/attestation/verify", strings.NewReader("{}"))
+	req.Header.Set("Origin", "http://evil.example")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("cross-origin attestation verify status = %d, want 403", w.Code)
+	}
+}
+
+func TestAttestationVerify_InvalidJSON(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/api/attestation/verify", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("invalid JSON status = %d, want 400", w.Code)
+	}
+}
+
+func TestAttestationVerify_NoBundlePath(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/api/attestation/verify", strings.NewReader("{}"))
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("empty body status = %d, want 400", w.Code)
+	}
+}
+
+// The verify endpoint must never read a path supplied by the caller: honouring
+// one would turn the dashboard into an arbitrary-file-read oracle. A body that
+// names a path is rejected outright (fail-closed), whatever the path is.
+func TestAttestationVerify_ClientSuppliedPathRejected(t *testing.T) {
+	s := NewServer()
+	for _, body := range []string{
+		`{"bundlePath":"/etc/passwd"}`,
+		`{"samplesPath":"/etc/passwd"}`,
+		`{"bundlePath":"/tmp/x.json","samplesPath":"/tmp/x.jsonl"}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/attestation/verify", strings.NewReader(body))
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("body %s: status = %d, want 400 (fail-closed)", body, w.Code)
+		}
+	}
+}
+
+func TestAttestationDownload_WithBundle(t *testing.T) {
+	s := NewServer()
+	tmpDir := t.TempDir()
+	bundlePath := tmpDir + "/bundle.json"
+	content := []byte(`{"test":"data"}`)
+	if err := os.WriteFile(bundlePath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.SetAttestationInfo(AttestationInfo{
+		Exists:     true,
+		BundlePath: bundlePath,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=bundle", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GET /api/attestation/download?type=bundle status = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct == "" {
+		t.Errorf("expected Content-Type header")
+	}
+	if w.Body.Len() != len(content) {
+		t.Errorf("body length = %d, want %d", w.Body.Len(), len(content))
+	}
+}
+
+func TestAttestationDownload_SamplesWithCorrectContentType(t *testing.T) {
+	s := NewServer()
+	tmpDir := t.TempDir()
+	samplesPath := tmpDir + "/samples.jsonl"
+	content := []byte("seq,latency\n1,10\n")
+	if err := os.WriteFile(samplesPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.SetAttestationInfo(AttestationInfo{
+		Exists:      true,
+		SamplesPath: samplesPath,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=samples", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GET /api/attestation/download?type=samples status = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct == "" {
+		t.Errorf("expected Content-Type header")
+	}
+	if w.Body.Len() != len(content) {
+		t.Errorf("body length = %d, want %d", w.Body.Len(), len(content))
+	}
+}
+
+func TestAttestationDownload_EmptyPath(t *testing.T) {
+	s := NewServer()
+	s.SetAttestationInfo(AttestationInfo{
+		Exists: true,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=bundle", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("GET /api/attestation/download?type=bundle status = %d, want 404", w.Code)
+	}
+}
+
+// --- Helpers for the attestation end-to-end test --------------------------
+
+func mustKeyDashboard(t *testing.T) *attest.Keypair {
+	t.Helper()
+	kp, err := attest.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair: %v", err)
+	}
+	return kp
+}
+
+func mustMilliDashboard(t *testing.T, d attest.Decimal) int64 {
+	t.Helper()
+	m, err := d.Milli()
+	if err != nil {
+		t.Fatalf("Milli(%q): %v", d, err)
+	}
+	return m
+}
+
+func synthRecordsDashboard(id string, baseStart int64, n int, stepNS, latBase, latStep int64) []attest.Record {
+	recs := make([]attest.Record, n)
+	for i := 0; i < n; i++ {
+		recs[i] = attest.Record{
+			Seq:       uint64(i + 1),
+			Worker:    id,
+			StartNS:   baseStart + int64(i)*stepNS,
+			LatencyNS: latBase + int64(i)*latStep,
+			Status:    200,
+			Bytes:     1024 + int64(i),
+		}
+	}
+	return recs
+}
+
+type workerSpecDashboard struct {
+	id   string
+	kp   *attest.Keypair
+	recs []attest.Record
+}
+
+func produceBundleDashboard(t *testing.T, coord *attest.Keypair, run attest.Run, specs []workerSpecDashboard, co bool) (attest.Bundle, map[string][]attest.Record) {
+	t.Helper()
+
+	rpsMilli := mustMilliDashboard(t, run.PlannedRPS)
+	samples := make(map[string][]attest.Record, len(specs))
+	workers := make([]attest.WorkerBundle, 0, len(specs))
+
+	var values []int64
+	var count uint64
+	var sum uint64
+
+	for _, s := range specs {
+		ordered := attest.SortRecords(s.recs)
+		samples[s.id] = ordered
+
+		commit, err := attest.BuildCommit(s.kp, s.recs)
+		if err != nil {
+			t.Fatalf("BuildCommit(%s): %v", s.id, err)
+		}
+		stats, err := attest.AggregateRecords(ordered, 0, false, 0)
+		if err != nil {
+			t.Fatalf("AggregateRecords(%s): %v", s.id, err)
+		}
+		workers = append(workers, attest.WorkerBundle{
+			ID:        s.id,
+			PublicKey: attest.PublicKeyHex(s.kp.Public),
+			Commit:    commit,
+			Aggregate: attest.WorkerAgg{
+				Count:        stats.Count,
+				SumLatencyNS: stats.SumLatencyNS,
+				MinNS:        stats.MinNS,
+				MaxNS:        stats.MaxNS,
+				Hist:         stats.Hist,
+			},
+		})
+
+		for _, r := range ordered {
+			sum += uint64(r.LatencyNS)
+			count++
+			val := r.LatencyNS
+			if co {
+				corrected, err := honesty.CorrectedLatencyNS(r.StartNS, r.LatencyNS, commit.WindowStartNS, r.Seq, rpsMilli)
+				if err != nil {
+					t.Fatalf("CorrectedLatencyNS(%s, seq %d): %v", s.id, r.Seq, err)
+				}
+				val = corrected
+			}
+			values = append(values, val)
+		}
+	}
+
+	achievedMilli, err := honesty.AchievedRPSMilli(count, run.DurationNS)
+	if err != nil {
+		t.Fatalf("AchievedRPSMilli: %v", err)
+	}
+	rps, err := attest.DecimalFromMilli(achievedMilli)
+	if err != nil {
+		t.Fatalf("DecimalFromMilli: %v", err)
+	}
+
+	sorted := honesty.SortValues(values)
+	agg := attest.Aggregate{
+		Count:        count,
+		SumLatencyNS: sum,
+		P50NS:        honesty.Percentile(sorted, honesty.PPM50),
+		P95NS:        honesty.Percentile(sorted, honesty.PPM95),
+		P99NS:        honesty.Percentile(sorted, honesty.PPM99),
+		RPS:          rps,
+		COCorrected:  co,
+	}
+	if co {
+		lo, hi := honesty.CI95Bootstrap(sorted, honesty.PPM99, honesty.DefaultBootstrapIterations, honesty.DefaultBootstrapSeed)
+		agg.COCI95NS = attest.CI95{LowNS: lo, HighNS: hi}
+	}
+
+	dropped, err := honesty.DroppedSamples(rpsMilli, run.DurationNS, count)
+	if err != nil {
+		t.Fatalf("DroppedSamples: %v", err)
+	}
+	b := attest.Bundle{
+		Format:    attest.FormatID,
+		CreatedAt: "2026-10-13T18:00:00Z",
+		Tool:      attest.Tool{Name: "stress-strike", Version: "test"},
+		Run:       run,
+		Workers:   workers,
+		Aggregate: agg,
+		Integrity: attest.Integrity{
+			ScheduleAccuracyPPM: honesty.ScheduleAccuracyPPM(rpsMilli, achievedMilli),
+			DroppedSamples:      dropped,
+			AchievedRPS:         rps,
+			PlannedRPS:          run.PlannedRPS,
+		},
+	}
+	if err := b.Sign(coord); err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	return b, samples
+}
+
+// --- Attestation end-to-end (completed run with evidence) -----------------
+
+func TestAttestation_AfterCompletedRun(t *testing.T) {
+	s := NewServer()
+	tmpDir := t.TempDir()
+
+	// Generate keys and build a minimal bundle+samples using attest API
+	coord := mustKeyDashboard(t)
+	w1 := mustKeyDashboard(t)
+	w2 := mustKeyDashboard(t)
+
+	planned := attest.Decimal("1000.000")
+	run := attest.Run{
+		Target:     "https://example.test/api",
+		Profile:    "constant-rps",
+		DurationNS: 10_000_000_000,
+		PlannedRPS: planned,
+	}
+	specs := []workerSpecDashboard{
+		{id: "w1", kp: w1, recs: synthRecordsDashboard("w1", 1_000_000_000, 5, 1_000_000, 1_000_000, 10_000)},
+		{id: "w2", kp: w2, recs: synthRecordsDashboard("w2", 2_000_000_000, 5, 1_000_000, 2_000_000, 20_000)},
+	}
+	b, samples := produceBundleDashboard(t, coord, run, specs, true)
+
+	bundlePath := filepath.Join(tmpDir, "bundle.json")
+	samplesPath := filepath.Join(tmpDir, "samples.jsonl")
+	if err := attest.SaveBundle(b, bundlePath); err != nil {
+		t.Fatalf("SaveBundle: %v", err)
+	}
+	sw, err := os.Create(samplesPath)
+	if err != nil {
+		t.Fatalf("create samples: %v", err)
+	}
+	for _, workerRecs := range samples {
+		if err := attest.WriteSamples(sw, workerRecs); err != nil {
+			t.Fatalf("WriteSamples: %v", err)
+		}
+	}
+	if err := sw.Close(); err != nil {
+		t.Fatalf("close samples: %v", err)
+	}
+
+	// Set attestation info
+	pubHex := attest.PublicKeyHex(coord.Public)
+	s.SetAttestationInfo(AttestationInfo{
+		Exists:      true,
+		RunID:       "run-completed",
+		BundlePath:  bundlePath,
+		SamplesPath: samplesPath,
+		PubKeyHex:   pubHex,
+		Fingerprint: b.Signature.Key, // use coordinator key as fingerprint like in tests
+	})
+
+	// GET /api/attestation
+	req := httptest.NewRequest(http.MethodGet, "/api/attestation", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/attestation status = %d, want 200", w.Code)
+	}
+	var info map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&info); err != nil {
+		t.Fatalf("decode attestation info: %v", err)
+	}
+	if info["exists"] != true || info["runID"] != "run-completed" {
+		t.Fatalf("attestation info invalid: %+v", info)
+	}
+	if v, leaked := info["bundlePath"]; leaked {
+		t.Errorf("response leaked server-local bundlePath: %v", v)
+	}
+	if v, leaked := info["samplesPath"]; leaked {
+		t.Errorf("response leaked server-local samplesPath: %v", v)
+	}
+
+	// GET /api/attestation/download?type=bundle
+	req = httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=bundle", nil)
+	w = httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("download bundle status = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct == "" {
+		t.Errorf("expected Content-Type header for bundle")
+	}
+	if w.Body.Len() == 0 {
+		t.Errorf("bundle body empty")
+	}
+
+	// GET /api/attestation/download?type=samples
+	req = httptest.NewRequest(http.MethodGet, "/api/attestation/download?type=samples", nil)
+	w = httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("download samples status = %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct == "" {
+		t.Errorf("expected Content-Type header for samples")
+	}
+	if w.Body.Len() == 0 {
+		t.Errorf("samples body empty")
+	}
+
+	// POST /api/attestation/verify (empty JSON object -> falls back to stored info)
+	req = httptest.NewRequest(http.MethodPost, "/api/attestation/verify", strings.NewReader("{}"))
+	w = httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("verify status = %d, want 200", w.Code)
+	}
+	var verifyRes map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&verifyRes); err != nil {
+		t.Fatalf("decode verify result: %v", err)
+	}
+	if _, ok := verifyRes["valid"]; !ok {
+		t.Fatalf("verify result missing valid field: %+v", verifyRes)
+	}
+	// For a correctly produced bundle, valid should be true
+	if valid, ok := verifyRes["valid"].(bool); !ok || !valid {
+		t.Fatalf("verify valid = %v, want true; result: %+v", verifyRes["valid"], verifyRes)
 	}
 }

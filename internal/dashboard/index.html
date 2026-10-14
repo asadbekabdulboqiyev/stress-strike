@@ -87,6 +87,36 @@
     </div>
   </section>
 
+  <!-- Attestation (shown when a run completed with evidence available) -->
+  <section class="attestation hidden" id="attestationCard" role="region" aria-labelledby="attestTitle">
+    <div class="panel">
+      <div class="panel-title"><span class="dot dot-cyan"></span> Attestation</div>
+      <div class="attest-body">
+        <div class="attest-row">
+          <span class="attest-label">Operator key fingerprint (short hex)</span>
+          <span class="attest-value" id="attestFingerprint">—</span>
+        </div>
+        <div class="attest-row">
+          <span class="attest-label">Bundle status</span>
+          <span class="attest-value" id="attestBundleStatus">—</span>
+        </div>
+        <div class="attest-row">
+          <span class="attest-label">Percentiles</span>
+          <span class="attest-value" id="attestPercentiles">—</span>
+        </div>
+        <div class="attest-actions">
+          <button class="btn btn-ghost" id="btnAttestDownloadBundle" type="button" disabled>Download bundle</button>
+          <button class="btn btn-ghost" id="btnAttestDownloadSamples" type="button" disabled>Download samples</button>
+          <button class="btn btn-ghost" id="btnAttestVerify" type="button">Verify (server)</button>
+        </div>
+        <div class="attest-status" id="attestVerifyStatus">—</div>
+      </div>
+    </div>
+  </section>
+
+
+
+
   <!-- Controls -->
   <form class="controls" id="controlsForm" novalidate autocomplete="off">
     <div class="field field-url">

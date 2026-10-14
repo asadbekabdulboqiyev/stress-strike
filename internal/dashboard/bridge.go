@@ -2,10 +2,16 @@ package dashboard
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/evidence"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
 
 // EngineBridge connects the load engine to the dashboard
@@ -27,6 +33,21 @@ type EngineBridge struct {
 	totalReqs   uint64
 	totalErrors uint64
 	statusCodes map[int]uint64
+
+	// Attestation fields
+	attestDataDir string
+	collector     *evidence.Collector
+	coordKey      *attest.Keypair
+	workerKey     *attest.Keypair
+	runID         string
+
+	// engineFeedsSamples records that the collector was handed to the engine as
+	// its SampleSink (via AttachEngineSink). The collector must be fed by
+	// exactly one source: if the engine feeds it, RecordRequest must not, or
+	// every request would be recorded twice and the signed bundle would
+	// over-count the run — a false claim about a run that never happened, which
+	// is precisely what this evidence format exists to make impossible.
+	engineFeedsSamples bool
 }
 
 func NewEngineBridge(server *Server) *EngineBridge {
@@ -57,6 +78,9 @@ func (b *EngineBridge) StartRun(config *RunConfig) {
 	b.totalErrors = 0
 	b.statusCodes = make(map[int]uint64)
 	b.mu.Unlock()
+
+	// Initialize attestation collector and keys
+	b.initAttestation(config)
 
 	b.server.SetRunState(&RunState{
 		Status:    "running",
@@ -126,6 +150,7 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 		return
 	}
 	b.hist.Add(latency)
+	seq := b.totalReqs
 	b.totalReqs++
 	if statusCode > 0 {
 		b.statusCodes[statusCode]++
@@ -133,7 +158,30 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 	if isError {
 		b.totalErrors++
 	}
-	elapsed := time.Since(b.startTime)
+	collector := b.collector
+	engineFeeds := b.engineFeedsSamples
+	startTime := b.startTime
+	b.mu.Unlock()
+
+	// Only synthesise a record here when the engine is not already the sample
+	// source — see engineFeedsSamples. When the engine feeds the collector it
+	// emits the real attempt timestamps, byte counts and sequence numbers, so
+	// this lower-fidelity path must stay out of the way.
+	if collector != nil && !engineFeeds {
+		status := statusCode
+		if isError && (status < 100 || status > 599) {
+			status = 500
+		}
+		collector.Emit(engine.Sample{
+			Seq:       seq,
+			StartNS:   time.Now().UnixNano(),
+			LatencyNS: latency.Nanoseconds(),
+			Status:    status,
+			Bytes:     0,
+		})
+	}
+
+	elapsed := time.Since(startTime)
 	elapsedSec := elapsed.Seconds()
 	if elapsedSec <= 0 {
 		elapsedSec = 0.001 // avoid division by zero
@@ -143,8 +191,8 @@ func (b *EngineBridge) RecordRequest(statusCode int, latency time.Duration, isEr
 	if b.totalReqs > 0 {
 		errorRate = float64(b.totalErrors) / float64(b.totalReqs) * 100
 	}
-	// Read percentiles live instead of materializing a Snapshot: this path
-	// runs once per push and a full snapshot copies every bucket.
+	// Read percentiles live
+	b.mu.Lock()
 	hist := &b.hist
 	snap := &LiveSnapshot{
 		Timestamp:   time.Now(),
@@ -256,6 +304,8 @@ func (b *EngineBridge) finish(failed bool, errMsg string) {
 	if stopped {
 		status = "stopped"
 	}
+	// Emit attestation on completion/stopped
+	_ = b.emitAttestation()
 
 	progress := 100.0
 	if config.DurationSeconds > 0 {
@@ -352,4 +402,181 @@ func cloneStatusCodes(in map[int]uint64) map[int]uint64 {
 		out[k] = v
 	}
 	return out
+}
+
+func defaultWorkerIDBridge() string {
+	host, err := os.Hostname()
+	if err != nil || len(host) == 0 {
+		host = "local"
+	}
+	return fmt.Sprintf("%s-%d", host, os.Getpid())
+}
+
+func (b *EngineBridge) initAttestation(config *RunConfig) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.collector = nil
+	b.coordKey = nil
+	b.workerKey = nil
+	b.engineFeedsSamples = false
+	b.runID = fmt.Sprintf("run-%d", time.Now().UnixMilli())
+
+	// Determine data dir
+	dataDir, err := getDashboardDataDir()
+	if err != nil {
+		dataDir = b.attestDataDir
+	}
+	if dataDir == "" {
+		if h, err := os.UserHomeDir(); err == nil {
+			dataDir = filepath.Join(h, ".stress-strike", "dashboard")
+		} else {
+			dataDir = ".stress-strike-dashboard"
+		}
+	}
+	b.attestDataDir = dataDir
+	bundlesDir := filepath.Join(dataDir, "bundles", b.runID)
+	if err := os.MkdirAll(bundlesDir, 0o750); err != nil {
+		return
+	}
+
+	// Load or mint coordinator key (persistent operator key)
+	coordPath := filepath.Join(dataDir, "operator.key")
+	var coord *attest.Keypair
+	if _, err := os.Stat(coordPath); err == nil {
+		if kp, err := attest.LoadKeypairPEM(coordPath); err == nil {
+			coord = kp
+		}
+	}
+	if coord == nil {
+		kp, err := attest.GenerateKeypair()
+		if err == nil {
+			_ = attest.SaveKeypairPEM(kp, coordPath)
+			coord = kp
+		}
+	}
+	if coord == nil {
+		return
+	}
+	b.coordKey = coord
+
+	// Generate worker keypair (ephemeral per run)
+	wkp, err := attest.GenerateKeypair()
+	if err != nil {
+		return
+	}
+	b.workerKey = wkp
+
+	workerID := defaultWorkerIDBridge()
+	coll, err := evidence.NewCollector(workerID)
+	if err != nil {
+		return
+	}
+	b.collector = coll
+}
+
+func (b *EngineBridge) emitAttestation() error {
+	b.mu.Lock()
+	collector := b.collector
+	coordKey := b.coordKey
+	workerKey := b.workerKey
+	runID := b.runID
+	dataDir := b.attestDataDir
+	config := b.config
+	startTime := b.startTime
+	b.mu.Unlock()
+
+	if collector == nil || coordKey == nil || workerKey == nil {
+		return nil
+	}
+	if err := collector.Err(); err != nil {
+		return err
+	}
+
+	bundlesDir := filepath.Join(dataDir, "bundles", runID)
+	if err := os.MkdirAll(bundlesDir, 0o750); err != nil {
+		return err
+	}
+	bundlePath := filepath.Join(bundlesDir, "bundle.json")
+	sidecarPath := evidence.SidecarPath(bundlePath)
+
+	// Build scenario-like config for bundle
+	durationNS := int64(time.Since(startTime).Nanoseconds())
+	if config != nil && config.DurationSeconds > 0 {
+		durationNS = int64(config.DurationSeconds) * int64(time.Second)
+	}
+
+	plannedRPS := int64(0)
+	if config != nil && config.RateLimit > 0 {
+		plannedRPS = int64(config.RateLimit)
+	}
+
+	plannedMilli := plannedRPS * 1000
+	planned, err := attest.DecimalFromMilli(plannedMilli)
+	if err != nil {
+		return err
+	}
+
+	tool := attest.Tool{Name: "stress-strike", Version: version.Version}
+	run := attest.Run{
+		Target:     config.TargetURL,
+		Profile:    "dashboard",
+		DurationNS: durationNS,
+		PlannedRPS: planned,
+	}
+	if config != nil && config.Profile != "" {
+		run.Profile = config.Profile
+	}
+
+	bundle, err := evidence.BuildBundle(evidence.BundleInput{
+		Collector:      collector,
+		WorkerKey:      workerKey,
+		CoordinatorKey: coordKey,
+		Tool:           tool,
+		Run:            run,
+		CreatedAt:      time.Now(),
+		// Dashboard scenarios never set profile.coordinated_omission (see
+		// cmd/stress-strike-dashboard scenarioFromConfig), so the correction is
+		// withheld and the bundle records raw percentiles, co_corrected=false.
+		// That is exactly what `stress-strike run --emit-bundle` does for the
+		// same scenario (cmd_run.emitEvidenceBundle gates the claim on the same
+		// flag), so the two producers can never disagree about it.
+		COCorrected: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	if _, err := evidence.WriteBundle(bundle, collector.Records(), bundlePath); err != nil {
+		return err
+	}
+
+	pubKey := attest.PublicKeyHex(coordKey.Public)
+	info := AttestationInfo{
+		Exists:      true,
+		RunID:       runID,
+		BundlePath:  bundlePath,
+		SamplesPath: sidecarPath,
+		PubKeyHex:   pubKey,
+		Fingerprint: pubKey[:16] + "...",
+		COCorrected: bundle.Aggregate.COCorrected,
+	}
+	b.server.SetAttestationInfo(info)
+	return nil
+}
+
+// AttachEngineSink hands the run's evidence collector to the host so it can be
+// passed to engine.RunOptions.Samples, and records that the engine is now the
+// sample source. After this call RecordRequest no longer records evidence, so a
+// request can never be counted twice (see engineFeedsSamples).
+//
+// It returns nil when attestation could not be initialised; the host should
+// then simply run without a sample sink.
+func (b *EngineBridge) AttachEngineSink() *evidence.Collector {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.collector == nil {
+		return nil
+	}
+	b.engineFeedsSamples = true
+	return b.collector
 }

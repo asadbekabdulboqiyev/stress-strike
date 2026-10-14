@@ -81,6 +81,16 @@ re-derived by a party that trusts neither the tool vendors nor the operator.
 - **Target (witness)** — the system under test; in Pillar 3 it also emits an
   arrival count (and, in v2, per-epoch nonces).
 
+Two producers ship with the implementation, and they emit the **identical**
+format: the **CLI** (`stress-strike run --emit-bundle`) and the **web dashboard**
+(`stress-strike dashboard`), which seals a `vpmp/v1` bundle for every run it
+completes and exposes it for download. The dashboard's bundle is accepted by the
+CLI verifier unchanged — verified end-to-end (a dashboard run reported *N*
+requests; the bundle contained *N* records; `stress-strike verify` returned exit
+`0`, and a one-byte sidecar edit returned exit `1`). Both reuse the same Ed25519
+key file (`0600`) and the same Merkle construction, so a signature is a
+signature wherever it was produced.
+
 ### 4.2 Phase A — COMMIT
 
 Performed **before** load generation begins.

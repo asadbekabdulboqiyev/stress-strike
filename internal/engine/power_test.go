@@ -223,6 +223,24 @@ func TestPowerPooledReuseDominates(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.precreateJars(users + 1)
+
+	// Keep the pre-filled pool alive for the whole run.
+	//
+	// On a loaded CI runner this test stretches to several minutes (300k
+	// requests under -race while sibling packages saturate the same few
+	// cores: 334s on macos-latest vs ~16s locally), which is far longer than
+	// the transport's default 90s IdleConnTimeout. Sockets that the test
+	// deliberately pre-filled expire mid-run, each expiry is counted as a
+	// fresh dial, and the reuse ratio sank to 94.40% against a 95%
+	// assertion on macOS and Windows builders. The test measures pool reuse,
+	// not idle-expiry resilience, so the lifetime is extended here rather
+	// than the threshold being lowered — 94.40% is not a regression and
+	// loosening the assertion would hide one.
+	if tr, ok := e.client.Transport.(*http.Transport); ok {
+		tr.IdleConnTimeout = 10 * time.Minute
+	} else {
+		t.Logf("shared transport is %T, not *http.Transport: IdleConnTimeout not extended", e.client.Transport)
+	}
 	prefillPool(t, e, srv.URL+"/health", users, 32)
 
 	var reused, fresh atomic.Int64

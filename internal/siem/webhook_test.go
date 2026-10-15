@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -165,12 +166,16 @@ func TestTrySendExhaustsRetriesAndSpools(t *testing.T) {
 	}
 
 	path := filepath.Join(dir, spoolFileName)
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("spool file missing: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("spool file mode = %o, want 600", perm)
+	// The spool's privacy is a POSIX guarantee: Windows has no mode bits and
+	// Go reports 0666 for any writable file.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("spool file missing: %v", err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("spool file mode = %o, want 600", perm)
+		}
 	}
 	lines := readSpoolLines(t, path)
 	if len(lines) != 1 {

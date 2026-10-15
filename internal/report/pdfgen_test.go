@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -222,12 +223,16 @@ func TestSaveReportPDFWritesRealPDFFile(t *testing.T) {
 		t.Error("saved PDF does not end with EOF marker")
 	}
 	validatePDFLayout(t, data)
-	fi, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Mode().Perm()&0o077 != 0 {
-		t.Errorf("report file permissions not private: %o", fi.Mode().Perm())
+	// POSIX-only: Windows has no mode bits (Go reports 0666 for any writable
+	// file), so the privacy assertion cannot hold there.
+	if runtime.GOOS != "windows" {
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm()&0o077 != 0 {
+			t.Errorf("report file permissions not private: %o", fi.Mode().Perm())
+		}
 	}
 }
 

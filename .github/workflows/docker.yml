@@ -49,15 +49,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve version
-        id: ver
-        run: |
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=$(cat VERSION)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
-
+      # NOTE: exactly ONE step in this job may own `id: ver`. A duplicate id
+      # makes the workflow file invalid, so GitHub fails the whole run at 0s
+      # ("workflow file issue") and no job ever starts — the failure mode is
+      # silent and total. The later step `Resolve version and image names` is
+      # the single owner: it emits the version *and* the image list.
       - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3

@@ -3,6 +3,7 @@ package report
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -304,12 +305,16 @@ func TestPentestSaveReportHTML(t *testing.T) {
 	if !strings.Contains(string(data), "<!DOCTYPE html>") {
 		t.Error("file does not contain HTML doctype")
 	}
-	fi, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Mode().Perm()&0o077 != 0 {
-		t.Errorf("report file permissions not private: %o", fi.Mode().Perm())
+	// POSIX-only: Windows has no mode bits (Go reports 0666 for any writable
+	// file), so the privacy assertion cannot hold there.
+	if runtime.GOOS != "windows" {
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm()&0o077 != 0 {
+			t.Errorf("report file permissions not private: %o", fi.Mode().Perm())
+		}
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -62,6 +63,13 @@ func buildCLI() {
 		}
 		cliDir = dir
 		bin := filepath.Join(dir, "stress-strike")
+		if runtime.GOOS == "windows" {
+			// `go build -o` appends the extension on Windows, so the artifact
+			// lands at "stress-strike.exe" while cliBin would point at the
+			// extensionless path — exec then reports "file not found in %PATH%"
+			// and every black-box CLI test fails, all from this one line.
+			bin += ".exe"
+		}
 		cmd := exec.Command("go", "build", "-o", bin, ".")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			cliBuildErr = fmt.Errorf("go build: %w\n%s", err, out)
@@ -295,12 +303,19 @@ func TestCLIKeygenRoundTrip(t *testing.T) {
 		t.Fatalf("key on disk is %s, but keygen printed %s", got, advertised)
 	}
 
-	info, err := os.Stat(keyPath)
-	if err != nil {
-		t.Fatalf("stat key file: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("key file mode = %o, want 0600", perm)
+	// The 0600 guarantee is a POSIX one. Windows has no mode bits — Go
+	// synthesises 0666 for any writable file — so asserting the octal value
+	// there would test an unimplemented property and fail for the wrong
+	// reason. On Windows the key's protection comes from the per-user profile
+	// directory's ACL, not from this number.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(keyPath)
+		if err != nil {
+			t.Fatalf("stat key file: %v", err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("key file mode = %o, want 0600", perm)
+		}
 	}
 
 	// A second keygen without --force must fail closed rather than silently

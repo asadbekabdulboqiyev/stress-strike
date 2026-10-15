@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -81,8 +82,12 @@ func TestCollectorRecordsEveryRequestFromLiveRun(t *testing.T) {
 		if rec.Status != http.StatusOK {
 			t.Errorf("record %d status = %d, want 200", i, rec.Status)
 		}
-		if rec.LatencyNS <= 0 {
-			t.Errorf("record %d latency = %d, want > 0", i, rec.LatencyNS)
+		// See the same assertion in internal/engine/sink_test.go: on Windows
+		// the Go runtime's monotonic clock is the system interrupt time
+		// (~15.6 ms tick), so a fast loopback request can legitimately measure
+		// 0 ns. Negative is never valid; 0 is only acceptable on Windows.
+		if rec.LatencyNS < 0 || (rec.LatencyNS == 0 && runtime.GOOS != "windows") {
+			t.Errorf("record %d latency = %d, want > 0 (0 is only valid on Windows, where the clock cannot resolve it)", i, rec.LatencyNS)
 		}
 	}
 	// The 1-based shift must be dense: 1..n.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -186,12 +187,16 @@ func TestSaveFiles(t *testing.T) {
 	if !strings.Contains(string(data), `"name": "my report"`) {
 		t.Errorf("json content missing name: %s", data)
 	}
-	fi, err := os.Stat(jsonPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Mode().Perm()&0o077 != 0 {
-		t.Errorf("report file is not private (mode %o)", fi.Mode().Perm())
+	// POSIX mode bits do not exist on Windows — Go reports 0666 for any
+	// writable file — so "private" is only assertable on a POSIX filesystem.
+	if runtime.GOOS != "windows" {
+		fi, err := os.Stat(jsonPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Mode().Perm()&0o077 != 0 {
+			t.Errorf("report file is not private (mode %o)", fi.Mode().Perm())
+		}
 	}
 }
 
@@ -614,6 +619,9 @@ func TestStartLiveNotTerminal(t *testing.T) {
 }
 
 func TestSaveJSONPerm(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes are not enforced on Windows (Go reports 0666 for any writable file)")
+	}
 	tel := metrics.NewTelemetry()
 	tel.Overall.Record(time.Millisecond, 200, "")
 	tel.Finish()
@@ -637,6 +645,9 @@ func TestSaveJSONPerm(t *testing.T) {
 }
 
 func TestSaveTXTPerm(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes are not enforced on Windows (Go reports 0666 for any writable file)")
+	}
 	tel := metrics.NewTelemetry()
 	tel.Overall.Record(time.Millisecond, 200, "")
 	tel.Finish()

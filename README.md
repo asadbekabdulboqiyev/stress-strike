@@ -1202,10 +1202,11 @@ The bundle is **tamper-evidence + pre-commitment binding**, not a proof of physi
 
 - **Coordinated omission** — workers fire on schedule, not waiting for responses; in-flight requests drain gracefully at test end
 - **OS limits** — run `ulimit -n 65535` before large concurrency tests; the tool warns when the file descriptor limit is low
+- **Windows timer resolution** — on Windows the Go runtime's monotonic clock is the system interrupt time (≈ the 15.6 ms timer tick), so a sub-millisecond request can be measured as `0` and latency percentiles are quantised to that tick. Linux and macOS use a high-resolution clock. Evidence gathered on Windows stays fully verifiable — only the latency *resolution* differs, and the tool never reports a precision the host clock cannot supply.
 - **Latency histogram** — fixed 1 ms resolution capped at 60 s; constant memory for millions of samples
 - **Template escaping** — `{{var}}` placeholders in JSON bodies are JSON-escaped automatically
 - **Error classes** — `timeout`, `connection_error`, `status_4xx`, `status_5xx`, `extract_error`, `redirect_limit`, `assert_failed`, `canceled`
-- **Safety limits** — max 100K users, 256–20K per-host connections, 10 redirect hops, 8 MiB response cap, `0600` report permissions
+- **Safety limits** — max 100K users, 256–20K per-host connections, 10 redirect hops, 8 MiB response cap, `0600` report permissions (POSIX; Windows has no mode bits, so there the file inherits the user-profile directory's ACL)
 
 ---
 

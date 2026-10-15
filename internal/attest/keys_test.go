@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -65,12 +66,17 @@ func TestSaveLoadKeypairPEM(t *testing.T) {
 		t.Fatalf("SaveKeypairPEM: %v", err)
 	}
 
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("key file mode = %o, want 600", perm)
+	// The 0600 guarantee is POSIX-only: Windows has no mode bits and Go
+	// reports 0666 for any writable file. Elsewhere, the mode is the point of
+	// the test and is asserted strictly.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("key file mode = %o, want 600", perm)
+		}
 	}
 
 	loaded, err := LoadKeypairPEM(path)

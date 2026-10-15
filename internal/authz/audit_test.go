@@ -3,6 +3,7 @@ package authz
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -94,6 +95,9 @@ func TestAuditResumesChainAfterReopen(t *testing.T) {
 }
 
 func TestAuditFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes are not enforced on Windows (Go reports 0666 for any writable file)")
+	}
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	l, _ := Open(path)
 	_, _ = l.Append(Entry{Action: "run"})

@@ -79,7 +79,10 @@ func TestLocateGORunFallbackFromNestedDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("locate: %v", err)
 	}
-	if filepath.Base(bin) != "go" {
+	// The located binary is the Go toolchain's own executable; on Windows that
+	// file is named go.exe, so accept either name rather than comparing
+	// against a bare "go" that no Windows path can ever equal.
+	if base := filepath.Base(bin); base != "go" && base != "go.exe" {
 		t.Errorf("bin = %q, want the go binary", bin)
 	}
 	if len(extra) != 2 || extra[0] != "run" {

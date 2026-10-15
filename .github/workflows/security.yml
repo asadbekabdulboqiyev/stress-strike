@@ -138,7 +138,14 @@ jobs:
             VERSION=scan
 
       - name: Scan filesystem + image
-        uses: aquasecurity/trivy-action@v0.30.0
+        # Pinned by commit SHA, not by a tag. trivy-action@v0.30.0 (a moving
+        # tag) references `aquasecurity/setup-trivy@v0.2.2` inside its own
+        # action.yml, and that tag no longer exists — the job died before it
+        # scanned anything with "Unable to resolve action
+        # aquasecurity/setup-trivy@v0.2.2". v0.36.0 pins setup-trivy by SHA,
+        # so it cannot rot the same way. Bump this SHA deliberately; do not
+        # go back to a bare tag.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ matrix.image }}:scan
           format: sarif
@@ -189,7 +196,9 @@ jobs:
             VERSION=scan
 
       - name: Scan image (fail on fixable HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@v0.30.0
+        # Same SHA-pinned action as the `trivy` job above (see the note there
+        # for why a tag is not enough).
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ matrix.image }}:gate
           format: sarif

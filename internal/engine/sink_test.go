@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -80,8 +81,14 @@ func TestSampleSinkReceivesEveryRecordedRequest(t *testing.T) {
 		if s.Status != http.StatusOK {
 			t.Errorf("status = %d, want 200", s.Status)
 		}
-		if s.LatencyNS <= 0 {
-			t.Errorf("latency = %d, want > 0", s.LatencyNS)
+		// Windows cannot resolve a sub-millisecond loopback round trip: the Go
+		// runtime's monotonic clock there reads the system interrupt time
+		// (runtime·nanotime1 -> _INTERRUPT_TIME, i.e. the ~15.6 ms timer
+		// tick), so a correctly measured fast request legitimately records
+		// 0 ns. On every other platform a positive latency is what proves the
+		// engine measured the request instead of fabricating a sample.
+		if s.LatencyNS < 0 || (s.LatencyNS == 0 && runtime.GOOS != "windows") {
+			t.Errorf("latency = %d, want > 0 (0 is only valid on Windows, where the clock cannot resolve it)", s.LatencyNS)
 		}
 		if s.StartNS <= 0 {
 			t.Errorf("start_ns = %d, want > 0", s.StartNS)

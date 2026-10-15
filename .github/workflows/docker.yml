@@ -118,6 +118,15 @@ jobs:
           provenance: mode=max
           sbom: true
 
+      # Keyless signing needs the cosign CLI on PATH. Without this step the
+      # sign step below dies with exit 127 ("cosign: command not found"),
+      # which stayed invisible while the workflow file itself was invalid
+      # (a duplicate `id: ver`), so no job ever ran.
+      # Same action line release.yml already uses (`@v3`), pinned by commit
+      # SHA (v3.10.1) for the same reason the trivy action is pinned.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
       - name: Sign images (keyless)
         env:
           REGISTRY: ${{ env.REGISTRY_GHCR }}

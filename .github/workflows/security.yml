@@ -153,6 +153,10 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           scanners: vuln,misconfig,secret
+          # Without this the action UNSETS TRIVY_SEVERITY when format is sarif
+          # ("Building SARIF report with all severities"), so the `severity`
+          # above would apply to neither the report nor any exit code.
+          limit-severities-for-sarif: "true"
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -207,6 +211,17 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           scanners: vuln,secret,misconfig
+          # REQUIRED - this is why the gate was red. With `format: sarif` the
+          # action's entrypoint.sh runs `unset TRIVY_SEVERITY` unless this input
+          # is true, then applies `exit-code: 1` to EVERY severity. That made
+          # this gate fail on DLA-4792-1, a tzdata timezone-database advisory in
+          # the distroless base image: severity UNKNOWN, but a fixed version
+          # exists, so `ignore-unfixed: true` does not drop it. With this set
+          # the run honours `severity: HIGH,CRITICAL` and the gate fails only on
+          # fixable HIGH/CRITICAL findings, which is what its name promises.
+          # Verified locally with trivy 0.70.0: the base image, all six
+          # binaries and the whole module graph are clean at HIGH/CRITICAL.
+          limit-severities-for-sarif: "true"
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3

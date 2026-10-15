@@ -3,6 +3,7 @@ package engine
 import (
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -254,8 +255,12 @@ func TestPreWarmDurationTracked(t *testing.T) {
 	e.preWarmConnections(2)
 	e.prewarmDur = time.Since(start)
 
-	if e.prewarmDur <= 0 {
-		t.Error("prewarm duration should be positive")
+	// The engine measures this with time.Since around the prewarm. On Windows
+	// the Go runtime's monotonic clock is the system interrupt time (~15.6 ms
+	// tick), so prewarming two sockets can legitimately measure 0 ns; Linux and
+	// macOS clocks resolve it. A negative duration is never valid.
+	if e.prewarmDur < 0 || (e.prewarmDur == 0 && runtime.GOOS != "windows") {
+		t.Errorf("prewarm duration = %v, want > 0 (0 is accepted only on Windows, whose clock tick is ~15.6 ms)", e.prewarmDur)
 	}
 	e.prewarmed.closeAll()
 }

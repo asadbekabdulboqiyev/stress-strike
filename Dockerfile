@@ -42,16 +42,22 @@ COPY . .
 # CGO_ENABLED=1 against libpcap and shipped libpcap in the runtime layer —
 # but internal/replay reads PCAP through gopacket/pcapgo, which needs neither.
 # That cost ~2 MB in the image and a build-base install for nothing.
+#
+# Iterate real directories (`./cmd/*`), never the Go package pattern
+# `./cmd/...`: the shell does not expand `...`, so the loop ran exactly once
+# with name="..." and `go build -o /out/... ./cmd/...` died with "cannot write
+# multiple packages to non-directory" - the image never built, and that only
+# surfaced once the workflow file itself became valid again.
 RUN set -eux; \
-    for pkg in ./cmd/...; do \
-        name="$(basename "$pkg")"; \
+    for dir in ./cmd/*; do \
+        name="$(basename "$dir")"; \
         CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
         go build -trimpath \
           -ldflags="-s -w \
             -X main.version=${VERSION} \
             -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
             -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
-          -o "/out/${name}" "$pkg"; \
+          -o "/out/${name}" "$dir"; \
     done
 
 # Verify the binary we are about to ship is not a dev build.

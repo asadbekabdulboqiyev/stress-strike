@@ -64,7 +64,13 @@ RUN set -eux; \
 RUN /out/stress-strike --version
 
 # ── Stage 2: runtime ────────────────────────────────────────────────────────
-FROM alpine:3.21
+# alpine:3.24 (3.24.2) is clean at HIGH/CRITICAL under the CI Trivy gate.
+# The previous pin (alpine:3.21 = 3.21.8) carried CVE-2026-84782 in
+# libcrypto3/libssl3 (openssl 3.3.7-r1, fixed in 3.3.7-r2), which the
+# `Trivy gate (stress-strike)` job correctly failed on. `apk upgrade` is kept
+# so the runtime layer always takes the newest patched packages for the
+# pinned minor even before the tag itself is refreshed.
+FROM alpine:3.24
 
 ARG VERSION=dev
 ARG REVISION=""
@@ -78,7 +84,10 @@ LABEL org.opencontainers.image.title="stress-strike" \
       org.opencontainers.image.source="https://github.com/asadbekabdulboqiyev/stress-strike"
 
 # ca-certificates only: libpcap is no longer a runtime dependency.
-RUN apk add --no-cache ca-certificates tzdata \
+# Patch the base packages before adding ours, so a stale CVE in the pinned
+# alpine minor cannot reach the runtime layer (see the base-image note above).
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates tzdata \
     && adduser -D -H -u 10001 -s /sbin/nologin stress
 
 WORKDIR /app

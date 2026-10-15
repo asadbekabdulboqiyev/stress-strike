@@ -215,12 +215,19 @@ jobs:
           # action's entrypoint.sh runs `unset TRIVY_SEVERITY` unless this input
           # is true, then applies `exit-code: 1` to EVERY severity. That made
           # this gate fail on DLA-4792-1, a tzdata timezone-database advisory in
-          # the distroless base image: severity UNKNOWN, but a fixed version
-          # exists, so `ignore-unfixed: true` does not drop it. With this set
-          # the run honours `severity: HIGH,CRITICAL` and the gate fails only on
+          # a base image: severity UNKNOWN, but a fixed version exists, so
+          # `ignore-unfixed: true` does not drop it. With this set the run
+          # honours `severity: HIGH,CRITICAL` and the gate fails only on
           # fixable HIGH/CRITICAL findings, which is what its name promises.
-          # Verified locally with trivy 0.70.0: the base image, all six
-          # binaries and the whole module graph are clean at HIGH/CRITICAL.
+          #
+          # What the gate still catches, and did: the main `stress-strike` image
+          # is alpine-based (Dockerfile), and `alpine:3.21` carried
+          # CVE-2026-84782 in libcrypto3/libssl3 (openssl 3.3.7-r1, fixed in
+          # 3.3.7-r2). That is a genuine fixable HIGH and the gate was right to
+          # fail on it. The Dockerfile was bumped to `alpine:3.24` (3.24.2,
+          # clean) and the runtime stage now runs `apk upgrade`. The
+          # master/worker images use gcr.io/distroless/static-debian12 and were
+          # already clean. Verified with trivy 0.70.0 against the remote tags.
           limit-severities-for-sarif: "true"
 
       - name: Upload SARIF

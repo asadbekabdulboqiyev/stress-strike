@@ -336,6 +336,67 @@
     </div>
   </section>
 
+  <!-- Pentest (offensive security scan) -->
+  <section class="panel panel--last pentest-panel" id="pentestSection" aria-labelledby="pentestTitle">
+    <div class="panel-title"><span class="dot dot-red"></span> <span id="pentestTitle">Pentest (offensive scan)</span></div>
+    <p class="pentest-note">
+      Runs the offensive pentest checker against a target you are <strong>authorized to test</strong>.
+      It covers the OWASP Top 10 (A01–A10) plus intrusive families:
+      CRLF injection, SQL injection (boolean and time-based), path traversal,
+      SSRF indicators and write-method probes (PUT/DELETE).
+      <br><br>
+      Every probe passes a scope gate first: by default only the host you type is contacted,
+      and intrusive probes stay off until you turn them on <strong>and</strong> an
+      authorization ticket is active for the target. A category whose probes never
+      reached the server is reported <strong>NOT TESTED</strong>, never PASS.
+    </p>
+
+    <form class="pentest-form" id="pentestForm" autocomplete="off" novalidate>
+      <div class="field field-url pentest-field">
+        <label class="field-label" for="pentestTarget">Target URL</label>
+        <input id="pentestTarget" type="text" placeholder="https://example.com" spellcheck="false" required>
+      </div>
+      <div class="field pentest-field pentest-field--depth">
+        <label class="field-label" for="pentestDepth">Depth</label>
+        <select id="pentestDepth" title="How thorough the scan is (quick / standard / deep)" aria-label="Scan depth">
+          <option value="2" selected>2 — standard</option>
+          <option value="1">1 — quick (fewer probes)</option>
+          <option value="3">3 — deep (more endpoints/parameters)</option>
+        </select>
+      </div>
+      <div class="field pentest-field pentest-field--paths">
+        <label class="field-label" for="pentestPaths">Extra paths (optional, comma separated)</label>
+        <input id="pentestPaths" type="text" placeholder="/, /login" spellcheck="false">
+      </div>
+      <label class="pentest-check"><input type="checkbox" id="pentestPassive"> Passive checks (read-only)</label>
+      <label class="pentest-check"><input type="checkbox" id="pentestIntrusive"> Intrusive probes</label>
+      <label class="pentest-check"><input type="checkbox" id="pentestDryRun"> Dry run</label>
+      <button class="btn btn-primary pentest-run" id="btnPentestRun" type="submit">
+        <span class="btn-label">Run pentest</span>
+      </button>
+    </form>
+
+    <div class="pentest-status" id="pentestStatus" role="status" aria-live="polite"></div>
+
+    <div class="pentest-results hidden" id="pentestResults">
+      <div class="pentest-meta" id="pentestMeta"></div>
+      <div class="table-wrap">
+        <table class="pentest-table">
+          <thead>
+            <tr><th scope="col">ID</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">What we saw</th></tr>
+          </thead>
+          <tbody id="pentestBody"></tbody>
+        </table>
+      </div>
+      <div class="pentest-vulns hidden" id="pentestVulnsWrap">
+        <div class="pentest-subtitle">Vulnerabilities</div>
+        <ul class="pentest-vuln-list" id="pentestVulns"></ul>
+      </div>
+      <div class="pentest-gate" id="pentestGate"></div>
+      <ul class="pentest-notes" id="pentestNotes"></ul>
+    </div>
+  </section>
+
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">
     <div class="panel">

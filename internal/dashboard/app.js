@@ -1429,6 +1429,212 @@ function owaspRun(ev) {
 
 if (_owaspForm) _owaspForm.addEventListener('submit', owaspRun);
 
+/* ---- Pentest (offensive security scan) ---- */
+var _pentestForm     = document.getElementById('pentestForm');
+var _pentestBtn      = document.getElementById('btnPentestRun');
+var _pentestStatus   = document.getElementById('pentestStatus');
+var _pentestResults  = document.getElementById('pentestResults');
+var _pentestBody     = document.getElementById('pentestBody');
+var _pentestMeta     = document.getElementById('pentestMeta');
+var _pentestVulnWrap = document.getElementById('pentestVulnsWrap');
+var _pentestSubtitle = document.querySelector('#pentestVulnsWrap > .pentest-subtitle');
+var _pentestVulns    = document.getElementById('pentestVulns');
+var _pentestGate     = document.getElementById('pentestGate');
+var _pentestNotes    = document.getElementById('pentestNotes');
+
+function pentestClear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+
+function pentestSplitList(v) {
+  return String(v || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+}
+
+function pentestStatusSet(msg, cls) {
+  if (!_pentestStatus) return;
+  _pentestStatus.textContent = msg || '';
+  _pentestStatus.className = 'pentest-status' + (cls ? ' ' + cls : '');
+}
+
+function pentestStatusClass(st) {
+  if (st === 'PASS') return 'ok';
+  if (st === 'FAIL') return 'bad';
+  if (st === 'WARNING') return 'warn';
+  return 'skip'; /* NOT TESTED is not a pass */
+}
+
+function pentestAddRow(cat) {
+  var tr = document.createElement('tr');
+
+  var tdId = document.createElement('td');
+  tdId.className = 'pentest-id';
+  tdId.textContent = cat.id || '';
+
+  var tdName = document.createElement('td');
+  tdName.textContent = cat.name || '';
+
+  var tdStatus = document.createElement('td');
+  var badge = document.createElement('span');
+  badge.className = 'pentest-badge pentest-badge--' + pentestStatusClass(cat.status);
+  badge.textContent = String(cat.status || '');
+  tdStatus.appendChild(badge);
+
+  var tdSeen = document.createElement('td');
+  var seen = cat.findings || [];
+  if (seen.length) {
+    var ul = document.createElement('ul');
+    ul.className = 'pentest-cell-list';
+    seen.slice(0, 4).forEach(function(f) {
+      var li = document.createElement('li');
+      li.textContent = f;
+      ul.appendChild(li);
+    });
+    if (seen.length > 4) {
+      var more = document.createElement('li');
+      more.className = 'pentest-more';
+      more.textContent = '+' + (seen.length - 4) + ' more';
+      ul.appendChild(more);
+    }
+    tdSeen.appendChild(ul);
+  } else {
+    tdSeen.textContent = '\u2014';
+  }
+
+  tr.appendChild(tdId);
+  tr.appendChild(tdName);
+  tr.appendChild(tdStatus);
+  tr.appendChild(tdSeen);
+  _pentestBody.appendChild(tr);
+}
+
+/* Evidence and titles come from the target server, so everything is written
+   with textContent — never innerHTML. */
+function pentestAddVuln(v) {
+  var li = document.createElement('li');
+  li.className = 'pentest-vuln pentest-vuln--' + String(v.severity || 'info').toLowerCase();
+
+  var head = document.createElement('div');
+  head.className = 'pentest-vuln-head';
+  head.textContent = [v.id, v.severity, v.category ? 'cat ' + v.category : '']
+    .filter(Boolean).join(' \u00b7 ');
+
+  var title = document.createElement('div');
+  title.className = 'pentest-vuln-title';
+  title.textContent = v.title || '';
+
+  var body = document.createElement('div');
+  body.className = 'pentest-vuln-body';
+  body.textContent = (v.confidence ? 'confidence: ' + v.confidence + ' \u2014 ' : '') +
+    (v.evidence || '') + (v.cwe ? ' [' + v.cwe + ']' : '');
+
+  li.appendChild(head);
+  li.appendChild(title);
+  li.appendChild(body);
+  _pentestVulns.appendChild(li);
+}
+
+function pentestChip(text) {
+  var s = document.createElement('span');
+  s.className = 'pentest-chip';
+  s.textContent = text;
+  _pentestMeta.appendChild(s);
+}
+
+function pentestRender(d) {
+  pentestStatusSet('Pentest complete.', 'ok');
+  _pentestResults.classList.remove('hidden');
+
+  pentestClear(_pentestBody);
+  (d.categories || []).forEach(pentestAddRow);
+
+  pentestClear(_pentestMeta);
+  pentestChip('Target: ' + d.target);
+  pentestChip('Scope: ' + (d.scope || []).join(', '));
+  pentestChip('Depth: ' + (d.depth || '\u2014'));
+  pentestChip('Score: ' + d.score + '/100 (grade ' + (d.grade || '\u2014') + ')');
+  pentestChip('Covered ' + d.tested + ' of ' + d.total + ' categories');
+
+  var g = d.gate || {};
+  pentestChip('Requests sent: ' + (g.requests_sent || 0));
+
+  var vs = d.vulnerabilities || [];
+  if (vs.length) {
+    _pentestVulnWrap.classList.remove('hidden');
+    _pentestSubtitle.textContent = 'Vulnerabilities (' + vs.length + ')';
+  } else {
+    _pentestVulnWrap.classList.add('hidden');
+    _pentestSubtitle.textContent = 'Vulnerabilities';
+  }
+  pentestClear(_pentestVulns);
+  vs.forEach(pentestAddVuln);
+
+  _pentestGate.textContent = 'Gate: ' + (g.requests_sent || 0) + ' sent \u00b7 ' +
+    (g.requests_refused || 0) + ' refused (out-of-scope ' + (g.refused_out_of_scope || 0) +
+    ', intrusive off ' + (g.refused_intrusive || 0) +
+    ', budget ' + (g.refused_budget || 0) +
+    ', rate ' + (g.refused_rate || 0) +
+    ', dry-run ' + (g.refused_dry_run || 0) + ')';
+
+  pentestClear(_pentestNotes);
+  (d.notes || []).forEach(function(n) {
+    var li = document.createElement('li');
+    li.textContent = n;
+    _pentestNotes.appendChild(li);
+  });
+
+  toast('Pentest finished \u2014 ' + d.tested + '/' + d.total + ' categories covered', 'ok');
+}
+
+function pentestRun(ev) {
+  if (ev) ev.preventDefault();
+  if (!_pentestForm || _pentestBtn.classList.contains('loading')) return;
+
+  var target = document.getElementById('pentestTarget').value.trim();
+  if (!target) {
+    pentestStatusSet('Enter a target URL first.', 'err');
+    return;
+  }
+
+  var payload = {
+    target: target,
+    depth: parseInt(document.getElementById('pentestDepth').value, 10) || 2,
+    paths: pentestSplitList(document.getElementById('pentestPaths').value),
+    passive: document.getElementById('pentestPassive').checked,
+    intrusive: document.getElementById('pentestIntrusive').checked,
+    dryRun: document.getElementById('pentestDryRun').checked
+  };
+
+  _pentestBtn.classList.add('loading');
+  _pentestResults.classList.add('hidden');
+  pentestStatusSet('Pentesting ' + target + ' \u2014 every probe passes the scope gate.', '');
+
+  fetch(API + '/api/pentest/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(r) {
+    /* A 401 is a session problem. A 403 here is the authorization policy
+       refusing this target, which is an answer, not a lockout. */
+    if (r.status === 401) { setLocked(); throw new Error('locked'); }
+    return r.json().then(function(d) { return { r: r, d: d }; });
+  }).then(function(x) {
+    if (!x) return;
+    if (!x.r.ok) {
+      var msg = (x.d && (x.d.reason || x.d.error)) || ('HTTP ' + x.r.status);
+      pentestStatusSet(msg, x.d && x.d.denied ? 'warn' : 'err');
+      toast('Pentest refused: ' + msg, 'error');
+      return;
+    }
+    pentestRender(x.d);
+  }).catch(function(e) {
+    if (String(e) === 'Error: locked') return;
+    pentestStatusSet('Pentest failed: ' + e, 'err');
+    toast('Pentest failed', 'error');
+  }).then(function() {
+    _pentestBtn.classList.remove('loading');
+  });
+}
+
+if (_pentestForm) _pentestForm.addEventListener('submit', pentestRun);
+
 /* ---- Summary ---- */
 var _sumClose = document.getElementById('summaryClose');
 if (_sumClose) _sumClose.addEventListener('click', hideSummary);

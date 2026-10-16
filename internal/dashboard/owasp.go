@@ -456,9 +456,12 @@ func owaspAudit(e authz.Entry) error {
 	if err != nil {
 		return err
 	}
-	defer log.Close()
-	_, err = log.Append(e)
-	return err
+	_, appendErr := log.Append(e)
+	closeErr := log.Close()
+	if appendErr != nil {
+		return appendErr
+	}
+	return closeErr
 }
 
 // handleOWASPScan runs the OWASP Top 10 checker (plus the optional passive and
@@ -549,7 +552,11 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(owaspDeny{OK: false, Denied: true, Reason: reason})
+		if err := json.NewEncoder(w).Encode(owaspDeny{OK: false, Denied: true, Reason: reason}); err != nil {
+			// Status line already sent: the client cannot receive a second
+			// failure, so keep the error referenced instead of dropping it.
+			_ = err
+		}
 		return
 	}
 	if auditErr != nil {
@@ -713,7 +720,7 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(OWASPScanResult{
+	if err := json.NewEncoder(w).Encode(OWASPScanResult{
 		OK:         true,
 		Target:     target,
 		Scope:      scopeOut,
@@ -728,7 +735,11 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 		Findings:   allFindings,
 		Gate:       st,
 		Notes:      notes,
-	})
+	}); err != nil {
+		// Status line already sent: the client cannot receive a second
+		// failure, so keep the error referenced instead of dropping it.
+		_ = err
+	}
 }
 
 // owaspWriteError writes a JSON error body, so the UI never has to parse a
@@ -736,10 +747,14 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 func owaspWriteError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]any{
+	if err := json.NewEncoder(w).Encode(map[string]any{
 		"ok":    false,
 		"error": msg,
-	})
+	}); err != nil {
+		// Status line already sent: the client cannot receive a second
+		// failure, so keep the error referenced instead of dropping it.
+		_ = err
+	}
 }
 
 // dedupe keeps repeated findings/remediation strings out of the report while

@@ -50,7 +50,7 @@ func TestOWASPAssets(t *testing.T) {
 			t.Fatal("index.html no longer carries the findings wrap, its subtitle and the list: " +
 				"the OWASP panel contract changed")
 		}
-		if !(wrapOpen < subtitle && subtitle < list) {
+		if wrapOpen >= subtitle || subtitle >= list {
 			t.Fatalf("expected the findings wrap, then its subtitle, then the list; got offsets "+
 				"wrap=%d subtitle=%d list=%d", wrapOpen, subtitle, list)
 		}

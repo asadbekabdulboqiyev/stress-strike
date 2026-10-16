@@ -452,7 +452,9 @@ Examples:
 			}
 			enc := json.NewEncoder(f)
 			enc.SetIndent("", "  ")
-			enc.Encode(export)
+			if err := enc.Encode(export); err != nil {
+				fmt.Printf("  ⚠ Failed to write JSON report: %v\n", err)
+			}
 			fmt.Printf("\n  JSON report: %s\n", *outputJSON)
 		}
 	}
@@ -1162,6 +1164,7 @@ func enforceScanAuthz(targetURL string, opts scanGateOptions) {
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
 	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-cidr> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
+	cancel()
 	os.Exit(authzDeniedExitCode)
 }
 
@@ -1178,13 +1181,6 @@ func recordScanAuthz(e authz.Entry, auditPath string) {
 	if appendErr != nil {
 		fmt.Fprintf(os.Stderr, "warning: cannot write audit log: %v\n", appendErr)
 	}
-}
-
-// configHome returns the directory holding stress-strike's local state. It
-// delegates to the authz package so this binary and the main CLI cannot drift
-// apart on where the policy and audit trail live.
-func configHome() string {
-	return authz.ConfigHome()
 }
 
 // defaultPolicyPath is the policy location, honouring STRESS_STRIKE_POLICY.

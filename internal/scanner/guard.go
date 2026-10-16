@@ -501,7 +501,7 @@ func parseScopePattern(entry string) (scopePattern, error) {
 		return p, nil
 	}
 	if strings.Contains(host, "*") {
-		return scopePattern{}, fmt.Errorf("scanner: scope pattern %q: '*' is only valid as a leading '*.", entry)
+		return scopePattern{}, fmt.Errorf("scanner: scope pattern %q: '*' is only valid as a leading '*'", entry)
 	}
 	p.kind = patExact
 	p.host = host

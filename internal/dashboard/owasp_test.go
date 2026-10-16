@@ -75,7 +75,7 @@ func TestOWASPStatusNeverManufacturesPass(t *testing.T) {
 	for _, status := range checkerStatuses {
 		for coverage := 0; coverage <= 3; coverage++ {
 			got := owaspStatus(status, coverage)
-			if got == "PASS" && !(status == "PASS" && coverage > 0) {
+			if got == "PASS" && (status != "PASS" || coverage <= 0) {
 				t.Fatalf("owaspStatus(%q, %d) = PASS, which is manufactured", status, coverage)
 			}
 			if got != "PASS" && got != "FAIL" && got != "WARNING" && got != "NOT TESTED" {

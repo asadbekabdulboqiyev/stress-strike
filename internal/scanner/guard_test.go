@@ -364,8 +364,11 @@ func TestDoReChecksScopeAndBudget(t *testing.T) {
 func TestRateLimiterBuckets(t *testing.T) {
 	rl := newRateLimiter(1, 2) // 1 token/s, burst 2
 	now := time.Now()
-	if !rl.tryTake("h", now) || !rl.tryTake("h", now) {
-		t.Fatal("burst of 2 should both succeed")
+	if !rl.tryTake("h", now) {
+		t.Fatal("first take should succeed")
+	}
+	if !rl.tryTake("h", now) {
+		t.Fatal("second take should succeed (burst 2)")
 	}
 	if rl.tryTake("h", now) {
 		t.Fatal("third immediate take should fail (bucket empty)")

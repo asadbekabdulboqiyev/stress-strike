@@ -36,6 +36,15 @@ linters:
           - errcheck
           - gosec
           - gocritic
+      # Detector signatures and reference URLs (OWASP/WSTG/MDN/RFC links, PSV-*
+      # check IDs, A0*-category labels, the ss-canary.invalid canary hostname,
+      # the root:x:0:0: /etc/passwd detection signature). These are intentional
+      # non-secret strings that pattern-match gosec G101. They are reviewed
+      # false positives frozen in .gosec-baseline.json; the dedicated `security`
+      # CI job still runs full gosec (ratchet) over every file.
+      - path: internal/scanner/(checks_passive|intrusive)\.go
+        linters:
+          - gosec
       # Generated protobuf code.
       - path: \.pb\.go$
         linters:

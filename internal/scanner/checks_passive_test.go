@@ -136,17 +136,6 @@ func (f *passiveFakeRequester) countPlainContaining(needle string) int {
 	return n
 }
 
-// countContaining counts recorded request URLs containing the needle.
-func (f *passiveFakeRequester) countContaining(needle string) int {
-	n := 0
-	for _, raw := range f.fetched() {
-		if strings.Contains(raw, needle) {
-			n++
-		}
-	}
-	return n
-}
-
 // ---------------------------------------------------------------------------
 // Response builders
 // ---------------------------------------------------------------------------
@@ -1528,7 +1517,7 @@ func TestPassiveScanAllToleratesNilAndCancelledContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPassiveScanner: %v", err)
 	}
-	if findings := scanner.ScanAll(nil); len(findings) == 0 {
+	if findings := scanner.ScanAll(context.TODO()); len(findings) == 0 {
 		t.Error("a nil context must behave like context.Background()")
 	}
 

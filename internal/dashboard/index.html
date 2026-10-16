@@ -282,10 +282,59 @@
   </div>
 
   <!-- Latency Chart -->
-  <div class="panel panel--last">
+  <div class="panel">
     <div class="panel-title"><span class="dot dot-cyan"></span> Latency Timeline</div>
     <canvas class="chart-canvas" id="chartLatency" height="180" role="img" aria-label="Latency percentile timeline chart"></canvas>
   </div>
+
+  <!-- OWASP Top 10 Security Scan -->
+  <section class="panel panel--last owasp-panel" id="owaspSection" aria-labelledby="owaspTitle">
+    <div class="panel-title"><span class="dot dot-red"></span> <span id="owaspTitle">OWASP Top 10 Security Scan</span></div>
+    <p class="owasp-note">
+      Runs the OWASP Top 10 checker against a target you are authorized to test.
+      Every probe passes a scope gate first: by default only the host you type is contacted,
+      and intrusive (state-changing) probes stay off until you turn them on.
+      The passive (read-only) check family is on by default.
+      A category whose probes never reached the server is reported <strong>NOT TESTED</strong>, never PASS.
+    </p>
+
+    <form class="owasp-form" id="owaspForm" autocomplete="off" novalidate>
+      <div class="field field-url owasp-field">
+        <label class="field-label" for="owaspTarget">Target URL</label>
+        <input id="owaspTarget" type="text" placeholder="https://example.com" spellcheck="false" required>
+      </div>
+      <div class="field owasp-field owasp-field--paths">
+        <label class="field-label" for="owaspPaths">Extra paths (optional, comma separated)</label>
+        <input id="owaspPaths" type="text" placeholder="/, /login" spellcheck="false">
+      </div>
+      <label class="owasp-check"><input type="checkbox" id="owaspPassive" checked> Passive checks</label>
+      <label class="owasp-check"><input type="checkbox" id="owaspIntrusive"> Intrusive probes</label>
+      <label class="owasp-check"><input type="checkbox" id="owaspDryRun"> Dry run</label>
+      <button class="btn btn-primary owasp-run" id="btnOwaspRun" type="submit">
+        <span class="btn-label">Run scan</span>
+      </button>
+    </form>
+
+    <div class="owasp-status" id="owaspStatus" role="status" aria-live="polite"></div>
+
+    <div class="owasp-results hidden" id="owaspResults">
+      <div class="owasp-meta" id="owaspMeta"></div>
+      <div class="table-wrap">
+        <table class="owasp-table">
+          <thead>
+            <tr><th scope="col">ID</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">What we saw</th></tr>
+          </thead>
+          <tbody id="owaspBody"></tbody>
+        </table>
+      </div>
+      <div class="owasp-findings hidden" id="owaspFindingsWrap">
+        <div class="owasp-subtitle">Findings</div>
+        <ul class="owasp-findings" id="owaspFindings"></ul>
+      </div>
+      <div class="owasp-gate" id="owaspGate"></div>
+      <ul class="owasp-notes" id="owaspNotes"></ul>
+    </div>
+  </section>
 
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">

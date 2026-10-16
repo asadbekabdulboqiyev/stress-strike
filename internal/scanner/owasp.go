@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -19,6 +20,49 @@ type OWASPChecker struct {
 	Client    *http.Client
 	Results   *OWASPReport
 	Transport *http.Transport
+
+	// Requester, when set, is the safety gate every probe goes through. This
+	// is the difference between a sanctioned assessment and an attack: it
+	// enforces the scope allowlist, the intrusive opt-in, the request budget,
+	// the per-host rate limit, the timeout, the response size cap and the
+	// dry-run mode. Production callers (scan/pentest) always set it; without
+	// it the checker falls back to its own unrestricted client, which is
+	// test-only behaviour.
+	Requester Requester
+
+	// intrusiveNow marks the category currently running as intrusive. Set by
+	// runIntrusive only; controls whether makeRequest reports the probe as
+	// intrusive to the gate.
+	intrusiveNow bool
+
+	// probeCat is the category currently running (set by newCategory) and
+	// probesOK counts, per category, the probes that actually reached the
+	// server. A category with a zero count produced no evidence — because the
+	// gate refused it, dry-run was on, or the connection failed — and must be
+	// reported as NOT TESTED rather than PASS. Coverage, not confidence.
+	probeCat string
+	probesOK map[string]int
+}
+
+// ProbeCoverage reports how many probes of each OWASP category actually got a
+// response from the server. Categories absent from the map were never entered.
+func (c *OWASPChecker) ProbeCoverage() map[string]int {
+	out := make(map[string]int, len(c.probesOK))
+	for k, v := range c.probesOK {
+		out[k] = v
+	}
+	return out
+}
+
+// noteProbe records that the current category got a real response.
+func (c *OWASPChecker) noteProbe() {
+	if c.probeCat == "" {
+		return
+	}
+	if c.probesOK == nil {
+		c.probesOK = make(map[string]int, 10)
+	}
+	c.probesOK[c.probeCat]++
 }
 
 // OWASPReport contains results for all 10 categories
@@ -94,14 +138,19 @@ func (c *OWASPChecker) CheckAll() *OWASPReport {
 
 	report.Categories["A01"] = c.checkA01()
 	report.Categories["A02"] = c.checkA02()
-	report.Categories["A03"] = c.checkA03()
+	// A03/A05/A07/A10 send payloads that can trigger server-side effects:
+	// injection probes, directory traversal, twenty failed logins in a row
+	// (lockout testing) and SSRF. They run only when intrusive probes are
+	// authorised. With the gate closed, the Requester refuses them and the
+	// category comes back with no evidence instead of quietly probing.
+	c.runIntrusive(func() { report.Categories["A03"] = c.checkA03() })
 	report.Categories["A04"] = c.checkA04()
-	report.Categories["A05"] = c.checkA05()
+	c.runIntrusive(func() { report.Categories["A05"] = c.checkA05() })
 	report.Categories["A06"] = c.checkA06()
-	report.Categories["A07"] = c.checkA07()
+	c.runIntrusive(func() { report.Categories["A07"] = c.checkA07() })
 	report.Categories["A08"] = c.checkA08()
 	report.Categories["A09"] = c.checkA09()
-	report.Categories["A10"] = c.checkA10()
+	c.runIntrusive(func() { report.Categories["A10"] = c.checkA10() })
 
 	report.Score = c.CalculateScore(report)
 	report.Grade = c.calculateGrade(report.Score)
@@ -110,7 +159,23 @@ func (c *OWASPChecker) CheckAll() *OWASPReport {
 	return report
 }
 
+// runIntrusive runs fn with the checker marked intrusive, then clears the mark.
+func (c *OWASPChecker) runIntrusive(fn func()) {
+	c.intrusiveNow = true
+	defer func() { c.intrusiveNow = false }()
+	fn()
+}
+
 func (c *OWASPChecker) newCategory(id string) *OWASPCategory {
+	// Attribution point: every check calls newCategory before it probes, so
+	// makeRequest can credit responses to the category that sent them.
+	c.probeCat = id
+	if c.probesOK == nil {
+		c.probesOK = make(map[string]int, 10)
+	}
+	if _, seen := c.probesOK[id]; !seen {
+		c.probesOK[id] = 0
+	}
 	return &OWASPCategory{
 		ID:          id,
 		Name:        owaspCategories[id],
@@ -150,7 +215,21 @@ func (c *OWASPChecker) addFinding(cat *OWASPCategory, finding, remediation, seve
 }
 
 func (c *OWASPChecker) makeRequest(method, path string, headers http.Header, body io.Reader) (*http.Response, string) {
-	u, err := url.Parse(c.Target)
+	return c.makeRequestURL(method, c.Target, path, headers, body)
+}
+
+// makeRequestURL is makeRequest against an explicit base URL, for the one
+// check that has to speak a different scheme than the target: A02's
+// HTTP-to-HTTPS enforcement test.
+//
+// Every probe must go through this function. A request built anywhere else
+// skips the Requester entirely — and with it the scope pattern, the rate
+// limiter, the request budget, the dry-run switch and the intrusive gate, all
+// at once. A02's HTTPS probe used to build its own http.Client and did exactly
+// that: one unscoped, un-rate-limited request per scan that dry-run could not
+// prevent.
+func (c *OWASPChecker) makeRequestURL(method, baseURL, path string, headers http.Header, body io.Reader) (*http.Response, string) {
+	u, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, ""
 	}
@@ -176,6 +255,24 @@ func (c *OWASPChecker) makeRequest(method, path string, headers http.Header, bod
 		}
 	}
 
+	// Route through the safety gate when one is installed. A refusal returns
+	// (nil, ""), which every caller already treats as "no evidence", so a
+	// probe the policy forbids simply produces no finding rather than an
+	// error or, worse, a request that was actually sent.
+	if c.Requester != nil {
+		raw := u.String()
+		if err := c.Requester.Check(context.Background(), method, raw, c.intrusiveNow); err != nil {
+			return nil, ""
+		}
+		resp, err := c.Requester.Do(req)
+		if err != nil {
+			return nil, ""
+		}
+		respBody, _ := ReadBody(resp, DefaultProbeLimit)
+		c.noteProbe()
+		return resp, string(respBody)
+	}
+
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, ""
@@ -183,6 +280,7 @@ func (c *OWASPChecker) makeRequest(method, path string, headers http.Header, bod
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
 	resp.Body.Close()
+	c.noteProbe()
 
 	return resp, string(respBody)
 }
@@ -272,36 +370,26 @@ func (c *OWASPChecker) checkA01() *OWASPCategory {
 func (c *OWASPChecker) checkA02() *OWASPCategory {
 	cat := c.newCategory("A02")
 
-	// Check HTTPS enforcement
+	// Check HTTPS enforcement. This probe has to speak plain HTTP even when
+	// the target is https://, so it builds its own base URL — but it goes
+	// through makeRequestURL, not a private http.Client. A private client
+	// skipped the safety gate entirely: scope, rate, budget and dry-run were
+	// all bypassed for this one request on every scan.
 	httpTarget := c.Target
-	if !strings.HasPrefix(httpTarget, "http") {
-		httpTarget = "http://" + httpTarget
+	if !strings.HasPrefix(httpTarget, "http://") {
+		httpTarget = "http://" + strings.TrimPrefix(strings.TrimPrefix(c.Target, "https://"), "http://")
 	}
-
-	noRedirectClient := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	req, err := http.NewRequest("GET", httpTarget, nil)
-	if err == nil {
-		resp, err := noRedirectClient.Do(req)
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode != 301 && resp.StatusCode != 302 &&
-				resp.StatusCode != 307 && resp.StatusCode != 308 {
-				c.addFinding(cat,
-					"HTTP does not redirect to HTTPS",
-					"Configure HTTP to HTTPS redirect (301/308 permanent)",
-					"high")
-			}
+	if resp, _ := c.makeRequestURL("GET", httpTarget, "/", nil, nil); resp != nil {
+		if code := resp.StatusCode; code != 301 && code != 302 &&
+			code != 307 && code != 308 {
+			c.addFinding(cat,
+				"HTTP does not redirect to HTTPS",
+				"Configure HTTP to HTTPS redirect (301/308 permanent)",
+				"high")
 		}
 	}
 
 	// Check HSTS header
-	httpsTarget := strings.Replace(httpTarget, "http://", "https://", 1)
 	resp, pageBody := c.makeRequest("GET", "/", nil, nil)
 	if resp != nil {
 		hsts := resp.Header.Get("Strict-Transport-Security")
@@ -324,8 +412,9 @@ func (c *OWASPChecker) checkA02() *OWASPCategory {
 			}
 		}
 
-		// Check mixed content (body already read by makeRequest)
-		if strings.Contains(httpsTarget, "https://") {
+		// Check mixed content (body already read by makeRequest). Only an
+		// HTTPS page can have mixed content.
+		if strings.HasPrefix(c.Target, "https://") {
 			httpRefs := regexp.MustCompile(`src=["']http://`).FindAllString(pageBody, -1)
 			if len(httpRefs) > 0 {
 				c.addFinding(cat,

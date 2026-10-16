@@ -9,6 +9,7 @@ reports/
 /stress-strike-worker
 /stress-strike-dashboard
 /stress-strike-replay
+/stress-strike-scan
 # `go build ./examples/demo_store/...` from the repo root drops a binary here.
 /demo_store
 /demo-store

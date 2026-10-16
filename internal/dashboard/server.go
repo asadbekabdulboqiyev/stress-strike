@@ -182,6 +182,10 @@ type Server struct {
 
 	attestMu   sync.RWMutex
 	attestInfo AttestationInfo
+
+	// owaspSem serializes security scans: one at a time, so a second click
+	// gets a 409 instead of a second set of probes racing the first.
+	owaspSem chan struct{}
 }
 
 func NewServer() *Server {
@@ -195,6 +199,7 @@ func NewServer() *Server {
 		},
 		clients:  make(map[*websocket.Conn]bool),
 		wsSem:    make(chan struct{}, maxWSConnections),
+		owaspSem: make(chan struct{}, 1),
 		snapshot: &LiveSnapshot{StatusCodes: make(map[int]uint64)},
 		runState: &RunState{Status: "idle"},
 		history:  make([]HistoryEntry, 0),
@@ -383,6 +388,8 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleDemoStoreStop(w, r)
 	case path == "/api/demo-store/status":
 		s.handleDemoStoreStatus(w, r)
+	case path == "/api/owasp/scan":
+		s.handleOWASPScan(w, r)
 	case path == "/style.css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Write(dashboardCSS)

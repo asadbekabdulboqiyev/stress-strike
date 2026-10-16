@@ -39,28 +39,20 @@ func addAuthzFlags(fs *flag.FlagSet, g *gateOptions) {
 }
 
 // configHome returns the directory holding stress-strike's local state.
+// configHome, defaultPolicyPath and defaultAuditPath delegate to the authz
+// package so the CLI, the scan binary and the dashboard resolve the same
+// policy and the same audit trail. The bodies used to live here and in
+// cmd/stress-strike-scan as two hand-kept copies.
 func configHome() string {
-	if d := strings.TrimSpace(os.Getenv("STRESS_STRIKE_HOME")); d != "" {
-		return d
-	}
-	if d, err := os.UserHomeDir(); err == nil && d != "" {
-		return filepath.Join(d, ".stress-strike")
-	}
-	return ".stress-strike"
+	return authz.ConfigHome()
 }
 
 func defaultPolicyPath() string {
-	if p := os.Getenv("STRESS_STRIKE_POLICY"); p != "" {
-		return p
-	}
-	return filepath.Join(configHome(), "authz.json")
+	return authz.DefaultPolicyPath()
 }
 
 func defaultAuditPath() string {
-	if p := os.Getenv("STRESS_STRIKE_AUDIT_LOG"); p != "" {
-		return p
-	}
-	return filepath.Join(configHome(), "audit.jsonl")
+	return authz.DefaultAuditPath()
 }
 
 // authzOutcome is the aggregate verdict for a run.

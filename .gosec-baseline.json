@@ -4,6 +4,330 @@
   "findings": [
     {
       "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCategoryAuth = \"A07:2021 Identification and Authentication Failures\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCategoryCrypto = \"A02:2021 Cryptographic Failures\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCategoryInjection = \"A03:2021 Injection\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCategoryIntegrity = \"A08:2021 Software and Data Integrity Failures\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCategoryMisconfig = \"A05:2021 Security Misconfiguration\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCheckIDHSTS = \"PSV-HSTS\" // Strict-Transport-Security",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCheckIDJWTAlg = \"PSV-JWTALG\" // JWT alg weaknesses",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCheckIDJWTCrypto = \"PSV-JWTCRYPT\" // JWT mixed signing algorithms",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCheckIDJWTExp = \"PSV-JWTEXP\" // JWT missing expiry",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveCheckIDSrcMap = \"PSV-SRCMAP\" // exposed JavaScript source maps",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveHostCanary = \"ss-canary.invalid\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSCSP = \"https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSClickjack = \"https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSDocker = \"https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSErrors = \"https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSHSTS = \"https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSHeaders = \"https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSJWT = \"https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSSession = \"https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSTLS = \"https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefCSWebCache = \"https://cheatsheetseries.owasp.org/cheatsheets/Web_Cache_Security_Cheat_Sheet.html\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNCC = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNCSP = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNCookie = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNHSTS = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNPP = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNRP = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNSRI = \"https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNXCTO = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefMDNXFO = \"https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefRFC6265 = \"https://www.rfc-editor.org/rfc/rfc6265\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefRFC7234 = \"https://www.rfc-editor.org/rfc/rfc7234\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefRFC7519 = \"https://www.rfc-editor.org/rfc/rfc7519\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefRFC9116 = \"https://www.rfc-editor.org/rfc/rfc9116\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefTopA02 = \"https://owasp.org/Top10/A02_2021-Cryptographic_Failures/\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefTopA03 = \"https://owasp.org/Top10/A03_2021-Injection/\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefTopA05 = \"https://owasp.org/Top10/A05_2021-Security_Misconfiguration/\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefTopA07 = \"https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefTopA08 = \"https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGBackup = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/04-Review_Old_Backup_and_Unreferenced_Files_for_Sensitive_Information\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGCSP = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/12-Content_Security_Policy\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGCache = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication/06-Browser_Cache_Weaknesses\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGClickjack = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/09-Clickjacking\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGCookies = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/02-Cookies_Attributes\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGFiles = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/03-File_Extensions_Handling_for_Sensitive_Information\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGHSTS = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/07-HTTP_Strict_Transport_Security\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGHeaders = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/14-Other_HTTP_Security_Header_Misconfigurations\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGHost = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Injection/17-Host_Header_Injection\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGJWT = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/10-JSON_Web_Tokens\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGLEak = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Web_Page_Content_for_Information_Leakage\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGMetafiles = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGResource = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/06-Client-side_Resource_Manipulation\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/checks_passive.go",
+      "code": "passiveRefWSTGStack = \"https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/08-Error_Handling/02-Stack_Traces\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
+      "file": "internal/scanner/intrusive.go",
+      "code": "intrusivePasswdSignature = \"root:x:0:0:\"",
+      "count": 1
+    },
+    {
+      "rule": "G101",
       "file": "internal/store/postgres/apikeys.go",
       "code": "const apiKeyCols = `id, tenant_id, user_id, key_hash, name, expires_at, revoked_at, created_at` //nolint:gosec // SQL column list, not a credential",
       "count": 1

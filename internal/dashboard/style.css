@@ -923,3 +923,189 @@ kbd {
 .attest-bad {
   color: var(--red);
 }
+
+/* ===========================================================================
+   OWASP Top 10 scan panel
+   ===========================================================================
+   A self-contained panel: form -> run -> results table -> findings -> gate.
+
+   The four verdicts are deliberately distinct colours: PASS green, FAIL red,
+   WARNING yellow, and NOT TESTED neutral grey. A category whose probes never
+   reached the server must not look like a pass, so `--skip` is grey on grey by
+   design and never borrows the green token.
+
+   Finding bodies and titles are attacker-controlled text (they come back from
+   the scanned server), so they are laid out with overflow-wrap rather than any
+   fixed width.
+   --------------------------------------------------------------------------- */
+
+/* The markup references .btn-primary; .btn supplies the shape, this adds the
+   primary (action) colour. Green here is the same "go" colour as Start. */
+.btn-primary {
+  background: var(--green);
+  color: #000;
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #00ff88;
+  box-shadow: 0 0 20px var(--green-dim);
+}
+
+.owasp-panel { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.owasp-note {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+.owasp-note strong { color: var(--text-1); }
+
+.owasp-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-3);
+}
+.owasp-field { min-width: 260px; }
+.owasp-field--paths { flex: 1; min-width: 200px; }
+.owasp-field input { width: 100%; }
+
+.owasp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  padding-bottom: 9px; /* sit on the same baseline as the inputs */
+}
+.owasp-check input { accent-color: var(--green); cursor: pointer; }
+
+.owasp-run { min-width: 132px; }
+
+.owasp-status {
+  min-height: 18px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.owasp-status.err  { color: var(--rose); }
+.owasp-status.warn { color: var(--sand); }
+.owasp-status.ok   { color: var(--green); }
+
+.owasp-results { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.owasp-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.owasp-chip {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.owasp-table td { vertical-align: top; }
+.owasp-id {
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.owasp-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.owasp-badge--ok   { background: var(--green-dim);  color: var(--green); }
+.owasp-badge--bad  { background: var(--red-dim);    color: var(--rose); }
+.owasp-badge--warn { background: var(--yellow-dim); color: var(--sand); }
+.owasp-badge--skip { background: var(--bg-3);       color: var(--text-2); }
+
+.owasp-cell-list {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.owasp-cell-list li { margin: 2px 0; }
+.owasp-more { color: var(--text-3); font-style: italic; }
+
+.owasp-subtitle {
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  margin-bottom: var(--sp-2);
+}
+
+.owasp-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.owasp-finding {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-3); /* default: informational */
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.owasp-finding--critical      { border-left-color: var(--red); }
+.owasp-finding--high          { border-left-color: var(--orange); }
+.owasp-finding--medium        { border-left-color: var(--yellow); }
+.owasp-finding--low           { border-left-color: var(--blue); }
+.owasp-finding--info,
+.owasp-finding--informational { border-left-color: var(--text-3); }
+
+.owasp-finding-head {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.owasp-finding-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+  margin: 3px 0;
+  overflow-wrap: anywhere; /* evidence may carry a long URL */
+}
+.owasp-finding-body {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  line-height: 1.55;
+  overflow-wrap: anywhere; /* the scanned server controls this text */
+}
+
+.owasp-gate {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  border-top: 1px solid var(--border);
+  padding-top: var(--sp-2);
+}
+
+.owasp-notes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.owasp-notes li { margin: 3px 0; }

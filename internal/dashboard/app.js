@@ -1635,6 +1635,147 @@ function pentestRun(ev) {
 
 if (_pentestForm) _pentestForm.addEventListener('submit', pentestRun);
 
+/* ---- Crawler (katana-like site spider) ---- */
+var _crawlForm     = document.getElementById('crawlForm');
+var _crawlBtn      = document.getElementById('btnCrawlRun');
+var _crawlStatus   = document.getElementById('crawlStatus');
+var _crawlResults  = document.getElementById('crawlResults');
+var _crawlBody     = document.getElementById('crawlBody');
+var _crawlMeta     = document.getElementById('crawlMeta');
+var _crawlGate     = document.getElementById('crawlGate');
+var _crawlNotes    = document.getElementById('crawlNotes');
+
+function crawlClear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+
+function crawlStatusSet(msg, cls) {
+  if (!_crawlStatus) return;
+  _crawlStatus.textContent = msg || '';
+  _crawlStatus.className = 'crawl-status' + (cls ? ' ' + cls : '');
+}
+
+function crawlAddRow(ep) {
+  var tr = document.createElement('tr');
+
+  var tdUrl = document.createElement('td');
+  tdUrl.className = 'crawl-url';
+  tdUrl.textContent = ep.url || '';
+
+  var tdMethod = document.createElement('td');
+  tdMethod.className = 'crawl-method';
+  tdMethod.textContent = ep.method || '';
+
+  var tdParams = document.createElement('td');
+  tdParams.className = 'crawl-params';
+  tdParams.textContent = (ep.params && ep.params.length ? ep.params.join(', ') : '\u2014');
+
+  var tdKind = document.createElement('td');
+  tdKind.className = 'crawl-kind';
+  tdKind.textContent = ep.kind || '';
+
+  var tdFound = document.createElement('td');
+  tdFound.className = 'crawl-found';
+  tdFound.textContent = ep.found_at || '';
+
+  tr.appendChild(tdUrl);
+  tr.appendChild(tdMethod);
+  tr.appendChild(tdParams);
+  tr.appendChild(tdKind);
+  tr.appendChild(tdFound);
+  _crawlBody.appendChild(tr);
+}
+
+function crawlChip(text) {
+  var s = document.createElement('span');
+  s.className = 'crawl-chip';
+  s.textContent = text;
+  _crawlMeta.appendChild(s);
+}
+
+function crawlRender(d) {
+  crawlStatusSet('Crawl complete.', 'ok');
+  _crawlResults.classList.remove('hidden');
+
+  crawlClear(_crawlBody);
+  (d.discovered || []).forEach(crawlAddRow);
+
+  crawlClear(_crawlMeta);
+  crawlChip('Target: ' + d.target);
+  crawlChip('Scope: ' + (d.scope || []).join(', '));
+  crawlChip('Pages fetched: ' + d.pages);
+  crawlChip('Endpoints found: ' + d.endpoints);
+  crawlChip('Duration: ' + (d.duration_sec || 0).toFixed(1) + 's');
+
+  var g = d.gate || {};
+  crawlChip('Requests sent: ' + (g.requests_sent || 0));
+
+  crawlClear(_crawlGate);
+  crawlGate.textContent = 'Gate: ' + (g.requests_sent || 0) + ' sent \u00b7 ' +
+    (g.requests_refused || 0) + ' refused (out-of-scope ' + (g.refused_out_of_scope || 0) +
+    ', intrusive off ' + (g.refused_intrusive || 0) +
+    ', budget ' + (g.refused_budget || 0) +
+    ', rate ' + (g.refused_rate || 0) +
+    ', dry-run ' + (g.refused_dry_run || 0) + ')';
+
+  crawlClear(_crawlNotes);
+  (d.notes || []).forEach(function(n) {
+    var li = document.createElement('li');
+    li.textContent = n;
+    _crawlNotes.appendChild(li);
+  });
+
+  toast('Crawl finished \u2014 ' + d.pages + ' pages, ' + d.endpoints + ' endpoints', 'ok');
+}
+
+function crawlRun(ev) {
+  if (ev) ev.preventDefault();
+  if (!_crawlForm || _crawlBtn.classList.contains('loading')) return;
+
+  var target = document.getElementById('crawlTarget').value.trim();
+  if (!target) {
+    crawlStatusSet('Enter a target URL first.', 'err');
+    return;
+  }
+
+  var payload = {
+    target: target,
+    depth: parseInt(document.getElementById('crawlDepth').value, 10) || 3,
+    pages: parseInt(document.getElementById('crawlPages').value, 10) || 100,
+    concurrency: parseInt(document.getElementById('crawlConcur').value, 10) || 5,
+    offsite: document.getElementById('crawlOffsite').checked,
+    dryRun: document.getElementById('crawlDryRun').checked
+  };
+
+  _crawlBtn.classList.add('loading');
+  _crawlResults.classList.add('hidden');
+  crawlStatusSet('Crawling ' + target + ' \u2014 every hop passes the scope gate.', '');
+
+  fetch(API + '/api/crawl/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(r) {
+    if (r.status === 401) { setLocked(); throw new Error('locked'); }
+    return r.json().then(function(d) { return { r: r, d: d }; });
+  }).then(function(x) {
+    if (!x) return;
+    if (!x.r.ok) {
+      var msg = (x.d && (x.d.reason || x.d.error)) || ('HTTP ' + x.r.status);
+      crawlStatusSet(msg, x.d && x.d.denied ? 'warn' : 'err');
+      toast('Crawl refused: ' + msg, 'error');
+      return;
+    }
+    crawlRender(x.d);
+  }).catch(function(e) {
+    if (String(e) === 'Error: locked') return;
+    crawlStatusSet('Crawl failed: ' + e, 'err');
+    toast('Crawl failed', 'error');
+  }).then(function() {
+    _crawlBtn.classList.remove('loading');
+  });
+}
+
+if (_crawlForm) _crawlForm.addEventListener('submit', crawlRun);
+
 /* ---- Summary ---- */
 var _sumClose = document.getElementById('summaryClose');
 if (_sumClose) _sumClose.addEventListener('click', hideSummary);

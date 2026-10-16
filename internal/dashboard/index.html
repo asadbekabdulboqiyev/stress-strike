@@ -397,6 +397,59 @@
     </div>
   </section>
 
+  <!-- Crawler (katana-like site spider) -->
+  <section class="panel panel--last crawl-panel" id="crawlSection" aria-labelledby="crawlTitle">
+    <div class="panel-title"><span class="dot dot-blue"></span> <span id="crawlTitle">Site Crawler (open pages)</span></div>
+    <p class="crawl-note">
+      Crawls the target like a spider: follows <code>&lt;a href&gt;</code> links and <code>&lt;form&gt;</code>
+      actions, then lists every endpoint discovered (URL, method, parameters, where found).
+      <br><br>
+      By default only the host you type is crawled — offsite links are skipped and redirect
+      hops stay on the original host. Pass <strong>Offsite</strong> to allow following links
+      to other hosts. Every hop passes the same scope gate the scanner uses.
+    </p>
+
+    <form class="crawl-form" id="crawlForm" autocomplete="off" novalidate>
+      <div class="field field-url crawl-field">
+        <label class="field-label" for="crawlTarget">Start URL</label>
+        <input id="crawlTarget" type="text" placeholder="https://example.com" spellcheck="false" required>
+      </div>
+      <div class="field crawl-field crawl-field--depth">
+        <label class="field-label" for="crawlDepth">Max depth</label>
+        <input id="crawlDepth" type="number" value="3" min="1" max="10" title="How many link hops away from the start URL to follow">
+      </div>
+      <div class="field crawl-field crawl-field--pages">
+        <label class="field-label" for="crawlPages">Max pages</label>
+        <input id="crawlPages" type="number" value="100" min="1" max="1000" title="How many pages to fetch at most">
+      </div>
+      <div class="field crawl-field crawl-field--concur">
+        <label class="field-label" for="crawlConcur">Concurrency</label>
+        <input id="crawlConcur" type="number" value="5" min="1" max="20" title="How many pages to fetch at the same time">
+      </div>
+      <label class="crawl-check"><input type="checkbox" id="crawlOffsite"> Follow offsite links</label>
+      <label class="crawl-check"><input type="checkbox" id="crawlDryRun"> Dry run</label>
+      <button class="btn btn-primary crawl-run" id="btnCrawlRun" type="submit">
+        <span class="btn-label">Start crawl</span>
+      </button>
+    </form>
+
+    <div class="crawl-status" id="crawlStatus" role="status" aria-live="polite"></div>
+
+    <div class="crawl-results hidden" id="crawlResults">
+      <div class="crawl-meta" id="crawlMeta"></div>
+      <div class="table-wrap">
+        <table class="crawl-table">
+          <thead>
+            <tr><th scope="col">URL</th><th scope="col">Method</th><th scope="col">Params</th><th scope="col">Kind</th><th scope="col">Found at</th></tr>
+          </thead>
+          <tbody id="crawlBody"></tbody>
+        </table>
+      </div>
+      <div class="crawl-gate" id="crawlGate"></div>
+      <ul class="crawl-notes" id="crawlNotes"></ul>
+    </div>
+  </section>
+
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">
     <div class="panel">

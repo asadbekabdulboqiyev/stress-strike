@@ -392,6 +392,8 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleOWASPScan(w, r)
 	case path == "/api/pentest/scan":
 		s.handlePentestScan(w, r)
+	case path == "/api/crawl/scan":
+		s.handleCrawlScan(w, r)
 	case path == "/style.css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Write(dashboardCSS)

@@ -903,6 +903,12 @@
       "count": 1
     },
     {
+      "rule": "G402",
+      "file": "internal/scanner/sslscan.go",
+      "code": "InsecureSkipVerify: true,",
+      "count": 1
+    },
+    {
       "rule": "G404",
       "file": "internal/siem/webhook.go",
       "code": "func randFloat() float64 { return rand.Float64() } //nolint:gosec // backoff jitter only; not security-sensitive",

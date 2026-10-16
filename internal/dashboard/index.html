@@ -450,6 +450,268 @@
     </div>
   </section>
 
+  <!-- Fuzz (coverage-guided HTTP fuzzer) -->
+  <section class="panel panel--last fuzz-panel" id="fuzzSection" aria-labelledby="fuzzTitle">
+    <div class="panel-title"><span class="dot dot-pink"></span> <span id="fuzzTitle">HTTP Fuzzer</span></div>
+    <p class="fuzz-note">
+      Coverage-guided HTTP fuzzer: mutates paths, query params, headers and bodies,
+      then reports responses that differ from the baseline (new status codes, bodies,
+      headers, 5xx, auth boundaries, slow responses).
+      <br><br>
+      Every mutation passes the scope gate. Intrusive mutations (write methods,
+      traversal, injection-ish strings) stay off unless enabled and authorized.
+    </p>
+
+    <form class="fuzz-form" id="fuzzForm" autocomplete="off" novalidate>
+      <div class="field field-url fuzz-field">
+        <label class="field-label" for="fuzzTarget">Target URL</label>
+        <input id="fuzzTarget" type="text" placeholder="https://example.com/api" spellcheck="false" required>
+      </div>
+      <div class="field fuzz-field fuzz-field--paths">
+        <label class="field-label" for="fuzzPaths">Paths (comma separated)</label>
+        <input id="fuzzPaths" type="text" placeholder="/item/{id}, /search?q=" spellcheck="false">
+      </div>
+      <div class="field fuzz-field fuzz-field--mutations">
+        <label class="field-label" for="fuzzMutations">Mutations per path</label>
+        <input id="fuzzMutations" type="number" value="100" min="1" max="1000">
+      </div>
+      <label class="fuzz-check"><input type="checkbox" id="fuzzIntrusive"> Intrusive mutations</label>
+      <button class="btn btn-primary fuzz-run" id="btnFuzzRun" type="submit">
+        <span class="btn-label">Start fuzz</span>
+      </button>
+    </form>
+
+    <div class="fuzz-status" id="fuzzStatus" role="status" aria-live="polite"></div>
+    <div class="fuzz-results hidden" id="fuzzResults">
+      <div class="fuzz-meta" id="fuzzMeta"></div>
+      <div class="table-wrap">
+        <table class="fuzz-table">
+          <thead>
+            <tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Body</th><th scope="col">Mutation</th><th scope="col">Reason</th></tr>
+          </thead>
+          <tbody id="fuzzBody"></tbody>
+        </table>
+      </div>
+      <div class="fuzz-gate" id="fuzzGate"></div>
+      <ul class="fuzz-notes" id="fuzzNotes"></ul>
+    </div>
+  </section>
+
+  <!-- Subdomain enumeration -->
+  <section class="panel panel--last subdomain-panel" id="subdomainSection" aria-labelledby="subdomainTitle">
+    <div class="panel-title"><span class="dot dot-indigo"></span> <span id="subdomainTitle">Subdomain Enumeration</span></div>
+    <p class="subdomain-note">
+      Passive subdomain discovery via certificate transparency (crt.sh) and DNS
+      records. No active probing of discovered hosts is performed.
+    </p>
+
+    <form class="subdomain-form" id="subdomainForm" autocomplete="off" novalidate>
+      <div class="field field-url subdomain-field">
+        <label class="field-label" for="subdomainTarget">Target domain</label>
+        <input id="subdomainTarget" type="text" placeholder="example.com" spellcheck="false" required>
+      </div>
+      <button class="btn btn-primary subdomain-run" id="btnSubdomainRun" type="submit">
+        <span class="btn-label">Enumerate</span>
+      </button>
+    </form>
+
+    <div class="subdomain-status" id="subdomainStatus" role="status" aria-live="polite"></div>
+    <div class="subdomain-results hidden" id="subdomainResults">
+      <div class="subdomain-meta" id="subdomainMeta"></div>
+      <div class="table-wrap">
+        <table class="subdomain-table">
+          <thead>
+            <tr><th scope="col">Subdomain</th><th scope="col">IPs</th><th scope="col">Source</th><th scope="col">Methods</th></tr>
+          </thead>
+          <tbody id="subdomainBody"></tbody>
+        </table>
+      </div>
+      <ul class="subdomain-notes" id="subdomainNotes"></ul>
+    </div>
+  </section>
+
+  <!-- Port scan -->
+  <section class="panel panel--last portscan-panel" id="portscanSection" aria-labelledby="portscanTitle">
+    <div class="panel-title"><span class="dot dot-orange"></span> <span id="portscanTitle">Port Scanner</span></div>
+    <p class="portscan-note">
+      TCP service discovery with banner grabbing. Scans a curated set of common
+      ports on the target host and reports open ports, services and banners.
+    </p>
+
+    <form class="portscan-form" id="portscanForm" autocomplete="off" novalidate>
+      <div class="field field-url portscan-field">
+        <label class="field-label" for="portscanTarget">Target host</label>
+        <input id="portscanTarget" type="text" placeholder="example.com" spellcheck="false" required>
+      </div>
+      <div class="field portscan-field portscan-field--ports">
+        <label class="field-label" for="portscanPorts">Ports (comma separated)</label>
+        <input id="portscanPorts" type="text" placeholder="22,80,443,8080,8443" spellcheck="false">
+      </div>
+      <button class="btn btn-primary portscan-run" id="btnPortscanRun" type="submit">
+        <span class="btn-label">Scan ports</span>
+      </button>
+    </form>
+
+    <div class="portscan-status" id="portscanStatus" role="status" aria-live="polite"></div>
+    <div class="portscan-results hidden" id="portscanResults">
+      <div class="portscan-meta" id="portscanMeta"></div>
+      <div class="table-wrap">
+        <table class="portscan-table">
+          <thead>
+            <tr><th scope="col">Port</th><th scope="col">State</th><th scope="col">Service</th><th scope="col">Banner</th></tr>
+          </thead>
+          <tbody id="portscanBody"></tbody>
+        </table>
+      </div>
+      <ul class="portscan-notes" id="portscanNotes"></ul>
+    </div>
+  </section>
+
+  <!-- Dir bust -->
+  <section class="panel panel--last dirbust-panel" id="dirbustSection" aria-labelledby="dirbustTitle">
+    <div class="panel-title"><span class="dot dot-red"></span> <span id="dirbustTitle">Directory Brute-forcer</span></div>
+    <p class="dirbust-note">
+      Guesses common files/directories (/admin, /.env, /.git/, /api, /swagger, ...)
+      and reports any that respond with a non-404 status.
+    </p>
+
+    <form class="dirbust-form" id="dirbustForm" autocomplete="off" novalidate>
+      <div class="field field-url dirbust-field">
+        <label class="field-label" for="dirbustTarget">Target URL</label>
+        <input id="dirbustTarget" type="text" placeholder="https://example.com" spellcheck="false" required>
+      </div>
+      <div class="field dirbust-field dirbust-field--paths">
+        <label class="field-label" for="dirbustPaths">Paths (comma separated)</label>
+        <input id="dirbustPaths" type="text" placeholder="/admin, /.env, /api" spellcheck="false">
+      </div>
+      <button class="btn btn-primary dirbust-run" id="btnDirbustRun" type="submit">
+        <span class="btn-label">Brute-force</span>
+      </button>
+    </form>
+
+    <div class="dirbust-status" id="dirbustStatus" role="status" aria-live="polite"></div>
+    <div class="dirbust-results hidden" id="dirbustResults">
+      <div class="dirbust-meta" id="dirbustMeta"></div>
+      <div class="table-wrap">
+        <table class="dirbust-table">
+          <thead>
+            <tr><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Size</th><th scope="col">Title</th></tr>
+          </thead>
+          <tbody id="dirbustBody"></tbody>
+        </table>
+      </div>
+      <ul class="dirbust-notes" id="dirbustNotes"></ul>
+    </div>
+  </section>
+
+  <!-- SSL/TLS scan -->
+  <section class="panel panel--last sslscan-panel" id="sslscanSection" aria-labelledby="sslscanTitle">
+    <div class="panel-title"><span class="dot dot-yellow"></span> <span id="sslscanTitle">SSL/TLS Analyzer</span></div>
+    <p class="sslscan-note">
+      Inspects the target's TLS configuration: certificate validity, issuer, SANs,
+      expiry, cipher suite and protocol version. Reports weak or expired configs.
+    </p>
+
+    <form class="sslscan-form" id="sslscanForm" autocomplete="off" novalidate>
+      <div class="field field-url sslscan-field">
+        <label class="field-label" for="sslscanTarget">Target host:port</label>
+        <input id="sslscanTarget" type="text" placeholder="example.com:443" spellcheck="false" required>
+      </div>
+      <button class="btn btn-primary sslscan-run" id="btnSSLScanRun" type="submit">
+        <span class="btn-label">Inspect TLS</span>
+      </button>
+    </form>
+
+    <div class="sslscan-status" id="sslscanStatus" role="status" aria-live="polite"></div>
+    <div class="sslscan-results hidden" id="sslscanResults">
+      <div class="sslscan-meta" id="sslscanMeta"></div>
+      <ul class="sslscan-notes" id="sslscanNotes"></ul>
+    </div>
+  </section>
+
+  <!-- JWT analyzer -->
+  <section class="panel panel--last jwt-panel" id="jwtSection" aria-labelledby="jwtTitle">
+    <div class="panel-title"><span class="dot dot-green"></span> <span id="jwtTitle">JWT Analyzer</span></div>
+    <p class="jwt-note">
+      Inspects a JWT for weaknesses: algorithm confusion (alg=none), missing claims,
+      expired tokens, and header injection vectors (kid/jku/x5u/x5c).
+    </p>
+
+    <form class="jwt-form" id="jwtForm" autocomplete="off" novalidate>
+      <div class="field jwt-field">
+        <label class="field-label" for="jwtToken">JWT token</label>
+        <textarea id="jwtToken" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." spellcheck="false" rows="3" required></textarea>
+      </div>
+      <button class="btn btn-primary jwt-run" id="btnJWTRun" type="submit">
+        <span class="btn-label">Analyze</span>
+      </button>
+    </form>
+
+    <div class="jwt-status" id="jwtStatus" role="status" aria-live="polite"></div>
+    <div class="jwt-results hidden" id="jwtResults">
+      <div class="jwt-meta" id="jwtMeta"></div>
+      <ul class="jwt-notes" id="jwtNotes"></ul>
+    </div>
+  </section>
+
+  <!-- GraphQL introspection -->
+  <section class="panel panel--last graphql-panel" id="graphqlSection" aria-labelledby="graphqlTitle">
+    <div class="panel-title"><span class="dot dot-teal"></span> <span id="graphqlTitle">GraphQL Scanner</span></div>
+    <p class="graphql-note">
+      Probes a GraphQL HTTP endpoint for introspection being enabled (schema exposure)
+      and dangerous field names.
+    </p>
+
+    <form class="graphql-form" id="graphqlForm" autocomplete="off" novalidate>
+      <div class="field field-url graphql-field">
+        <label class="field-label" for="graphqlTarget">GraphQL endpoint</label>
+        <input id="graphqlTarget" type="text" placeholder="https://example.com/graphql" spellcheck="false" required>
+      </div>
+      <button class="btn btn-primary graphql-run" id="btnGraphQLRun" type="submit">
+        <span class="btn-label">Probe</span>
+      </button>
+    </form>
+
+    <div class="graphql-status" id="graphqlStatus" role="status" aria-live="polite"></div>
+    <div class="graphql-results hidden" id="graphqlResults">
+      <div class="graphql-meta" id="graphqlMeta"></div>
+      <div class="table-wrap">
+        <table class="graphql-table">
+          <thead>
+            <tr><th scope="col">Type</th></tr>
+          </thead>
+          <tbody id="graphqlBody"></tbody>
+        </table>
+      </div>
+      <ul class="graphql-notes" id="graphqlNotes"></ul>
+    </div>
+  </section>
+
+  <!-- WebSocket security -->
+  <section class="panel panel--last websocket-panel" id="websocketSection" aria-labelledby="websocketTitle">
+    <div class="panel-title"><span class="dot dot-blue"></span> <span id="websocketTitle">WebSocket Tester</span></div>
+    <p class="websocket-note">
+      Connects to a WebSocket endpoint and checks for origin validation,
+      subprotocol negotiation, and unauthenticated message handling.
+    </p>
+
+    <form class="websocket-form" id="websocketForm" autocomplete="off" novalidate>
+      <div class="field field-url websocket-field">
+        <label class="field-label" for="websocketTarget">WebSocket URL</label>
+        <input id="websocketTarget" type="text" placeholder="wss://example.com/ws" spellcheck="false" required>
+      </div>
+      <button class="btn btn-primary websocket-run" id="btnWebSocketRun" type="submit">
+        <span class="btn-label">Test</span>
+      </button>
+    </form>
+
+    <div class="websocket-status" id="websocketStatus" role="status" aria-live="polite"></div>
+    <div class="websocket-results hidden" id="websocketResults">
+      <div class="websocket-meta" id="websocketMeta"></div>
+      <ul class="websocket-notes" id="websocketNotes"></ul>
+    </div>
+  </section>
+
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">
     <div class="panel">

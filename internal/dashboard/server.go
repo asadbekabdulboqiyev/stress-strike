@@ -394,6 +394,22 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handlePentestScan(w, r)
 	case path == "/api/crawl/scan":
 		s.handleCrawlScan(w, r)
+	case path == "/api/fuzz/scan":
+		s.handleFuzzScan(w, r)
+	case path == "/api/subdomain/scan":
+		s.handleSubdomainScan(w, r)
+	case path == "/api/portscan":
+		s.handlePortScan(w, r)
+	case path == "/api/dirbust":
+		s.handleDirBust(w, r)
+	case path == "/api/sslscan":
+		s.handleSSLScan(w, r)
+	case path == "/api/jwt/scan":
+		s.handleJWTScan(w, r)
+	case path == "/api/graphql/scan":
+		s.handleGraphQLScan(w, r)
+	case path == "/api/websocket/scan":
+		s.handleWebSocketScan(w, r)
 	case path == "/style.css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Write(dashboardCSS)

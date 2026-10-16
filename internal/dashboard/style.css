@@ -24,6 +24,8 @@
   --red-dim: #ef444433;
   --cyan: #06b6d4;
   --purple: #a855f7;
+  --indigo: #6366f1;
+  --teal: #14b8a6;
   --orange: #f97316;
   --pink: #ec4899;
   --radius: 10px;
@@ -1109,3 +1111,79 @@ kbd {
   line-height: 1.6;
 }
 .owasp-notes li { margin: 3px 0; }
+
+/* ---- New security panel colors ---- */
+.fuzz-panel .dot { background: var(--pink); box-shadow: 0 0 10px var(--pink); }
+.subdomain-panel .dot { background: var(--indigo); box-shadow: 0 0 10px var(--indigo); }
+.portscan-panel .dot { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
+.dirbust-panel .dot { background: var(--red); box-shadow: 0 0 10px var(--red); }
+.sslscan-panel .dot { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+.jwt-panel .dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
+.graphql-panel .dot { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.websocket-panel .dot { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+
+/* Generic result-table cell styles shared by new panels */
+.fuzz-table, .subdomain-table, .portscan-table, .dirbust-table, .graphql-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.fuzz-table th, .fuzz-table td,
+.subdomain-table th, .subdomain-table td,
+.portscan-table th, .portscan-table td,
+.dirbust-table th, .dirbust-table td,
+.graphql-table th, .graphql-table td {
+  border: 1px solid var(--border);
+  padding: var(--sp-1);
+  text-align: left;
+}
+.fuzz-table th, .subdomain-table th, .portscan-table th, .dirbust-table th, .graphql-table th {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* JWT / SSL / WebSocket meta chips */
+.jwt-meta, .sslscan-meta, .websocket-meta, .fuzz-meta, .subdomain-meta, .portscan-meta, .dirbust-meta, .graphql-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.jwt-chip, .sslscan-chip, .websocket-chip, .fuzz-chip, .subdomain-chip, .portscan-chip, .dirbust-chip, .graphql-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+
+/* New panel notes */
+.fuzz-notes, .subdomain-notes, .portscan-notes, .dirbust-notes, .sslscan-notes, .jwt-notes, .graphql-notes, .websocket-notes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.fuzz-notes li, .subdomain-notes li, .portscan-notes li, .dirbust-notes li,
+.sslscan-notes li, .jwt-notes li, .graphql-notes li, .websocket-notes li {
+  margin: 3px 0;
+}
+
+/* JWT textarea */
+.jwt-field textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-2);
+  color: var(--text-1);
+  resize: vertical;
+}

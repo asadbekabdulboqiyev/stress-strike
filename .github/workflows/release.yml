@@ -88,6 +88,16 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      # GoReleaser shells out to these two tools: syft for the `sboms` section
+      # and cosign for the `signs` section. Neither ships with the runner, so
+      # without these steps `goreleaser release` dies with
+      # `syft failed: executable file not found in $PATH`.
+      - name: Install syft (SBOM generator for the `sboms` section)
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Install cosign (keyless signing for the `signs` section)
+        uses: sigstore/cosign-installer@v3
+
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
         env:
@@ -98,21 +108,25 @@ jobs:
           version: ${{ env.GORELEASER_VERSION }}
           args: release --clean
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: goreleaser-*
-          merge-multiple: true
-
-      - name: Publish assets to the GitHub Release
+      # `goreleaser release --clean` already created the GitHub Release and
+      # uploaded every asset (archives, checksums, SBOMs, signatures). There is
+      # no Actions-artifact hop in between — goreleaser-action exposes no such
+      # upload — so assert what actually landed on the release instead of
+      # re-uploading from a directory that nothing populated.
+      - name: Verify the published release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
-          gh release edit "${GITHUB_REF_NAME}" --latest || true
+          expected=$(ls -1 dist/ | wc -l)
+          published=$(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets | length')
+          echo "dist/ holds ${expected} files; the release carries ${published} assets"
+          if [ "${published}" -eq 0 ]; then
+            echo "::error::release ${GITHUB_REF_NAME} has no assets"
+            exit 1
+          fi
+          gh release edit "${GITHUB_REF_NAME}" --latest
 
       - name: Summary
         run: |

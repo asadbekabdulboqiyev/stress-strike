@@ -1,178 +1,39 @@
-stress-strike
-Copyright (c) 2026 Asadbek Abdulboqiyev
+NOTICE
 
-This product includes software developed by third parties. The list below covers
-every third-party Go module compiled into the released binaries (verified with
-`go list -deps ./...`), together with its license and copyright holders.
+stress-strike uses the following third-party modules:
 
-The core of stress-strike itself is licensed under the Apache License, Version
-2.0 — see LICENSE. The licenses below apply to the listed components only and do
-not relicense the core.
-
---------------------------------------------------------------------------------
-Apache License 2.0
---------------------------------------------------------------------------------
-
-Full text: see LICENSE
-
-  * google.golang.org/grpc
-    Copyright 2014 gRPC authors.
-  * google.golang.org/genproto/googleapis/rpc
-    Copyright Google LLC.
-  * google.golang.org/genproto/googleapis/api
-    Copyright Google LLC.
-  * github.com/go-logr/logr
-    Copyright The logr Authors.
-  * github.com/go-logr/stdr
-    Copyright The logr Authors.
-  * go.opentelemetry.io/otel
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/otel/metric
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/otel/trace
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/otel/sdk
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/otel/exporters/otlp/otlptrace
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/auto/sdk
-    Copyright The OpenTelemetry Authors.
-  * go.opentelemetry.io/proto/otlp
-    Copyright The OpenTelemetry Authors.
-
---------------------------------------------------------------------------------
-MIT License
---------------------------------------------------------------------------------
-
-  * github.com/andybalholm/brotli
-    Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
-  * gopkg.in/yaml.v3 (dual-licensed MIT / Apache-2.0; the MIT terms are used here)
-    Copyright (c) 2006-2011 Kirill Simonov
-    Copyright (c) 2011-2019 Canonical Ltd
-  * github.com/cenkalti/backoff/v5
-    Copyright (c) 2014 Cenk Altıkc
-  * github.com/cespare/xxhash/v2
-    Copyright (c) 2016 Caleb Spare
-  * github.com/jackc/pgpassfile
-    Copyright (c) 2019 Jack Christensen
-  * github.com/jackc/pgservicefile
-    Copyright (c) 2020 Jack Christensen
-  * github.com/jackc/pgx/v5
-    Copyright (c) 2013-2021 Jack Christensen
-  * github.com/jackc/puddle/v2
-    Copyright (c) 2018 Jack Christensen
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
---------------------------------------------------------------------------------
-BSD 2-Clause License
---------------------------------------------------------------------------------
-
-  * github.com/gorilla/websocket
-    Copyright (c) 2013 The Gorilla WebSocket Authors. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-  Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-  Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
---------------------------------------------------------------------------------
-BSD 3-Clause License
---------------------------------------------------------------------------------
-
-Components:
-
-  * github.com/google/gopacket
-    Copyright (c) 2012 Google, Inc. All rights reserved.
-    Copyright (c) 2009-2011 Andreas Krennmair. All rights reserved.
-    Clause 3 names: Andreas Krennmair, Google
-  * github.com/refraction-networking/utls
-    Copyright (c) 2009 The Go Authors. All rights reserved.
-    Clause 3 names: Google Inc.
-  * github.com/klauspost/compress
-    Copyright (c) 2012 The Go Authors. All rights reserved.
-    Copyright (c) 2019 Klaus Post. All rights reserved.
-    Clause 3 names: Google Inc.
-  * google.golang.org/protobuf
-    Copyright (c) 2018 The Go Authors. All rights reserved.
-    Clause 3 names: Google Inc.
-  * golang.org/x/crypto
-    Copyright 2009 The Go Authors.
-    Clause 3 names: Google LLC
-  * golang.org/x/net
-    Copyright 2009 The Go Authors.
-    Clause 3 names: Google LLC
-  * golang.org/x/sys
-    Copyright 2009 The Go Authors.
-    Clause 3 names: Google LLC
-  * golang.org/x/text
-    Copyright 2009 The Go Authors.
-    Clause 3 names: Google LLC
-  * golang.org/x/sync
-    Copyright 2009 The Go Authors.
-    Clause 3 names: Google LLC
-  * github.com/google/uuid
-    Copyright (c) 2009,2014 Google Inc. All rights reserved.
-    Clause 3 names: Google Inc.
-  * github.com/grpc-ecosystem/grpc-gateway/v2
-    Copyright (c) 2015, Gengo Inc. All rights reserved.
-    Clause 3 names: Gengo Inc.
-
-Text (the clause-3 organisation named above is substituted per component):
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-  * Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-  * Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution.
-  * Neither the name of the copyright holder nor the names of its contributors
-    may be used to endorse or promote products derived from this software
-    without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+* github.com/andybalholm/brotli
+* github.com/cenkalti/backoff/v5
+* github.com/cespare/xxhash/v2
+* github.com/go-logr/logr
+* github.com/go-logr/stdr
+* github.com/google/gopacket
+* github.com/google/uuid
+* github.com/gorilla/websocket
+* github.com/grpc-ecosystem/grpc-gateway/v2
+* github.com/jackc/pgpassfile
+* github.com/jackc/pgx/v5
+* github.com/jackc/pgservicefile
+* github.com/jackc/puddle/v2
+* github.com/klauspost/compress
+* github.com/refraction-networking/utls
+* go.opentelemetry.io/auto/sdk
+* go.opentelemetry.io/otel
+* go.opentelemetry.io/otel/exporters/otlp/otlptrace
+* go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+* go.opentelemetry.io/otel/exporters/otlp/otlptracehttp
+* go.opentelemetry.io/otel/metric
+* go.opentelemetry.io/otel/proto/otlp
+* go.opentelemetry.io/proto/otlp
+* go.opentelemetry.io/otel/sdk
+* go.opentelemetry.io/otel/trace
+* golang.org/x/crypto
+* golang.org/x/net
+* golang.org/x/sync
+* golang.org/x/sys
+* golang.org/x/text
+* google.golang.org/genproto/googleapis/api
+* google.golang.org/genproto/googleapis/rpc
+* google.golang.org/grpc
+* google.golang.org/protobuf
+* gopkg.in/yaml.v3

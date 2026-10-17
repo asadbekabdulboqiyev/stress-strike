@@ -91,7 +91,22 @@ func (s *Server) handlePortScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := scanner.ScanPorts(context.Background(), target, req.Ports, nil)
+	// Build scope gate: default to the target hostname only (no Allow/AllowAll on this endpoint).
+	gate, err := scanner.NewGuard(scanner.GuardConfig{
+		Allow:       []string{owaspScopeHost(parsed)},
+		AllowAll:    false,
+		Intrusive:   false,
+		RPS:         scanner.DefaultRPS,
+		MaxRequests: scanner.DefaultMaxRequests,
+		Timeout:     scanner.DefaultTimeout,
+		DryRun:      false,
+	})
+	if err != nil {
+		owaspWriteError(w, http.StatusBadRequest, "invalid probe policy: "+err.Error())
+		return
+	}
+
+	result := scanner.ScanPorts(context.Background(), parsed.Hostname(), req.Ports, gate)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(PortScanResult{OK: true, Target: target, Opened: result.Opened, Closed: result.Closed, Ports: result.Ports, Duration: result.Duration.Seconds()})
 }

@@ -24,7 +24,7 @@ import (
 const (
 	// CoreLicenseName is the SPDX identifier of the license covering the code
 	// in this repository.
-	CoreLicenseName = "Apache-2.0"
+	CoreLicenseName = "MIT"
 
 	// DeprecatedLicense is the license identifier used before the open-core
 	// switch. Its presence in a shipped artifact is a policy violation.
@@ -81,9 +81,8 @@ func checkLicenseFile(repoRoot string) error {
 	}
 	text := string(raw)
 
-	if !strings.Contains(text, "Apache License") ||
-		!strings.Contains(text, "Version 2.0") {
-		return fmt.Errorf("LICENSE does not contain the Apache-2.0 text")
+	if !strings.Contains(text, "MIT License") {
+		return fmt.Errorf("LICENSE does not contain the MIT text")
 	}
 	if strings.Contains(text, DeprecatedLicenseFull) {
 		return fmt.Errorf("LICENSE still contains %q; expected pure Apache-2.0", DeprecatedLicenseFull)

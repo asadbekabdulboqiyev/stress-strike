@@ -90,7 +90,22 @@ func (s *Server) handleDirBust(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := scanner.DirBust(context.Background(), target, req.Paths, nil)
+	// Build scope gate: default to the target hostname only (no Allow/AllowAll on this endpoint).
+	gate, err := scanner.NewGuard(scanner.GuardConfig{
+		Allow:       []string{owaspScopeHost(parsed)},
+		AllowAll:    false,
+		Intrusive:   false,
+		RPS:         scanner.DefaultRPS,
+		MaxRequests: scanner.DefaultMaxRequests,
+		Timeout:     scanner.DefaultTimeout,
+		DryRun:      false,
+	})
+	if err != nil {
+		owaspWriteError(w, http.StatusBadRequest, "invalid probe policy: "+err.Error())
+		return
+	}
+
+	result := scanner.DirBust(context.Background(), target, req.Paths, gate)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(DirBustScanResult{OK: true, Target: target, Found: result.Found, Entries: result.Entries, Duration: result.Duration.Seconds()})
 }

@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
@@ -97,7 +98,17 @@ func (s *Server) handleSSLScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := scanner.ScanSSL(context.Background(), target)
+	// ScanSSL needs host:port; parsed.String() includes the scheme which breaks dialing.
+	var scanTarget string
+	if p := parsed.Port(); p != "" {
+		scanTarget = net.JoinHostPort(parsed.Hostname(), p)
+	} else if parsed.Scheme == "https" {
+		scanTarget = net.JoinHostPort(parsed.Hostname(), "443")
+	} else {
+		scanTarget = net.JoinHostPort(parsed.Hostname(), "80")
+	}
+
+	result := scanner.ScanSSL(context.Background(), scanTarget)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(SSLScanResult{OK: true, Target: target, Valid: result.Valid, Issuer: result.Issuer, Subject: result.Subject, NotBefore: result.NotBefore, NotAfter: result.NotAfter, Expired: result.Expired, SANs: result.SANs, Cipher: result.Cipher, Version: result.Version, Issues: result.Issues, Duration: result.Duration.Seconds()})
 }

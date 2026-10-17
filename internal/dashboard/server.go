@@ -4,11 +4,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -336,10 +338,24 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.authMiddleware != nil {
-		s.authMiddleware(http.HandlerFunc(s.serveApp)).ServeHTTP(w, r)
+		s.authMiddleware(s.recoverMiddleware(http.HandlerFunc(s.serveApp))).ServeHTTP(w, r)
 		return
 	}
-	s.serveApp(w, r)
+	s.recoverMiddleware(http.HandlerFunc(s.serveApp)).ServeHTTP(w, r)
+}
+
+// recoverMiddleware panics inside handler (e.g. nil-Requester deref) without
+// killing the dashboard process. It returns 500 instead.
+func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("dashboard panic: %v\n%s", rec, debug.Stack())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // serveOps dispatches an operations request to its handler. When no handler

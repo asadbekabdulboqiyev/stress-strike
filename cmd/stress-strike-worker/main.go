@@ -27,7 +27,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
 )
 
-var version = "0.14.4"
+var version = "0.14.5"
 
 var (
 	listenAddr = flag.String("listen", ":0", "Worker listen address")

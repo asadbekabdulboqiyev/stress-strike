@@ -130,16 +130,18 @@ func TestTelemetryBasic(t *testing.T) {
 	// Record overall
 	tel.Overall.Record(15*time.Millisecond, 200, "")
 
-	// Test before Finish
-	if tel.Elapsed() <= 0 {
-		t.Error("elapsed should be positive before Finish")
-	}
+	// Test before Finish. Coarse monotonic clocks report an exact zero until
+	// their first tick (Windows advances in ~15 ms steps), so wait for a tick
+	// instead of asserting positivity against the very first reading.
+	waitForPositiveElapsed(t, tel, "before Finish")
 
 	tel.Finish()
 
+	// Finish captured the monotonic delta, and a tick already elapsed above,
+	// so the frozen duration is positive on every platform.
 	elapsed := tel.Elapsed()
 	if elapsed <= 0 {
-		t.Error("elapsed should be positive after Finish")
+		t.Errorf("elapsed after Finish = %v, want positive", elapsed)
 	}
 
 	totalReqs := tel.TotalRequests()
@@ -155,6 +157,55 @@ func TestTelemetryBasic(t *testing.T) {
 	rps := tel.RPS()
 	if rps <= 0 {
 		t.Error("RPS should be positive")
+	}
+}
+
+// waitForPositiveElapsed blocks until Elapsed() reports a non-zero duration,
+// failing the test after a bounded wait. A zero reading right after
+// NewTelemetry() is a property of the clock, not of Telemetry: coarse monotonic
+// clocks (Windows advances in ~15 ms steps) do not move until their first tick.
+func waitForPositiveElapsed(t *testing.T, tel *Telemetry, when string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for tel.Elapsed() <= 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("Elapsed() stayed non-positive for 5s (%s)", when)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// TestTelemetryElapsedIsMonotonicAcrossFinish pins the bug that made this suite
+// flaky on Windows: Finish() used to store a wall-clock timestamp and Elapsed()
+// subtracted it from the monotonic Start, which falls back to the OS wall clock
+// — a clock that only advances every ~15 ms there, so a run shorter than that
+// reported an elapsed of 0 (and RPS of 0) after Finish even though the live
+// reading had been positive. The frozen value must never be smaller than the
+// live reading it replaces.
+func TestTelemetryElapsedIsMonotonicAcrossFinish(t *testing.T) {
+	tel := NewTelemetry()
+	waitForPositiveElapsed(t, tel, "before Finish")
+	live := tel.Elapsed()
+
+	tel.Finish()
+
+	frozen := tel.Elapsed()
+	if frozen < live {
+		t.Errorf("Elapsed() after Finish = %v, want >= live reading %v", frozen, live)
+	}
+}
+
+// TestTelemetryElapsedFrozenAfterFinish documents that Finish freezes the
+// duration: later reads keep returning the same value.
+func TestTelemetryElapsedFrozenAfterFinish(t *testing.T) {
+	tel := NewTelemetry()
+	waitForPositiveElapsed(t, tel, "before Finish")
+	tel.Finish()
+
+	first := tel.Elapsed()
+	time.Sleep(20 * time.Millisecond)
+	if again := tel.Elapsed(); again != first {
+		t.Errorf("Elapsed() changed after Finish: %v then %v", first, again)
 	}
 }
 

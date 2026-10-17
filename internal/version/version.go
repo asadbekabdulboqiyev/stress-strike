@@ -4,7 +4,7 @@
 // Dockerfiles:
 //
 //	go build -ldflags "\
-//	  -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=0.14.4 \
+//	  -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=0.14.5 \
 //	  -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=af13f15 \
 //	  -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date=2026-10-01T00:00:00Z"
 //
@@ -16,7 +16,7 @@ package version
 import "runtime/debug"
 
 var (
-	// Version is the semantic version, e.g. "0.14.4". Overridden at link time.
+	// Version is the semantic version, e.g. "0.14.5". Overridden at link time.
 	Version = "dev"
 
 	// Commit is the git commit SHA the binary was built from.

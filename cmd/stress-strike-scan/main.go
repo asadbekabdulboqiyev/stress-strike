@@ -29,8 +29,8 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
 )
 
-// version is stamped at build time: go build -ldflags "-X main.version=0.14.4"
-var version = "0.14.4"
+// version is stamped at build time: go build -ldflags "-X main.version=0.14.5"
+var version = "0.14.5"
 
 const (
 	// authzDeniedExitCode is returned when the authorization policy blocks the

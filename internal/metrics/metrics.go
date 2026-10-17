@@ -113,9 +113,16 @@ type Telemetry struct {
 	PeakUsers   atomic.Int64
 	Timeline    Timeline
 	warmupUntil atomic.Int64
-	// endUnixNano mirrors End for lock-free reads while a run is still live:
-	// Elapsed() must be safe to call concurrently with Finish().
-	endUnixNano atomic.Int64
+	// finished/elapsedNanos let Elapsed() read a finished run's duration
+	// without a lock, so it stays safe to call concurrently with Finish().
+	//
+	// The duration is captured as a monotonic delta at Finish() rather than as
+	// a wall-clock timestamp: a time.Time built by time.Unix() carries no
+	// monotonic reading, so subtracting it from Start (which does) silently
+	// falls back to the OS wall clock. Windows only advances that clock every
+	// ~15 ms, which made Elapsed() report 0 for genuinely short runs.
+	finished     atomic.Bool
+	elapsedNanos atomic.Int64
 }
 
 func NewTelemetry() *Telemetry {
@@ -147,12 +154,16 @@ func (t *Telemetry) AddStep(stats *StepStats) {
 func (t *Telemetry) Finish() {
 	now := time.Now()
 	t.End = now
-	t.endUnixNano.Store(now.UnixNano())
+	t.elapsedNanos.Store(int64(now.Sub(t.Start)))
+	t.finished.Store(true)
 }
 
+// Elapsed reports how long the run has been going, freezing the value once
+// Finish has been called. While the run is live it reads the monotonic clock;
+// after Finish it returns the duration that Finish captured.
 func (t *Telemetry) Elapsed() time.Duration {
-	if n := t.endUnixNano.Load(); n != 0 {
-		return time.Unix(0, n).Sub(t.Start)
+	if t.finished.Load() {
+		return time.Duration(t.elapsedNanos.Load())
 	}
 	return time.Since(t.Start)
 }

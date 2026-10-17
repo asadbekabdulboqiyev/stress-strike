@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -358,10 +359,33 @@ func TestRawTCPClientTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer lis.Close()
+
+	// Hold the accepted socket open — and reachable — until the test finishes.
+	// Assigning it to a blank identifier would let the GC run net's finalizer,
+	// which closes the fd: the server never reads the client's "test", so that
+	// close turns into a connection reset and the client reports
+	// connection_error instead of the timeout this test asserts. A dropped
+	// connection plus a live GC is exactly how this flaked on windows-latest.
+	done := make(chan struct{})
+	defer close(done)
 	go func() {
-		_, _ = lis.Accept()
-		// Don't read/write, just hold connection
-		select {}
+		conn, err := lis.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		<-done // park with `conn` still referenced: no finalizer, no reset
+	}()
+
+	// Collect while the read is pending, so a dropped reference fails here
+	// instead of only under load on windows-latest. The socket stays reachable,
+	// so the finalizer never runs and the read must still time out.
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(20 * time.Millisecond)
+			runtime.GC()
+		}
 	}()
 
 	e := &Engine{}

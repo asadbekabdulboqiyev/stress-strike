@@ -161,7 +161,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh release download "${GITHUB_REF_NAME}" --dir dist
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --dir dist
 
       - name: Attest build provenance (SLSA)
         uses: actions/attest-build-provenance@v2
@@ -202,7 +202,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh release download "${GITHUB_REF_NAME}" --dir dist
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --dir dist
 
       - name: Locate archive + SBOM
         id: probe
@@ -251,7 +251,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh release download "${GITHUB_REF_NAME}" --dir dist
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --dir dist
 
       - name: Verify checksums.txt signature
         run: |

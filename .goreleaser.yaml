@@ -109,6 +109,9 @@ archives:
   - id: stress-strike
     builds: [stress-strike]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE
@@ -119,6 +122,9 @@ archives:
   - id: stress-strike-dashboard
     builds: [stress-strike-dashboard]
     name_template: "{{ .ProjectName }}-dashboard_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE
@@ -127,6 +133,9 @@ archives:
   - id: stress-strike-master
     builds: [stress-strike-master]
     name_template: "{{ .ProjectName }}-master_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE
@@ -139,6 +148,9 @@ archives:
   - id: stress-strike-worker
     builds: [stress-strike-worker]
     name_template: "{{ .ProjectName }}-worker_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE
@@ -152,6 +164,9 @@ archives:
   - id: stress-strike-replay
     builds: [stress-strike-replay]
     name_template: "{{ .ProjectName }}-replay_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE
@@ -160,6 +175,9 @@ archives:
   - id: stress-strike-scan
     builds: [stress-strike-scan]
     name_template: "{{ .ProjectName }}-scan_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
     files:
       - LICENSE

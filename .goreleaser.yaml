@@ -181,7 +181,8 @@ sboms:
 # ── cosign keyless signatures over checksums + SBOMs ───────────────────────
 # Uses GitHub OIDC, so there is no long-lived signing key to leak.
 signs:
-  - cmd: cosign
+  - id: checksum-sign
+    cmd: cosign
     certificate: "${artifact}.pem"
     args:
       - sign-blob
@@ -192,7 +193,8 @@ signs:
     artifacts: checksum
     output: true
 
-  - cmd: cosign
+  - id: sbom-sign
+    cmd: cosign
     certificate: "${artifact}.pem"
     args:
       - sign-blob

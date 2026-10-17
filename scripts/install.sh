@@ -5,7 +5,7 @@
 #   curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh
 #   less install.sh          # read it before running it — it has no secrets and needs root
 #   ./install.sh             # latest release, checksum-verified
-#   ./install.sh v0.14.3     # pin a version
+#   ./install.sh v0.14.4     # pin a version
 #   ./install.sh --go        # install via the Go module proxy instead (no download server needed)
 #
 # Security properties (see SECURITY.md):

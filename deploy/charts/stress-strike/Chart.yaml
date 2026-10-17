@@ -3,4 +3,4 @@ name: stress-strike
 description: stress-strike distributed load testing
 type: application
 version: 0.1.0
-appVersion: "0.14.3"
+appVersion: "0.14.4"

@@ -481,7 +481,7 @@ def cmd_emit(out, samples_path, count, duration_s, target, seed):
             b64d(key["public_key_b64"]) + str(base_ns).encode()).hexdigest()[:12],
         "created_at": iso(base_ns),
         "tool": {"name": "VeriBench", "binary": "stress-strike",
-                 "version": "0.14.3", "protocol": "vpmp/v1"},
+                 "version": "0.14.4", "protocol": "vpmp/v1"},
         "signer": {"alg": "Ed25519", "key_id": key["key_id"],
                    "public_key_b64": key["public_key_b64"]},
         "target": {"url_origin": target, "tls_fingerprint": None},

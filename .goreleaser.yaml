@@ -107,11 +107,9 @@ builds:
 # text and the attribution notices with it.
 archives:
   - id: stress-strike
-    ids: [stress-strike]
+    builds: [stress-strike]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
@@ -119,21 +117,17 @@ archives:
       - src: SECURITY.md
 
   - id: stress-strike-dashboard
-    ids: [stress-strike-dashboard]
+    builds: [stress-strike-dashboard]
     name_template: "{{ .ProjectName }}-dashboard_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
 
   - id: stress-strike-master
-    ids: [stress-strike-master]
+    builds: [stress-strike-master]
     name_template: "{{ .ProjectName }}-master_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
@@ -143,11 +137,9 @@ archives:
   # host can be bootstrapped from the tarball alone (matches
   # scripts/build-worker-linux.sh).
   - id: stress-strike-worker
-    ids: [stress-strike-worker]
+    builds: [stress-strike-worker]
     name_template: "{{ .ProjectName }}-worker_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
@@ -158,21 +150,17 @@ archives:
       - src: docs/DISTRIBUTED.md
 
   - id: stress-strike-replay
-    ids: [stress-strike-replay]
+    builds: [stress-strike-replay]
     name_template: "{{ .ProjectName }}-replay_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
 
   - id: stress-strike-scan
-    ids: [stress-strike-scan]
+    builds: [stress-strike-scan]
     name_template: "{{ .ProjectName }}-scan_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+
     files:
       - LICENSE
       - NOTICE
@@ -218,7 +206,7 @@ signs:
 # ── Deb/RPM for the systemd story (license + NOTICE must ship too) ──────────
 nfpms:
   - id: packages
-    ids: [stress-strike]
+    builds: [stress-strike]
     package_name: stress-strike
     formats: [deb, rpm]
     maintainer: stress-strike maintainers <maintainers@stress-strike.invalid>
@@ -226,9 +214,7 @@ nfpms:
     license: Apache-2.0
     vendor: stress-strike
     homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    format_overrides:
-      - goos: windows
-        format: zip
+
     bindir: /usr/local/bin
     contents:
       - src: LICENSE

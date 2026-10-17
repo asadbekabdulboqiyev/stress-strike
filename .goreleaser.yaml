@@ -111,7 +111,7 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -123,7 +123,7 @@ archives:
     name_template: "{{ .ProjectName }}-dashboard_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -133,7 +133,7 @@ archives:
     name_template: "{{ .ProjectName }}-master_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -147,7 +147,7 @@ archives:
     name_template: "{{ .ProjectName }}-worker_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -162,7 +162,7 @@ archives:
     name_template: "{{ .ProjectName }}-replay_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -172,7 +172,7 @@ archives:
     name_template: "{{ .ProjectName }}-scan_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - LICENSE
       - NOTICE
@@ -226,9 +226,9 @@ nfpms:
     license: Apache-2.0
     vendor: stress-strike
     homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    formats_overrides:
+    format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     bindir: /usr/local/bin
     contents:
       - src: LICENSE
@@ -239,32 +239,6 @@ nfpms:
         dst: /usr/share/doc/stress-strike/README.md
 
 # ── Homebrew formula + Scoop manifest, auto-updated on release ─────────────
-brews:
-  - name: stress-strike
-    ids: [stress-strike]
-    repository:
-      owner: asadbekabdulboqiyev
-      name: homebrew-tap
-      branch: main
-    description: Distributed load testing and network simulator written in Go
-    homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    license: Apache-2.0
-    test: |
-      system "#{bin}/stress-strike", "--help"
-    install: |
-      bin.install "stress-strike"
-
-scoop:
-  - name: stress-strike
-    ids: [stress-strike]
-    repository:
-      owner: asadbekabdulboqiyev
-      name: scoop-bucket
-      branch: main
-    description: Distributed load testing and network simulator written in Go
-    homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-    license: Apache-2.0
-
 release:
   prerelease: auto
   footer: |

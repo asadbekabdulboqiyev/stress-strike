@@ -243,6 +243,10 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 		path     string
 		baseBody []byte
 		label    string
+		// intrusive marks a job whose payload only makes sense when intrusive
+		// probing is enabled. It is OR-ed with cfg.Intrusive before the Guard
+		// check so such a probe can never be sent unless the operator opted in.
+		intrusive bool
 	}
 
 	jobs := make(chan mutateJob)
@@ -255,12 +259,14 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 				if ctx.Err() != nil {
 					return
 				}
-				f.stats.sent++
-				snap := f.sendProbe(ctx, j.method, j.path, j.baseBody, f.cfg.Intrusive)
+				snap := f.sendProbe(ctx, j.method, j.path, j.baseBody, f.cfg.Intrusive || j.intrusive)
 				if snap == nil {
 					f.stats.refused++
 					continue
 				}
+				// Count only requests that were actually sent through the gate;
+				// attempts refused by policy never reach the network.
+				f.stats.sent++
 				baseMu.Lock()
 				base, ok := baseline[key(j.method, j.path)]
 				baseMu.Unlock()
@@ -298,8 +304,8 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 	for _, p := range f.cfg.Paths {
 		for _, m := range f.cfg.Methods {
 			for i := 0; i < f.cfg.Mutations; i++ {
-				label, body := f.mutate(p, m, injection, headerVals, writeMethods, bodyMut)
-				jobs <- mutateJob{method: m, path: p, baseBody: body, label: label}
+				label, body, isIntrusive := f.mutate(p, m, injection, headerVals, writeMethods, bodyMut, f.cfg.Intrusive)
+				jobs <- mutateJob{method: m, path: p, baseBody: body, label: label, intrusive: isIntrusive}
 				count++
 				if count >= f.cfg.Mutations*len(f.cfg.Paths)*len(f.cfg.Methods) {
 					break
@@ -356,9 +362,31 @@ func (f *Fuzzer) sendProbe(ctx context.Context, method, path string, body []byte
 	}
 }
 
-func (f *Fuzzer) mutate(path, method string, injection, headerVals, writeMethods, bodyMut []string) (string, []byte) {
+// mutate returns the next probe as (label, body, intrusive). The third value is
+// true for every mutation whose payload is potentially destructive — injection
+// strings, body mutations, traversal and write methods. Callers must treat such
+// a probe as intrusive regardless of cfg.Intrusive, so that a non-intrusive
+// campaign can never emit a payload the operator did not opt into.
+//
+// When cfg.Intrusive is false mutate only produces benign probes; the payload
+// branches below are unreachable in that mode. The intrusive return value is a
+// second line of defense for a caller that ignores the flag.
+func (f *Fuzzer) mutate(path, method string, injection, headerVals, writeMethods, bodyMut []string, intrusive bool) (string, []byte, bool) {
 	r := f.rng
 	var label string
+
+	if !intrusive {
+		// Benign mode: vary the request shape without destructive payloads.
+		if r.intn(2) == 0 {
+			return "plain", []byte(path), false
+		}
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		return "query-probe", []byte(path + sep + "q=test"), false
+	}
+
 	switch r.intn(6) {
 	case 0:
 		// path parameter injection
@@ -368,7 +396,7 @@ func (f *Fuzzer) mutate(path, method string, injection, headerVals, writeMethods
 			p = path + "/" + injection[idx]
 		}
 		label = "path-param"
-		return label, []byte(p)
+		return label, []byte(p), true
 	case 1:
 		// query injection
 		idx := r.intn(len(injection))
@@ -378,30 +406,30 @@ func (f *Fuzzer) mutate(path, method string, injection, headerVals, writeMethods
 		}
 		p := path + sep + "q=" + injection[idx]
 		label = "query-param"
-		return label, []byte(p)
+		return label, []byte(p), true
 	case 2:
 		// header injection (applied in sendProbe)
 		_ = r.intn(len(headerVals))
 		label = "header"
-		return label, []byte(path)
+		return label, []byte(path), true
 	case 3:
 		// body mutation
 		idx := r.intn(len(bodyMut))
 		label = "body"
-		return label, []byte(bodyMut[idx])
+		return label, []byte(bodyMut[idx]), true
 	case 4:
 		// write method (intrusive)
-		if f.cfg.Intrusive && len(writeMethods) > 0 {
+		if len(writeMethods) > 0 {
 			m := writeMethods[r.intn(len(writeMethods))]
 			label = "write-" + m
-			return label, []byte(bodyMut[r.intn(len(bodyMut))])
+			return label, []byte(bodyMut[r.intn(len(bodyMut))]), true
 		}
 		label = "plain"
-		return label, []byte(path)
+		return label, []byte(path), false
 	default:
 		// path traversal
 		label = "traversal"
-		return label, []byte(path + "/../../../etc/passwd")
+		return label, []byte(path + "/../../../etc/passwd"), true
 	}
 }
 

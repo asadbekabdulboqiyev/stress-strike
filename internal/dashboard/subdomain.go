@@ -67,14 +67,14 @@ func (s *Server) handleSubdomainScan(w http.ResponseWriter, r *http.Request) {
 		owaspWriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	target := parsed.String()
+	hostname := parsed.Hostname()
 
-	decision, err := subdomainGate(target)
+	decision, err := subdomainGate(hostname)
 	if err != nil {
 		owaspWriteError(w, http.StatusInternalServerError, "authorization policy error: "+err.Error())
 		return
 	}
-	auditErr := subdomainAudit(authz.Entry{Action: authz.OpScan.String(), Targets: []string{target}, IPs: decision.IPs, Class: decision.Class, Allowed: decision.Allowed, Rule: decision.Rule, Reason: decision.Reason, Argv: []string{"stress-strike dashboard", "POST /api/subdomain/scan"}})
+	auditErr := subdomainAudit(authz.Entry{Action: authz.OpScan.String(), Targets: []string{hostname}, IPs: decision.IPs, Class: decision.Class, Allowed: decision.Allowed, Rule: decision.Rule, Reason: decision.Reason, Argv: []string{"stress-strike dashboard", "POST /api/subdomain/scan"}})
 	if !decision.Allowed {
 		reason := decision.Reason
 		if auditErr != nil {
@@ -90,7 +90,7 @@ func (s *Server) handleSubdomainScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := scanner.EnumerateSubdomains(context.Background(), target, nil)
+	result := scanner.EnumerateSubdomains(context.Background(), hostname, nil)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(SubdomainScanResult{OK: true, Target: target, Found: result.Found, Resolved: result.Resolved, Subdomains: result.Subdomains, Duration: result.Duration.Seconds()})
+	_ = json.NewEncoder(w).Encode(SubdomainScanResult{OK: true, Target: hostname, Found: result.Found, Resolved: result.Resolved, Subdomains: result.Subdomains, Duration: result.Duration.Seconds()})
 }

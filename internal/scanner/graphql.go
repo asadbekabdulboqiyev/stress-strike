@@ -68,9 +68,7 @@ func ScanGraphQL(ctx context.Context, target string, req Requester) *GraphQLResu
 		res.Duration = sinceSeconds(start)
 		return res
 	}
-	if err := resp.Body.Close(); err != nil {
-		res.Issues = append(res.Issues, "body close: "+err.Error())
-	}
+	defer resp.Body.Close()
 	res.Reachable = true
 
 	var raw map[string]any

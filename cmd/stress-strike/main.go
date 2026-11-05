@@ -20,7 +20,9 @@ var version = "0.14.5"
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"demo-store", "pentest", "authorize", "audit", "healthcheck", "keygen", "verify", "help", "version",
+	"demo-store", "pentest", "fuzz", "dirbust", "jwt", "graphql", "websocket",
+	"crawl", "subdomain", "portscan", "sslscan",
+	"authorize", "audit", "healthcheck", "keygen", "verify", "help", "version",
 }
 
 func main() {
@@ -49,6 +51,33 @@ func main() {
 			return
 		case "pentest":
 			cmdPentest()
+			return
+		case "fuzz":
+			cmdFuzz()
+			return
+		case "dirbust":
+			cmdDirBust()
+			return
+		case "jwt":
+			cmdJWT()
+			return
+		case "graphql":
+			cmdGraphQL()
+			return
+		case "websocket":
+			cmdWebSocket()
+			return
+		case "crawl":
+			cmdCrawl()
+			return
+		case "subdomain":
+			cmdSubdomain()
+			return
+		case "portscan":
+			cmdPortScan()
+			return
+		case "sslscan":
+			cmdSSLScan()
 			return
 		case "demo-store":
 			cmdDemoStore()
@@ -133,6 +162,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    master      Distributed mode — master coordinator
    worker      Distributed mode — worker node
    demo-store  Launch bundled VoltStore demo (VeriGate ON)
+               subcommands: status | stop
    pentest     1-click professional security assessment
    authorize   Manage target authorizations (allow-list + approvals)
    audit       Show or verify the authorization audit trail
@@ -140,6 +170,23 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    verify      Verify a VeriBench (vpmp/v1) evidence bundle
    help        Show this help
    version     Show version
+
+═══════════════════════════════════════════════════════════════════════
+ INDIVIDUAL SCANNERS (each is scope-gated like pentest)
+═══════════════════════════════════════════════════════════════════════
+   fuzz        Coverage-aware HTTP fuzzer (path/query/body/header mutations)
+   dirbust     Directory/file brute-forcer
+   jwt         Offline JWT weakness analyzer (no network, no gate)
+   graphql     GraphQL introspection scanner
+   websocket   WebSocket security tester
+   crawl       Site spider — discover links, forms and endpoints
+   subdomain   Passive subdomain enumeration (crt.sh + DNS)
+   portscan    TCP port & service scanner
+   sslscan     TLS certificate & configuration analyzer
+
+   Shared gate flags: --authorized --policy --audit-log --notify-webhook
+                      --allow --allow-all --dry-run --rate --budget
+   Result output:     --json, --output-json <path>  (JSON to stdout / file)
 
 ═══════════════════════════════════════════════════════════════════════
  RUN FLAGS — Load Test
@@ -316,6 +363,22 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
 
   # 1-click security assessment
   stress-strike pentest --target https://example.com --depth 2 --verbose
+
+  # Individual scanners (each is scope-gated; add --authorized <ticket> for pentest-grade ops)
+  stress-strike fuzz    --target https://example.com --path /item/{id} --mutations 200
+  stress-strike dirbust --target https://example.com
+  stress-strike crawl   --target https://example.com --depth 3
+  stress-strike subdomain --target https://example.com
+  stress-strike portscan --target https://example.com --ports 22,80,443
+  stress-strike sslscan --target https://example.com
+  stress-strike graphql --target https://example.com/graphql
+  stress-strike websocket --url wss://example.com/socket
+
+  # Offline JWT analysis (no network, no gate) — token is never echoed back
+  stress-strike jwt --token eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.
+
+  # Preview any scanner's probe policy without sending a byte
+  stress-strike dirbust --target https://example.com --dry-run
 
   # Quiet mode (no progress bar, for scripts)
   stress-strike run --url https://api.example.com --users 100 --duration 60 --quiet

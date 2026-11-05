@@ -17,6 +17,12 @@ import (
 type Aggregator struct {
 	mu     sync.Mutex
 	latest map[string]*distproto.TelemetrySnapshot
+	// strict rejects snapshots that were not proven to carry a valid worker
+	// signature. It mirrors Master.attestationRequired and exists so the
+	// aggregator is not a back door: a caller that feeds it directly still
+	// cannot inject unverified telemetry while attestation is on.
+	strict   bool
+	rejected int
 }
 
 // NewAggregator returns an empty Aggregator.
@@ -24,14 +30,52 @@ func NewAggregator() *Aggregator {
 	return &Aggregator{latest: make(map[string]*distproto.TelemetrySnapshot)}
 }
 
-// Update stores the newest snapshot reported by a worker.
-func (a *Aggregator) Update(worker string, snap *distproto.TelemetrySnapshot) {
+// SetRequireVerified turns signature enforcement on or off. The Master keeps it
+// in sync with its own policy (see syncAttestationModeLocked).
+func (a *Aggregator) SetRequireVerified(require bool) {
+	a.mu.Lock()
+	a.strict = require
+	a.mu.Unlock()
+}
+
+// RequireVerified reports whether unsigned snapshots are currently refused.
+func (a *Aggregator) RequireVerified() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.strict
+}
+
+// RejectedCount returns how many snapshots were dropped for lack of a verified
+// signature. It is a tamper indicator for the fleet dashboard.
+func (a *Aggregator) RejectedCount() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.rejected
+}
+
+// Update stores the newest snapshot reported by a worker. In strict mode the
+// snapshot is treated as unverified and therefore refused — callers holding a
+// verification result must use UpdateVerified instead. It reports whether the
+// snapshot was stored.
+func (a *Aggregator) Update(worker string, snap *distproto.TelemetrySnapshot) bool {
+	return a.UpdateVerified(worker, snap, false)
+}
+
+// UpdateVerified stores the newest snapshot only when it is allowed in: either
+// the aggregator is not strict, or the caller proved the signature. It reports
+// whether the snapshot was stored.
+func (a *Aggregator) UpdateVerified(worker string, snap *distproto.TelemetrySnapshot, verified bool) bool {
 	if snap == nil {
-		return
+		return false
 	}
 	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.strict && !verified {
+		a.rejected++
+		return false
+	}
 	a.latest[worker] = snap
-	a.mu.Unlock()
+	return true
 }
 
 // Forget drops a worker's telemetry (used when it disconnects mid-run).

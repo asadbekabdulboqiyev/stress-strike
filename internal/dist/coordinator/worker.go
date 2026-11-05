@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
@@ -27,6 +28,12 @@ type WorkerConfig struct {
 	MaxConcurrentRuns int
 	Token             string
 	Logf              func(format string, args ...any)
+	// Keypair is this worker's Ed25519 identity. When set, every RunProgress
+	// and RunCompleted event is signed (see attest.go), which is what the
+	// master's signature half of worker attestation verifies. When nil the
+	// worker streams unsigned telemetry: acceptable only to a coordinator that
+	// does not require attestation.
+	Keypair *attest.Keypair
 }
 
 type runContext struct {
@@ -59,6 +66,17 @@ type Worker struct {
 func NewWorker(cfg WorkerConfig) *Worker {
 	if cfg.Logf == nil {
 		cfg.Logf = log.Printf
+	}
+	if cfg.Keypair != nil {
+		// Log the fingerprint, never the key material, so an operator can
+		// confirm the worker identity that registration will pin.
+		pub := attest.PublicKeyHex(cfg.Keypair.Public)
+		if len(pub) > 16 {
+			pub = pub[:16]
+		}
+		cfg.Logf("worker %s telemetry signing enabled (ed25519 %s…)", cfg.ID, pub)
+	} else {
+		cfg.Logf("worker %s telemetry signing DISABLED (no keypair; only acceptable to an unattested coordinator)", cfg.ID)
 	}
 	return &Worker{
 		cfg:        cfg,
@@ -206,14 +224,19 @@ func (w *Worker) runStream(runCtx context.Context, start *distproto.StartRun, st
 				continue
 			}
 			snap := TelemetryToProto(tel, tel.Overall.Latency.Snapshot())
+			rp := &distproto.RunProgress{
+				RunId:     start.RunId,
+				Timestamp: time.Now().UnixMilli(),
+				Telemetry: snap,
+			}
+			if err := w.attestProgress(rp); err != nil {
+				w.cfg.Logf("progress attestation failed for %s: %v", start.RunId, err)
+				w.sendFailure(stream, start.RunId, "progress attestation: "+err.Error())
+				w.cancelRun(start.RunId)
+				return
+			}
 			if err := w.send(stream, &distproto.WorkerEvent{
-				Payload: &distproto.WorkerEvent_RunProgress{
-					RunProgress: &distproto.RunProgress{
-						RunId:     start.RunId,
-						Timestamp: time.Now().UnixMilli(),
-						Telemetry: snap,
-					},
-				},
+				Payload: &distproto.WorkerEvent_RunProgress{RunProgress: rp},
 			}); err != nil {
 				w.cfg.Logf("progress send failed for %s: %v", start.RunId, err)
 				w.cancelRun(start.RunId)
@@ -231,14 +254,21 @@ func (w *Worker) runStream(runCtx context.Context, start *distproto.StartRun, st
 				w.cfg.Logf("run %s ended with error: %v", start.RunId, res.err)
 			}
 			r := report.Build(res.tel, scenario)
+			rc := &distproto.RunCompleted{
+				RunId:     start.RunId,
+				Timestamp: time.Now().UnixMilli(),
+				Report:    ReportToProto(&r),
+			}
+			// A signing failure must not turn into an unsigned completion:
+			// an attested master would (correctly) reject it and lose the run,
+			// so the failure is reported explicitly instead.
+			if err := w.attestCompleted(rc); err != nil {
+				w.cfg.Logf("final report attestation failed for %s: %v", start.RunId, err)
+				w.sendFailure(stream, start.RunId, "final report attestation: "+err.Error())
+				return
+			}
 			if err := w.send(stream, &distproto.WorkerEvent{
-				Payload: &distproto.WorkerEvent_RunCompleted{
-					RunCompleted: &distproto.RunCompleted{
-						RunId:     start.RunId,
-						Timestamp: time.Now().UnixMilli(),
-						Report:    ReportToProto(&r),
-					},
-				},
+				Payload: &distproto.WorkerEvent_RunCompleted{RunCompleted: rc},
 			}); err != nil {
 				w.cfg.Logf("final report send failed for %s: %v", start.RunId, err)
 			}

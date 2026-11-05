@@ -147,13 +147,29 @@ The coordinator does not blindly trust a worker that announces itself.
   it back. `Master.VerifyWorkerAttestation(worker_id, pub, msg, sig)` checks
   an Ed25519 signature over the worker's canonical attestation message and
   requires the presented key to match the pinned one.
+- **Signature gate (telemetry)** — every `RunProgress` carries `worker_id` and
+  an Ed25519 `signature` over a canonical statement:
+  the worker id, run id, timestamp and the SHA-256 of the deterministic
+  protobuf encoding of the snapshot (see
+  `internal/dist/coordinator/attest.go`). `RunCompleted` carries the same pair
+  over the final report. The master verifies before the snapshot reaches the
+  aggregator; the aggregator itself also refuses unverified snapshots while
+  attestation is on, so there is no direct write path around the check.
+- **Turning it on** — attestation is enabled by pinning at least one key
+  (`MasterConfig.AuthorizedWorkers` / `SetWorkerKey`) or by setting
+  `MasterConfig.RequireWorkerAttestation`. A fleet that pinned *any* identity
+  never accepts unsigned telemetry from anybody. CLI:
+  `stress-strike-master --authorized-keys w1=<hex>,w2=<hex>` (implies
+  attestation) and `stress-strike-worker --attest-key worker.pem` (a keypair
+  from `stress-strike keygen --out worker.pem`).
 - **Failure mode** — an unpinned worker, an unknown worker id, a mismatched key
-  or a bad/tampered signature is treated as unauthenticated, so no telemetry
-  from such a worker is aggregated into the final report.
-
-The signature half (worker signs its telemetry commitment with its Ed25519 key)
-is the follow-up slice of this gate; the identity/key primitives and their tests
-landed with this change.
+  or a bad/tampered signature is treated as unauthenticated: the connection is
+  closed, its already-aggregated snapshot is forgotten, the worker is listed as
+  failed, and the reason is exposed by `Master.RejectedWorkers()`. No telemetry
+  from such a worker reaches the final report.
+- **One identity per stream** — a connection may only ever speak for the first
+  `worker_id` that proved its key. A later frame claiming a different id is
+  rejected, so two workers cannot be mixed under one connection.
 
 
 ## Fleet health monitoring

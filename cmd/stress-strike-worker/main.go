@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
@@ -42,6 +43,7 @@ var (
 	tlsCA      = flag.String("tls-ca", "", "CA bundle used to verify the master this worker registers with")
 	tlsSkip    = flag.Bool("tls-skip-verify", false, "Disable master verification when self-registering (self-signed demo fleets only)")
 	httpAddr   = flag.String("http-addr", "0.0.0.0:9091", "HTTP health/metrics listen address (/healthz /readyz /metrics); empty disables")
+	attestKey  = flag.String("attest-key", "", "Ed25519 keypair PEM (from `stress-strike keygen`); signs telemetry so an attested master accepts it")
 )
 
 func main() {
@@ -95,11 +97,23 @@ func main() {
 	advertised := resolveAdvertise(*advertise, lis)
 	log.Printf("Starting worker %s on %s (advertised as %s)", *workerID, *listenAddr, advertised)
 
+	// Optional telemetry signing identity. Without it the worker streams
+	// unsigned telemetry, which an attested master rejects; carrying the key
+	// here is what lets the coordinator verify the signature half.
+	var keypair *attest.Keypair
+	if *attestKey != "" {
+		keypair, err = attest.LoadKeypairPEM(*attestKey)
+		if err != nil {
+			log.Fatalf("Failed to load attestation key %s: %v", *attestKey, err)
+		}
+	}
+
 	worker := coordinator.NewWorker(coordinator.WorkerConfig{
 		ID:                *workerID,
 		MaxUsers:          *maxUsers,
 		MaxConcurrentRuns: *maxRuns,
 		Token:             *token,
+		Keypair:           keypair,
 	})
 
 	// Optional TLS: serve over TLS when a cert/key pair is supplied, and dial

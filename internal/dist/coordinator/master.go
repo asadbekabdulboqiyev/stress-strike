@@ -55,9 +55,17 @@ type MasterConfig struct {
 	// When set and non-empty, self-registration from an unknown worker id (or
 	// one whose pinned key does not match) is rejected, so a fleet can only ever
 	// accept load from workers it has enrolled. This is the identity half of
-	// worker attestation; the signature half is verified by
-	// Master.VerifyWorkerAttestation.
+	// worker attestation; the signature half for telemetry (RunProgress /
+	// RunCompleted) is verified by VerifyProgressSignature and
+	// VerifyReportSignature in attest.go, and pinning any key here turns it on.
 	AuthorizedWorkers map[string]string
+	// RequireWorkerAttestation makes signed telemetry mandatory even when no
+	// worker keys are pinned here (SetWorkerKey may pin them later). With it
+	// on, a RunProgress or RunCompleted whose Ed25519 signature does not verify
+	// against the pinned key of the claimed worker_id is discarded and the
+	// worker is marked failed. It is implied by a non-empty AuthorizedWorkers:
+	// pinning anyone opts the fleet into attestation.
+	RequireWorkerAttestation bool
 }
 
 // Master is the control plane: it distributes a scenario across workers,
@@ -88,6 +96,13 @@ type Master struct {
 	// worker, keyed by worker_id. Populated from MasterConfig.AuthorizedWorkers
 	// (fail-closed registration) and by SetWorkerKey (operator rotation).
 	workerPubs map[string]ed25519.PublicKey
+	// workerIDs binds a connection address to the worker identity that proved
+	// ownership of its pinned key, so a stream cannot switch identities
+	// mid-run. Keyed by remote address, valued by worker_id.
+	workerIDs map[string]string
+	// rejected records why a connection was dropped for failing attestation.
+	// Keyed by remote address, valued by the human-readable reason.
+	rejected map[string]string
 
 	agg         *Aggregator
 	runID       string
@@ -106,7 +121,7 @@ func NewMaster(cfg MasterConfig) *Master {
 		logf = log.Printf
 	}
 	cfg.Logf = logf
-	return &Master{
+	m := &Master{
 		cfg:           cfg,
 		conns:         make(map[string]*grpc.ClientConn),
 		clients:       make(map[string]distproto.MasterWorkerClient),
@@ -118,9 +133,30 @@ func NewMaster(cfg MasterConfig) *Master {
 		lastSeen:      make(map[string]time.Time),
 		statusReports: make(map[string]*distproto.StatusReport),
 		workerPubs:    make(map[string]ed25519.PublicKey),
+		workerIDs:     make(map[string]string),
+		rejected:      make(map[string]string),
 		agg:           NewAggregator(),
 		doneCh:        make(chan struct{}),
 	}
+	// Seed the pin table from the static config too. Register applies the same
+	// map for self-registering workers, but a static fleet never registers, so
+	// without this the master would have no key to verify against and would
+	// (correctly, but uselessly) reject every signed snapshot.
+	for workerID, pubHex := range cfg.AuthorizedWorkers {
+		pub, err := attest.ParsePublicKeyHex(pubHex)
+		if err != nil {
+			// Fail closed: the pin is unusable, so telemetry claiming this id
+			// will be rejected until an operator fixes it.
+			logf("WARNING: ignoring invalid pinned key for worker %s: %v", workerID, err)
+			continue
+		}
+		m.workerPubs[workerID] = pub
+	}
+	// A configured allowlist is enough to turn signed telemetry on; the
+	// Aggregator gets the same policy so it refuses unverified snapshots as a
+	// second line of defence.
+	m.syncAttestationModeLocked()
+	return m
 }
 
 // Aggregator exposes the live fleet telemetry accumulator.
@@ -167,6 +203,7 @@ func (m *Master) Register(ctx context.Context, req *distproto.RegisterRequest) (
 			return &distproto.RegisterResponse{Accepted: false, Message: fmt.Sprintf("worker %q pin is invalid: %v", req.WorkerId, err)}, nil
 		}
 		m.workerPubs[req.WorkerId] = pub
+		m.syncAttestationModeLocked()
 	}
 	m.registered[req.WorkerId] = req
 	m.registeredAt[req.WorkerId] = time.Now()
@@ -185,6 +222,7 @@ func (m *Master) SetWorkerKey(workerID string, pubHex string) error {
 	defer m.mu.Unlock()
 	if pubHex == "" {
 		delete(m.workerPubs, workerID)
+		m.syncAttestationModeLocked()
 		return nil
 	}
 	pub, err := attest.ParsePublicKeyHex(pubHex)
@@ -192,6 +230,7 @@ func (m *Master) SetWorkerKey(workerID string, pubHex string) error {
 		return fmt.Errorf("coordinator: pin worker %s: %w", workerID, err)
 	}
 	m.workerPubs[workerID] = pub
+	m.syncAttestationModeLocked()
 	return nil
 }
 
@@ -469,11 +508,16 @@ func (m *Master) recvLoop(addr string, stream distproto.MasterWorker_CoordinateC
 		}
 		switch p := event.Payload.(type) {
 		case *distproto.WorkerEvent_RunProgress:
-			if p.RunProgress != nil && p.RunProgress.Telemetry != nil {
-				m.agg.Update(addr, p.RunProgress.Telemetry)
+			// Verification happens before the snapshot can reach the
+			// Aggregator; a rejected payload ends the connection.
+			if !m.handleRunProgress(addr, p.RunProgress, stream) {
+				return
 			}
 			m.touch(addr)
 		case *distproto.WorkerEvent_RunCompleted:
+			if !m.handleRunCompleted(addr, p.RunCompleted, stream) {
+				return
+			}
 			m.cfg.Logf("worker %s completed run", addr)
 			if p.RunCompleted != nil {
 				m.storeReport(addr, p.RunCompleted.Report)

@@ -18,6 +18,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
@@ -58,6 +59,8 @@ var (
 	tlsCA       = flag.String("tls-ca", "", "CA bundle used to verify workers the master dials (static fleet)")
 	tlsSkip     = flag.Bool("tls-skip-verify", false, "Disable peer verification when dialing workers (self-signed demo fleets only)")
 	httpAddr    = flag.String("http-addr", "0.0.0.0:9090", "HTTP health/metrics listen address (/healthz /readyz /metrics); empty disables")
+	requireAtt  = flag.Bool("require-attestation", false, "Discard worker telemetry that is not signed by the pinned key of its worker id (fail closed)")
+	authorizedK = flag.String("authorized-keys", "", "Comma-separated worker_id=hex Ed25519 public keys to pin (implies -require-attestation)")
 )
 
 func main() {
@@ -181,6 +184,14 @@ func main() {
 		log.Printf("WARNING: -tls-cert/-tls-key enable incoming TLS only; outbound dials to static workers stay plaintext unless -tls-ca or -tls-skip-verify is passed")
 	}
 
+	pins, err := parseAuthorizedKeys(*authorizedK)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(pins) > 0 {
+		log.Printf("Pinned %d worker key(s); telemetry attestation is required (unsigned telemetry is rejected)", len(pins))
+	}
+
 	master := coordinator.NewMaster(coordinator.MasterConfig{
 		Scenario:        scenario,
 		Workers:         workerList,
@@ -190,6 +201,10 @@ func main() {
 		AutoWorkers:     *waitWorkers,
 		RegisterTimeout: time.Duration(*waitTimeout) * time.Second,
 		ClientCreds:     clientCreds,
+		// Worker attestation: pinning a key implies that signed telemetry is
+		// mandatory for the whole fleet (see MasterConfig).
+		AuthorizedWorkers:        pins,
+		RequireWorkerAttestation: *requireAtt,
 	})
 	defer master.Close()
 
@@ -495,4 +510,35 @@ func evaluateSLA(r *report.Report, sla *config.SLA) bool {
 
 func slaEmpty(sla *config.SLA) bool {
 	return sla == nil || (sla.MaxP99Ms <= 0 && sla.MaxAvgMs <= 0 && sla.MaxErrorRatePct <= 0 && sla.MinRPS <= 0)
+}
+
+// parseAuthorizedKeys turns the -authorized-keys value ("id=hex,id2=hex2") into
+// the coordinator's pin map. The public key is validated here so a typo aborts
+// startup instead of silently leaving the fleet unable to attest.
+func parseAuthorizedKeys(raw string) (map[string]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	pins := make(map[string]string)
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		id, hexKey, ok := strings.Cut(entry, "=")
+		id = strings.TrimSpace(id)
+		hexKey = strings.TrimSpace(hexKey)
+		if !ok || id == "" || hexKey == "" {
+			return nil, fmt.Errorf("invalid -authorized-keys entry %q: want worker_id=hex-public-key", entry)
+		}
+		if _, err := attest.ParsePublicKeyHex(hexKey); err != nil {
+			return nil, fmt.Errorf("invalid -authorized-keys entry %q: %w", entry, err)
+		}
+		if _, dup := pins[id]; dup {
+			return nil, fmt.Errorf("invalid -authorized-keys: worker id %q pinned twice", id)
+		}
+		pins[id] = strings.ToLower(hexKey)
+	}
+	return pins, nil
 }

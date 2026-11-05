@@ -560,10 +560,18 @@ func (x *RunStarted) GetTimestamp() int64 {
 }
 
 type RunProgress struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Telemetry     *TelemetrySnapshot     `protobuf:"bytes,3,opt,name=telemetry,proto3" json:"telemetry,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RunId     string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Timestamp int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Telemetry *TelemetrySnapshot     `protobuf:"bytes,3,opt,name=telemetry,proto3" json:"telemetry,omitempty"`
+	// Signature half of worker attestation. worker_id names the signer (it must
+	// match a key pinned by the coordinator) and signature is Ed25519 over the
+	// canonical progress attestation of (worker_id, run_id, timestamp, telemetry)
+	// — see internal/dist/coordinator/attest.go. Both fields are additive: an
+	// unattested worker (dev mode) simply leaves them empty and the coordinator
+	// accepts the snapshot only when it is not requiring attestation.
+	WorkerId      string `protobuf:"bytes,4,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	Signature     []byte `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -619,11 +627,28 @@ func (x *RunProgress) GetTelemetry() *TelemetrySnapshot {
 	return nil
 }
 
+func (x *RunProgress) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *RunProgress) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
 type RunCompleted struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Report        *Report                `protobuf:"bytes,3,opt,name=report,proto3" json:"report,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RunId     string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Timestamp int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Report    *Report                `protobuf:"bytes,3,opt,name=report,proto3" json:"report,omitempty"`
+	// Same attestation shape as RunProgress, over the final report.
+	WorkerId      string `protobuf:"bytes,4,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	Signature     []byte `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -675,6 +700,20 @@ func (x *RunCompleted) GetTimestamp() int64 {
 func (x *RunCompleted) GetReport() *Report {
 	if x != nil {
 		return x.Report
+	}
+	return nil
+}
+
+func (x *RunCompleted) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *RunCompleted) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
 	}
 	return nil
 }
@@ -2559,15 +2598,19 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\n" +
 	"RunStarted\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"\x86\x01\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"\xc1\x01\n" +
 	"\vRunProgress\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12B\n" +
-	"\ttelemetry\x18\x03 \x01(\v2$.stressstrike.dist.TelemetrySnapshotR\ttelemetry\"v\n" +
+	"\ttelemetry\x18\x03 \x01(\v2$.stressstrike.dist.TelemetrySnapshotR\ttelemetry\x12\x1b\n" +
+	"\tworker_id\x18\x04 \x01(\tR\bworkerId\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"\xb1\x01\n" +
 	"\fRunCompleted\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x121\n" +
-	"\x06report\x18\x03 \x01(\v2\x19.stressstrike.dist.ReportR\x06report\"V\n" +
+	"\x06report\x18\x03 \x01(\v2\x19.stressstrike.dist.ReportR\x06report\x12\x1b\n" +
+	"\tworker_id\x18\x04 \x01(\tR\bworkerId\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"V\n" +
 	"\tRunFailed\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12\x14\n" +

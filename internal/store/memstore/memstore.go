@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
@@ -233,6 +235,13 @@ func (as *auditStore) ListByTenant(ctx context.Context, tenantID string, limit i
 	return out, nil
 }
 
+// idSeq guarantees uniqueness of generated IDs. The wall clock alone is not
+// enough: it is read at nanosecond granularity but the underlying clock often
+// advances in coarser steps (~125-170ns on macOS), so a tight create loop
+// produced duplicate IDs and Create silently overwrote rows.
+var idSeq atomic.Uint64
+
 func randID(prefix string) string {
-	return prefix + "-" + time.Now().UTC().Format("20060102150405.000000000")
+	return prefix + "-" + time.Now().UTC().Format("20060102150405.000000000") + "-" +
+		strconv.FormatUint(idSeq.Add(1), 36)
 }

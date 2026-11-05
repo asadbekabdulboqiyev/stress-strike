@@ -56,12 +56,23 @@ message RunProgress {
   string run_id = 1;
   int64 timestamp = 2;
   TelemetrySnapshot telemetry = 3;
+  // Signature half of worker attestation. worker_id names the signer (it must
+  // match a key pinned by the coordinator) and signature is Ed25519 over the
+  // canonical progress attestation of (worker_id, run_id, timestamp, telemetry)
+  // — see internal/dist/coordinator/attest.go. Both fields are additive: an
+  // unattested worker (dev mode) simply leaves them empty and the coordinator
+  // accepts the snapshot only when it is not requiring attestation.
+  string worker_id = 4;
+  bytes signature = 5;
 }
 
 message RunCompleted {
   string run_id = 1;
   int64 timestamp = 2;
   Report report = 3;
+  // Same attestation shape as RunProgress, over the final report.
+  string worker_id = 4;
+  bytes signature = 5;
 }
 
 message RunFailed {

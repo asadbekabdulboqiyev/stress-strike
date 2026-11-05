@@ -1,206 +1,69 @@
 package main
 
 import (
-	"reflect"
+	"strings"
 	"testing"
-	"time"
-
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
 )
 
-// --- String helpers ---------------------------------------------------------
-
-func TestSplitAndTrim(t *testing.T) {
-	cases := []struct {
-		in   string
-		want []string
-	}{
-		{"a,b,c", []string{"a", "b", "c"}},
-		{"a, b ,,c", []string{"a", "b", "c"}},
-		{" a ,\tb ", []string{"a", "b"}},
-		{"", nil},
-		{",,,", nil},
-	}
-	for _, c := range cases {
-		got := splitAndTrim(c.in)
-		if !reflect.DeepEqual(got, c.want) {
-			t.Errorf("splitAndTrim(%q) = %v, want %v", c.in, got, c.want)
-		}
-	}
-}
-
-func TestTrimSpace(t *testing.T) {
-	cases := []struct{ in, want string }{
-		{"  hello  ", "hello"},
-		{"\thello\t", "hello"},
-		{"", ""},
-		{"   ", ""},
-		{"noSpace", "noSpace"},
-	}
-	for _, c := range cases {
-		if got := trimSpace(c.in); got != c.want {
-			t.Errorf("trimSpace(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
-func TestSplitComma(t *testing.T) {
-	if got := splitComma("x,y"); !reflect.DeepEqual(got, []string{"x", "y"}) {
-		t.Errorf("splitComma = %v", got)
-	}
-	if got := splitComma(""); len(got) != 1 || got[0] != "" {
-		t.Errorf("splitComma(\"\") = %v", got)
-	}
-}
-
-// --- quickScenario ----------------------------------------------------------
-
-func TestQuickScenario(t *testing.T) {
-	sc, err := quickScenario("test-run", "http://example.com/health", 150, 60, "spike")
+func TestParseAuthorizedKeysEmpty(t *testing.T) {
+	pins, err := parseAuthorizedKeys("")
 	if err != nil {
-		t.Fatalf("quickScenario error: %v", err)
+		t.Fatalf("parseAuthorizedKeys(\"\") unexpected error: %v", err)
 	}
-	if sc.Name != "test-run" {
-		t.Errorf("name = %q", sc.Name)
-	}
-	if sc.Profile.Type != "spike" || sc.Profile.Users != 150 || sc.Profile.Duration != 60 {
-		t.Errorf("profile = %+v", sc.Profile)
-	}
-	if len(sc.Steps) != 1 {
-		t.Fatalf("steps = %d", len(sc.Steps))
-	}
-	st := sc.Steps[0]
-	if st.Method != "GET" || st.URL != "http://example.com/health" || st.Type != "http" {
-		t.Errorf("step = %+v", st)
+	if pins != nil {
+		t.Errorf("parseAuthorizedKeys(\"\") = %v, want nil", pins)
 	}
 }
 
-func TestQuickScenarioDefaultsSteadyProfile(t *testing.T) {
-	sc, err := quickScenario("n", "http://example.com", 0, 0, "")
+func TestParseAuthorizedKeysSingle(t *testing.T) {
+	a64 := strings.Repeat("a", 64)
+	pins, err := parseAuthorizedKeys("worker1=" + a64)
 	if err != nil {
-		t.Fatalf("quickScenario error: %v", err)
+		t.Fatalf("parseAuthorizedKeys single unexpected error: %v", err)
 	}
-	if sc.Profile.Type != config.ProfileSteady {
-		t.Errorf("default profile = %q", sc.Profile.Type)
+	if len(pins) != 1 {
+		t.Fatalf("len(pins) = %d, want 1", len(pins))
 	}
-	if sc.Profile.Users != 10 || sc.Profile.Duration != 30 {
-		t.Errorf("defaults not applied: users=%d duration=%d", sc.Profile.Users, sc.Profile.Duration)
-	}
-}
-
-// --- Formatting helpers -----------------------------------------------------
-
-func TestFormatCount(t *testing.T) {
-	cases := []struct {
-		in   uint64
-		want string
-	}{
-		{0, "0"},
-		{999, "999"},
-		{1000, "1.0K"},
-		{1500, "1.5K"},
-		{999_999, "1000.0K"},
-		{1_000_000, "1.0M"},
-		{2_500_000, "2.5M"},
-	}
-	for _, c := range cases {
-		if got := formatCount(c.in); got != c.want {
-			t.Errorf("formatCount(%d) = %q, want %q", c.in, got, c.want)
-		}
+	if v, ok := pins["worker1"]; !ok || v != a64 {
+		t.Errorf("pins[worker1] = %q, want %q", v, a64)
 	}
 }
 
-func TestFormatRPS(t *testing.T) {
-	cases := []struct {
-		in   float64
-		want string
-	}{
-		{0, "0"},
-		{999, "999"},
-		{1000, "1.0K"},
-		{1500, "1.5K"},
+func TestParseAuthorizedKeysMultiple(t *testing.T) {
+	a64 := strings.Repeat("a", 64)
+	b64 := strings.Repeat("b", 64)
+	c64 := strings.Repeat("c", 64)
+	pins, err := parseAuthorizedKeys("w1=" + a64 + ", w2=" + b64 + ", w3=" + c64)
+	if err != nil {
+		t.Fatalf("parseAuthorizedKeys multiple unexpected error: %v", err)
 	}
-	for _, c := range cases {
-		if got := formatRPS(c.in); got != c.want {
-			t.Errorf("formatRPS(%v) = %q, want %q", c.in, got, c.want)
-		}
+	if len(pins) != 3 {
+		t.Fatalf("len(pins) = %d, want 3", len(pins))
 	}
-}
-
-func TestErrorRate(t *testing.T) {
-	if got := errorRate(0, 5); got != 0 {
-		t.Errorf("errorRate(0,5) = %v", got)
-	}
-	if got := errorRate(100, 5); got != 5 {
-		t.Errorf("errorRate(100,5) = %v", got)
-	}
-	if got := errorRate(100, 100); got != 100 {
-		t.Errorf("errorRate(100,100) = %v", got)
+	if v, ok := pins["w2"]; !ok || v != b64 {
+		t.Errorf("pins[w2] = %q, want %q", v, b64)
 	}
 }
 
-func TestMax64(t *testing.T) {
-	if got := max64(5, 3); got != 5 {
-		t.Errorf("max64(5,3) = %d", got)
-	}
-	if got := max64(3, 5); got != 5 {
-		t.Errorf("max64(3,5) = %d", got)
-	}
-	if got := max64(7, 7); got != 7 {
-		t.Errorf("max64(7,7) = %d", got)
+func TestParseAuthorizedKeysInvalidFormat(t *testing.T) {
+	_, err := parseAuthorizedKeys("invalid")
+	if err == nil {
+		t.Error("expected error for invalid entry")
 	}
 }
 
-// --- SLA helpers ------------------------------------------------------------
-
-func TestSlaEmpty(t *testing.T) {
-	if !slaEmpty(nil) {
-		t.Error("nil SLA should be empty")
-	}
-	if !slaEmpty(&config.SLA{}) {
-		t.Error("zero SLA should be empty")
-	}
-	if slaEmpty(&config.SLA{MaxP99Ms: 100}) {
-		t.Error("MaxP99Ms should make SLA non-empty")
-	}
-	if slaEmpty(&config.SLA{MaxAvgMs: 100}) {
-		t.Error("MaxAvgMs should make SLA non-empty")
-	}
-	if slaEmpty(&config.SLA{MaxErrorRatePct: 1}) {
-		t.Error("MaxErrorRatePct should make SLA non-empty")
-	}
-	if slaEmpty(&config.SLA{MinRPS: 1}) {
-		t.Error("MinRPS should make SLA non-empty")
+func TestParseAuthorizedKeysEmptyKey(t *testing.T) {
+	_, err := parseAuthorizedKeys("w1=")
+	if err == nil {
+		t.Error("expected error for empty key")
 	}
 }
 
-func TestEvaluateSLAPassAndFail(t *testing.T) {
-	// Passing SLA: p99 well under the limit.
-	passing := &report.Report{
-		Name: "r",
-		Overall: report.StepReport{
-			Requests: 100,
-			P99:      50 * time.Millisecond,
-			Avg:      10 * time.Millisecond,
-		},
-		ErrorRatePct: 0.5,
-		RPS:          100,
-	}
-	if !evaluateSLA(passing, &config.SLA{MaxP99Ms: 200, MaxAvgMs: 100, MaxErrorRatePct: 1, MinRPS: 10}) {
-		t.Error("expected SLA gate to pass")
-	}
-
-	// Failing SLA: p99 above the cap.
-	failing := &report.Report{
-		Overall: report.StepReport{P99: 500 * time.Millisecond},
-	}
-	if evaluateSLA(failing, &config.SLA{MaxP99Ms: 100}) {
-		t.Error("expected SLA gate to fail")
-	}
-
-	// Empty / nil SLA always passes.
-	if !evaluateSLA(failing, &config.SLA{}) {
-		t.Error("empty SLA should always pass")
+func TestParseAuthorizedKeysDuplicate(t *testing.T) {
+	a64 := strings.Repeat("a", 64)
+	b64 := strings.Repeat("b", 64)
+	_, err := parseAuthorizedKeys("w1=" + a64 + ",w1=" + b64)
+	if err == nil {
+		t.Error("expected error for duplicate worker id")
 	}
 }

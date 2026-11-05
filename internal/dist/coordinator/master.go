@@ -2,6 +2,8 @@ package coordinator
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
@@ -47,6 +50,14 @@ type MasterConfig struct {
 	// nil keeps plaintext dials.
 	ClientCreds credentials.TransportCredentials
 	Logf        func(format string, args ...any)
+	// AuthorizedWorkers pins worker identities before any telemetry is
+	// trusted. Keyed by worker_id, valued by lowercase hex Ed25519 public key.
+	// When set and non-empty, self-registration from an unknown worker id (or
+	// one whose pinned key does not match) is rejected, so a fleet can only ever
+	// accept load from workers it has enrolled. This is the identity half of
+	// worker attestation; the signature half is verified by
+	// Master.VerifyWorkerAttestation.
+	AuthorizedWorkers map[string]string
 }
 
 // Master is the control plane: it distributes a scenario across workers,
@@ -73,6 +84,10 @@ type Master struct {
 	// statusReports keeps the latest StatusReport per connected worker so the
 	// fleet health (active runs, memory, cpu) is queryable.
 	statusReports map[string]*distproto.StatusReport
+	// workerPubs holds the Ed25519 public key pinned for each authorized
+	// worker, keyed by worker_id. Populated from MasterConfig.AuthorizedWorkers
+	// (fail-closed registration) and by SetWorkerKey (operator rotation).
+	workerPubs map[string]ed25519.PublicKey
 
 	agg         *Aggregator
 	runID       string
@@ -102,6 +117,7 @@ func NewMaster(cfg MasterConfig) *Master {
 		finished:      make(map[string]bool),
 		lastSeen:      make(map[string]time.Time),
 		statusReports: make(map[string]*distproto.StatusReport),
+		workerPubs:    make(map[string]ed25519.PublicKey),
 		agg:           NewAggregator(),
 		doneCh:        make(chan struct{}),
 	}
@@ -135,6 +151,23 @@ func (m *Master) Register(ctx context.Context, req *distproto.RegisterRequest) (
 		return &distproto.RegisterResponse{Accepted: false, Message: "missing worker address"}, nil
 	}
 	m.mu.Lock()
+	// Fail closed: when an operator has pinned worker identities, an
+	// unlisted worker (or one claiming a listed id with a different key) is
+	// rejected before it can stream any telemetry that the aggregator would
+	// otherwise trust.
+	if len(m.cfg.AuthorizedWorkers) > 0 {
+		wantHex, ok := m.cfg.AuthorizedWorkers[req.WorkerId]
+		if !ok {
+			m.mu.Unlock()
+			return &distproto.RegisterResponse{Accepted: false, Message: fmt.Sprintf("worker %q is not pinned by the coordinator", req.WorkerId)}, nil
+		}
+		pub, err := attest.ParsePublicKeyHex(wantHex)
+		if err != nil {
+			m.mu.Unlock()
+			return &distproto.RegisterResponse{Accepted: false, Message: fmt.Sprintf("worker %q pin is invalid: %v", req.WorkerId, err)}, nil
+		}
+		m.workerPubs[req.WorkerId] = pub
+	}
 	m.registered[req.WorkerId] = req
 	m.registeredAt[req.WorkerId] = time.Now()
 	m.pruneRegisteredLocked()
@@ -142,6 +175,51 @@ func (m *Master) Register(ctx context.Context, req *distproto.RegisterRequest) (
 	m.mu.Unlock()
 	m.cfg.Logf("worker registered: %s at %s (%d total)", req.WorkerId, req.Address, n)
 	return &distproto.RegisterResponse{Accepted: true, Message: "registered"}, nil
+}
+
+// SetWorkerKey pins (or rotates) the Ed25519 public key of a worker id. An
+// empty hex clears the pin. Callers must hold no lock; it takes the write lock
+// itself.
+func (m *Master) SetWorkerKey(workerID string, pubHex string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if pubHex == "" {
+		delete(m.workerPubs, workerID)
+		return nil
+	}
+	pub, err := attest.ParsePublicKeyHex(pubHex)
+	if err != nil {
+		return fmt.Errorf("coordinator: pin worker %s: %w", workerID, err)
+	}
+	m.workerPubs[workerID] = pub
+	return nil
+}
+
+// AuthorizedWorkerPub returns the pinned Ed25519 public key for workerID, if
+// one is configured.
+func (m *Master) AuthorizedWorkerPub(workerID string) (ed25519.PublicKey, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	pub, ok := m.workerPubs[workerID]
+	return pub, ok
+}
+
+// VerifyWorkerAttestation checks a worker-signed attestation (Ed25519 over a
+// caller-built canonical message) against the public key pinned for workerID.
+// It fails closed: an unknown worker, a bad signature, or a key that does not
+// match the pinned identity is treated as unauthenticated, so callers must not
+// act on telemetry that fails this check.
+func (m *Master) VerifyWorkerAttestation(workerID string, pub ed25519.PublicKey, msg, sig []byte) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	pinned, ok := m.workerPubs[workerID]
+	if !ok {
+		return false
+	}
+	if subtle.ConstantTimeCompare(pinned, pub) != 1 {
+		return false
+	}
+	return attest.VerifySig(pinned, msg, sig)
 }
 
 // pruneRegisteredLocked drops registrations that have not been refreshed

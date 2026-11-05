@@ -133,6 +133,29 @@ wire while staying meaningful.
   written to `reports/`.
 - **Graceful stop** — `Ctrl-C` sends a stop command and waits up to 15 s.
 
+## Worker attestation (fail-closed identity)
+
+The coordinator does not blindly trust a worker that announces itself.
+
+- **Identity gate** — when `MasterConfig.AuthorizedWorkers` is set (and
+  non-empty), self-registration from an unknown `worker_id` is rejected
+  (`Accepted=false`, fail closed). The map is `worker_id -> hex Ed25519
+  public key`. An operator pins identities at startup; an empty map keeps the
+  coordinator open (single-tenant / local mode).
+- **Key gate** — `Master.SetWorkerKey(worker_id, hexPub)` pins or rotates a
+  worker's Ed25519 public key; `Master.AuthorizedWorkerPub(worker_id)` reads
+  it back. `Master.VerifyWorkerAttestation(worker_id, pub, msg, sig)` checks
+  an Ed25519 signature over the worker's canonical attestation message and
+  requires the presented key to match the pinned one.
+- **Failure mode** — an unpinned worker, an unknown worker id, a mismatched key
+  or a bad/tampered signature is treated as unauthenticated, so no telemetry
+  from such a worker is aggregated into the final report.
+
+The signature half (worker signs its telemetry commitment with its Ed25519 key)
+is the follow-up slice of this gate; the identity/key primitives and their tests
+landed with this change.
+
+
 ## Fleet health monitoring
 
 There is no master-side "list my workers" RPC yet, so `scripts/fleet-status.sh`

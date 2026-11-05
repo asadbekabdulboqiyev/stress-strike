@@ -1,0 +1,37 @@
+# CODEOWNERS
+
+Bu fayl **har bir gaariga** tegishli maslahatchiga biriktirish qo'llanadi.
+
+```
+# Defaults
+* @asadbekabdulboqiyev
+
+# Engine + attest (kriptografik qatlam)
+/internal/engine/    @asadbekabdulboqiyev
+/internal/attest/     @asadbekabdulboqiyev
+/internal/honesty/    @asadbekabdulboqiyev
+
+# Scanner
+/internal/scanner/    @asadbekabdulboqiyev
+
+# Dashboard / control plane
+/internal/dashboard/  @asadbekabdulboqiyev
+
+# Distributed mode
+/internal/dist/        @asadbekabdulboqiyev
+
+# Security
+/internal/authz/       @asadbekabdulboqiyev
+
+# Ops / release
+/.github/              @asadbekabdulboqiyev
+/deploy/               @asadbekabdulboqiyev
+Dockerfile*           @asadbekabdulboqiyev
+.goreleaser.yaml      @asadbekabdulboqiyev
+docs/                 @asadbekabdulboqiyev
+```
+
+**Eslatma:** `CODEOWNERS` faqat review yetkazish uchun qo'llanadi; merge uchun yagona
+shifatli yechim emas. Maintainerlar o'z qatlamlarini avtomatik ravishga yo'naltiradi.
+Jamoani kengaytirish (bus factor 1 → 2) bo'yicha maqsadli harakatlar `ROADMAP.md` da
+yozilgan.

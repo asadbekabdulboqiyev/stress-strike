@@ -42,13 +42,18 @@ func main() {
 		authTokens  flagStrings
 		authAPIKeys flagStrings
 		authOrigins flagStrings
+		authOIDC    flagStrings
+		authRBAC    flagStrings
 	)
 	flag.Var(&authTokens, "auth-token", "Bearer token required for the control API (repeatable)")
 	flag.Var(&authAPIKeys, "auth-api-key", "SHA-256 hex of an accepted API key (repeatable)")
 	flag.Var(&authOrigins, "auth-origin", "Allowed origin for state-changing requests (repeatable; CSRF)")
+	flag.Var(&authOIDC, "auth-oidc", "OIDC issuer:client_id pairs for ID token verification (repeatable)")
+	flag.Var(&authRBAC, "auth-rbac", "Subject:role1,role2 role assignments (repeatable; requires -auth-oidc)")
 	authRateLimit := flag.Float64("auth-rate-limit", 0, "Per-client-IP request rate limit (0 = disabled)")
 	authRateBurst := flag.Int("auth-rate-burst", 0, "Rate limiter bucket capacity (default 1)")
 	authTrustProxy := flag.Bool("auth-trust-proxy", false, "Honor X-Forwarded-For / X-Real-IP for the limiter (only behind a trusted proxy)")
+	authRBACEnabled := flag.Bool("auth-rbac-enabled", false, "Enable role-based access control for state-changing endpoints")
 	insecure := flag.Bool("insecure", false, "Acknowledge running the unauthenticated control API on a non-loopback address (demo only)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
@@ -114,6 +119,16 @@ Examples:
 		}
 	})
 
+	// Parse OIDC issuer:client_id pairs
+	var oidcIssuer, oidcClientID string
+	for _, entry := range authOIDC {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) == 2 {
+			oidcIssuer = strings.TrimSpace(parts[0])
+			oidcClientID = strings.TrimSpace(parts[1])
+		}
+	}
+
 	authOpts := dashboard.AuthOptions{
 		Tokens:         authTokens,
 		APIKeyHashes:   authAPIKeys,
@@ -122,6 +137,11 @@ Examples:
 		RateLimitBurst: *authRateBurst,
 		TrustProxy:     *authTrustProxy,
 		AllowAnonymous: *insecure,
+		OIDCIssuer:     oidcIssuer,
+		OIDCClientID:   oidcClientID,
+		OIDCRoleClaim:  "role",
+		RBACEnabled:    *authRBACEnabled,
+		RBACRole:       authRBAC,
 	}
 	var auth *dashboard.Auth
 	switch {

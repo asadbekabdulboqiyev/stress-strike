@@ -267,13 +267,31 @@ type AuthOptions struct {
 	// whose host port is published on loopback only; it never enables anything
 	// by accident and is ignored when credentials are enrolled.
 	AllowAnonymous bool
+
+	// OIDCIssuer is the OpenID Connect issuer URL. When non-empty, bearer
+	// tokens are verified as OIDC ID tokens against this provider.
+	OIDCIssuer string
+
+	// OIDCClientID is the OAuth client ID registered with the OIDC provider.
+	OIDCClientID string
+
+	// OIDCRoleClaim is the ID token claim name used to extract the user role.
+	OIDCRoleClaim string
+
+	// RBACEnabled turns on role-based access control for state-changing
+	// endpoints.
+	RBACEnabled bool
+
+	// RBACRole is a role assignment in the form "subject:role1,role2".
+	// Repeatable for multiple subjects.
+	RBACRole []string
 }
 
 // HasCredentials reports whether at least one credential is enrolled. Only
 // bearer tokens and API keys authenticate callers; an origin allowlist alone
 // still rejects every caller (secure by default).
 func (o AuthOptions) HasCredentials() bool {
-	return len(o.Tokens) > 0 || len(o.APIKeyHashes) > 0
+	return len(o.Tokens) > 0 || len(o.APIKeyHashes) > 0 || o.OIDCIssuer != ""
 }
 
 // ApplyAuth builds the authentication middleware from opt, installs it on the
@@ -286,6 +304,20 @@ func (s *Server) ApplyAuth(opt AuthOptions) *Auth {
 	if !opt.HasCredentials() {
 		return nil
 	}
+	// Parse RBACRole flags ("subject:role1,role2") into a map.
+	rbacRoles := make(map[string][]string)
+	for _, entry := range opt.RBACRole {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		sub := strings.TrimSpace(parts[0])
+		roles := strings.Split(parts[1], ",")
+		for i, r := range roles {
+			roles[i] = strings.TrimSpace(r)
+		}
+		rbacRoles[sub] = roles
+	}
 	a := NewAuth(AuthConfig{
 		BearerTokens:   opt.Tokens,
 		APIKeyHashes:   opt.APIKeyHashes,
@@ -293,6 +325,11 @@ func (s *Server) ApplyAuth(opt AuthOptions) *Auth {
 		RateLimitRPS:   opt.RateLimitRPS,
 		RateLimitBurst: opt.RateLimitBurst,
 		TrustProxy:     opt.TrustProxy,
+		OIDCIssuer:     opt.OIDCIssuer,
+		OIDCClientID:   opt.OIDCClientID,
+		OIDCRoleClaim:  opt.OIDCRoleClaim,
+		RBACEnabled:    opt.RBACEnabled,
+		RBACRoles:      rbacRoles,
 	})
 	s.SetAuthMiddleware(a.Middleware)
 	return a

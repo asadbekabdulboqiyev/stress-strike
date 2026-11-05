@@ -13,6 +13,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/oidc"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/rbac"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
 )
 
 // --- Authentication / authorization middleware -------------------------------
@@ -70,6 +74,26 @@ type AuthConfig struct {
 	// enable it when the dashboard sits behind a trusted reverse proxy that
 	// overwrites those headers.
 	TrustProxy bool
+
+	// OIDCIssuer is the OpenID Connect issuer URL. When non-empty, bearer
+	// tokens are verified as OIDC ID tokens against this provider.
+	OIDCIssuer string
+
+	// OIDCClientID is the OAuth client ID registered with the OIDC provider.
+	OIDCClientID string
+
+	// OIDCRoleClaim is the ID token claim name used to extract the user role
+	// (default: "role"). Only used when OIDCIssuer is set.
+	OIDCRoleClaim string
+
+	// RBACEnabled turns on role-based access control for state-changing
+	// endpoints. Requires OIDCIssuer to be set.
+	RBACEnabled bool
+
+	// RBACRoles maps authenticated subject (sub claim) to a list of roles.
+	// Empty means all authenticated users get no roles (denied by default
+	// when RBACEnabled is true).
+	RBACRoles map[string][]string
 }
 
 // Auth is the control-plane authentication middleware.
@@ -79,6 +103,10 @@ type Auth struct {
 	rateEnabled bool
 	rps         float64
 	burst       int
+
+	oidcClient *oidc.Client
+	rbacEnabled bool
+	rbacRoles   map[string][]string
 
 	mu      sync.Mutex
 	buckets map[string]*tokenBucket
@@ -104,12 +132,32 @@ func NewAuth(cfg AuthConfig) *Auth {
 	normalized.APIKeyHashes = lowerAll(compactStrings(cfg.APIKeyHashes))
 	normalized.AllowedMTLSCNs = compactStrings(cfg.AllowedMTLSCNs)
 	normalized.AllowedOrigins = normalizeOrigins(cfg.AllowedOrigins)
+	normalized.OIDCRoleClaim = compactRoleClaim(cfg.OIDCRoleClaim)
+	normalized.RBACRoles = compactRBACRoles(cfg.RBACRoles)
+
+	var oidcClient *oidc.Client
+	if normalized.OIDCIssuer != "" && normalized.OIDCClientID != "" {
+		oidcCfg := oidc.Config{
+			Issuer:        normalized.OIDCIssuer,
+			ClientID:      normalized.OIDCClientID,
+			AllowInsecure: false,
+		}
+		var err error
+		oidcClient, err = oidc.New(context.Background(), oidcCfg)
+		if err != nil {
+			// Fail closed: if OIDC cannot be initialized, no OIDC auth.
+			oidcClient = nil
+		}
+	}
 
 	a := &Auth{
-		cfg:     normalized,
-		buckets: make(map[string]*tokenBucket),
-		stopCh:  make(chan struct{}),
-		doneCh:  make(chan struct{}),
+		cfg:         normalized,
+		oidcClient:  oidcClient,
+		rbacEnabled: normalized.RBACEnabled,
+		rbacRoles:   normalized.RBACRoles,
+		buckets:     make(map[string]*tokenBucket),
+		stopCh:      make(chan struct{}),
+		doneCh:      make(chan struct{}),
 	}
 	if cfg.RateLimitRPS > 0 {
 		a.rateEnabled = true
@@ -133,8 +181,8 @@ func (a *Auth) Close() {
 
 // Middleware authenticates, applies the CSRF origin check to state-changing
 // methods and enforces the rate limit. Order: rate limit -> authenticate ->
-// CSRF, so an unauthenticated flood is throttled before it can touch the
-// handlers and the origin check runs only for callers that already hold a
+// RBAC -> CSRF, so an unauthenticated flood is throttled before it can touch
+// the handlers and the origin check runs only for callers that already hold a
 // credential.
 func (a *Auth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -144,11 +192,21 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		subject, ok := a.authenticate(r)
+		subject, roles, ok := a.authenticate(r)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			http.Error(w, "authentication required", http.StatusUnauthorized)
 			return
+		}
+
+		// RBAC: deny state-changing methods when the subject lacks the
+		// required permission. Read-only GET/HEAD/OPTIONS are exempt.
+		if a.rbacEnabled && !isSafeMethod(r.Method) {
+			perm := permForPath(r.URL.Path, r.Method)
+			if !a.rbacAllowed(subject, roles, perm) {
+				http.Error(w, "rbac: permission denied", http.StatusForbidden)
+				return
+			}
 		}
 
 		if !isSafeMethod(r.Method) && !a.originAllowed(r) {
@@ -156,43 +214,95 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), subject)))
+		next.ServeHTTP(w, r.WithContext(WithPrincipalAndRoles(r.Context(), subject, roles)))
 	})
 }
 
 // --- Principal plumbing ------------------------------------------------------
 
-type principalCtxKey struct{}
+// PrincipalAndRoles carries both the subject and the user's roles.
+type PrincipalAndRoles struct {
+	Subject string
+	Roles   []string
+}
 
-// WithPrincipal returns a copy of ctx carrying the authenticated subject.
+// principalAndRolesCtxKey stores PrincipalAndRoles in the request context.
+type principalAndRolesCtxKey struct{}
+
+// WithPrincipalAndRoles stores subject + roles in the request context.
+func WithPrincipalAndRoles(ctx context.Context, subject string, roles []string) context.Context {
+	return context.WithValue(ctx, principalAndRolesCtxKey{}, PrincipalAndRoles{Subject: subject, Roles: roles})
+}
+
+// PrincipalAndRolesFromContext extracts the subject and roles from context.
+func PrincipalAndRolesFromContext(ctx context.Context) (string, []string, bool) {
+	v, ok := ctx.Value(principalAndRolesCtxKey{}).(PrincipalAndRoles)
+	if !ok {
+		return "", nil, false
+	}
+	return v.Subject, v.Roles, true
+}
+
+// WithPrincipal returns a copy of ctx carrying the authenticated subject
+// (backward-compatible wrapper).
 func WithPrincipal(ctx context.Context, subject string) context.Context {
-	return context.WithValue(ctx, principalCtxKey{}, subject)
+	return WithPrincipalAndRoles(ctx, subject, nil)
 }
 
-// PrincipalFromContext extracts the authenticated subject, if any.
+// PrincipalFromContext extracts the authenticated subject from context
+// (backward-compatible wrapper).
 func PrincipalFromContext(ctx context.Context) (string, bool) {
-	subject, ok := ctx.Value(principalCtxKey{}).(string)
-	return subject, ok && subject != ""
+	sub, _, ok := PrincipalAndRolesFromContext(ctx)
+	return sub, ok && sub != ""
 }
+
 
 // --- Authentication ---------------------------------------------------------
 
 // authenticate returns the principal subject and whether the request is
 // authenticated. Bearer credentials take precedence over mTLS.
-func (a *Auth) authenticate(r *http.Request) (string, bool) {
+func (a *Auth) authenticate(r *http.Request) (string, []string, bool) {
 	if token, ok := bearerToken(r); ok {
 		if a.matchBearer(token) {
-			return "bearer:" + shortID(HashKey(token)), true
+			return "bearer:" + shortID(HashKey(token)), nil, true
 		}
 		if a.matchAPIKey(token) {
-			return "apikey:" + shortID(HashKey(token)), true
+			return "apikey:" + shortID(HashKey(token)), nil, true
+		}
+		// Try OIDC ID token verification
+		if a.oidcClient != nil {
+			claims, err := a.oidcClient.VerifyIDToken(token)
+			if err == nil {
+				sub, _ := claims["sub"].(string)
+				if sub == "" {
+					sub, _ = claims["email"].(string)
+				}
+				roleClaim := a.cfg.OIDCRoleClaim
+				if roleClaim == "" {
+					roleClaim = "role"
+				}
+				var roles []string
+				if rl, ok := claims[roleClaim].(string); ok && rl != "" {
+					roles = []string{rl}
+				} else if rl, ok := claims[roleClaim].([]any); ok {
+					for _, r := range rl {
+						if rs, ok := r.(string); ok {
+							roles = append(roles, rs)
+						}
+					}
+				}
+				if sub != "" {
+					return sub, roles, true
+				}
+			}
 		}
 	}
 	if cn, ok := a.matchMTLS(r); ok {
-		return cn, true
+		return cn, nil, true
 	}
-	return "", false
+	return "", nil, false
 }
+
 
 // matchBearer compares token against every configured bearer token in constant
 // time and without short-circuiting, so the comparison cost does not reveal
@@ -234,6 +344,75 @@ func (a *Auth) matchMTLS(r *http.Request) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// rbacAllowed reports whether the subject with given roles may perform perm.
+func (a *Auth) rbacAllowed(subject string, roles []string, perm string) bool {
+	if !a.rbacEnabled {
+		return true
+	}
+	// Build store.Role from configured roles
+	rolePerms := map[string][]string{}
+	for sub, rs := range a.rbacRoles {
+		rolePerms[sub] = rs
+	}
+	userRoles := rolePerms[subject]
+	// Also include roles from OIDC token
+	userRoles = append(userRoles, roles...)
+	for _, rName := range userRoles {
+		r := store.Role{Name: rName, Permissions: rolePerms[rName]}
+		if rbac.Has(r, perm) {
+			return true
+		}
+	}
+	return false
+}
+
+// permForPath maps an HTTP method + path to a coarse permission string.
+func permForPath(path, method string) string {
+	switch {
+	case method == http.MethodGet:
+		return "tests:view"
+	case strings.HasPrefix(path, "/api/run") || method == http.MethodPost:
+		return "tests:run"
+	case strings.HasPrefix(path, "/api/admin") || method == http.MethodDelete:
+		return "admin:access"
+	case strings.HasPrefix(path, "/api/audit"):
+		return "audit:read"
+	default:
+		return "tests:view"
+	}
+}
+
+// compactRoleClaim normalizes the OIDC role claim name.
+func compactRoleClaim(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "role"
+	}
+	return s
+}
+
+// compactRBACRoles drops blank entries from role assignments.
+func compactRBACRoles(in map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(in))
+	for sub, roles := range in {
+		sub = strings.TrimSpace(sub)
+		if sub == "" {
+			continue
+		}
+		clean := make([]string, 0, len(roles))
+		for _, r := range roles {
+			r = strings.TrimSpace(r)
+			if r != "" {
+				clean = append(clean, r)
+			}
+		}
+		if len(clean) > 0 {
+			out[sub] = clean
+		}
+	}
+	return out
 }
 
 // bearerToken extracts the credential from `Authorization: Bearer <token>`.

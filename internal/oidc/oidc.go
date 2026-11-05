@@ -358,6 +358,13 @@ func (c *Client) verifyIDToken(ctx context.Context, raw, nonce string) (map[stri
 	return claims, nil
 }
 
+// VerifyIDToken verifies a raw ID token JWT signature and standard claims,
+// returning the decoded claims on success. The nonce is left empty for
+// middleware-style verification (no authorization-code flow).
+func (c *Client) VerifyIDToken(raw string) (map[string]any, error) {
+	return c.verifyIDToken(context.Background(), raw, "")
+}
+
 // validateClaims enforces iss, aud, exp/nbf (with ClockSkew) and the optional
 // nonce.
 func (c *Client) validateClaims(claims map[string]any, nonce string) error {

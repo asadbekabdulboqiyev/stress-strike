@@ -1243,7 +1243,7 @@ func printHTTPInfo(h *scanner.HTTPInfo) {
 func printWAFInfo(w *scanner.WAFInfo) {
 	if w.Detected {
 		fmt.Printf("    Detected: ✅ %s (%s)\n", w.Name, w.Vendor)
-		fmt.Printf("    Confidence: %d%%\n", w.Confidence)
+		fmt.Printf("    Confidence: %.1f%%\n", w.Confidence)
 		if len(w.Indicators) > 0 {
 			fmt.Printf("    Indicators: %s\n", strings.Join(w.Indicators[:min(5, len(w.Indicators))], ", "))
 		}

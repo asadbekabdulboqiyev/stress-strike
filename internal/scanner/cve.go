@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 type CVEDetector struct {
@@ -114,7 +116,7 @@ func (d *CVEDetector) Scan() *CVEReport {
 
 func (d *CVEDetector) fingerprint() map[string]string {
 	tech := make(map[string]string)
-	resp, err := sendProbe(d.Target, "GET", "/", nil)
+	resp, err := core.SendProbe(d.Target, "GET", "/", nil)
 	if err != nil {
 		return tech
 	}

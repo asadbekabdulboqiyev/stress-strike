@@ -6,6 +6,11 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	httpscan "github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/http"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/security"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/tls"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/waf"
 )
 
 // findSecurityHeader returns a security header definition by name.
@@ -15,9 +20,9 @@ func findSecurityHeader(name string) *struct {
 	Weight   int
 	Check    func(string) (string, string)
 } {
-	for i := range securityHeaders {
-		if securityHeaders[i].Name == name {
-			return &securityHeaders[i]
+	for i := range security.SecurityHeaders {
+		if security.SecurityHeaders[i].Name == name {
+			return &security.SecurityHeaders[i]
 		}
 	}
 	return nil
@@ -40,14 +45,14 @@ func TestWAFSignatures_AllExpected(t *testing.T) {
 		"incapsula", "fortiweb", "barracuda", "denied",
 	}
 	for _, name := range expected {
-		if _, ok := wafSignatures[name]; !ok {
+		if _, ok := waf.WAFSignatures[name]; !ok {
 			t.Errorf("missing expected WAF signature: %s", name)
 		}
 	}
 }
 
 func TestWAFSignature_Cloudflare(t *testing.T) {
-	sig := wafSignatures["cloudflare"]
+	sig := waf.WAFSignatures["cloudflare"]
 	if sig.Name != "Cloudflare" {
 		t.Errorf("name = %q, want Cloudflare", sig.Name)
 	}
@@ -63,7 +68,7 @@ func TestWAFSignature_Cloudflare(t *testing.T) {
 }
 
 func TestWAFSignature_AllHaveNames(t *testing.T) {
-	for key, sig := range wafSignatures {
+	for key, sig := range waf.WAFSignatures {
 		if sig.Name == "" {
 			t.Errorf("WAF signature %q has empty Name", key)
 		}
@@ -76,7 +81,7 @@ func TestWAFSignature_AllHaveNames(t *testing.T) {
 func TestWAFSignatures_HeaderPatterns(t *testing.T) {
 	// Verify that header patterns exist for major WAFs
 	for _, name := range []string{"cloudflare", "aws-waf", "akamai"} {
-		sig := wafSignatures[name]
+		sig := waf.WAFSignatures[name]
 		if len(sig.Headers) == 0 {
 			t.Errorf("%s should have header signatures", name)
 		}
@@ -86,15 +91,15 @@ func TestWAFSignatures_HeaderPatterns(t *testing.T) {
 // --- Security Header Check Tests --------------------------------------------
 
 func TestSecurityHeaders_AllPresent(t *testing.T) {
-	if len(securityHeaders) == 0 {
-		t.Fatal("securityHeaders is empty")
+	if len(security.SecurityHeaders) == 0 {
+		t.Fatal("security.SecurityHeaders is empty")
 	}
 
 	// Verify required headers have proper weights
 	totalWeight := 0
-	for _, sh := range securityHeaders {
+	for _, sh := range security.SecurityHeaders {
 		if sh.Name == "" {
-			t.Error("empty header name in securityHeaders")
+			t.Error("empty header name in security.SecurityHeaders")
 		}
 		if sh.Weight <= 0 {
 			t.Errorf("header %s has non-positive weight: %d", sh.Name, sh.Weight)
@@ -731,9 +736,9 @@ func TestContainsTech(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := containsTech(tt.techs, tt.tech)
+		got := httpscan.ContainsTech(tt.techs, tt.tech)
 		if got != tt.want {
-			t.Errorf("containsTech(%v, %q) = %v, want %v", tt.techs, tt.tech, got, tt.want)
+			t.Errorf("httpscan.ContainsTech(%v, %q) = %v, want %v", tt.techs, tt.tech, got, tt.want)
 		}
 	}
 }
@@ -832,7 +837,7 @@ func TestDetectTechnologies_Server(t *testing.T) {
 				"Server": []string{tt.serverHeader},
 			},
 		}
-		techs := detectTechnologies(resp)
+		techs := httpscan.DetectTechnologies(resp)
 		found := false
 		for _, tech := range techs {
 			if tech == tt.expectTech {
@@ -863,7 +868,7 @@ func TestDetectTechnologies_XPoweredBy(t *testing.T) {
 				"X-Powered-By": []string{tt.poweredBy},
 			},
 		}
-		techs := detectTechnologies(resp)
+		techs := httpscan.DetectTechnologies(resp)
 		found := false
 		for _, tech := range techs {
 			if tech == tt.expectTech {
@@ -894,7 +899,7 @@ func TestDetectTechnologies_Cookies(t *testing.T) {
 				"Set-Cookie": []string{fmt.Sprintf("%s=abc123; Path=/", tt.cookieName)},
 			},
 		}
-		techs := detectTechnologies(resp)
+		techs := httpscan.DetectTechnologies(resp)
 		found := false
 		for _, tech := range techs {
 			if tech == tt.expectTech {
@@ -910,7 +915,7 @@ func TestDetectTechnologies_Cookies(t *testing.T) {
 
 func TestDetectTechnologies_Empty(t *testing.T) {
 	resp := &http.Response{Header: http.Header{}}
-	techs := detectTechnologies(resp)
+	techs := httpscan.DetectTechnologies(resp)
 	if len(techs) != 0 {
 		t.Errorf("empty headers should produce no techs, got %v", techs)
 	}
@@ -927,9 +932,9 @@ func TestKnownCiphers_Grades(t *testing.T) {
 	}
 
 	for id, expectedGrade := range gradeTests {
-		cipher, ok := knownCiphers[id]
+		cipher, ok := tls.KnownCiphers[id]
 		if !ok {
-			t.Errorf("cipher 0x%04x not found in knownCiphers", id)
+			t.Errorf("cipher 0x%04x not found in tls.KnownCiphers", id)
 			continue
 		}
 		if cipher.Grade != expectedGrade {
@@ -941,7 +946,7 @@ func TestKnownCiphers_Grades(t *testing.T) {
 func TestKnownCiphers_ForwardSecrecy(t *testing.T) {
 	fsCiphers := []uint16{0x1301, 0x1302, 0xc02b, 0xc02f, 0xcca8}
 	for _, id := range fsCiphers {
-		cipher := knownCiphers[id]
+		cipher := tls.KnownCiphers[id]
 		if !cipher.FS {
 			t.Errorf("cipher 0x%04x should have forward secrecy", id)
 		}
@@ -949,7 +954,7 @@ func TestKnownCiphers_ForwardSecrecy(t *testing.T) {
 
 	noFSCiphers := []uint16{0x009c, 0x000a, 0x0005}
 	for _, id := range noFSCiphers {
-		cipher := knownCiphers[id]
+		cipher := tls.KnownCiphers[id]
 		if cipher.FS {
 			t.Errorf("cipher 0x%04x should NOT have forward secrecy", id)
 		}
@@ -957,13 +962,13 @@ func TestKnownCiphers_ForwardSecrecy(t *testing.T) {
 }
 
 func TestInsecurePatterns(t *testing.T) {
-	if len(insecurePatterns) == 0 {
-		t.Error("insecurePatterns is empty")
+	if len(tls.InsecurePatterns) == 0 {
+		t.Error("tls.InsecurePatterns is empty")
 	}
 	expected := []string{"RC4", "DES", "3DES", "MD5", "NULL", "EXPORT", "anon"}
 	for _, p := range expected {
 		found := false
-		for _, ip := range insecurePatterns {
+		for _, ip := range tls.InsecurePatterns {
 			if ip == p {
 				found = true
 				break

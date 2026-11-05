@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"flag"
 	"path/filepath"
 	"testing"
 
@@ -193,5 +194,27 @@ func TestGateDefaultPathsHonorEnvironment(t *testing.T) {
 	}
 	if !out.Allowed {
 		t.Fatalf("approved ticket on default paths was not honored: %s", out.Reason)
+	}
+}
+
+func TestAddAuthzFlags(t *testing.T) {
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	g := &gateOptions{}
+	addAuthzFlags(fs, g)
+	if g.authorized != "" {
+		t.Errorf("authorized = %q, want empty", g.authorized)
+	}
+	if g.allowPrivate {
+		t.Error("allowPrivate should be false by default")
+	}
+	if g.policyPath != "" {
+		t.Errorf("policyPath = %q, want empty", g.policyPath)
+	}
+}
+
+func TestConfigHome(t *testing.T) {
+	home := configHome()
+	if home == "" {
+		t.Fatal("configHome returned empty string")
 	}
 }

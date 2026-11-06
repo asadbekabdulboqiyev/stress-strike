@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"flag"
+	"os"
 	"path/filepath"
 	"testing"
 

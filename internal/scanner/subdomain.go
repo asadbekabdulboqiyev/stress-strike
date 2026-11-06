@@ -18,6 +18,18 @@ import (
 	"time"
 )
 
+// Test seams. Passive enumeration is network-bound, so the DNS lookups and the
+// passive-source wait are indirected through package variables. Production
+// wiring keeps the standard library resolver and the 8s window; tests replace
+// them to stay hermetic.
+var (
+	lookupHostFn  = net.DefaultResolver.LookupHost
+	lookupCNAMEFn = net.DefaultResolver.LookupCNAME
+	lookupMXFn    = net.DefaultResolver.LookupMX
+	lookupTXTFn   = net.DefaultResolver.LookupTXT
+	passiveWait   = 8 * time.Second
+)
+
 // SubdomainResult is the output of a subdomain enumeration run.
 type SubdomainResult struct {
 	Target     string        `json:"target"`
@@ -80,7 +92,7 @@ func EnumerateSubdomains(ctx context.Context, target string, req Requester) *Sub
 	// Wait a bounded time for passive sources (they are network calls).
 	select {
 	case <-ctx.Done():
-	case <-time.After(8 * time.Second):
+	case <-time.After(passiveWait):
 	}
 
 	// Resolve discovered names (local resolver, not through gate).
@@ -145,14 +157,13 @@ func crtSh(ctx context.Context, target string, add func(name, source string, met
 }
 
 func dnsQuery(ctx context.Context, host string, add func(name, source string, methods ...string), types ...string) {
-	resolver := &net.Resolver{}
 	for _, t := range types {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 		}
-		answers, err := resolver.LookupHost(ctx, host)
+		answers, err := lookupHostFn(ctx, host)
 		if err != nil {
 			continue
 		}
@@ -163,13 +174,13 @@ func dnsQuery(ctx context.Context, host string, add func(name, source string, me
 		// Also try SRV/MX/TXT where meaningful.
 		switch t {
 		case "MX":
-			if mx, err := resolver.LookupMX(ctx, host); err == nil {
+			if mx, err := lookupMXFn(ctx, host); err == nil {
 				for _, m := range mx {
 					add(m.Host, "dns", "MX")
 				}
 			}
 		case "TXT":
-			if txt, err := resolver.LookupTXT(ctx, host); err == nil {
+			if txt, err := lookupTXTFn(ctx, host); err == nil {
 				for _, t := range txt {
 					_ = t // TXT content is informational; we record the host exists
 				}
@@ -180,17 +191,16 @@ func dnsQuery(ctx context.Context, host string, add func(name, source string, me
 }
 
 func resolveHost(ctx context.Context, name string) ([]string, []string) {
-	resolver := &net.Resolver{}
 	var ips []string
 	var methods []string
-	if addrs, err := resolver.LookupHost(ctx, name); err == nil {
+	if addrs, err := lookupHostFn(ctx, name); err == nil {
 		ips = addrs
 		methods = append(methods, "A/AAAA")
 	}
-	if cname, err := resolver.LookupCNAME(ctx, name); err == nil && cname != name {
+	if cname, err := lookupCNAMEFn(ctx, name); err == nil && cname != name {
 		methods = append(methods, "CNAME:"+cname)
 	}
-	if _, err := resolver.LookupMX(ctx, name); err == nil {
+	if _, err := lookupMXFn(ctx, name); err == nil {
 		methods = append(methods, "MX")
 	}
 	return ips, methods

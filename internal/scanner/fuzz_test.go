@@ -2,127 +2,198 @@ package scanner
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
 
-type fakeRequesterForFuzz struct {
-	allowErr error
-	doResp   *http.Response
-	doErr    error
+// fakeRequester always allows Check and returns a canned 200 response for Do.
+type fakeRequester struct {
+	resp *http.Response
 }
 
-func (f *fakeRequesterForFuzz) Check(ctx context.Context, method, rawURL string, intrusive bool) error {
-	return f.allowErr
+func (f *fakeRequester) Check(ctx context.Context, method, rawURL string, intrusive bool) error {
+	return nil
+}
+func (f *fakeRequester) Do(req *http.Request) (*http.Response, error) {
+	return f.resp, nil
 }
 
-func (f *fakeRequesterForFuzz) Do(req *http.Request) (*http.Response, error) {
-	if f.doResp != nil {
-		return f.doResp, nil
+func TestNewFuzzerValidation(t *testing.T) {
+	// nil Requester.
+	if _, err := NewFuzzer(FuzzConfig{BaseURL: "http://x.test", Paths: []string{"/"}}, nil); err == nil {
+		t.Error("NewFuzzer(nil req) = nil error, want error")
 	}
-	return &http.Response{
+	// empty BaseURL.
+	if _, err := NewFuzzer(FuzzConfig{Paths: []string{"/"}}, &fakeRequester{}); err == nil {
+		t.Error("NewFuzzer(empty BaseURL) = nil error, want error")
+	}
+	// empty Paths.
+	if _, err := NewFuzzer(FuzzConfig{BaseURL: "http://x.test"}, &fakeRequester{}); err == nil {
+		t.Error("NewFuzzer(empty Paths) = nil error, want error")
+	}
+}
+
+func TestLockedRand(t *testing.T) {
+	r := newLockedRand(42)
+	if r.next() == 0 {
+		t.Error("next() = 0, want non-zero (unlikely but possible)")
+	}
+	if r.intn(0) != 0 {
+		t.Errorf("intn(0) = %d, want 0", r.intn(0))
+	}
+	if r.intn(1) != 0 {
+		t.Errorf("intn(1) = %d, want 0", r.intn(1))
+	}
+	v := r.intn(100)
+	if v < 0 || v >= 100 {
+		t.Errorf("intn(100) = %d, want [0,100)", v)
+	}
+}
+
+func TestBinaryLittleEndianUint64(t *testing.T) {
+	b := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+	if got := binaryLittleEndianUint64(b); got != 0x0807060504030201 {
+		t.Errorf("binaryLittleEndianUint64 = %#x, want %#x", got, 0x0807060504030201)
+	}
+}
+
+func TestFuzzerRun(t *testing.T) {
+	canned := &http.Response{
 		StatusCode: 200,
-		Status:     "200 OK",
-		Proto:      "HTTP/1.1",
-		Header:     make(http.Header),
-		Body:       http.NoBody,
-	}, f.doErr
-}
-
-func TestNewFuzzerSuccess(t *testing.T) {
-	cfg := FuzzConfig{
-		BaseURL:    "http://example.com",
-		Paths:      []string{"/api/{id}"},
-		Methods:    []string{"GET"},
-		Seed:       42,
-		Mutations:  10,
-		Concurrency: 1,
-		Timeout:    5 * time.Second,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
 	}
-	fz, err := NewFuzzer(cfg, &fakeRequesterForFuzz{})
+	req := &fakeRequester{resp: canned}
+
+	f, err := NewFuzzer(FuzzConfig{
+		BaseURL:     "http://127.0.0.1:1/",
+		Paths:       []string{"/item/{id}"},
+		Methods:     []string{"GET"},
+		Seed:        1,
+		Mutations:   5,
+		Concurrency: 2,
+		Timeout:     time.Second,
+		Intrusive:   false,
+	}, req)
 	if err != nil {
 		t.Fatalf("NewFuzzer: %v", err)
 	}
-	if fz == nil {
-		t.Fatal("NewFuzzer returned nil")
+
+	res := f.Run(context.Background())
+	if res == nil {
+		t.Fatal("Run returned nil")
+	}
+	if res.Sent == 0 {
+		t.Error("Sent = 0, want > 0")
+	}
+	if res.Duration <= 0 {
+		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }
 
-func TestNewFuzzerNilRequester(t *testing.T) {
-	cfg := FuzzConfig{
-		BaseURL:   "http://example.com",
-		Paths:     []string{"/api/{id}"},
-		Mutations: 10,
+func TestFuzzerRunIntrusive(t *testing.T) {
+	canned := &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
 	}
-	_, err := NewFuzzer(cfg, nil)
-	if err == nil {
-		t.Fatal("expected error for nil Requester")
+	req := &fakeRequester{resp: canned}
+
+	f, err := NewFuzzer(FuzzConfig{
+		BaseURL:     "http://127.0.0.1:1/",
+		Paths:       []string{"/item/{id}"},
+		Methods:     []string{"GET"},
+		Seed:        1,
+		Mutations:   5,
+		Concurrency: 2,
+		Timeout:     time.Second,
+		Intrusive:   true,
+	}, req)
+	if err != nil {
+		t.Fatalf("NewFuzzer: %v", err)
+	}
+
+	res := f.Run(context.Background())
+	if res == nil {
+		t.Fatal("Run returned nil")
 	}
 }
 
-func TestNewFuzzerEmptyBaseURL(t *testing.T) {
-	cfg := FuzzConfig{
-		Paths:     []string{"/api/{id}"},
-		Mutations: 10,
-	}
-	_, err := NewFuzzer(cfg, &fakeRequesterForFuzz{})
-	if err == nil {
-		t.Fatal("expected error for empty BaseURL")
+func TestKey(t *testing.T) {
+	if got := key("GET", "/item/{id}"); got != "GET|/item/{id}" {
+		t.Errorf("key = %q, want GET|/item/{id}", got)
 	}
 }
 
-func TestNewFuzzerNoPaths(t *testing.T) {
-	cfg := FuzzConfig{
-		BaseURL:  "http://example.com",
-		Mutations: 10,
+func TestIsInteresting(t *testing.T) {
+	base := httpResponseSnapshot{status: 200, bodyLen: 100}
+	// Same → not interesting.
+	if got := isInteresting(base, base); got {
+		t.Error("isInteresting(same) = true, want false")
 	}
-	_, err := NewFuzzer(cfg, &fakeRequesterForFuzz{})
-	if err == nil {
-		t.Fatal("expected error for no paths")
+	// Different status → interesting.
+	s := httpResponseSnapshot{status: 201, bodyLen: 100}
+	if !isInteresting(s, base) {
+		t.Error("isInteresting(diff status) = false, want true")
 	}
-}
-
-func TestFuzzResultFields(t *testing.T) {
-	fr := FuzzResult{
-		BaseURL:     "http://example.com",
-		Seed:        42,
-		Sent:        10,
-		Refused:     0,
-		Interesting: 2,
-		Findings:    []FuzzFinding{},
-		Duration:    time.Second,
+	// Different bodyLen → interesting.
+	s = httpResponseSnapshot{status: 200, bodyLen: 200}
+	if !isInteresting(s, base) {
+		t.Error("isInteresting(diff bodyLen) = false, want true")
 	}
-	if fr.BaseURL != "http://example.com" {
-		t.Errorf("baseURL = %q, want http://example.com", fr.BaseURL)
+	// 500 → interesting.
+	s = httpResponseSnapshot{status: 500, bodyLen: 100}
+	if !isInteresting(s, base) {
+		t.Error("isInteresting(500) = false, want true")
 	}
-	if fr.Seed != 42 {
-		t.Errorf("seed = %d, want 42", fr.Seed)
+	// 403 → interesting.
+	s = httpResponseSnapshot{status: 403, bodyLen: 100}
+	if !isInteresting(s, base) {
+		t.Error("isInteresting(403) = false, want true")
 	}
-	if fr.Sent != 10 {
-		t.Errorf("sent = %d, want 10", fr.Sent)
-	}
-	if fr.Interesting != 2 {
-		t.Errorf("interesting = %d, want 2", fr.Interesting)
+	// Slow → interesting.
+	s = httpResponseSnapshot{status: 200, bodyLen: 100, duration: 10 * time.Second}
+	if !isInteresting(s, base) {
+		t.Error("isInteresting(slow) = false, want true")
 	}
 }
 
-func TestFuzzFindingFields(t *testing.T) {
-	f := FuzzFinding{
-		Method:       "GET",
-		URL:          "/api/1",
-		StatusCode:   200,
-		BodyLen:      100,
-		BodyHash:     "abc123",
-		Headers:      []string{"X-Custom: value"},
-		Mutation:     "path_param",
-		Reason:       "status code differed from baseline",
-		ResponseTime: 50 * time.Millisecond,
+func TestInterestReason(t *testing.T) {
+	base := httpResponseSnapshot{status: 200, bodyLen: 100}
+	s := httpResponseSnapshot{status: 201, bodyLen: 100}
+	got := interestReason(s, base)
+	if !strings.Contains(got, "status") {
+		t.Errorf("interestReason = %q, want status mention", got)
 	}
-	if f.Method != "GET" {
-		t.Errorf("method = %q, want GET", f.Method)
+}
+
+func TestHashBytes(t *testing.T) {
+	h1 := hashBytes([]byte("hello"))
+	h2 := hashBytes([]byte("hello"))
+	if h1 != h2 {
+		t.Error("hashBytes not deterministic")
 	}
-	if f.StatusCode != 200 {
-		t.Errorf("status = %d, want 200", f.StatusCode)
+	if len(h1) != 64 {
+		t.Errorf("len(hashBytes) = %d, want 64 (hex sha256)", len(h1))
+	}
+	if got := hashBytes([]byte("")); got == "" {
+		t.Error("hashBytes(empty) = empty, want non-empty")
+	}
+}
+
+func TestSha256Sum(t *testing.T) {
+	w := sha256Sum()
+	if w == nil {
+		t.Fatal("sha256Sum = nil")
+	}
+	_, err := w.Write([]byte("test"))
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	sum := w.Sum(nil)
+	if len(sum) != 32 {
+		t.Errorf("len(Sum) = %d, want 32", len(sum))
 	}
 }

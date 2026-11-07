@@ -42,6 +42,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // GuardConfig configures a Guard. The zero value is usable and safe: it
@@ -97,6 +100,16 @@ type GuardConfig struct {
 
 	// DryRun evaluates policy but never sends. Do() returns ErrDryRun.
 	DryRun bool
+
+	// Fingerprint, when non-empty, makes Guard's client present the given TLS
+	// ClientHello (chrome_133, firefox, safari, ...) instead of Go's stock
+	// hello. The matching User-Agent and Client Hints are stamped on each
+	// request in Do(). Empty leaves the client unchanged.
+	Fingerprint fingerprint.Profile
+
+	// InsecureSkipVerify is passed through to the TLS client when Fingerprint
+	// is set. Off by default; only flip it for self-signed lab targets.
+	InsecureSkipVerify bool
 }
 
 // Defaults. Exported so a caller can build a matching budget report.
@@ -208,13 +221,17 @@ func NewGuard(cfg GuardConfig) (*Guard, error) {
 		patterns: patterns,
 		limiter:  newRateLimiter(rps, burst),
 	}
-	g.client = &http.Client{
-		Timeout: cfg.Timeout,
-		// Several checks need the raw 3xx and its Location header, so a
-		// redirect must never be followed implicitly.
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	if cfg.Fingerprint != fingerprint.Default {
+		g.client = core.NewHTTPClient(cfg.Fingerprint, cfg.Timeout, cfg.InsecureSkipVerify)
+	} else {
+		g.client = &http.Client{
+			Timeout: cfg.Timeout,
+			// Several checks need the raw 3xx and its Location header, so a
+			// redirect must never be followed implicitly.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 	}
 	return g, nil
 }
@@ -294,7 +311,9 @@ func (g *Guard) Do(req *http.Request) (*http.Response, error) {
 	if err := g.acquireRate(req.Context(), strings.ToLower(req.URL.Host)); err != nil {
 		return nil, g.refuse(err, nil)
 	}
-	if req.Header.Get("User-Agent") == "" {
+	if g.cfg.Fingerprint != fingerprint.Default {
+		core.ApplyHeaders(req, g.cfg.Fingerprint)
+	} else if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", ScannerUserAgent)
 	}
 	resp, err := g.client.Do(req)

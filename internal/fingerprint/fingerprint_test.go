@@ -15,6 +15,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -208,6 +210,72 @@ func TestNamesAreValid(t *testing.T) {
 	}
 	if Profile("nope").Valid() || Profile("").Valid() == false {
 		t.Fatal("Valid() is wrong")
+	}
+}
+
+// TestJA4FromRecord exercises the shared ClientHello parser through JA4.
+func TestJA4FromRecord(t *testing.T) {
+	rec := buildHelloRecord(
+		[][2]byte{{0x13, 0x01}, {0xc0, 0x2f}},
+		[][2]byte{{0x00, 0x1d}, {0x00, 0x17}},
+		[]byte{0x00},
+	)
+	ja4, err := JA4FromRecord(rec)
+	if err != nil {
+		t.Fatalf("JA4FromRecord: %v", err)
+	}
+	// Expected shape: t<ver><sni><ciphers><exts><alpn>_<12hex>_<12hex>
+	// TLS 1.2 -> "12", no SNI -> "n", 2 ciphers -> "02", 2 exts -> "02", no ALPN -> "00"
+	if !strings.HasPrefix(ja4, "t12n020200_") {
+		t.Fatalf("JA4 prefix mismatch: %q", ja4)
+	}
+	parts := strings.Split(ja4, "_")
+	if len(parts) != 3 || len(parts[1]) != 12 || len(parts[2]) != 12 {
+		t.Fatalf("JA4 segments malformed: %q", ja4)
+	}
+	for _, p := range parts[1:] {
+		if _, err := strconv.ParseInt(p, 16, 64); err != nil {
+			t.Fatalf("JA4 hash segment not hex: %q", p)
+		}
+	}
+
+	// Determinism: same record → same JA4.
+	again, err := JA4FromRecord(rec)
+	if err != nil || again != ja4 {
+		t.Fatalf("JA4 not deterministic: %q vs %q (err=%v)", again, ja4, err)
+	}
+
+	// JA3 and JA4 derive from the same record without conflict.
+	ja3, _, err := JA3FromRecord(rec)
+	if err != nil {
+		t.Fatalf("JA3FromRecord on JA4 record: %v", err)
+	}
+	if ja3 != "771,4865-49199,10-11,29-23,0" {
+		t.Fatalf("JA3 shifted: %q", ja3)
+	}
+
+	// Changing ciphers changes JA4 (JA4_b differs).
+	other := buildHelloRecord(
+		[][2]byte{{0x13, 0x02}, {0xc0, 0x2f}},
+		[][2]byte{{0x00, 0x1d}, {0x00, 0x17}},
+		[]byte{0x00},
+	)
+	otherJA4, err := JA4FromRecord(other)
+	if err != nil {
+		t.Fatalf("JA4FromRecord(other): %v", err)
+	}
+	if otherJA4 == ja4 {
+		t.Fatal("JA4 should change when ciphers change")
+	}
+}
+
+// TestJA4RejectsGarbage mirrors TestJA3RejectsGarbage for the shared parser.
+func TestJA4RejectsGarbage(t *testing.T) {
+	cases := [][]byte{nil, {0x00}, {0x16, 0x03, 0x03}, {0x15, 0x03, 0x03, 0, 1, 1}, {}}
+	for _, c := range cases {
+		if _, err := JA4FromRecord(c); err == nil {
+			t.Fatalf("JA4FromRecord(%v) should have failed", c)
+		}
 	}
 }
 

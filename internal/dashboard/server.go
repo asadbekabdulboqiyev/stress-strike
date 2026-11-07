@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/certificate"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
 	"github.com/gorilla/websocket"
 )
@@ -435,6 +437,8 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleAttestationDownload(w, r)
 	case path == "/api/attestation/verify":
 		s.handleAttestationVerify(w, r)
+	case path == "/api/certificate/verify":
+		s.handleCertificateVerify(w, r)
 	case path == "/api/demo-store/start":
 		s.handleDemoStoreStart(w, r)
 	case path == "/api/demo-store/stop":
@@ -970,6 +974,34 @@ func (s *Server) handleAttestationVerify(w http.ResponseWriter, r *http.Request)
 	res := verifyAttestation(info.BundlePath, info.SamplesPath)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
+}
+
+func (s *Server) handleCertificateVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	if !sameOrigin(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxAPIRequestBody)
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, err = certificate.VerifyBytes(data)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"valid":  "false",
+			"detail": err.Error(),
+		})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"valid": "true"})
 }
 
 func getDashboardDataDir() (string, error) {

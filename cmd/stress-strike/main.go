@@ -22,7 +22,7 @@ var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
 	"demo-store", "pentest", "fuzz", "dirbust", "jwt", "graphql", "websocket",
 	"crawl", "subdomain", "portscan", "sslscan",
-	"authorize", "audit", "healthcheck", "keygen", "verify", "help", "version",
+	"authorize", "audit", "healthcheck", "keygen", "verify", "certificate", "help", "version",
 }
 
 func main() {
@@ -97,6 +97,9 @@ func main() {
 		case "verify":
 			cmdVerify()
 			return
+		case "certificate":
+			cmdCertificate()
+			return
 		case "help", "--help", "-h":
 			printFullHelp()
 			return
@@ -168,6 +171,7 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
    audit       Show or verify the authorization audit trail
    keygen      Create a VeriBench coordinator keypair (Ed25519, PEM)
    verify      Verify a VeriBench (vpmp/v1) evidence bundle
+   certificate Issue/verify an Ed25519-signed security assessment certificate
    help        Show this help
    version     Show version
 

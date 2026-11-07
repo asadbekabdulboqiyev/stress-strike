@@ -776,7 +776,7 @@ func interactivePicker() {
 		interactiveWizard(r)
 	case "0", "q", "quit", "exit":
 		fmt.Println("Bye.")
-		os.Exit(0)
+		exitProcess(0)
 	default:
 		interactiveCLI(r)
 	}
@@ -790,7 +790,7 @@ func interactiveDashboard(r *bufio.Reader) {
 	url := last.URL
 	if url == "" {
 		fmt.Println("error: target URL is required.")
-		os.Exit(1)
+		exitProcess(1)
 	}
 	users := last.VUsers
 	if users == 0 {
@@ -825,7 +825,7 @@ func interactiveCLI(r *bufio.Reader) {
 	url := readLine(r, "Target URL (e.g. https://api.example.com)")
 	if url == "" {
 		fmt.Println("error: target URL is required.")
-		os.Exit(1)
+		exitProcess(1)
 	}
 	users := readInt(r, "Virtual users", 10)
 	duration := readInt(r, "Duration (seconds)", 30)

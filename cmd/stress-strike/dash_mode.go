@@ -154,7 +154,7 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, d
 		fmt.Fprintln(os.Stderr, "The control API can start/stop real load runs, so it must be locked down.")
 		fmt.Fprintln(os.Stderr, "Pass --dashboard-auth-token (or --dashboard-auth-api-key), bind a loopback")
 		fmt.Fprintln(os.Stderr, "address (--listen 127.0.0.1:8888), or pass --dashboard-insecure to acknowledge the risk.")
-		os.Exit(1)
+		exitProcess(1)
 	}
 	var auth *dashboard.Auth
 	switch {
@@ -206,7 +206,7 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, d
 			cancel()
 		}
 		mu.Unlock()
-		os.Exit(0)
+		exitProcess(0)
 	}()
 
 	// http.Server with explicit header/idle timeouts: a slowloris-style
@@ -219,7 +219,7 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, d
 	}
 	if err := dashSrv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "dashboard server failed: %v\n", err)
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
 

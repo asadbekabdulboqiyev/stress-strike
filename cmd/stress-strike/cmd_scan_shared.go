@@ -296,7 +296,7 @@ const scanUsageExitCode = 2
 // exits with the usage code. Runtime failures keep using fatal (exit 1).
 func usageFatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	os.Exit(scanUsageExitCode)
+	exitProcess(scanUsageExitCode)
 }
 
 // scanDryRunSkip handles --dry-run for a scanner that performs its own dialing

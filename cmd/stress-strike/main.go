@@ -105,7 +105,7 @@ func main() {
 			return
 		default:
 			unknownCommand(cmd)
-			os.Exit(2)
+			exitProcess(2)
 		}
 	}
 

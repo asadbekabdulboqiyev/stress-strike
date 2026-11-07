@@ -101,11 +101,11 @@ func cmdDemoStore() {
 		// Blocks until Start hands the mutex over (finishes or gives up),
 		// then kills the spawned process group. Never leaves an orphan.
 		_ = store.Stop()
-		os.Exit(130)
+		exitProcess(130)
 	case res := <-startCh:
 		if res.err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", res.err)
-			os.Exit(1)
+			exitProcess(1)
 		}
 		startedURL, already = res.url, res.already
 	}
@@ -144,7 +144,7 @@ func cmdDemoStore() {
 		fmt.Println("  Done.")
 	case <-store.Done():
 		fmt.Println("\n  [demo-store] process exited on its own.")
-		os.Exit(1) // crash != clean shutdown; scripts must notice
+		exitProcess(1) // crash != clean shutdown; scripts must notice
 	}
 }
 

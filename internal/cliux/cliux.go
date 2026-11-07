@@ -37,6 +37,11 @@ type Options struct {
 	Examples []string
 }
 
+// ExitProcess terminates the process after a parse decision. It is a variable
+// so callers (and tests) can substitute their own handler; production uses
+// os.Exit.
+var ExitProcess = os.Exit
+
 // Parse wraps fs.Parse with friendly CLI UX. It never returns when parsing
 // is interrupted:
 //
@@ -54,11 +59,11 @@ func Parse(fs *flag.FlagSet, args []string, onHelp func(), o Options) {
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			onHelp()
-			os.Exit(0)
+			ExitProcess(0)
 		}
 		o.FlagSet = fs
 		o.Err = err
-		os.Exit(HandleFlagError(os.Stderr, o))
+		ExitProcess(HandleFlagError(os.Stderr, o))
 	}
 	// Success: restore the original usage/output so later flag.Usage() calls
 	// (e.g. "required flag missing" checks) still render normally.

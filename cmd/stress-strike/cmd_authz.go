@@ -183,7 +183,7 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
 	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-cidr> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
-	os.Exit(authzDeniedExitCode)
+	exitProcess(authzDeniedExitCode)
 }
 
 func recordAuthz(e authz.Entry, auditPath, webhook string) {
@@ -242,7 +242,7 @@ func cmdAuthorize() {
 	args := os.Args[2:]
 	if len(args) == 0 {
 		authorizeUsage()
-		os.Exit(2)
+		exitProcess(2)
 	}
 	switch args[0] {
 	case "add":
@@ -258,7 +258,7 @@ func cmdAuthorize() {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown authorize subcommand %q\n\n", args[0])
 		authorizeUsage()
-		os.Exit(2)
+		exitProcess(2)
 	}
 }
 
@@ -414,7 +414,7 @@ func cmdAudit() {
 	args := os.Args[2:]
 	if len(args) == 0 {
 		auditUsage()
-		os.Exit(2)
+		exitProcess(2)
 	}
 	switch args[0] {
 	case "show", "ls":
@@ -426,7 +426,7 @@ func cmdAudit() {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown audit subcommand %q\n\n", args[0])
 		auditUsage()
-		os.Exit(2)
+		exitProcess(2)
 	}
 }
 
@@ -478,7 +478,7 @@ func auditVerify(args []string) {
 	n, err := authz.Verify(*logPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TAMPERED or corrupt: %v (verified %d record(s) before the break)\n", err, n)
-		os.Exit(1)
+		exitProcess(1)
 	}
 	fmt.Printf("OK: %d record(s), hash chain intact (%s)\n", n, *logPath)
 }

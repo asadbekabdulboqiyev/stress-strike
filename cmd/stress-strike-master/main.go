@@ -68,7 +68,7 @@ func main() {
 	// `stress-strike-master healthcheck -addr <url>`. Handle it before any flag
 	// parsing so the probe never needs a shell (distroless images ship none).
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
-		os.Exit(probe.Run(os.Args[2:], "http://127.0.0.1:9090/healthz"))
+		exitProcess(probe.Run(os.Args[2:], "http://127.0.0.1:9090/healthz"))
 	}
 
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
@@ -104,7 +104,7 @@ func main() {
 	coordinator.Version = version
 
 	if *configPath == "" && *url == "" {
-		log.Fatal("Either --config or --url is required")
+		fatal("Either --config or --url is required")
 	}
 
 	var workerList []string
@@ -116,26 +116,26 @@ func main() {
 		}
 	}
 	if len(workerList) == 0 && *waitWorkers <= 0 {
-		log.Fatal("Pass --workers (static) or --wait-workers N (auto-discovery)")
+		fatal("Pass --workers (static) or --wait-workers N (auto-discovery)")
 	}
 
 	var scenario *config.Scenario
 	if *configPath != "" {
 		sc, err := config.Load(*configPath)
 		if err != nil {
-			log.Fatal(err)
+			fatal(err)
 		}
 		scenario = sc
 	} else {
 		sc, err := quickScenario(*name, *url, *users, *duration, *profile)
 		if err != nil {
-			log.Fatal(err)
+			fatal(err)
 		}
 		scenario = sc
 	}
 	if *tlsFP != "" {
 		if !fingerprint.Profile(*tlsFP).Valid() {
-			log.Fatalf("unknown -tls-fingerprint %q (valid values: %s)", *tlsFP, strings.Join(fingerprint.Names(), ", "))
+			fatalf("unknown -tls-fingerprint %q (valid values: %s)", *tlsFP, strings.Join(fingerprint.Names(), ", "))
 		}
 		scenario.Profile.TLSFingerprint = *tlsFP
 	}
@@ -174,11 +174,11 @@ func main() {
 	}
 	serverCreds, err := tlsOpts.ServerCreds()
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	clientCreds, err := tlsOpts.ClientCreds()
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if tlsOpts.Enabled() && clientCreds == nil {
 		log.Printf("WARNING: -tls-cert/-tls-key enable incoming TLS only; outbound dials to static workers stay plaintext unless -tls-ca or -tls-skip-verify is passed")
@@ -186,7 +186,7 @@ func main() {
 
 	pins, err := parseAuthorizedKeys(*authorizedK)
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if len(pins) > 0 {
 		log.Printf("Pinned %d worker key(s); telemetry attestation is required (unsigned telemetry is rejected)", len(pins))
@@ -210,7 +210,7 @@ func main() {
 
 	lis, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		fatalf("Failed to listen: %v", err)
 	}
 	serverOpts := coordinator.ServerOptions(*token)
 	if serverCreds != nil {
@@ -268,20 +268,20 @@ func main() {
 		log.Printf("Waiting for %d self-registering workers (timeout %ds)...", *waitWorkers, *waitTimeout)
 		addrs, err = master.ResolveWorkers(ctx)
 		if err != nil {
-			log.Fatalf("Worker discovery failed: %v", err)
+			fatalf("Worker discovery failed: %v", err)
 		}
 	}
 
 	connected, err := master.Connect(ctx, addrs)
 	if err != nil {
-		log.Fatalf("Failed to connect to workers: %v", err)
+		fatalf("Failed to connect to workers: %v", err)
 	}
 
 	runID := fmt.Sprintf("run-%d", time.Now().UnixMilli())
 	log.Printf("Starting distributed run %s on %d workers", runID, len(connected))
 
 	if err := master.StartRun(ctx, runID); err != nil {
-		log.Fatalf("Run failed: %v", err)
+		fatalf("Run failed: %v", err)
 	}
 
 	stopProgress := make(chan struct{})
@@ -330,7 +330,7 @@ func main() {
 			passed := evaluateSLA(finalReport, scenario.SLA)
 			if !passed {
 				grpcServer.GracefulStop()
-				log.Fatal("SLA GATE FAILED")
+				fatal("SLA GATE FAILED")
 			}
 			log.Println("SLA GATE PASSED")
 		}

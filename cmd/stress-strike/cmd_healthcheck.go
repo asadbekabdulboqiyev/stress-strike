@@ -15,5 +15,5 @@ import (
 // It exits 0 when the endpoint answers 2xx and 1 otherwise. The probe logic is
 // shared with the master and worker binaries in internal/probe.
 func cmdHealthcheck() {
-	os.Exit(probe.Run(os.Args[2:], ""))
+	exitProcess(probe.Run(os.Args[2:], ""))
 }

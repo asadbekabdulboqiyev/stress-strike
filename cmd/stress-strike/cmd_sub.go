@@ -14,7 +14,7 @@ func runSubCommand(name string, args []string) {
 	exe, err := os.Executable()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: cannot determine executable path: %v\n", err)
-		os.Exit(1)
+		exitProcess(1)
 	}
 	exe = filepath.Clean(exe)
 	binDir := filepath.Dir(exe)
@@ -28,10 +28,10 @@ func runSubCommand(name string, args []string) {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
+				exitProcess(exitErr.ExitCode())
 			}
 			fmt.Fprintf(os.Stderr, "Error: %s command failed: %v\n", name, err)
-			os.Exit(1)
+			exitProcess(1)
 		}
 		return
 	}
@@ -46,9 +46,9 @@ func runSubCommand(name string, args []string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s command failed. Build with: go build -o bin/%s ./cmd/%s\n", name, name, name)
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
+			exitProcess(exitErr.ExitCode())
 		}
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
 

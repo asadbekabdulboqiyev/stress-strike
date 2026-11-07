@@ -35,11 +35,11 @@ func cmdKeygen() {
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		keygenUsage()
-		os.Exit(1)
+		exitProcess(1)
 	}
 	if strings.TrimSpace(*out) == "" || fs.NArg() > 0 {
 		keygenUsage()
-		os.Exit(1)
+		exitProcess(1)
 	}
 	if !*force {
 		if _, err := os.Stat(*out); err == nil {
@@ -78,11 +78,11 @@ func cmdVerify() {
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		verifyUsage()
-		os.Exit(1)
+		exitProcess(1)
 	}
 	if strings.TrimSpace(*bundlePath) == "" || fs.NArg() > 0 {
 		verifyUsage()
-		os.Exit(1)
+		exitProcess(1)
 	}
 
 	bundle, err := attest.LoadBundle(*bundlePath)
@@ -128,7 +128,7 @@ func cmdVerify() {
 	}
 
 	if !res.Valid {
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
 

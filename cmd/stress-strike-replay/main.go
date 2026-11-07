@@ -99,13 +99,13 @@ Examples:
 		fmt.Fprintln(os.Stderr, "Example: stress-strike replay -input traffic.har -rate 10x")
 		fmt.Fprintln(os.Stderr, "")
 		flag.Usage()
-		os.Exit(1)
+		exitProcess(1)
 	}
 
 	// Parse rate multiplier
 	rateMultiplier, err := parseRate(*rate)
 	if err != nil {
-		log.Fatalf("Invalid rate: %v", err)
+		fatalf("Invalid rate: %v", err)
 	}
 
 	// Resolve pacing mode
@@ -118,10 +118,10 @@ Examples:
 	case "legacy":
 		pacing = replay.PacingLegacy
 	default:
-		log.Fatalf("Invalid pacing mode %q (use timing, rps, or legacy)", *pace)
+		fatalf("Invalid pacing mode %q (use timing, rps, or legacy)", *pace)
 	}
 	if pacing == replay.PacingRPS && *rpsFlag <= 0 {
-		log.Fatalf("--rps must be a positive value when --pace rps is used")
+		fatalf("--rps must be a positive value when --pace rps is used")
 	}
 
 	// Parse duration
@@ -129,7 +129,7 @@ Examples:
 	if *duration != "" {
 		dur, err = time.ParseDuration(*duration)
 		if err != nil {
-			log.Fatalf("Invalid duration: %v", err)
+			fatalf("Invalid duration: %v", err)
 		}
 	}
 
@@ -138,7 +138,7 @@ Examples:
 	if *tlsKey != "" && *tlsCert != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 		if err != nil {
-			log.Fatalf("Load TLS key: %v", err)
+			fatalf("Load TLS key: %v", err)
 		}
 		tlsKeys = append(tlsKeys, &replay.TLSKey{Key: &cert})
 	}
@@ -214,11 +214,11 @@ Examples:
 		parser := replay.NewPCAPParser(tlsKeys)
 		capture, err = parser.ParseFile(*inputFile)
 	default:
-		log.Fatalf("Unsupported file format: %s (use .har, .pcap, or .pcapng)", ext)
+		fatalf("Unsupported file format: %s (use .har, .pcap, or .pcapng)", ext)
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to load capture: %v", err)
+		fatalf("Failed to load capture: %v", err)
 	}
 
 	fmt.Printf("  Loaded %d packets\n", len(capture.Packets))
@@ -260,7 +260,7 @@ Examples:
 	startTime := time.Now()
 	result, err := engine.Run()
 	if err != nil {
-		log.Fatalf("Replay failed: %v", err)
+		fatalf("Replay failed: %v", err)
 	}
 	totalTime := time.Since(startTime)
 

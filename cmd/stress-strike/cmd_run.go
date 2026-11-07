@@ -302,7 +302,7 @@ func cmdRun() {
 		second := make(chan os.Signal, 1)
 		signal.Notify(second, os.Interrupt, syscall.SIGTERM)
 		<-second
-		os.Exit(130)
+		exitProcess(130)
 	}()
 
 	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
@@ -353,7 +353,7 @@ func cmdRun() {
 		if result.Regression && result.RegressionPct > regressPct {
 			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%, actual %.1f%%)\n",
 				comparePath, regressPct, result.RegressionPct)
-			os.Exit(2)
+			exitProcess(2)
 		}
 	}
 
@@ -387,7 +387,7 @@ func cmdRun() {
 
 	if len(r.SLA) > 0 && !report.SLAPassed(r.SLA) {
 		fmt.Fprintln(os.Stderr, "SLA gate FAILED — exiting with code 2")
-		os.Exit(2)
+		exitProcess(2)
 	}
 
 	// Safety net: a run that failed on 100% of requests (e.g. dead port,
@@ -395,7 +395,7 @@ func cmdRun() {
 	if r.TotalRequests > 0 && r.TotalErrors == r.TotalRequests {
 		fmt.Fprintln(os.Stderr, "FATAL: 100% of requests failed — target unreachable or refusing connections")
 		fmt.Fprintln(os.Stderr, "  Check the target URL, network, and that the server is up.")
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
 
@@ -503,7 +503,7 @@ func printRunHelp(fs *flag.FlagSet) {
 
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	os.Exit(1)
+	exitProcess(1)
 }
 
 // defaultWorkerID names this process as a worker in an evidence bundle. A

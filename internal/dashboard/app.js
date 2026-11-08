@@ -2500,7 +2500,6 @@ function savedView() {
 function showView(id, opts) {
   opts = opts || {};
   if (VIEW_IDS.indexOf(id) < 0) return;
-  if (id === 'viewAdmin') revealAdmin(false);
 
   VIEW_IDS.forEach(function(v) {
     var el = document.getElementById(v);
@@ -2550,59 +2549,19 @@ function wireNav() {
   // normal typing inside the URL and token fields.
   document.addEventListener('keydown', function(ev) {
     if (!ev.altKey || ev.ctrlKey || ev.metaKey) return;
-    var map = { '1': 'viewOverview', '2': 'viewSecurity', '3': 'viewCertificate', '4': 'viewHistory', 'a': 'viewAdmin' };
+    var map = { '1': 'viewOverview', '2': 'viewSecurity', '3': 'viewCertificate', '4': 'viewHistory' };
     var id = map[String(ev.key).toLowerCase()];
     if (!id) return;
     ev.preventDefault();
-    if (id === 'viewAdmin') revealAdmin(true);
     showView(id);
   });
 }
 
 /* ==========================================================================
-   SHELL — hidden admin reveal
+   ADMIN PAGE — status, unlock, lock, countdown
+   Admin panel is only reachable via the admin code entered in the form.
+   No hidden shortcuts, no hash-based reveal, no persistent session flag.
    ========================================================================== */
-var adminRevealed = false;
-
-function revealAdmin(open) {
-  if (!adminRevealed) {
-    adminRevealed = true;
-    var nav = document.getElementById('navAdmin');
-    if (nav) nav.classList.remove('hidden');
-    try { sessionStorage.setItem('ss_admin_revealed', '1'); } catch (e) {}
-  }
-  if (open) showView('viewAdmin');
-}
-
-function wireAdminReveal() {
-  try { if (sessionStorage.getItem('ss_admin_revealed') === '1') revealAdmin(false); } catch (e) {}
-
-  document.addEventListener('keydown', function(ev) {
-    if (ev.ctrlKey && ev.shiftKey && String(ev.key).toLowerCase() === 'a') {
-      ev.preventDefault();
-      revealAdmin(true);
-    }
-  });
-
-  var logo = document.getElementById('brandLogo');
-  if (logo) {
-    var clicks = 0;
-    var last = 0;
-    logo.style.cursor = 'pointer';
-    logo.addEventListener('click', function() {
-      var now = Date.now();
-      if (now - last > 1500) clicks = 0;
-      last = now;
-      clicks++;
-      if (clicks >= 5) { clicks = 0; revealAdmin(true); toast('Admin area revealed', 'ok'); }
-    });
-  }
-
-  if (location.hash === '#admin') revealAdmin(true);
-  window.addEventListener('hashchange', function() {
-    if (location.hash === '#admin') revealAdmin(true);
-  });
-}
 
 /* ==========================================================================
    CERTIFICATE PAGE — drop one file, issue or verify
@@ -3006,7 +2965,6 @@ function wireAdmin() {
 
 /* ---- Boot the shell ---- */
 wireNav();
-wireAdminReveal();
 wireCertificate();
 wireAdmin();
 

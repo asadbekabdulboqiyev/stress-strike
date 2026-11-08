@@ -144,6 +144,10 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
+	if strings.TrimSpace(req.Code) == "" {
+		http.Error(w, "admin code is required", http.StatusBadRequest)
+		return
+	}
 	if req.Minutes <= 0 {
 		req.Minutes = adminDefaultMins
 	}
@@ -156,17 +160,6 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 		adminAttempts.fail(now)
 		writeAdminError(w, http.StatusInternalServerError, err.Error())
 		return
-	}
-	// No admin code required — the unlock request opens the window using the
-	// current store code. An empty code means "use the store's code".
-	if strings.TrimSpace(req.Code) == "" {
-		code, err := store.Code()
-		if err != nil {
-			adminAttempts.fail(now)
-			writeAdminError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		req.Code = code
 	}
 	st, err := store.Unlock(req.Code, time.Duration(req.Minutes)*time.Minute)
 	if err != nil {

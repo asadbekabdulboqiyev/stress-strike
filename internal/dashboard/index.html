@@ -810,7 +810,7 @@
     <div class="admin-grid">
       <div class="panel admin-panel">
         <div class="panel-title"><span class="dot dot-red"></span> <span>Bypass switch</span></div>
-        <p class="admin-note">A time-limited switch that lets work run without an authorization ticket on this host. Metadata addresses stay denied.</p>
+        <p class="admin-note">The admin code lives only on this machine. Read it with <code>stress-strike admin code</code>. It is never sent to the browser.</p>
 
         <div class="admin-state" id="adminState">
           <span class="admin-state-label">State</span>
@@ -819,6 +819,10 @@
         <div class="admin-countdown hidden" id="adminCountdown" aria-live="polite"></div>
 
         <form class="admin-form" id="adminForm" autocomplete="off" novalidate>
+          <div class="field">
+            <label class="field-label" for="adminCode">Admin code</label>
+            <input id="adminCode" type="text" placeholder="K7QM-3XPA" spellcheck="false" autocomplete="off">
+          </div>
           <div class="field field-sm">
             <label class="field-label" for="adminMinutes">Minutes</label>
             <input id="adminMinutes" type="number" value="15" min="1" max="1440">

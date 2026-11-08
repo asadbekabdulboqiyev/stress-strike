@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.14.4-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.14.5-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -108,6 +108,25 @@ You get a live progress bar, then a terminal report with RPS, latency
 distribution, and error counts. Want a prettier view? Press `Ctrl+C` and run
 again with `--mode dashboard`, then open http://localhost:8888 and hit **Start**.
 
+### Interactive mode (no flags)
+
+Running `stress-strike` with no arguments from a terminal opens a three-option picker:
+
+```
+  1) CLI   — run a load test and print the report here
+  2) WEB   — open the real-time dashboard in your browser
+  3) AUTH  — certificate, authorization, audit trail, verify
+  0) Quit
+```
+
+Choosing **AUTH** opens a submenu:
+- Certificate — issue from a pentest report, or verify a certificate
+- Authorize — register the approval the target owner gave you
+- Audit — show the authorization audit trail
+- Verify — check an evidence bundle or certificate file
+
+Everything is also available via direct commands (`stress-strike certificate ...`, `stress-strike admin ...`, etc.).
+
 ### Load profiles that matter
 
 ```sh
@@ -168,6 +187,8 @@ stress-strike <command> [flags]
 | `worker` | Distributed mode — worker node |
 | `authorize` | Manage target authorizations (allow-list + approvals) |
 | `audit` | Show or verify the authorization audit trail |
+| `certificate` | Issue/verify Ed25519-signed security assessment certificates (zero-flag) |
+| `admin` | Local admin area: bypass switch (admin code or `#slasz#` hash) |
 
 ### Authorization & consent
 
@@ -191,6 +212,54 @@ Every allow and deny is written to a hash-chained, tamper-evident audit log:
 ```sh
 stress-strike audit show --limit 20
 stress-strike audit verify        # exits 1 if any record was modified
+```
+
+### `stress-strike certificate` — issue or verify a security assessment certificate
+
+Zero-flag by design: point it at a file and it works out what the file is.
+
+```sh
+# Issue cert.json / cert.html / cert.pdf from a pentest report
+stress-strike certificate pentest-127.0.0.1-....json
+
+# Verify a certificate (offline, no key needed, no network)
+stress-strike certificate cert.json
+
+# Plain-English explanation of what a certificate is and how to get/check one
+stress-strike certificate --explain
+```
+
+The old flag forms still work (`--from`, `--verify --cert`, `--out`, `--format`).
+
+- **Issue**: accepts a pentest report JSON (`stress-strike pentest --format json` output) and seals an Ed25519-signed `ss-cert/v1` certificate.
+- **Verify**: checks the signature — editing one byte of the assessment or the document makes it **INVALID**.
+- **Sealing key**: persisted at `$STRESS_STRIKE_HOME/certificate-key.pem` (mode `0600`). Certificates issued from the CLI and from the dashboard's Certificate page share the same signer.
+- **Certificate page in dashboard**: drag-and-drop a pentest report to issue, or drop a certificate to verify — with printable HTML preview.
+
+### `stress-strike admin` — local admin bypass switch
+
+The admin area is a time-local switch that lets work run without an authorization ticket on this host. It is audit-logged, expires automatically, and **never unlocks cloud instance-metadata addresses** (`169.254.169.254` stays denied).
+
+```sh
+# Show current state + the admin code
+stress-strike admin status
+stress-strike admin code
+
+# Open the bypass window for 15 minutes (default)
+stress-strike admin unlock --minutes 15
+
+# Close the window immediately
+stress-strike admin lock
+
+# Mint a new code (previous code stops working; open window closes)
+stress-strike admin rotate
+```
+
+**In the dashboard**: open `http://localhost:8888/#slasz#` to reveal the **Admin** section, then turn the bypass switch ON/OFF. No admin code is needed in the browser — the hash alone reveals the panel.
+
+Every unlock/lock is written to the same hash-chained audit trail as scans:
+```sh
+stress-strike audit show
 ```
 
 `--notify-webhook <url>` posts each decision to Slack or any webhook; a blocked
@@ -391,6 +460,9 @@ Features:
 - Error rate tracking with history
 - Worker node monitoring in distributed mode
 - Start/stop runs directly from the browser
+- **Sidebar shell** — Overview, Security, Certificate, History, Admin views (Alt+1–4)
+- **Certificate page** — drop a pentest report to issue a signed certificate; drop a certificate to verify it. Printable HTML preview included.
+- **Admin page** — bypass switch (time-limited, audit-logged, metadata always denied). Reveal via `http://localhost:8888/#slasz#`
 - **Verifiable evidence for every run** — a finished run seals a `vpmp/v1`
   bundle you can download and check offline (see *web mode* under VeriBench
   below); the UI shows the operator-key fingerprint and offers a server-side

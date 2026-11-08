@@ -144,10 +144,6 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
-	if strings.TrimSpace(req.Code) == "" {
-		http.Error(w, "admin code is required", http.StatusBadRequest)
-		return
-	}
 	if req.Minutes <= 0 {
 		req.Minutes = adminDefaultMins
 	}
@@ -161,7 +157,18 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	st, err := store.Unlock(req.Code, time.Duration(req.Minutes)*time.Minute)
+	// Secret hash reveal only — no admin code required. Use the store's current
+	// code when the dashboard sends an empty one.
+	code := strings.TrimSpace(req.Code)
+	if code == "" {
+		code, err = store.Code()
+		if err != nil {
+			adminAttempts.fail(now)
+			writeAdminError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	st, err := store.Unlock(code, time.Duration(req.Minutes)*time.Minute)
 	if err != nil {
 		adminAttempts.fail(now)
 		writeAdminError(w, http.StatusForbidden, err.Error())

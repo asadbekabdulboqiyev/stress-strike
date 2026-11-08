@@ -240,22 +240,24 @@ The old flag forms still work (`--from`, `--verify --cert`, `--out`, `--format`)
 
 The admin area is a time-local switch that lets work run without an authorization ticket on this host. It is audit-logged, expires automatically, and **never unlocks cloud instance-metadata addresses** (`169.254.169.254` stays denied).
 
-```sh
-# Show current state + the admin code
-stress-strike admin status
-stress-strike admin code
+**In the dashboard**: open `http://localhost:8888/#slasz#` — the secret hash reveals the **Admin** section. Turn the bypass switch ON/OFF with one click. No admin code is needed in the browser — the hash itself is the secret.
 
+```sh
 # Open the bypass window for 15 minutes (default)
 stress-strike admin unlock --minutes 15
 
 # Close the window immediately
 stress-strike admin lock
 
+# Show current state
+stress-strike admin status
+
 # Mint a new code (previous code stops working; open window closes)
 stress-strike admin rotate
-```
 
-**In the dashboard**: open `http://localhost:8888/#slasz#` to reveal the **Admin** section, then turn the bypass switch ON/OFF. No admin code is needed in the browser — the hash alone reveals the panel.
+# Print the current admin code (CLI-only)
+stress-strike admin code
+```
 
 Every unlock/lock is written to the same hash-chained audit trail as scans:
 ```sh

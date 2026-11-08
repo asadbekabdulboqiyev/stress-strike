@@ -2558,10 +2558,28 @@ function wireNav() {
 }
 
 /* ==========================================================================
-   ADMIN PAGE — status, unlock, lock, countdown
-   Admin panel is only reachable via the admin code entered in the form.
-   No hidden shortcuts, no hash-based reveal, no persistent session flag.
+   SHELL — hidden admin reveal via secret hash (#slasz#)
    ========================================================================== */
+var adminRevealed = false;
+
+function revealAdmin(open) {
+  if (!adminRevealed) {
+    adminRevealed = true;
+    var nav = document.getElementById('navAdmin');
+    if (nav) nav.classList.remove('hidden');
+    try { sessionStorage.setItem('ss_admin_revealed', '1'); } catch (e) {}
+  }
+  if (open) showView('viewAdmin');
+}
+
+function wireAdminReveal() {
+  try { if (sessionStorage.getItem('ss_admin_revealed') === '1') revealAdmin(false); } catch (e) {}
+
+  if (location.hash === '#slasz#') revealAdmin(true);
+  window.addEventListener('hashchange', function() {
+    if (location.hash === '#slasz#') revealAdmin(true);
+  });
+}
 
 /* ==========================================================================
    CERTIFICATE PAGE — drop one file, issue or verify
@@ -2920,15 +2938,13 @@ function wireAdmin() {
   var lock = document.getElementById('btnAdminLock');
   if (form) form.addEventListener('submit', function(ev) {
     ev.preventDefault();
-    var code = (document.getElementById('adminCode') || {}).value || '';
     var minutes = parseInt((document.getElementById('adminMinutes') || {}).value || '15', 10);
-    if (!code.trim()) { adminSetStatus('Enter the admin code from `stress-strike admin code`.', 'bad'); return; }
     if (!minutes || minutes < 1) minutes = 15;
-    adminSetStatus('Checking the code…', '');
+    adminSetStatus('Opening the bypass window…', '');
     fetch(API + '/api/admin/unlock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code.trim(), minutes: minutes })
+      body: JSON.stringify({ code: '', minutes: minutes })
     }).then(function(r) {
       return r.json().then(function(j) { return { ok: r.ok, body: j }; });
     }).then(function(res) {
@@ -2965,6 +2981,7 @@ function wireAdmin() {
 
 /* ---- Boot the shell ---- */
 wireNav();
+wireAdminReveal();
 wireCertificate();
 wireAdmin();
 

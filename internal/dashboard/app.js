@@ -3052,9 +3052,6 @@ function certLoadHistory() {
     });
 }
 
-/* Modify certIssue to also capture issuer/experiment from form fields */
-var _origCertIssue = certIssue;
-
 /* ==========================================================================
    ADMIN PAGE — status, unlock, lock, countdown
    ========================================================================== */

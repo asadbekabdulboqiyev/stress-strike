@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/browser"
 )
 
 // AuthType selects how a scan session authenticates against a target.
@@ -30,6 +32,7 @@ const (
 	AuthForm                   // POST credentials to a login URL, keep session cookies
 	AuthCookie                 // inject a raw Cookie header on every request (static override)
 	AuthHeader                 // inject a static header (e.g. Authorization: Bearer x)
+	AuthBrowser                // headless Chromium: OAuth / deep login flows in browser
 )
 
 // String returns a stable, human-readable name for the auth type.
@@ -41,6 +44,8 @@ func (t AuthType) String() string {
 		return "cookie"
 	case AuthHeader:
 		return "header"
+	case AuthBrowser:
+		return "browser"
 	default:
 		return "none"
 	}
@@ -60,6 +65,9 @@ type AuthConfig struct {
 	Cookie        string            `json:"cookie,omitempty"`        // AuthCookie: "k1=v1; k2=v2"
 	HeaderName    string            `json:"header_name,omitempty"`   // AuthHeader
 	HeaderValue   string            `json:"header_value,omitempty"`
+	// BrowserAuth fields (AuthBrowser): browser-based login flow fields
+	BrowserSelectors map[string]string `json:"browser_selectors,omitempty"` // username_selector, password_selector, submit_selector (CSS)
+	BrowserWaitURL   string            `json:"browser_wait_url,omitempty"`  // URL keyword to wait for after login
 }
 
 // authRetryKey marks requests that have already been retried after a
@@ -130,6 +138,16 @@ func NewAuthSession(cfg AuthConfig, timeout time.Duration) (*AuthSession, error)
 	case AuthHeader:
 		if strings.TrimSpace(cfg.HeaderName) == "" || strings.TrimSpace(cfg.HeaderValue) == "" {
 			return nil, errors.New("auth: header_name and header_value are required for header authentication")
+		}
+		s.ok = true
+
+	case AuthBrowser:
+		// Browser auth — LoginURL, Username, Password are required
+		if strings.TrimSpace(cfg.LoginURL) == "" {
+			return nil, errors.New("auth: login_url is required for browser authentication")
+		}
+		if strings.TrimSpace(cfg.Username) == "" || strings.TrimSpace(cfg.Password) == "" {
+			return nil, errors.New("auth: username and password are required for browser authentication")
 		}
 		s.ok = true
 
@@ -232,6 +250,9 @@ func (s *AuthSession) Refresh() error {
 // loginLocked performs the credential POST and verifies the outcome.
 // Callers must hold s.mu. The error never contains credentials.
 func (s *AuthSession) loginLocked() error {
+	if s.cfg.Type == AuthBrowser {
+		return s.loginBrowserLocked()
+	}
 	form := url.Values{}
 	form.Set(orDefault(s.cfg.UsernameField, "username"), s.cfg.Username)
 	form.Set(orDefault(s.cfg.PasswordField, "password"), s.cfg.Password)
@@ -374,4 +395,54 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// loginBrowserLocked performs the login flow in browser (OAuth, SAML,
+// SSO, etc.). The user fills in the form in browser, submits it, and the
+// session cookie is stored in AuthSession.jar.
+// Callers must hold s.mu.
+func (s *AuthSession) loginBrowserLocked() error {
+	br, err := browser.New()
+	if err != nil {
+		return fmt.Errorf("auth: browser auth: %w", err)
+	}
+
+	usernameSel := orDefault(s.cfg.BrowserSelectors["username_selector"], "input[type='text'], input[type='email'], input[name='username'], input[name='email']")
+	passwordSel := orDefault(s.cfg.BrowserSelectors["password_selector"], "input[type='password'], input[name='password']")
+
+	_, body, err := br.LoginForm(
+		s.cfg.LoginURL,
+		usernameSel,
+		passwordSel,
+		s.cfg.Username,
+		s.cfg.Password,
+		s.cfg.ExtraFields,
+		s.cfg.SuccessMatch,
+		defaultAuthTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("auth: browser login failed: %w", err)
+	}
+
+	// Success match check
+	if s.cfg.SuccessMatch != "" {
+		if !strings.Contains(body, s.cfg.SuccessMatch) {
+			s.ok = false
+			return fmt.Errorf("auth: browser login success match not found")
+		}
+	} else if s.cfg.FailureMatch != "" {
+		if strings.Contains(body, s.cfg.FailureMatch) {
+			s.ok = false
+			return fmt.Errorf("auth: browser login failure match found")
+		}
+	} else {
+		lower := strings.ToLower(body)
+		if strings.Contains(lower, "login") || strings.Contains(lower, "sign in") || strings.Contains(lower, "password") {
+			s.ok = false
+			return fmt.Errorf("auth: browser login verification failed - still on login page")
+		}
+	}
+
+	s.ok = true
+	return nil
 }

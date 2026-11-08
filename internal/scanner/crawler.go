@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/browser"
 )
 
 // --- Public API -------------------------------------------------------------
@@ -48,6 +50,11 @@ type CrawlOptions struct {
 	AllowOffsite bool          // false (default) = never follow offsite links
 	UserAgent    string        // default stress-strike crawler UA
 	Concurrency  int           // worker pool size, default 5
+	// UseBrowser, when true, uses headless Chromium to find endpoints and
+	// forms from JS-rendered (SPA/React/Vue) pages. chromedp (Chrome DevTools
+	// Protocol) is used; Google Chrome / Chromium must be installed on the
+	// system.
+	UseBrowser bool
 }
 
 // Crawler crawls a start URL according to Options. Client may be replaced
@@ -114,7 +121,18 @@ func crawlerRedirectGuard(req *http.Request, via []*http.Request) error {
 
 // Crawl runs the crawl and always returns a non-nil result. It never panics
 // on malformed input; parse errors are silently ignored.
+//
+// UseBrowser bo'lsa headless Chromium orqali JS-rendered sahifalardan
+// endpointlar topiladi (SPA/React/Vue/Angular uchun).
 func (c *Crawler) Crawl() *CrawlResult {
+	if c.Options.UseBrowser {
+		return c.crawlBrowser()
+	}
+	return c.crawlHTTP()
+}
+
+// crawlHTTP is the original stdlib net/http based crawler.
+func (c *Crawler) crawlHTTP() *CrawlResult {
 	start := time.Now()
 	res := &CrawlResult{Endpoints: []Endpoint{}}
 
@@ -188,6 +206,105 @@ func (c *Crawler) Crawl() *CrawlResult {
 				c.visited[k] = true
 				c.queue = append(c.queue, crawlJob{raw: link.parsed.String(), depth: childDepth})
 			}
+		}
+	}
+
+	res.Pages = c.fetched
+	for _, ep := range c.endpoints {
+		res.Endpoints = append(res.Endpoints, ep)
+	}
+	sort.Slice(res.Endpoints, func(i, j int) bool {
+		if res.Endpoints[i].URL != res.Endpoints[j].URL {
+			return res.Endpoints[i].URL < res.Endpoints[j].URL
+		}
+		if res.Endpoints[i].Method != res.Endpoints[j].Method {
+			return res.Endpoints[i].Method < res.Endpoints[j].Method
+		}
+		return strings.Join(res.Endpoints[i].Params, ",") < strings.Join(res.Endpoints[j].Params, ",")
+	})
+	res.Duration = elapsedSince(start)
+	return res
+}
+
+// crawlBrowser crawls using headless Chromium (chromedp). This mode finds
+// deep endpoints in JavaScript-rendered (SPA / React / Vue / Angular) pages.
+// Browser mode is lighter and slower, so Concurrency is set to 1.
+func (c *Crawler) crawlBrowser() *CrawlResult {
+	start := time.Now()
+	res := &CrawlResult{Endpoints: []Endpoint{}}
+
+	base, err := url.Parse(c.StartURL)
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		res.Duration = elapsedSince(start)
+		return res
+	}
+
+	br, err := browser.New()
+	if err != nil {
+		res.Duration = elapsedSince(start)
+		return res
+	}
+
+	c.visited = map[string]bool{}
+	c.endpoints = map[string]Endpoint{}
+	c.fetched = 0
+
+	seedKey := queueKey(base)
+	c.visited[seedKey] = true
+	c.queue = []crawlJob{{raw: base.String(), depth: 0}}
+
+	for len(c.queue) > 0 && c.fetched < c.Options.MaxPages {
+		j := c.queue[0]
+		c.queue = c.queue[1:]
+
+		c.fetched++
+		html, err := br.Page(j.raw, c.Options.Timeout)
+		if err != nil {
+			continue
+		}
+
+		baseURL, _ := url.Parse(j.raw)
+		endpoints := browser.ExtractEndpoints(html, j.raw)
+
+		for _, ep := range endpoints {
+			// Offsite skip
+			if !c.Options.AllowOffsite {
+				u, parseErr := url.Parse(ep.URL)
+				if parseErr != nil || !sameHost(u, baseURL) {
+					continue
+				}
+			}
+			key := endpointKey(ep.Method, ep.URL, ep.Params)
+			if _, ok := c.endpoints[key]; !ok {
+				c.endpoints[key] = Endpoint{
+					URL:     ep.URL,
+					Method:  ep.Method,
+					Params:  ep.Params,
+					FoundAt: ep.FoundAt,
+					Kind:    ep.Kind,
+				}
+			}
+		}
+
+		// Links for next depth
+		for _, ep := range endpoints {
+			if ep.Kind != "link" {
+				continue
+			}
+			childDepth := j.depth + 1
+			if childDepth > c.Options.MaxDepth {
+				continue
+			}
+			u, parseErr := url.Parse(ep.URL)
+			if parseErr != nil {
+				continue
+			}
+			k := queueKey(u)
+			if c.visited[k] {
+				continue
+			}
+			c.visited[k] = true
+			c.queue = append(c.queue, crawlJob{raw: ep.URL, depth: childDepth})
 		}
 	}
 

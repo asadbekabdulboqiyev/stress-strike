@@ -72,10 +72,10 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 		urlStr = u.String()
 	}
 
-	ctx, cancel := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(func(fmt string, args ...interface{}) {}),
-	)
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), r.opts...)
+	defer cancelAlloc()
+
+	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(func(fmt string, args ...interface{}) {}))
 	defer cancel()
 
 	// Set a timeout wrapper so a hung page doesn't block forever.
@@ -85,7 +85,7 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 	result := &RunResult{URL: urlStr}
 
 	var jsErrors []string
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
+	_ = chromedp.Listen(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *runtime.EventConsoleAPICalled:
 			if ev.Type == "error" {
@@ -99,12 +99,29 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 	})
 
 	var navStart, loadEnd, domEnd float64
-	err = chromedp.Run(ctx,
+	// Navigate first (void action)
+	if err := chromedp.Do(ctx,
 		chromedp.Navigate(urlStr),
-		chromedp.Evaluate(`performance.timing.navigationStart`, &navStart),
-		chromedp.Evaluate(`performance.timing.loadEventEnd`, &loadEnd),
-		chromedp.Evaluate(`performance.timing.domContentLoadedEventEnd`, &domEnd),
-	)
+	); err != nil {
+		result.Error = err.Error()
+		result.JSErrors = jsErrors
+		return result, err
+	}
+
+	// Then evaluate timing (returning values)
+	navStart, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.navigationStart`))
+	if err != nil {
+		result.Error = err.Error()
+		result.JSErrors = jsErrors
+		return result, err
+	}
+	loadEnd, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.loadEventEnd`))
+	if err != nil {
+		result.Error = err.Error()
+		result.JSErrors = jsErrors
+		return result, err
+	}
+	domEnd, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.domContentLoadedEventEnd`))
 	if err != nil {
 		result.Error = err.Error()
 		result.JSErrors = jsErrors
@@ -118,7 +135,9 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 	// Attempt to read the HTTP status code via fetch (may not always work
 	// depending on page/cors).
 	var status int
-	_ = chromedp.Evaluate(`fetch(window.location.href).then(r=>r.status).catch(()=>0)`, &status).Do(ctx)
+	if _, err := chromedp.Run(ctx, chromedp.Evaluate[int](`fetch(window.location.href).then(r=>r.status).catch(()=>0)`)); err != nil {
+		// Ignore fetch errors - status may not be available
+	}
 	result.StatusCode = status
 
 	return result, nil

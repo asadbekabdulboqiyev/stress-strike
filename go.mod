@@ -23,9 +23,10 @@ require (
 	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9 // indirect
-	github.com/chromedp/chromedp v0.9.0 // indirect
+	github.com/chromedp/cdproto v0.159.0 // indirect
+	github.com/chromedp/chromedp v0.23.0 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
+	github.com/go-json-experiment/json v0.0.0-20260213210345-44df1a37e875 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect

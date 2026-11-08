@@ -747,70 +747,78 @@ func openBrowser(u string) {
 }
 
 // interactivePicker presents the workspace selection menu when the binary is
-// run with no arguments from a terminal: choose CLI (terminal report) or
-// Web Server (real-time dashboard), then gather the minimum settings and run.
+// run with no arguments from a terminal.
+//
+// Three doors, nothing else: run a load test here (CLI), drive it from a
+// browser (WEB), or manage the trust paperwork (AUTH). Everything the tool can
+// do is still one `stress-strike <command>` away, but the first screen stays
+// short enough to read.
 func interactivePicker() {
 	r := bufio.NewReader(os.Stdin)
 
 	banner()
 	fmt.Println()
-	fmt.Println("Quick start (no wizard needed):")
-	fmt.Println("   stress-strike run --url https://api.example.com --users 10 --duration 10")
-	fmt.Println("   stress-strike dashboard")
-	fmt.Println("   stress-strike certificate --from pentest.json --format all")
-	fmt.Println("   stress-strike --help        # all commands, flags and examples")
-	fmt.Println()
 	fmt.Println("Choose a workspace:")
 	fmt.Println()
-	fmt.Println("  1) CLI      — run a load test and print a report to the terminal")
-	fmt.Println("  2) Web      — start the real-time dashboard and run from the browser")
-	fmt.Println("  3) Wizard   — guided load-test setup with auto-tuning")
-	fmt.Println()
-	fmt.Println("  4) Pentest  — 1-click professional security assessment (needs --authorized ticket)")
-	fmt.Println("  5) Scan     — TLS/WAF deep scanner with TLS fingerprinting")
-	fmt.Println("  6) Verify   — verify an Ed25519-signed evidence bundle or certificate")
-	fmt.Println("  7) Certificate — issue/verify a signed security assessment certificate")
-	fmt.Println("  8) Authorize — register a target authorization ticket")
-	fmt.Println("  9) Audit    — show the authorization audit trail")
-	fmt.Println(" 10) Fuzz     — coverage-aware HTTP fuzzer")
-	fmt.Println(" 11) Dirbust  — directory/file brute-forcer")
-	fmt.Println(" 12) Extra    — jwt, graphql, websocket, crawl, subdomain, portscan, sslscan")
+	fmt.Println("  1) CLI   — run a load test and print the report here")
+	fmt.Println("  2) WEB   — open the real-time dashboard in your browser")
+	fmt.Println("  3) AUTH  — certificate, authorization, audit trail, verify")
 	fmt.Println("  0) Quit")
 	fmt.Println()
 
-	choice := strings.TrimSpace(readLine(r, "Select [1-12/0]"))
+	choice := strings.TrimSpace(readLine(r, "Select [1-3/0]"))
 
 	switch choice {
 	case "1", "cli":
 		interactiveCLI(r)
 	case "2", "web", "server", "dashboard":
 		interactiveDashboard(r)
-	case "3", "wiz", "wizard":
-		interactiveWizard(r)
-	case "4", "pentest", "security", "assessment":
-		interactivePentest(r)
-	case "5", "scan":
-		interactiveScan(r)
-	case "6", "verify":
-		interactiveVerify(r)
-	case "7", "certificate", "cert":
-		interactiveCertificate(r)
-	case "8", "authorize", "auth":
-		interactiveAuthorize(r)
-	case "9", "audit":
-		interactiveAudit(r)
-	case "10", "fuzz":
-		interactiveFuzz(r)
-	case "11", "dirbust":
-		interactiveDirBust(r)
-	case "12", "extra":
-		interactiveExtra(r)
+	case "3", "auth", "certificate", "cert", "authorize", "audit", "verify":
+		interactiveAuth(r)
 	case "0", "q", "quit", "exit":
 		fmt.Println("Bye.")
 		exitProcess(0)
 	default:
 		fmt.Println("unknown choice; falling back to CLI mode")
 		interactiveCLI(r)
+	}
+}
+
+// interactiveAuth is the AUTH submenu: the small set of commands that deal
+// with trust — who allowed the work, what was measured, and what proves it
+// afterwards. It is a submenu so the first screen can stay at three options
+// without hiding any of this.
+func interactiveAuth(r *bufio.Reader) {
+	for {
+		fmt.Println()
+		fmt.Println("AUTH — trust and paperwork:")
+		fmt.Println()
+		fmt.Println("  1) Certificate — issue a signed certificate, or verify one")
+		fmt.Println("  2) Authorize   — register the approval the target owner gave you")
+		fmt.Println("  3) Audit       — show the authorization audit trail")
+		fmt.Println("  4) Verify      — check an evidence bundle or certificate file")
+		fmt.Println("  0) Back")
+		fmt.Println()
+
+		switch strings.TrimSpace(readLine(r, "Select [1-4/0]")) {
+		case "1", "certificate", "cert":
+			interactiveCertificate(r)
+			return
+		case "2", "authorize":
+			interactiveAuthorize(r)
+			return
+		case "3", "audit":
+			interactiveAudit(r)
+			return
+		case "4", "verify":
+			interactiveVerify(r)
+			return
+		case "0", "back", "q", "quit", "exit", "":
+			interactivePicker()
+			return
+		default:
+			fmt.Println("    unknown choice, try again")
+		}
 	}
 }
 
@@ -885,27 +893,30 @@ func interactiveVerify(r *bufio.Reader) {
 }
 
 func interactiveCertificate(r *bufio.Reader) {
-	fmt.Print("1) Issue from pentest report  2) Verify a certificate  Select [1/2]: ")
-	c := readLine(r, "")
-	switch strings.TrimSpace(c) {
-	case "2":
+	fmt.Println()
+	fmt.Println("Certificate — one file in, one answer out.")
+	fmt.Println("  1) Issue  — turn a pentest report (JSON) into a signed certificate")
+	fmt.Println("  2) Verify — check that a certificate was not edited after signing")
+	fmt.Println()
+
+	switch strings.TrimSpace(readLine(r, "Select [1/2]")) {
+	case "2", "verify", "v":
 		fmt.Print("Certificate JSON path: ")
 		p := readLine(r, "")
 		if p == "" {
 			fmt.Println("error: path is required.")
 			exitProcess(1)
 		}
-		runNamed("certificate", "--verify", "--cert", p)
+		runNamed("certificate", p)
 	default:
-		fmt.Print("Pentest JSON report path: ")
+		fmt.Print("Pentest report JSON path: ")
 		from := readLine(r, "")
 		if from == "" {
 			fmt.Println("error: report path is required.")
 			exitProcess(1)
 		}
-		fmt.Print("Output stem [cert]: ")
-		out := readLine(r, "cert")
-		runNamed("certificate", "--from", from, "--out", out, "--format", "all")
+		fmt.Println("Writing cert.json, cert.html and cert.pdf next to the report.")
+		runNamed("certificate", from)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
 )
@@ -412,6 +413,21 @@ func owaspGate(op authz.Operation, target, ticket string) (owaspGateOutcome, err
 	out := owaspGateOutcome{Allowed: true, Class: tgt.Class().String()}
 	for _, ip := range tgt.IPs {
 		out.IPs = append(out.IPs, ip.String())
+	}
+
+	// Same two rules as the CLI: metadata stays closed, and an active admin
+	// unlock bypasses the rest with a rule marker the UI and audit trail show.
+	if tgt.Class() == authz.ClassMetadata {
+		out.Allowed = false
+		out.Rule = "metadata-denied"
+		out.Reason = fmt.Sprintf("refusing to send traffic to cloud instance metadata (%s) — this is the credential-theft path and the admin bypass does not unlock it", tgt.Host)
+		return out, nil
+	}
+	if adminlock.Active() {
+		out.Allowed = true
+		out.Rule = "admin-unlock"
+		out.Reason = "admin bypass active — authorization checks temporarily bypassed from this host"
+		return out, nil
 	}
 
 	var d authz.Decision

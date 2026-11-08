@@ -1187,3 +1187,247 @@ kbd {
   color: var(--text-1);
   resize: vertical;
 }
+
+/* ==========================================================================
+   SHELL REBUILD — sidebar, views, certificate, admin
+   Appended after the legacy rules so it wins on equal specificity without
+   deleting any component style the panels still rely on.
+   ========================================================================== */
+
+.app {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  max-width: 1640px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+}
+.shell { flex: 1 1 auto; min-width: 0; }
+.main { display: block; }
+.view { animation: viewIn .18s ease both; }
+.view.hidden { display: none !important; }
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view { animation: none; }
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  position: sticky;
+  top: 20px;
+  flex: 0 0 224px;
+  width: 224px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px;
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  min-height: 460px;
+}
+.sb-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 2px 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  color: #04110b; font-weight: 800; font-size: 12px; letter-spacing: .5px;
+}
+.sb-brand-text { font-weight: 700; letter-spacing: -.2px; }
+.sb-nav { display: flex; flex-direction: column; gap: 4px; }
+.sb-link {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.sb-link:hover { background: var(--bg-2); color: var(--text-0); }
+.sb-link.active {
+  background: var(--green-glow);
+  border-color: var(--green-dim);
+  color: var(--text-0);
+}
+.sb-link.active .sb-ico { color: var(--green); }
+.sb-ico { width: 18px; text-align: center; color: var(--text-3); font-size: 14px; }
+.sb-key {
+  margin-left: auto;
+  font-size: 10px; color: var(--text-3);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 4px; line-height: 16px;
+}
+.sb-link--admin { color: var(--yellow); }
+.sb-foot {
+  margin-top: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-3);
+}
+.sb-foot-link { color: var(--green); text-decoration: none; }
+.sb-foot-link:hover { text-decoration: underline; }
+
+@media (max-width: 980px) {
+  .app { flex-direction: column; gap: 14px; }
+  .sidebar {
+    position: static; width: 100%; flex: none; min-height: 0;
+    flex-direction: row; align-items: center; gap: 12px;
+    padding: 10px 12px; overflow-x: auto;
+  }
+  .sb-brand { border: 0; padding: 0 8px 0 0; }
+  .sb-brand-text { display: none; }
+  .sb-nav { flex-direction: row; gap: 6px; }
+  .sb-link { white-space: nowrap; }
+  .sb-key, .sb-foot { display: none; }
+}
+
+/* ---- Page head ---- */
+.page-head { margin: 4px 0 20px; }
+.page-kicker {
+  margin: 0 0 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--green);
+}
+.page-title {
+  margin: 0 0 6px;
+  font-size: 26px; font-weight: 800; letter-spacing: -.6px;
+  color: var(--text-0);
+}
+.page-sub { margin: 0; max-width: 70ch; color: var(--text-2); font-size: 13px; }
+
+/* ---- Certificate ---- */
+.cert-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.2fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) { .cert-grid { grid-template-columns: 1fr; } }
+.cert-drop-panel { display: flex; flex-direction: column; gap: 14px; }
+.cert-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  min-height: 220px;
+  padding: 26px 18px;
+  border: 1.5px dashed var(--border-hover);
+  border-radius: 12px;
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg-2), var(--bg-1));
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+.cert-drop:hover, .cert-drop:focus-visible, .cert-drop.is-over {
+  border-color: var(--green);
+  background: radial-gradient(120% 90% at 50% 0%, var(--green-glow), var(--bg-1));
+  outline: none;
+}
+.cert-drop.is-over { transform: scale(1.005); }
+.cert-drop-icon { font-size: 34px; color: var(--green); line-height: 1; }
+.cert-drop-title { margin: 4px 0 0; font-weight: 700; font-size: 15px; }
+.cert-drop-sub { margin: 0 0 6px; color: var(--text-2); font-size: 12px; }
+.cert-status { min-height: 20px; font-size: 12.5px; color: var(--text-2); }
+.cert-status.ok { color: var(--green); }
+.cert-status.bad { color: var(--red); }
+.cert-status.busy { color: var(--yellow); }
+.cert-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cert-result-panel { display: flex; flex-direction: column; gap: 12px; }
+.cert-verdict {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  font-weight: 700;
+}
+.cert-verdict.ok { border-color: var(--green-dim); background: var(--green-glow); color: var(--green); }
+.cert-verdict.bad { border-color: var(--red-dim); background: var(--red-dim); color: var(--red); }
+.cert-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.cert-fact {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-2);
+}
+.cert-fact-label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); }
+.cert-fact-value { display: block; margin-top: 3px; font-size: 14px; font-weight: 650; color: var(--text-0); word-break: break-word; }
+.cert-subtitle { margin: 4px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); }
+.cert-findings { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.cert-findings li {
+  display: flex; gap: 8px; align-items: baseline;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg-2); font-size: 12.5px;
+}
+.cert-sev {
+  flex: none; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor;
+}
+.cert-sev--critical { color: var(--red); }
+.cert-sev--high { color: var(--orange); }
+.cert-sev--medium { color: var(--yellow); }
+.cert-sev--low { color: var(--blue); }
+.cert-sev--info { color: var(--text-2); }
+.cert-html-frame {
+  width: 100%; height: 420px;
+  border: 1px solid var(--border); border-radius: 10px; background: #fff;
+}
+.cert-help { margin-bottom: 20px; }
+.cert-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--text-1); font-size: 13px; }
+.cert-steps code, .admin-note code, .admin-list code, .cert-help code {
+  padding: 1px 5px; border-radius: 4px; background: var(--bg-3);
+  color: var(--text-0); font-size: 12px;
+}
+
+/* ---- Admin ---- */
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, .9fr);
+  gap: 16px;
+}
+@media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+.admin-panel { display: flex; flex-direction: column; gap: 14px; }
+.admin-note { margin: 0; color: var(--text-2); font-size: 12.5px; }
+.admin-state {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-2);
+}
+.admin-state-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); }
+.admin-state-value { font-weight: 700; }
+.admin-state-value.on { color: var(--yellow); }
+.admin-state-value.off { color: var(--green); }
+.admin-countdown {
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--yellow-dim); border: 1px solid var(--yellow);
+  color: var(--yellow); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.admin-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.admin-form .field { flex: 1 1 150px; }
+.admin-status { min-height: 18px; font-size: 12.5px; color: var(--text-2); }
+.admin-status.ok { color: var(--green); }
+.admin-status.bad { color: var(--red); }
+.admin-warning {
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--red); background: var(--red-dim); color: var(--text-0);
+  font-size: 12.5px; font-weight: 600;
+}
+.admin-help { align-self: start; }
+.admin-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; color: var(--text-1); font-size: 12.5px; }
+.admin-list li::marker { color: var(--yellow); }
+
+/* ---- Small usability wins on the legacy panels ---- */
+.controls { position: relative; }
+.panel--last { margin-bottom: 16px; }
+.header { margin-bottom: 18px; }

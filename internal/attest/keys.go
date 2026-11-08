@@ -159,6 +159,30 @@ func SaveKeypairPEM(kp *Keypair, path string) error {
 	return nil
 }
 
+// LoadOrCreateKeypairPEM loads the keypair at path, creating it (mode 0600)
+// when the file does not exist. created reports whether this call minted the
+// key, so the caller can tell the operator where their signing identity lives.
+//
+// A persistent key is what makes a certificate series verifiable by the same
+// signer across runs; generating an ephemeral key per run would silently
+// change the identity every time.
+func LoadOrCreateKeypairPEM(path string) (kp *Keypair, created bool, err error) {
+	if _, statErr := os.Stat(path); statErr == nil {
+		kp, err = LoadKeypairPEM(path)
+		return kp, false, err
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return nil, false, fmt.Errorf("attest: stat key file: %w", statErr)
+	}
+	kp, err = GenerateKeypair()
+	if err != nil {
+		return nil, false, err
+	}
+	if err := SaveKeypairPEM(kp, path); err != nil {
+		return nil, false, err
+	}
+	return kp, true, nil
+}
+
 // LoadKeypairPEM reads a key file written by SaveKeypairPEM.
 //
 // It tolerates a file that contains only the private key block, rejects

@@ -13,10 +13,39 @@
 <div class="toast-container" id="toasts" aria-live="polite"></div>
 
 <div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Dashboard sections">
+    <div class="sb-brand">
+      <span class="sb-mark" aria-hidden="true">SS</span>
+      <span class="sb-brand-text">stress-strike</span>
+    </div>
+    <nav class="sb-nav">
+      <button class="sb-link active" type="button" data-view="viewOverview">
+        <span class="sb-ico" aria-hidden="true">▦</span><span>Overview</span><span class="sb-key">1</span>
+      </button>
+      <button class="sb-link" type="button" data-view="viewSecurity">
+        <span class="sb-ico" aria-hidden="true">◈</span><span>Security</span><span class="sb-key">2</span>
+      </button>
+      <button class="sb-link" type="button" data-view="viewCertificate">
+        <span class="sb-ico" aria-hidden="true">✥</span><span>Certificate</span><span class="sb-key">3</span>
+      </button>
+      <button class="sb-link" type="button" data-view="viewHistory">
+        <span class="sb-ico" aria-hidden="true">↻</span><span>History</span><span class="sb-key">4</span>
+      </button>
+      <button class="sb-link sb-link--admin hidden" type="button" data-view="viewAdmin" id="navAdmin">
+        <span class="sb-ico" aria-hidden="true">⚙</span><span>Admin</span><span class="sb-key">A</span>
+      </button>
+    </nav>
+    <div class="sb-foot">
+      <span class="sb-foot-note">v<span id="sbVersion">—</span></span>
+      <a class="sb-foot-link" href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </aside>
+
+  <div class="shell">
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <div class="logo">stress-strike <span>dashboard</span></div>
+      <div class="logo" id="brandLogo" title="Click five times to reveal the admin area">stress-strike <span>dashboard</span></div>
       <span class="badge badge-idle" id="statusBadge" role="status" aria-live="polite">idle</span>
     </div>
     <div class="header-right">
@@ -32,6 +61,9 @@
       <span class="conn-label" id="connLabel"><span class="conn-dot connected" id="connDot"></span>Connecting...</span>
     </div>
   </div>
+
+  <main class="main" id="main">
+  <section class="view" id="viewOverview" aria-label="Overview">
 
   <!-- First-run onboarding / empty state -->
   <section class="onboarding hidden" id="onboarding" aria-labelledby="obTitle">
@@ -286,6 +318,10 @@
     <div class="panel-title"><span class="dot dot-cyan"></span> Latency Timeline</div>
     <canvas class="chart-canvas" id="chartLatency" height="180" role="img" aria-label="Latency percentile timeline chart"></canvas>
   </div>
+
+  </section><!-- /viewOverview -->
+
+  <section class="view hidden" id="viewSecurity" aria-label="Security scanners">
 
   <!-- OWASP Top 10 Security Scan -->
   <section class="panel panel--last owasp-panel" id="owaspSection" aria-labelledby="owaspTitle">
@@ -712,6 +748,108 @@
     </div>
   </section>
 
+  </section><!-- /viewSecurity -->
+
+  <section class="view hidden" id="viewCertificate" aria-label="Certificate">
+    <div class="page-head">
+      <p class="page-kicker">Attestation</p>
+      <h1 class="page-title">Certificate</h1>
+      <p class="page-sub">Drop one file. A pentest report becomes a signed certificate; a certificate gets verified. No flags, no key hunting, no network.</p>
+    </div>
+
+    <div class="cert-grid">
+      <div class="panel cert-drop-panel">
+        <div class="cert-drop" id="certDrop" tabindex="0" role="button" aria-label="Drop a pentest report or a certificate here, or click to choose a file">
+          <div class="cert-drop-icon" aria-hidden="true">⛨</div>
+          <p class="cert-drop-title">Drop a file here</p>
+          <p class="cert-drop-sub">pentest report → issue a certificate · certificate → verify it</p>
+          <button class="btn btn-primary" id="btnCertPick" type="button">Choose file</button>
+          <input id="certFile" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="cert-status" id="certStatus" role="status" aria-live="polite"></div>
+        <div class="cert-actions hidden" id="certActions">
+          <button class="btn btn-ghost" id="btnCertDownloadJson" type="button">Download certificate</button>
+          <button class="btn btn-ghost" id="btnCertDownloadHtml" type="button">Download printable HTML</button>
+          <button class="btn btn-ghost" id="btnCertReset" type="button">Start over</button>
+        </div>
+      </div>
+
+      <div class="panel cert-result-panel hidden" id="certResult">
+        <div class="panel-title"><span class="dot dot-green"></span> <span id="certResultTitle">Result</span></div>
+        <div class="cert-verdict" id="certVerdict"></div>
+        <div class="cert-facts" id="certFacts"></div>
+        <div class="cert-findings hidden" id="certFindingsWrap">
+          <div class="cert-subtitle">Findings</div>
+          <ul class="cert-findings" id="certFindings"></ul>
+        </div>
+        <div class="cert-html hidden" id="certHtmlWrap">
+          <div class="cert-subtitle">Printable document</div>
+          <iframe class="cert-html-frame" id="certHtmlFrame" title="Printable certificate" sandbox></iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel cert-help">
+      <div class="panel-title"><span class="dot dot-cyan"></span> How it works</div>
+      <ol class="cert-steps">
+        <li><strong>Authorize.</strong> Register the approval the target owner gave you: <code>stress-strike authorize add --pattern example.com --approver "Owner" --ticket TICKET-001</code>.</li>
+        <li><strong>Assess.</strong> Run <code>stress-strike pentest --target https://example.com --authorized TICKET-001 --format json</code>.</li>
+        <li><strong>Seal.</strong> Drop the report above (or run <code>stress-strike certificate report.json</code>). You get JSON proof plus a printable HTML copy.</li>
+        <li><strong>Verify.</strong> Drop the certificate above, or run <code>stress-strike certificate cert.json</code>. Editing one byte of the assessment or the document makes it INVALID.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="view hidden" id="viewAdmin" aria-label="Admin">
+    <div class="page-head">
+      <p class="page-kicker">Local control</p>
+      <h1 class="page-title">Admin</h1>
+      <p class="page-sub">A time-limited switch that lets work run without an authorization ticket on this host. Metadata addresses stay denied.</p>
+    </div>
+
+    <div class="admin-grid">
+      <div class="panel admin-panel">
+        <div class="panel-title"><span class="dot dot-red"></span> <span>Bypass switch</span></div>
+        <p class="admin-note">The admin code lives only on this machine. Read it with <code>stress-strike admin code</code>. It is never sent to the browser.</p>
+
+        <div class="admin-state" id="adminState">
+          <span class="admin-state-label">State</span>
+          <span class="admin-state-value" id="adminStateValue">checking…</span>
+        </div>
+        <div class="admin-countdown hidden" id="adminCountdown" aria-live="polite"></div>
+
+        <form class="admin-form" id="adminForm" autocomplete="off" novalidate>
+          <div class="field">
+            <label class="field-label" for="adminCode">Admin code</label>
+            <input id="adminCode" type="text" placeholder="K7QM-3XPA" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="field field-sm">
+            <label class="field-label" for="adminMinutes">Minutes</label>
+            <input id="adminMinutes" type="number" value="15" min="1" max="1440">
+          </div>
+          <button class="btn btn-primary" id="btnAdminUnlock" type="submit">Turn bypass ON</button>
+          <button class="btn btn-stop" id="btnAdminLock" type="button">Turn OFF</button>
+        </form>
+
+        <div class="admin-status" id="adminStatus" role="status" aria-live="polite"></div>
+        <div class="admin-warning hidden" id="adminWarning"></div>
+      </div>
+
+      <div class="panel admin-help">
+        <div class="panel-title"><span class="dot dot-yellow"></span> What this does</div>
+        <ul class="admin-list">
+          <li>Every authorization gate on this host allows work while the window is open — no ticket needed.</li>
+          <li>The window expires automatically (15 minutes by default, 24 hours maximum).</li>
+          <li>Cloud instance metadata (169.254.169.254 and friends) stays denied, always.</li>
+          <li>Every unlock and lock is written to the same audit trail as scans: <code>stress-strike audit show</code>.</li>
+          <li>Turn it off the moment the work is done: this button, or <code>stress-strike admin lock</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="view hidden" id="viewHistory" aria-label="History">
+
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">
     <div class="panel">
@@ -738,6 +876,9 @@
     </div>
   </div>
 
+  </section><!-- /viewHistory -->
+  </main>
+
   <div class="footer">
     stress-strike &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
     <span class="footer-hint"><kbd>S</kbd> start &middot; <kbd>E</kbd> stop &middot; <kbd>Esc</kbd> cancel confirm</span>
@@ -746,6 +887,7 @@
       <a href="/metrics" target="_blank" rel="noopener">metrics</a>
     </span>
   </div>
+  </div><!-- /shell -->
 </div>
 
 <!-- Access-locked overlay. Shown when the control API rejects the WebSocket

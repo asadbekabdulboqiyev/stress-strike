@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
 )
@@ -91,6 +92,10 @@ func evaluateAuthz(op authz.Operation, targets []string, g gateOptions) (authzOu
 
 	out := authzOutcome{Allowed: true, Targets: targets}
 	worst := authz.ClassPublic
+	// The admin bypass is a local, time-limited override. It never unlocks
+	// cloud instance metadata: that path hands out credentials and stays
+	// closed no matter what the operator toggled on.
+	bypass := adminlock.Active()
 
 	for _, raw := range targets {
 		tgt, err := authz.Classify(ctx, raw, nil)
@@ -104,6 +109,12 @@ func evaluateAuthz(op authz.Operation, targets []string, g gateOptions) (authzOu
 
 		var d authz.Decision
 		switch {
+		case tgt.Class() == authz.ClassMetadata:
+			d = authz.Decision{Class: tgt.Class(),
+				Reason: fmt.Sprintf("refusing to send traffic to cloud instance metadata (%s) — this is the credential-theft path and the admin bypass does not unlock it", tgt.Host)}
+		case bypass:
+			d = authz.Decision{Allowed: true, Class: tgt.Class(), Rule: "admin-unlock",
+				Reason: "admin bypass active — authorization checks temporarily bypassed from this host"}
 		case op == authz.OpPentest:
 			// Offensive operation: an approval entry must exist in the policy
 			// AND the operator must name its ticket. Neither alone is enough.
@@ -169,6 +180,13 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 	}, g.auditPath, g.webhook)
 
 	if out.Allowed {
+		if out.Rule == "admin-unlock" {
+			fmt.Fprintln(os.Stderr, "════════════════════════════════════════════════════════════════")
+			fmt.Fprintln(os.Stderr, " WARNING: ADMIN BYPASS ACTIVE — authorization checks are OFF")
+			fmt.Fprintln(os.Stderr, " This run was allowed by the local admin unlock, not by a ticket.")
+			fmt.Fprintln(os.Stderr, " Restore the gate now:  stress-strike admin lock")
+			fmt.Fprintln(os.Stderr, "════════════════════════════════════════════════════════════════")
+		}
 		if out.Rule != "" {
 			fmt.Fprintf(os.Stderr, "authorization: ok (class=%s, rule=%s)\n", out.Class, out.Rule)
 		} else {

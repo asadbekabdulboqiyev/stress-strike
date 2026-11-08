@@ -2479,3 +2479,553 @@ if (_btnAttestVerify) {
 }
 
 setInterval(refreshAttestation, 2000);
+
+/* ==========================================================================
+   SHELL — sidebar view switching
+   ========================================================================== */
+var VIEW_KEY = 'ss_view';
+var VIEW_IDS = ['viewOverview', 'viewSecurity', 'viewCertificate', 'viewHistory', 'viewAdmin'];
+
+function rememberView(id) {
+  try { localStorage.setItem(VIEW_KEY, id); } catch (e) {}
+}
+function savedView() {
+  try {
+    var v = localStorage.getItem(VIEW_KEY);
+    if (v && VIEW_IDS.indexOf(v) >= 0) return v;
+  } catch (e) {}
+  return '';
+}
+
+function showView(id, opts) {
+  opts = opts || {};
+  if (VIEW_IDS.indexOf(id) < 0) return;
+  if (id === 'viewAdmin') revealAdmin(false);
+
+  VIEW_IDS.forEach(function(v) {
+    var el = document.getElementById(v);
+    if (!el) return;
+    if (v === id) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+
+  var links = document.querySelectorAll('.sb-link[data-view]');
+  for (var i = 0; i < links.length; i++) {
+    if (links[i].getAttribute('data-view') === id) links[i].classList.add('active');
+    else links[i].classList.remove('active');
+  }
+
+  if (!opts.silent) rememberView(id);
+
+  if (id === 'viewHistory') {
+    renderHistory();
+    var sec = document.getElementById('historySection');
+    if (sec) sec.classList.remove('hidden');
+    var body = document.getElementById('historyBody');
+    if (body && (!S.history || S.history.length === 0) && body.children.length === 0) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 9;
+      td.className = 'empty-note';
+      td.textContent = 'No runs yet — start one from Overview.';
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }
+  if (id === 'viewCertificate') certRefreshReset();
+  if (id === 'viewAdmin') adminStart();
+  else adminStop();
+}
+
+function wireNav() {
+  var links = document.querySelectorAll('.sb-link[data-view]');
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener('click', function(ev) {
+      ev.preventDefault();
+      showView(this.getAttribute('data-view'));
+    });
+  }
+
+  // Alt+1..4 / Alt+A. Alt avoids fighting the existing S/E run shortcuts and
+  // normal typing inside the URL and token fields.
+  document.addEventListener('keydown', function(ev) {
+    if (!ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    var map = { '1': 'viewOverview', '2': 'viewSecurity', '3': 'viewCertificate', '4': 'viewHistory', 'a': 'viewAdmin' };
+    var id = map[String(ev.key).toLowerCase()];
+    if (!id) return;
+    ev.preventDefault();
+    if (id === 'viewAdmin') revealAdmin(true);
+    showView(id);
+  });
+}
+
+/* ==========================================================================
+   SHELL — hidden admin reveal
+   ========================================================================== */
+var adminRevealed = false;
+
+function revealAdmin(open) {
+  if (!adminRevealed) {
+    adminRevealed = true;
+    var nav = document.getElementById('navAdmin');
+    if (nav) nav.classList.remove('hidden');
+    try { sessionStorage.setItem('ss_admin_revealed', '1'); } catch (e) {}
+  }
+  if (open) showView('viewAdmin');
+}
+
+function wireAdminReveal() {
+  try { if (sessionStorage.getItem('ss_admin_revealed') === '1') revealAdmin(false); } catch (e) {}
+
+  document.addEventListener('keydown', function(ev) {
+    if (ev.ctrlKey && ev.shiftKey && String(ev.key).toLowerCase() === 'a') {
+      ev.preventDefault();
+      revealAdmin(true);
+    }
+  });
+
+  var logo = document.getElementById('brandLogo');
+  if (logo) {
+    var clicks = 0;
+    var last = 0;
+    logo.style.cursor = 'pointer';
+    logo.addEventListener('click', function() {
+      var now = Date.now();
+      if (now - last > 1500) clicks = 0;
+      last = now;
+      clicks++;
+      if (clicks >= 5) { clicks = 0; revealAdmin(true); toast('Admin area revealed', 'ok'); }
+    });
+  }
+
+  if (location.hash === '#admin') revealAdmin(true);
+  window.addEventListener('hashchange', function() {
+    if (location.hash === '#admin') revealAdmin(true);
+  });
+}
+
+/* ==========================================================================
+   CERTIFICATE PAGE — drop one file, issue or verify
+   ========================================================================== */
+var certState = { cert: null, html: '', kind: '', fileName: '' };
+
+function certStatus(msg, cls) {
+  var el = document.getElementById('certStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'cert-status' + (cls ? ' ' + cls : '');
+}
+
+function certClear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+
+function certFact(label, value) {
+  var box = document.createElement('div');
+  box.className = 'cert-fact';
+  var l = document.createElement('span');
+  l.className = 'cert-fact-label';
+  l.textContent = label;
+  var v = document.createElement('span');
+  v.className = 'cert-fact-value';
+  v.textContent = value === undefined || value === null || value === '' ? '—' : String(value);
+  box.appendChild(l);
+  box.appendChild(v);
+  return box;
+}
+
+function certRefreshReset() {
+  if (certState.cert || certState.html) return;
+  certStatus('Waiting for a file — a pentest report or a certificate.', '');
+}
+
+function certShowResult(kind, cert, rawText) {
+  var wrap = document.getElementById('certResult');
+  var title = document.getElementById('certResultTitle');
+  var verdict = document.getElementById('certVerdict');
+  var facts = document.getElementById('certFacts');
+  if (!wrap || !verdict || !facts) return;
+
+  certClear(facts);
+  var a = (cert && cert.assessment) || null;
+
+  if (kind === 'verify-valid') {
+    verdict.className = 'cert-verdict ok';
+    verdict.textContent = 'VALID — this certificate was not edited after signing.';
+    if (title) title.textContent = 'Verified certificate';
+  } else if (kind === 'verify-invalid') {
+    verdict.className = 'cert-verdict bad';
+    verdict.textContent = 'INVALID — ' + (certState.reason || 'verification failed.');
+    if (title) title.textContent = 'Verification failed';
+  } else if (kind === 'issued') {
+    verdict.className = 'cert-verdict ok';
+    verdict.textContent = 'ISSUED — sealed with the host signing key.';
+    if (title) title.textContent = 'New certificate';
+  } else {
+    verdict.className = 'cert-verdict';
+    verdict.textContent = kind;
+    if (title) title.textContent = 'Result';
+  }
+
+  if (a) {
+    facts.appendChild(certFact('Target', a.target));
+    facts.appendChild(certFact('Grade', a.grade));
+    facts.appendChild(certFact('Verdict', a.verdict));
+    facts.appendChild(certFact('Risk', (a.risk_score === 0 || a.risk_score ? a.risk_score : '—') + '/100'));
+    var c = a.counts || {};
+    facts.appendChild(certFact('Findings', [c.critical || 0, c.high || 0, c.medium || 0, c.low || 0, c.info || 0].join(' · ')));
+    facts.appendChild(certFact('Signer', (cert.public_key || '').slice(0, 16) + '…'));
+    facts.appendChild(certFact('Signed at', cert.signed_at));
+    if (a.covered && a.covered.length) facts.appendChild(certFact('Coverage', a.covered.join(', ')));
+  }
+
+  var findingsWrap = document.getElementById('certFindingsWrap');
+  var findings = document.getElementById('certFindings');
+  if (findings) certClear(findings);
+  var list = (a && a.findings) || [];
+  if (findingsWrap && findings) {
+    if (list.length) {
+      findingsWrap.classList.remove('hidden');
+      list.forEach(function(f) {
+        var li = document.createElement('li');
+        var sev = document.createElement('span');
+        sev.className = 'cert-sev cert-sev--' + String(f.severity || 'info').toLowerCase();
+        sev.textContent = f.severity || 'info';
+        var txt = document.createElement('span');
+        txt.textContent = (f.id ? f.id + ' · ' : '') + (f.title || '');
+        li.appendChild(sev);
+        li.appendChild(txt);
+        findings.appendChild(li);
+      });
+    } else {
+      findingsWrap.classList.add('hidden');
+    }
+  }
+
+  var htmlWrap = document.getElementById('certHtmlWrap');
+  var frame = document.getElementById('certHtmlFrame');
+  var html = certState.html || '';
+  if (htmlWrap && frame) {
+    if (html) {
+      htmlWrap.classList.remove('hidden');
+      frame.srcdoc = html;
+    } else {
+      htmlWrap.classList.add('hidden');
+      frame.removeAttribute('srcdoc');
+    }
+  }
+
+  var actions = document.getElementById('certActions');
+  if (actions) {
+    if (certState.cert || certState.html) actions.classList.remove('hidden');
+    else actions.classList.add('hidden');
+  }
+  wrap.classList.remove('hidden');
+}
+
+function certReset() {
+  certState = { cert: null, html: '', kind: '', fileName: '' };
+  certStatus('Waiting for a file — a pentest report or a certificate.', '');
+  var wrap = document.getElementById('certResult');
+  if (wrap) wrap.classList.add('hidden');
+  var actions = document.getElementById('certActions');
+  if (actions) actions.classList.add('hidden');
+  var input = document.getElementById('certFile');
+  if (input) input.value = '';
+}
+
+function certEnv(err) {
+  certStatus(err && err.error ? err.error : 'Request failed.', 'bad');
+}
+
+function certVerify(raw, obj) {
+  certStatus('Checking the signature…', 'busy');
+  fetch(API + '/api/certificate/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: raw
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    certState.cert = obj;
+    certState.html = obj.html || '';
+    if (String(res.valid) === 'true') {
+      certStatus('Valid certificate.', 'ok');
+      certShowResult('verify-valid', obj);
+      toast('Certificate is valid', 'ok');
+    } else {
+      certState.reason = res.detail || 'signature mismatch';
+      certStatus('Invalid: ' + certState.reason, 'bad');
+      certShowResult('verify-invalid', obj);
+    }
+  }).catch(function() {
+    certStatus('Could not reach the dashboard API.', 'bad');
+  });
+}
+
+function certIssue(raw, obj) {
+  certStatus('Issuing a signed certificate…', 'busy');
+  fetch(API + '/api/certificate/issue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: raw
+  }).then(function(r) {
+    return r.json().then(function(j) { return { ok: r.ok, body: j }; });
+  }).then(function(res) {
+    if (!res.ok) {
+      certStatus((res.body && res.body.error) || 'Could not issue a certificate.', 'bad');
+      return;
+    }
+    if (!res.body || !res.body.assessment) {
+      certStatus('The server returned no certificate.', 'bad');
+      return;
+    }
+    certState.cert = res.body;
+    certState.html = res.body.html || '';
+    certState.kind = 'issued';
+    certStatus('Certificate issued.', 'ok');
+    certShowResult('issued', res.body);
+    toast('Certificate issued', 'ok');
+  }).catch(function() {
+    certStatus('Could not reach the dashboard API.', 'bad');
+  });
+}
+
+function certHandleFile(file) {
+  if (!file) return;
+  certState.fileName = file.name || 'certificate';
+  certStatus('Reading ' + certState.fileName + '…', 'busy');
+  var reader = new FileReader();
+  reader.onload = function() {
+    var raw = String(reader.result || '');
+    var obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch (e) {
+      certStatus('That file is not JSON — expected a pentest report or a certificate.', 'bad');
+      return;
+    }
+    if (!obj || typeof obj !== 'object') {
+      certStatus('That file is not a pentest report or a certificate.', 'bad');
+      return;
+    }
+    if (obj.assessment && obj.signature) {
+      certVerify(raw, obj);
+      return;
+    }
+    if (obj.target) {
+      certIssue(raw, obj);
+      return;
+    }
+    certStatus('JSON, but neither a pentest report (needs "target") nor a certificate (needs "assessment" + "signature").', 'bad');
+  };
+  reader.onerror = function() { certStatus('Could not read the file.', 'bad'); };
+  reader.readAsText(file);
+}
+
+function certDownload(name, text, type) {
+  var blob = new Blob([text], { type: type || 'application/octet-stream' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+}
+
+function wireCertificate() {
+  var drop = document.getElementById('certDrop');
+  var input = document.getElementById('certFile');
+  var pick = document.getElementById('btnCertPick');
+  if (!drop || !input) return;
+
+  var openPicker = function(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    input.click();
+  };
+  drop.addEventListener('click', openPicker);
+  drop.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter' || ev.key === ' ') openPicker(ev);
+  });
+  if (pick) pick.addEventListener('click', openPicker);
+  input.addEventListener('change', function() {
+    if (input.files && input.files[0]) certHandleFile(input.files[0]);
+  });
+
+  ['dragenter', 'dragover'].forEach(function(name) {
+    drop.addEventListener(name, function(ev) {
+      ev.preventDefault();
+      drop.classList.add('is-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function(name) {
+    drop.addEventListener(name, function(ev) {
+      ev.preventDefault();
+      drop.classList.remove('is-over');
+    });
+  });
+  drop.addEventListener('drop', function(ev) {
+    var files = ev.dataTransfer && ev.dataTransfer.files;
+    if (files && files[0]) certHandleFile(files[0]);
+  });
+
+  var dlJson = document.getElementById('btnCertDownloadJson');
+  if (dlJson) dlJson.addEventListener('click', function() {
+    if (!certState.cert) return;
+    certDownload('cert.json', JSON.stringify(certState.cert, null, 2), 'application/json');
+  });
+  var dlHtml = document.getElementById('btnCertDownloadHtml');
+  if (dlHtml) dlHtml.addEventListener('click', function() {
+    if (!certState.html) return;
+    certDownload('cert.html', certState.html, 'text/html');
+  });
+  var reset = document.getElementById('btnCertReset');
+  if (reset) reset.addEventListener('click', certReset);
+}
+
+/* ==========================================================================
+   ADMIN PAGE — status, unlock, lock, countdown
+   ========================================================================== */
+var adminStatusTimer = null;
+var adminTickTimer = null;
+var adminExpiresMs = 0;
+
+function adminSetStatus(msg, cls) {
+  var el = document.getElementById('adminStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'admin-status' + (cls ? ' ' + cls : '');
+}
+
+function adminWarning(msg) {
+  var el = document.getElementById('adminWarning');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.classList.remove('hidden'); }
+  else { el.textContent = ''; el.classList.add('hidden'); }
+}
+
+function adminRenderStatus(st) {
+  var value = document.getElementById('adminStateValue');
+  var countdown = document.getElementById('adminCountdown');
+  if (!value) return;
+  if (st && st.active) {
+    value.textContent = 'ON — authorization bypassed';
+    value.className = 'admin-state-value on';
+    adminExpiresMs = st.expires_at ? Date.parse(st.expires_at) : 0;
+    if (countdown) countdown.classList.remove('hidden');
+    adminTick();
+  } else {
+    value.textContent = 'OFF — authorization enforced';
+    value.className = 'admin-state-value off';
+    adminExpiresMs = 0;
+    if (countdown) { countdown.classList.add('hidden'); countdown.textContent = ''; }
+  }
+}
+
+function adminTick() {
+  var countdown = document.getElementById('adminCountdown');
+  if (!countdown) return;
+  if (!adminExpiresMs) { countdown.classList.add('hidden'); return; }
+  var left = Math.max(0, Math.round((adminExpiresMs - Date.now()) / 1000));
+  if (left <= 0) {
+    countdown.textContent = 'Bypass expired — authorization is enforced again.';
+    countdown.classList.remove('hidden');
+    adminFetchStatus();
+    return;
+  }
+  var m = Math.floor(left / 60);
+  var s = left % 60;
+  countdown.textContent = 'Bypass active — ' + m + 'm ' + (s < 10 ? '0' : '') + s + 's left';
+  countdown.classList.remove('hidden');
+}
+
+function adminFetchStatus() {
+  fetch(API + '/api/admin/status', { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(st) { adminRenderStatus(st); })
+    .catch(function() { adminSetStatus('Could not read the admin status.', 'bad'); });
+}
+
+function adminStart() {
+  if (adminStatusTimer) return;
+  adminFetchStatus();
+  adminStatusTimer = setInterval(adminFetchStatus, 10000);
+  adminTickTimer = setInterval(adminTick, 1000);
+}
+
+function adminStop() {
+  if (adminStatusTimer) { clearInterval(adminStatusTimer); adminStatusTimer = null; }
+  if (adminTickTimer) { clearInterval(adminTickTimer); adminTickTimer = null; }
+}
+
+function wireAdmin() {
+  var form = document.getElementById('adminForm');
+  var lock = document.getElementById('btnAdminLock');
+  if (form) form.addEventListener('submit', function(ev) {
+    ev.preventDefault();
+    var code = (document.getElementById('adminCode') || {}).value || '';
+    var minutes = parseInt((document.getElementById('adminMinutes') || {}).value || '15', 10);
+    if (!code.trim()) { adminSetStatus('Enter the admin code from `stress-strike admin code`.', 'bad'); return; }
+    if (!minutes || minutes < 1) minutes = 15;
+    adminSetStatus('Checking the code…', '');
+    fetch(API + '/api/admin/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim(), minutes: minutes })
+    }).then(function(r) {
+      return r.json().then(function(j) { return { ok: r.ok, body: j }; });
+    }).then(function(res) {
+      if (!res.ok) {
+        adminSetStatus((res.body && res.body.error) || 'The code was rejected.', 'bad');
+        adminWarning('Admin bypass is OFF. Authorization is enforced.');
+        return;
+      }
+      var st = res.body.status || {};
+      adminRenderStatus(st);
+      adminSetStatus('Bypass is ON. Turn it off as soon as the work is done.', 'ok');
+      adminWarning(res.body.warning || '');
+      var input = document.getElementById('adminCode');
+      if (input) input.value = '';
+      toast('Admin bypass is ON', 'ok');
+    }).catch(function() {
+      adminSetStatus('Could not reach the dashboard API.', 'bad');
+    });
+  });
+
+  if (lock) lock.addEventListener('click', function() {
+    adminSetStatus('Closing the bypass window…', '');
+    fetch(API + '/api/admin/lock', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        adminRenderStatus(res.status || {});
+        adminSetStatus('Bypass is OFF. Authorization is enforced.', 'ok');
+        adminWarning('');
+        toast('Admin bypass is OFF', 'ok');
+      })
+      .catch(function() { adminSetStatus('Could not reach the dashboard API.', 'bad'); });
+  });
+}
+
+/* ---- Boot the shell ---- */
+wireNav();
+wireAdminReveal();
+wireCertificate();
+wireAdmin();
+
+// The sidebar prints the build it is talking to, so "did I just install the
+// new binary?" is answerable without opening a terminal.
+(function bootVersion() {
+  var el = document.getElementById('sbVersion');
+  if (!el) return;
+  fetch(API + '/api/version', { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.version) el.textContent = res.version;
+    })
+    .catch(function() { el.textContent = '?'; });
+})();
+
+(function bootView() {
+  var v = savedView();
+  if (!v) return;
+  if (v === 'viewAdmin') revealAdmin(false);
+  showView(v, { silent: true });
+})();

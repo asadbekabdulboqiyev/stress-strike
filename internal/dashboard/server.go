@@ -187,6 +187,11 @@ type Server struct {
 	attestMu   sync.RWMutex
 	attestInfo AttestationInfo
 
+	// version is the host binary's build version, stamped into certificates
+	// issued from the browser. It is set through SetVersion; "dev" is honest
+	// when a caller does not know better.
+	version string
+
 	// owaspSem serializes security scans: one at a time, so a second click
 	// gets a 409 instead of a second set of probes racing the first.
 	owaspSem chan struct{}
@@ -207,6 +212,7 @@ func NewServer() *Server {
 		snapshot: &LiveSnapshot{StatusCodes: make(map[int]uint64)},
 		runState: &RunState{Status: "idle"},
 		history:  make([]HistoryEntry, 0),
+		version:  "dev",
 		// The dashboard always launches the store with VeriGate protection
 		// ON: the whole point is to demo the WAF. Visitors can still flip it
 		// OFF from the store's own /admin control plane.
@@ -220,6 +226,21 @@ func (s *Server) SetCommandHandler(handler func(cmd string, args map[string]inte
 
 // SetMetricsHandler wires the Prometheus exposition endpoint (/metrics).
 func (s *Server) SetMetricsHandler(h http.Handler) { s.metricsHandler = h }
+
+// SetVersion records the host binary's version. It is stamped into
+// certificates issued from the browser so they match the CLI's.
+func (s *Server) SetVersion(v string) {
+	if strings.TrimSpace(v) != "" {
+		s.version = v
+	}
+}
+
+func (s *Server) versionOrDefault() string {
+	if strings.TrimSpace(s.version) == "" {
+		return "dev"
+	}
+	return s.version
+}
 
 // SetHealthHandlers wires the liveness (/healthz) and readiness (/readyz)
 // endpoints. Either handler may be nil; the built-in default reports "ok".
@@ -439,6 +460,16 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleAttestationVerify(w, r)
 	case path == "/api/certificate/verify":
 		s.handleCertificateVerify(w, r)
+	case path == "/api/certificate/issue":
+		s.handleCertificateIssue(w, r)
+	case path == "/api/admin/status":
+		s.handleAdminStatus(w, r)
+	case path == "/api/admin/unlock":
+		s.handleAdminUnlock(w, r)
+	case path == "/api/admin/lock":
+		s.handleAdminLock(w, r)
+	case path == "/api/version":
+		s.handleVersion(w, r)
 	case path == "/api/demo-store/start":
 		s.handleDemoStoreStart(w, r)
 	case path == "/api/demo-store/stop":

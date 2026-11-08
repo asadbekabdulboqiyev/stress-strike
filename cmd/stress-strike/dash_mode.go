@@ -26,6 +26,7 @@ import (
 // the default configuration.
 func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, dashAuth dashboard.AuthOptions) {
 	srv := dashboard.NewServer()
+	srv.SetVersion(version)
 	bridge := dashboard.NewEngineBridge(srv)
 
 	var (

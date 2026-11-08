@@ -120,12 +120,11 @@ Running `stress-strike` with no arguments from a terminal opens a three-option p
 ```
 
 Choosing **AUTH** opens a submenu:
-- Certificate — issue from a pentest report, or verify a certificate
 - Authorize — register the approval the target owner gave you
 - Audit — show the authorization audit trail
 - Verify — check an evidence bundle or certificate file
 
-Everything is also available via direct commands (`stress-strike certificate ...`, `stress-strike admin ...`, etc.).
+Everything is also available via direct commands (`stress-strike authorize ...`, `stress-strike audit ...`, etc.).
 
 ### Load profiles that matter
 
@@ -187,8 +186,6 @@ stress-strike <command> [flags]
 | `worker` | Distributed mode — worker node |
 | `authorize` | Manage target authorizations (allow-list + approvals) |
 | `audit` | Show or verify the authorization audit trail |
-| `certificate` | Issue/verify Ed25519-signed security assessment certificates (zero-flag) |
-| `admin` | Local admin area: bypass switch (admin code or `#slasz#` hash) |
 
 ### Authorization & consent
 
@@ -212,56 +209,6 @@ Every allow and deny is written to a hash-chained, tamper-evident audit log:
 ```sh
 stress-strike audit show --limit 20
 stress-strike audit verify        # exits 1 if any record was modified
-```
-
-### `stress-strike certificate` — issue or verify a security assessment certificate
-
-Zero-flag by design: point it at a file and it works out what the file is.
-
-```sh
-# Issue cert.json / cert.html / cert.pdf from a pentest report
-stress-strike certificate pentest-127.0.0.1-....json
-
-# Verify a certificate (offline, no key needed, no network)
-stress-strike certificate cert.json
-
-# Plain-English explanation of what a certificate is and how to get/check one
-stress-strike certificate --explain
-```
-
-The old flag forms still work (`--from`, `--verify --cert`, `--out`, `--format`).
-
-- **Issue**: accepts a pentest report JSON (`stress-strike pentest --format json` output) and seals an Ed25519-signed `ss-cert/v1` certificate.
-- **Verify**: checks the signature — editing one byte of the assessment or the document makes it **INVALID**.
-- **Sealing key**: persisted at `$STRESS_STRIKE_HOME/certificate-key.pem` (mode `0600`). Certificates issued from the CLI and from the dashboard's Certificate page share the same signer.
-- **Certificate page in dashboard**: drag-and-drop a pentest report to issue, or drop a certificate to verify — with printable HTML preview.
-
-### `stress-strike admin` — local admin bypass switch
-
-The admin area is a time-local switch that lets work run without an authorization ticket on this host. It is audit-logged, expires automatically, and **never unlocks cloud instance-metadata addresses** (`169.254.169.254` stays denied).
-
-**In the dashboard**: open `http://localhost:8888/#slasz#` — the secret hash reveals the **Admin** section. Turn the bypass switch ON/OFF with one click. No admin code is needed in the browser — the hash itself is the secret.
-
-```sh
-# Open the bypass window for 15 minutes (default)
-stress-strike admin unlock --minutes 15
-
-# Close the window immediately
-stress-strike admin lock
-
-# Show current state
-stress-strike admin status
-
-# Mint a new code (previous code stops working; open window closes)
-stress-strike admin rotate
-
-# Print the current admin code (CLI-only)
-stress-strike admin code
-```
-
-Every unlock/lock is written to the same hash-chained audit trail as scans:
-```sh
-stress-strike audit show
 ```
 
 `--notify-webhook <url>` posts each decision to Slack or any webhook; a blocked
@@ -462,9 +409,7 @@ Features:
 - Error rate tracking with history
 - Worker node monitoring in distributed mode
 - Start/stop runs directly from the browser
-- **Sidebar shell** — Overview, Security, Certificate, History, Admin views (Alt+1–4)
-- **Certificate page** — drop a pentest report to issue a signed certificate; drop a certificate to verify it. Printable HTML preview included.
-- **Admin page** — bypass switch (time-limited, audit-logged, metadata always denied). Reveal via `http://localhost:8888/#slasz#`
+- **Sidebar shell** — Overview, Security, History views (Alt+1–4)
 - **Verifiable evidence for every run** — a finished run seals a `vpmp/v1`
   bundle you can download and check offline (see *web mode* under VeriBench
   below); the UI shows the operator-key fingerprint and offers a server-side

@@ -2736,34 +2736,6 @@ function certVerify(raw, obj) {
   });
 }
 
-function certIssue(raw, obj) {
-  certStatus('Issuing a signed certificate…', 'busy');
-  fetch(API + '/api/certificate/issue', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: raw
-  }).then(function(r) {
-    return r.json().then(function(j) { return { ok: r.ok, body: j }; });
-  }).then(function(res) {
-    if (!res.ok) {
-      certStatus((res.body && res.body.error) || 'Could not issue a certificate.', 'bad');
-      return;
-    }
-    if (!res.body || !res.body.assessment) {
-      certStatus('The server returned no certificate.', 'bad');
-      return;
-    }
-    certState.cert = res.body;
-    certState.html = res.body.html || '';
-    certState.kind = 'issued';
-    certStatus('Certificate issued.', 'ok');
-    certShowResult('issued', res.body);
-    toast('Certificate issued', 'ok');
-  }).catch(function() {
-    certStatus('Could not reach the dashboard API.', 'bad');
-  });
-}
-
 function certHandleFile(file) {
   if (!file) return;
   certState.fileName = file.name || 'certificate';
@@ -2787,7 +2759,9 @@ function certHandleFile(file) {
       return;
     }
     if (obj.target) {
-      certIssue(raw, obj);
+      var issuer = document.getElementById('certIssuer') ? document.getElementById('certIssuer').value : 'stress-strike assessment';
+      var experimentRef = document.getElementById('certExperiment') ? document.getElementById('certExperiment').value : '';
+      certIssueApi(raw, issuer, experimentRef);
       return;
     }
     certStatus('JSON, but neither a pentest report (needs "target") nor a certificate (needs "assessment" + "signature").', 'bad');
@@ -2846,17 +2820,240 @@ function wireCertificate() {
 
   var dlJson = document.getElementById('btnCertDownloadJson');
   if (dlJson) dlJson.addEventListener('click', function() {
-    if (!certState.cert) return;
-    certDownload('cert.json', JSON.stringify(certState.cert, null, 2), 'application/json');
+    if (!certState.certId) return;
+    certDownloadApi(certState.certId, 'json');
   });
   var dlHtml = document.getElementById('btnCertDownloadHtml');
   if (dlHtml) dlHtml.addEventListener('click', function() {
-    if (!certState.html) return;
-    certDownload('cert.html', certState.html, 'text/html');
+    if (!certState.certId) return;
+    certDownloadApi(certState.certId, 'html');
+  });
+  var dlPdf = document.getElementById('btnCertDownloadPdf');
+  if (dlPdf) dlPdf.addEventListener('click', function() {
+    if (!certState.certId) return;
+    certDownloadApi(certState.certId, 'pdf');
   });
   var reset = document.getElementById('btnCertReset');
   if (reset) reset.addEventListener('click', certReset);
+
+  /* ---- Tabs ---- */
+  var tabs = document.querySelectorAll('.cert-tab');
+  var panels = document.querySelectorAll('.cert-panel');
+  function showTab(name) {
+    tabs.forEach(function(t) {
+      t.classList.toggle('active', t.id === 'tabCert' + name);
+    });
+    panels.forEach(function(p) {
+      p.classList.toggle('active', p.id === 'panelCert' + name);
+    });
+    if (name === 'History') certLoadHistory();
+  }
+  tabs.forEach(function(t) {
+    t.addEventListener('click', function() {
+      showTab(t.id.replace('tabCert', ''));
+    });
+  });
+
+  /* ---- Verify drop zone ---- */
+  var vdrop = document.getElementById('certVerifyDrop');
+  var vinput = document.getElementById('certVerifyFile');
+  var vpick = document.getElementById('btnCertVerifyPick');
+  if (vdrop && vinput) {
+    var vopen = function(ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      vinput.click();
+    };
+    vdrop.addEventListener('click', vopen);
+    vdrop.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') vopen(ev);
+    });
+    if (vpick) vpick.addEventListener('click', vopen);
+    vinput.addEventListener('change', function() {
+      if (vinput.files && vinput.files[0]) certVerifyFile(vinput.files[0]);
+    });
+    ['dragenter', 'dragover'].forEach(function(name) {
+      vdrop.addEventListener(name, function(ev) {
+        ev.preventDefault();
+        vdrop.classList.add('is-over');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function(name) {
+      vdrop.addEventListener(name, function(ev) {
+        ev.preventDefault();
+        vdrop.classList.remove('is-over');
+      });
+    });
+    vdrop.addEventListener('drop', function(ev) {
+      var files = ev.dataTransfer && ev.dataTransfer.files;
+      if (files && files[0]) certVerifyFile(files[0]);
+    });
+  }
 }
+
+/* ---- Issue: POST /api/certificate/generate ---- */
+function certIssueApi(raw, issuer, experimentRef) {
+  certStatus('Issuing signed certificate…', 'busy');
+  var body = JSON.stringify({ report: raw, issuer: issuer, experiment_reference: experimentRef });
+  fetch(API + '/api/certificate/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body
+  }).then(function(r) {
+    return r.json().then(function(j) { return { ok: r.ok, body: j }; });
+  }).then(function(res) {
+    if (!res.ok) {
+      certStatus((res.body && res.body.error) || 'Could not issue certificate.', 'bad');
+      return;
+    }
+    if (!res.body || !res.body.certificate_id) {
+      certStatus('Server returned no certificate.', 'bad');
+      return;
+    }
+    certState.cert = res.body;
+    certState.certId = res.body.certificate_id;
+    certState.html = res.body.html || '';
+    certStatus('Certificate issued.', 'ok');
+    certShowResult('issued', res.body);
+    toast('Certificate issued', 'ok');
+    var actions = document.getElementById('certActions');
+    if (actions) actions.classList.remove('hidden');
+  }).catch(function() {
+    certStatus('Could not reach the dashboard API.', 'bad');
+  });
+}
+
+/* ---- Download: GET /api/certificate/download/:id?format=json|html|pdf ---- */
+function certDownloadApi(id, format) {
+  var url = API + '/api/certificate/download/' + encodeURIComponent(id) + '?format=' + format;
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = id + '.' + format;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* ---- Verify: POST /api/certificate/verify ---- */
+function certVerifyFile(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    var raw = String(reader.result || '');
+    var obj;
+    try { obj = JSON.parse(raw); } catch (e) {
+      certVerifyStatusMsg('That file is not JSON.', 'bad');
+      return;
+    }
+    fetch(API + '/api/certificate/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: raw
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      var wrap = document.getElementById('certVerifyResult');
+      var verdict = document.getElementById('certVerifyVerdict');
+      var facts = document.getElementById('certVerifyFacts');
+      var chain = document.getElementById('certVerifyChain');
+      if (!wrap || !verdict || !facts) return;
+      while (facts.firstChild) facts.removeChild(facts.firstChild);
+      while (chain.firstChild) chain.removeChild(chain.firstChild);
+      wrap.classList.remove('hidden');
+      if (res.valid) {
+        verdict.className = 'cert-verdict ok';
+        verdict.textContent = 'VALID — signature and document hash match.';
+        certAppendFact(facts, 'Certificate ID', res.certificate_id);
+        certAppendFact(facts, 'Target', res.target);
+        certAppendFact(facts, 'Grade', res.grade);
+        certAppendFact(facts, 'Verdict', res.verdict);
+        certAppendFact(facts, 'Risk score', res.risk_score + '/100');
+        certAppendFact(facts, 'Signed at', res.signed_at);
+        certAppendFact(facts, 'Experiment', res.experiment_reference || '—');
+        certAppendFact(facts, 'Findings', res.findings_count);
+        certAppendFact(facts, 'Covered', (res.covered || []).join(', ') || '—');
+        var chainEl = document.createElement('div');
+        chainEl.className = 'chain-ok';
+        chainEl.textContent = 'Hash chain: ' + (res.chain_intact ? 'INTACT' : 'BROKEN');
+        chain.appendChild(chainEl);
+        certVerifyStatusMsg('Certificate is valid.', 'ok');
+        toast('Certificate verified — VALID', 'ok');
+      } else {
+        verdict.className = 'cert-verdict bad';
+        verdict.textContent = 'INVALID — ' + (res.reason || 'verification failed.');
+        certVerifyStatusMsg('Certificate is invalid.', 'bad');
+        toast('Certificate verification failed', 'error');
+      }
+    }).catch(function() {
+      certVerifyStatusMsg('Could not reach the dashboard API.', 'bad');
+    });
+  };
+  reader.readAsText(file);
+}
+
+function certVerifyStatusMsg(msg, cls) {
+  var el = document.getElementById('certVerifyStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'cert-status' + (cls ? ' ' + cls : '');
+}
+
+function certAppendFact(parent, label, value) {
+  var row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.justifyContent = 'space-between';
+  row.style.borderBottom = '1px solid var(--border)';
+  row.style.padding = '6px 0';
+  var lb = document.createElement('span');
+  lb.textContent = label;
+  lb.style.color = 'var(--text-2)';
+  lb.style.fontFamily = 'var(--font-mono)';
+  lb.style.fontSize = '12px';
+  var vb = document.createElement('span');
+  vb.textContent = value === undefined || value === null ? '—' : String(value);
+  vb.style.color = 'var(--text-0)';
+  vb.style.fontFamily = 'var(--font-mono)';
+  vb.style.fontSize = '12px';
+  row.appendChild(lb);
+  row.appendChild(vb);
+  parent.appendChild(row);
+}
+
+/* ---- History: GET /api/certificate/history ---- */
+function certLoadHistory() {
+  var body = document.getElementById('certHistoryBody');
+  var chainStatus = document.getElementById('certChainStatus');
+  if (!body) return;
+  body.textContent = '';
+  if (chainStatus) chainStatus.textContent = 'Loading…';
+  fetch(API + '/api/certificate/history', { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var certs = res.certificates || [];
+      if (chainStatus) chainStatus.textContent = 'Certificates: ' + res.count;
+      certs.forEach(function(c) {
+        var tr = document.createElement('tr');
+        var tdId = document.createElement('td'); tdId.textContent = c.certificate_id;
+        var tdTarget = document.createElement('td'); tdTarget.textContent = c.target;
+        var tdGrade = document.createElement('td'); tdGrade.textContent = c.grade;
+        var tdVerdict = document.createElement('td'); tdVerdict.textContent = c.verdict;
+        var tdRisk = document.createElement('td'); tdRisk.textContent = c.risk_score + '/100';
+        var tdSigned = document.createElement('td'); tdSigned.textContent = c.signed_at;
+        var tdDl = document.createElement('td');
+        var btn = document.createElement('button');
+        btn.className = 'btn btn-ghost';
+        btn.textContent = 'JSON';
+        btn.addEventListener('click', function() { certDownloadApi(c.certificate_id, 'json'); });
+        tdDl.appendChild(btn);
+        tr.appendChild(tdId); tr.appendChild(tdTarget); tr.appendChild(tdGrade);
+        tr.appendChild(tdVerdict); tr.appendChild(tdRisk); tr.appendChild(tdSigned);
+        tr.appendChild(tdDl);
+        body.appendChild(tr);
+      });
+    }).catch(function() {
+      if (chainStatus) chainStatus.textContent = 'Failed to load history.';
+    });
+}
+
+/* Modify certIssue to also capture issuer/experiment from form fields */
+var _origCertIssue = certIssue;
 
 /* ==========================================================================
    ADMIN PAGE — status, unlock, lock, countdown

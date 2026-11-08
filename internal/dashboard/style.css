@@ -2611,3 +2611,69 @@ kbd {
   font-size: 11px;
   margin-right: 8px;
 }
+
+/* ==========================================================================
+   CERTIFICATE PAGE v2 — Issue / Verify / History tabs
+   ========================================================================== */
+.cert-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.cert-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+.cert-tab:hover {
+  color: var(--text-0);
+  background: var(--bg-2);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.cert-tab.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+  background: var(--green-dim);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.cert-panel {
+  display: none;
+}
+.cert-panel.active {
+  display: block;
+}
+.cert-field {
+  margin-top: 10px;
+}
+.cert-field input {
+  width: 100%;
+  margin-top: 4px;
+}
+.cert-note {
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin-bottom: 12px;
+  max-width: 70ch;
+}
+.cert-chain {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.cert-chain .chain-ok { color: var(--green); }
+.cert-chain .chain-bad { color: var(--red); }
+.cert-result-panel .cert-verdict {
+  margin-bottom: 12px;
+}
+.cert-result-panel .cert-facts {
+  margin-bottom: 12px;
+}

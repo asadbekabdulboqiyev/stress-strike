@@ -200,7 +200,7 @@ func issueCertificate(from, out, format, keyPath, issuer string, quiet bool) {
 	}
 
 	a := certificate.BuildAssessment(report, issuer, binaryVersion())
-	cert, err := certificate.Issue(kp, a)
+	cert, err := certificate.Issue(kp, a, "", "")
 	if err != nil {
 		fatal(fmt.Errorf("sign certificate: %w", err))
 	}

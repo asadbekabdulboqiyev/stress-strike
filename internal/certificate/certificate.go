@@ -86,13 +86,22 @@ type Assessment struct {
 // Certificate is the sealed envelope: a signed assessment plus the signer's
 // public key, so the file verifies by itself. HTML carries the full rendered
 // document (signature seal included) for display/printing.
+//
+// Hash chain: CertificateID is a unique per-certificate identifier and
+// PreviousCertificateHash binds this certificate to the one issued before it,
+// so any removed or re-ordered certificate breaks the chain and is detectable
+// during verification.
 type Certificate struct {
-	Assessment Assessment `json:"assessment"`
-	Signature  string     `json:"signature"`  // hex Ed25519 over canonical assessment JSON
-	PublicKey  string     `json:"public_key"` // hex Ed25519 signer public key
-	SignedAt   string     `json:"signed_at"`
-	Version    string     `json:"version"` // ss-cert/v1
-	HTML       string     `json:"html"`    // full rendered document (signature seal included)
+	Assessment           Assessment `json:"assessment"`
+	Signature            string     `json:"signature"`  // hex Ed25519 over canonical assessment JSON
+	PublicKey            string     `json:"public_key"` // hex Ed25519 signer public key
+	SignedAt             string     `json:"signed_at"`
+	Version              string     `json:"version"` // ss-cert/v1
+	HTML                 string     `json:"html"`    // full rendered document (signature seal included)
+	CertificateID        string     `json:"certificate_id"`       // unique per-certificate id
+	PreviousCertificateHash string   `json:"previous_certificate_hash"` // sha256 of previous certificate JSON
+	ExperimentReference  string     `json:"experiment_reference"`  // source experiment/run id this cert attests to
+	ValidityPeriod       string     `json:"validity_period"`       // e.g. "90 days"
 }
 
 // NewFromPentest builds an Assessment from a pentest report's summary fields.

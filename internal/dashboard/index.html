@@ -754,49 +754,95 @@
     <div class="page-head">
       <p class="page-kicker">Attestation</p>
       <h1 class="page-title">Certificate</h1>
-      <p class="page-sub">Drop one file. A pentest report becomes a signed certificate; a certificate gets verified. No flags, no key hunting, no network.</p>
+      <p class="page-sub">Issue, download and verify ss-cert/v1 Ed25519-signed assessment certificates. No flags, no key hunting, no network.</p>
     </div>
 
-    <div class="cert-grid">
-      <div class="panel cert-drop-panel">
-        <div class="cert-drop" id="certDrop" tabindex="0" role="button" aria-label="Drop a pentest report or a certificate here, or click to choose a file">
-          <div class="cert-drop-icon" aria-hidden="true">⛨</div>
-          <p class="cert-drop-title">Drop a file here</p>
-          <p class="cert-drop-sub">pentest report → issue a certificate · certificate → verify it</p>
-          <button class="btn btn-primary" id="btnCertPick" type="button">Choose file</button>
-          <input id="certFile" type="file" accept=".json,application/json" hidden>
-        </div>
-        <div class="cert-status" id="certStatus" role="status" aria-live="polite"></div>
-        <div class="cert-actions hidden" id="certActions">
-          <button class="btn btn-ghost" id="btnCertDownloadJson" type="button">Download certificate</button>
-          <button class="btn btn-ghost" id="btnCertDownloadHtml" type="button">Download printable HTML</button>
-          <button class="btn btn-ghost" id="btnCertReset" type="button">Start over</button>
-        </div>
-      </div>
+    <div class="cert-tabs">
+      <button class="cert-tab active" id="tabCertIssue">Issue</button>
+      <button class="cert-tab" id="tabCertVerify">Verify</button>
+      <button class="cert-tab" id="tabCertHistory">History</button>
+    </div>
 
-      <div class="panel cert-result-panel hidden" id="certResult">
-        <div class="panel-title"><span class="dot dot-green"></span> <span id="certResultTitle">Result</span></div>
-        <div class="cert-verdict" id="certVerdict"></div>
-        <div class="cert-facts" id="certFacts"></div>
-        <div class="cert-findings hidden" id="certFindingsWrap">
-          <div class="cert-subtitle">Findings</div>
-          <ul class="cert-findings" id="certFindings"></ul>
+    <!-- Issue: pentest report → signed certificate -->
+    <div class="cert-panel active" id="panelCertIssue">
+      <div class="cert-grid">
+        <div class="panel cert-drop-panel">
+          <div class="cert-drop" id="certDrop" tabindex="0" role="button" aria-label="Drop a pentest report or a certificate here, or click to choose a file">
+            <div class="cert-drop-icon" aria-hidden="true">⛨</div>
+            <p class="cert-drop-title">Drop a pentest report</p>
+            <p class="cert-drop-sub">A JSON pentest report becomes a signed certificate.</p>
+            <button class="btn btn-primary" id="btnCertPick" type="button">Choose file</button>
+            <input id="certFile" type="file" accept=".json,application/json" hidden>
+            <div class="cert-field">
+              <label class="field-label" for="certIssuer">Issuer</label>
+              <input id="certIssuer" type="text" placeholder="stress-strike assessment" value="stress-strike assessment">
+            </div>
+            <div class="cert-field">
+              <label class="field-label" for="certExperiment">Experiment / run reference</label>
+              <input id="certExperiment" type="text" placeholder="e.g. pentest-20261108-1200">
+            </div>
+          </div>
+          <div class="cert-status" id="certStatus" role="status" aria-live="polite"></div>
+          <div class="cert-actions hidden" id="certActions">
+            <button class="btn btn-ghost" id="btnCertDownloadJson" type="button">Download JSON</button>
+            <button class="btn btn-ghost" id="btnCertDownloadHtml" type="button">Download HTML</button>
+            <button class="btn btn-ghost" id="btnCertDownloadPdf" type="button">Download PDF</button>
+            <button class="btn btn-ghost" id="btnCertReset" type="button">Start over</button>
+          </div>
         </div>
-        <div class="cert-html hidden" id="certHtmlWrap">
-          <div class="cert-subtitle">Printable document</div>
-          <iframe class="cert-html-frame" id="certHtmlFrame" title="Printable certificate" sandbox></iframe>
+
+        <div class="panel cert-result-panel hidden" id="certResult">
+          <div class="panel-title"><span class="dot dot-green"></span> <span id="certResultTitle">Result</span></div>
+          <div class="cert-verdict" id="certVerdict"></div>
+          <div class="cert-facts" id="certFacts"></div>
+          <div class="cert-findings hidden" id="certFindingsWrap">
+            <div class="cert-subtitle">Findings</div>
+            <ul class="cert-findings" id="certFindings"></ul>
+          </div>
+          <div class="cert-html hidden" id="certHtmlWrap">
+            <div class="cert-subtitle">Printable document</div>
+            <iframe class="cert-html-frame" id="certHtmlFrame" title="Printable certificate" sandbox></iframe>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="panel cert-help">
-      <div class="panel-title"><span class="dot dot-cyan"></span> How it works</div>
-      <ol class="cert-steps">
-        <li><strong>Authorize.</strong> Register the approval the target owner gave you: <code>stress-strike authorize add --pattern example.com --approver "Owner" --ticket TICKET-001</code>.</li>
-        <li><strong>Assess.</strong> Run <code>stress-strike pentest --target https://example.com --authorized TICKET-001 --format json</code>.</li>
-        <li><strong>Seal.</strong> Drop the report above (or run <code>stress-strike certificate report.json</code>). You get JSON proof plus a printable HTML copy.</li>
-        <li><strong>Verify.</strong> Drop the certificate above, or run <code>stress-strike certificate cert.json</code>. Editing one byte of the assessment or the document makes it INVALID.</li>
-      </ol>
+    <!-- Verify: upload certificate JSON → validity result -->
+    <div class="cert-panel hidden" id="panelCertVerify">
+      <div class="panel">
+        <div class="panel-title"><span class="dot dot-blue"></span> Verify certificate</div>
+        <p class="cert-note">Upload a certificate JSON to check its Ed25519 signature and document hash. Any byte-level edit makes it INVALID.</p>
+        <div class="cert-drop" id="certVerifyDrop" tabindex="0" role="button" aria-label="Drop a certificate JSON to verify">
+          <div class="cert-drop-icon" aria-hidden="true">🔍</div>
+          <p class="cert-drop-title">Drop certificate JSON here</p>
+          <p class="cert-drop-sub">cert.json → VALID / INVALID result</p>
+          <button class="btn btn-primary" id="btnCertVerifyPick" type="button">Choose file</button>
+          <input id="certVerifyFile" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="cert-status" id="certVerifyStatus" role="status" aria-live="polite"></div>
+        <div class="cert-result-panel hidden" id="certVerifyResult">
+          <div class="panel-title"><span class="dot dot-green"></span> <span id="certVerifyResultTitle">Verification result</span></div>
+          <div class="cert-verdict" id="certVerifyVerdict"></div>
+          <div class="cert-facts" id="certVerifyFacts"></div>
+          <div class="cert-chain" id="certVerifyChain" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History: list of issued certificates -->
+    <div class="cert-panel hidden" id="panelCertHistory">
+      <div class="panel">
+        <div class="panel-title"><span class="dot dot-purple"></span> Certificate history</div>
+        <p class="cert-note">Every issued certificate is stored locally and forms a hash chain. <span id="certChainStatus"></span></p>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Target</th><th>Grade</th><th>Verdict</th><th>Risk</th><th>Signed at</th><th>Download</th></tr>
+            </thead>
+            <tbody id="certHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 

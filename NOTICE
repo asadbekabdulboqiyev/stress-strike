@@ -11,6 +11,7 @@ This product includes software developed by the following third-party projects:
 * github.com/chromedp/sysutil
 * github.com/go-logr/logr
 * github.com/go-logr/stdr
+* github.com/go-json-experiment/json
 * github.com/gobwas/httphead
 * github.com/gobwas/pool
 * github.com/gobwas/ws

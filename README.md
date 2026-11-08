@@ -232,11 +232,19 @@ stress-strike pentest --target https://app.example.com \
 stress-strike pentest --target https://app.example.com --auth-cookie 'session=abc123'
 stress-strike pentest --target https://api.example.com --auth-header 'Authorization: Bearer eyJ...'
 
+# Browser-based auth for OAuth / deep login flows (SPA, SSO, etc.)
+stress-strike pentest --target https://app.example.com \
+  --auth-browser-login-url https://app.example.com/login \
+  --auth-browser-user admin --auth-browser-pass 'S3cret'
+
 # Deep scan, verbose, PDF only, PCI DSS only
 stress-strike pentest --target example.com --depth 3 --verbose --format pdf --compliance pci-dss
 
 # Web-only scope, no crawling, skip load test
 stress-strike pentest --target https://example.com --crawl=false --skip-load-test
+
+# Crawl JS-rendered SPA pages with headless browser
+stress-strike pentest --target https://app.example.com --use-browser --crawl
 ```
 
 Phases: technology fingerprint → port scan → subdomain discovery →
@@ -271,6 +279,12 @@ CI/CD friendly.
 | `--auth-user` / `--auth-pass` | | Credentials for form login |
 | `--auth-cookie` | | Raw cookie header (session auth) |
 | `--auth-header` | | Static header, e.g. `Authorization: Bearer x` |
+| `--auth-browser-login-url` | | Login page URL for browser-based auth (OAuth / deep login) |
+| `--auth-browser-user` / `--auth-browser-pass` | | Credentials for browser-based login |
+| `--auth-browser-user-sel` | | CSS selector for username field (default: auto-detect) |
+| `--auth-browser-pass-sel` | | CSS selector for password field (default: auto-detect) |
+| `--auth-browser-success-sel` | | Text/CSS selector confirming successful login |
+| `--use-browser` | `false` | Use headless Chromium for crawling (SPA/React/Vue/JS-rendered pages) |
 | `--nvd` | `true` | Live NVD lookup (240K+ CVEs; `NVD_API_KEY` env raises rate limit) |
 | `--compliance` | all three | `pci-dss,soc2,iso27001` or `none` |
 | `--output` | auto | Output directory |
@@ -383,6 +397,49 @@ stress-strike scan --target example.com --tls
 # Export scan to JSON
 stress-strike scan --target example.com --all --output-json scan.json
 ```
+
+## Headless Browser Scanning (SPA / OAuth / JS-rendered pages)
+
+stress-strike can use headless Chromium (via Chrome DevTools Protocol) to scan
+JavaScript-rendered applications (React, Vue, Angular, etc.) where links and
+forms are generated dynamically. This also enables browser-based authentication
+for OAuth, SAML, SSO, and other deep login flows that standard HTTP auth cannot
+handle.
+
+### Browser-based crawling
+
+Use `--use-browser` to crawl with headless Chromium instead of plain HTTP.
+This discovers endpoints and forms that only appear after JavaScript execution:
+
+```bash
+stress-strike pentest --target https://app.example.com --use-browser --crawl
+```
+
+### Browser-based authentication (OAuth / deep login)
+
+Use `--auth-browser-login-url` with `--auth-browser-user` and
+`--auth-browser-pass` to authenticate through a real browser. This handles
+login flows that involve redirects, CAPTCHA challenges, or multi-step forms:
+
+```bash
+stress-strike pentest --target https://app.example.com \
+  --auth-browser-login-url https://accounts.example.com/oauth/login \
+  --auth-browser-user admin --auth-browser-pass 'S3cret'
+```
+
+Optional CSS selectors can override the default field detection:
+
+```bash
+stress-strike pentest --target https://app.example.com \
+  --auth-browser-login-url https://app.example.com/login \
+  --auth-browser-user admin --auth-browser-pass 'S3cret' \
+  --auth-browser-user-sel "input[name='email']" \
+  --auth-browser-pass-sel "input[name='password']" \
+  --auth-browser-success-sel "dashboard"
+```
+
+**Requirements:** Google Chrome or Chromium must be installed on the system.
+The browser runs headless and is automatically detected.
 
 ### `stress-strike dashboard`
 

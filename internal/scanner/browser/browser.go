@@ -111,6 +111,12 @@ func ExtractEndpoints(html, baseURL string) []Endpoint {
 		if rawURL == "" {
 			return
 		}
+		lower := strings.ToLower(rawURL)
+		for _, bad := range []string{"mailto:", "tel:", "javascript:", "data:"} {
+			if strings.HasPrefix(lower, bad) {
+				return
+			}
+		}
 		u, err := url.Parse(rawURL)
 		if err != nil {
 			return

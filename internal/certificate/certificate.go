@@ -92,16 +92,16 @@ type Assessment struct {
 // so any removed or re-ordered certificate breaks the chain and is detectable
 // during verification.
 type Certificate struct {
-	Assessment           Assessment `json:"assessment"`
-	Signature            string     `json:"signature"`  // hex Ed25519 over canonical assessment JSON
-	PublicKey            string     `json:"public_key"` // hex Ed25519 signer public key
-	SignedAt             string     `json:"signed_at"`
-	Version              string     `json:"version"` // ss-cert/v1
-	HTML                 string     `json:"html"`    // full rendered document (signature seal included)
-	CertificateID        string     `json:"certificate_id"`       // unique per-certificate id
-	PreviousCertificateHash string   `json:"previous_certificate_hash"` // sha256 of previous certificate JSON
-	ExperimentReference  string     `json:"experiment_reference"`  // source experiment/run id this cert attests to
-	ValidityPeriod       string     `json:"validity_period"`       // e.g. "90 days"
+	Assessment              Assessment `json:"assessment"`
+	Signature               string     `json:"signature"`  // hex Ed25519 over canonical assessment JSON
+	PublicKey               string     `json:"public_key"` // hex Ed25519 signer public key
+	SignedAt                string     `json:"signed_at"`
+	Version                 string     `json:"version"`                   // ss-cert/v1
+	HTML                    string     `json:"html"`                      // full rendered document (signature seal included)
+	CertificateID           string     `json:"certificate_id"`            // unique per-certificate id
+	PreviousCertificateHash string     `json:"previous_certificate_hash"` // sha256 of previous certificate JSON
+	ExperimentReference     string     `json:"experiment_reference"`      // source experiment/run id this cert attests to
+	ValidityPeriod          string     `json:"validity_period"`           // e.g. "90 days"
 }
 
 // NewFromPentest builds an Assessment from a pentest report's summary fields.
@@ -279,26 +279,26 @@ func VerifyBytes(data []byte) (*Certificate, error) {
 // MarshalJSON writes the certificate as JSON.
 func (c *Certificate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Assessment           Assessment `json:"assessment"`
-		Signature            string     `json:"signature"`
-		PublicKey            string     `json:"public_key"`
-		SignedAt             string     `json:"signed_at"`
-		Version              string     `json:"version"`
-		HTML                 string     `json:"html"`
-		CertificateID        string     `json:"certificate_id"`
-		PreviousCertificateHash string   `json:"previous_certificate_hash"`
-		ExperimentReference  string     `json:"experiment_reference"`
-		ValidityPeriod       string     `json:"validity_period"`
+		Assessment              Assessment `json:"assessment"`
+		Signature               string     `json:"signature"`
+		PublicKey               string     `json:"public_key"`
+		SignedAt                string     `json:"signed_at"`
+		Version                 string     `json:"version"`
+		HTML                    string     `json:"html"`
+		CertificateID           string     `json:"certificate_id"`
+		PreviousCertificateHash string     `json:"previous_certificate_hash"`
+		ExperimentReference     string     `json:"experiment_reference"`
+		ValidityPeriod          string     `json:"validity_period"`
 	}{
-		Assessment:           c.Assessment,
-		Signature:            c.Signature,
-		PublicKey:            c.PublicKey,
-		SignedAt:             c.SignedAt,
-		Version:              c.Version,
-		HTML:                 c.HTML,
-		CertificateID:        c.CertificateID,
+		Assessment:              c.Assessment,
+		Signature:               c.Signature,
+		PublicKey:               c.PublicKey,
+		SignedAt:                c.SignedAt,
+		Version:                 c.Version,
+		HTML:                    c.HTML,
+		CertificateID:           c.CertificateID,
 		PreviousCertificateHash: c.PreviousCertificateHash,
-		ExperimentReference:  c.ExperimentReference,
-		ValidityPeriod:       c.ValidityPeriod,
+		ExperimentReference:     c.ExperimentReference,
+		ValidityPeriod:          c.ValidityPeriod,
 	})
 }

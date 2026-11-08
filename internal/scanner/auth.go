@@ -28,11 +28,11 @@ import (
 type AuthType int
 
 const (
-	AuthNone   AuthType = iota // no authentication
-	AuthForm                   // POST credentials to a login URL, keep session cookies
-	AuthCookie                 // inject a raw Cookie header on every request (static override)
-	AuthHeader                 // inject a static header (e.g. Authorization: Bearer x)
-	AuthBrowser                // headless Chromium: OAuth / deep login flows in browser
+	AuthNone    AuthType = iota // no authentication
+	AuthForm                    // POST credentials to a login URL, keep session cookies
+	AuthCookie                  // inject a raw Cookie header on every request (static override)
+	AuthHeader                  // inject a static header (e.g. Authorization: Bearer x)
+	AuthBrowser                 // headless Chromium: OAuth / deep login flows in browser
 )
 
 // String returns a stable, human-readable name for the auth type.

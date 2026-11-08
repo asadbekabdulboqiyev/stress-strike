@@ -779,11 +779,18 @@ func (x *RunFailed) GetError() string {
 }
 
 type StatusReport struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkerId      string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
-	Healthy       bool                   `protobuf:"varint,2,opt,name=healthy,proto3" json:"healthy,omitempty"`
-	ActiveRuns    int64                  `protobuf:"varint,3,opt,name=active_runs,json=activeRuns,proto3" json:"active_runs,omitempty"`
-	System        *SystemMetrics         `protobuf:"bytes,4,opt,name=system,proto3" json:"system,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	WorkerId   string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	Healthy    bool                   `protobuf:"varint,2,opt,name=healthy,proto3" json:"healthy,omitempty"`
+	ActiveRuns int64                  `protobuf:"varint,3,opt,name=active_runs,json=activeRuns,proto3" json:"active_runs,omitempty"`
+	System     *SystemMetrics         `protobuf:"bytes,4,opt,name=system,proto3" json:"system,omitempty"`
+	// Signature half of worker attestation for heartbeats. worker_id names the
+	// signer (it must match a key pinned by the coordinator) and signature is
+	// Ed25519 over the canonical status attestation statement — see
+	// internal/dist/coordinator/attest.go. Additive: an unattested worker (dev
+	// mode) leaves it empty and the coordinator accepts the heartbeat only when
+	// it is not requiring attestation.
+	Signature     []byte `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -842,6 +849,13 @@ func (x *StatusReport) GetActiveRuns() int64 {
 func (x *StatusReport) GetSystem() *SystemMetrics {
 	if x != nil {
 		return x.System
+	}
+	return nil
+}
+
+func (x *StatusReport) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
 	}
 	return nil
 }
@@ -2614,13 +2628,14 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\tRunFailed\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xa0\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xbe\x01\n" +
 	"\fStatusReport\x12\x1b\n" +
 	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12\x18\n" +
 	"\ahealthy\x18\x02 \x01(\bR\ahealthy\x12\x1f\n" +
 	"\vactive_runs\x18\x03 \x01(\x03R\n" +
 	"activeRuns\x128\n" +
-	"\x06system\x18\x04 \x01(\v2 .stressstrike.dist.SystemMetricsR\x06system\"J\n" +
+	"\x06system\x18\x04 \x01(\v2 .stressstrike.dist.SystemMetricsR\x06system\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"J\n" +
 	"\x0fSessionMigrated\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +

@@ -104,7 +104,7 @@ type Auth struct {
 	rps         float64
 	burst       int
 
-	oidcClient *oidc.Client
+	oidcClient  *oidc.Client
 	rbacEnabled bool
 	rbacRoles   map[string][]string
 
@@ -256,7 +256,6 @@ func PrincipalFromContext(ctx context.Context) (string, bool) {
 	return sub, ok && sub != ""
 }
 
-
 // --- Authentication ---------------------------------------------------------
 
 // authenticate returns the principal subject and whether the request is
@@ -302,7 +301,6 @@ func (a *Auth) authenticate(r *http.Request) (string, []string, bool) {
 	}
 	return "", nil, false
 }
-
 
 // matchBearer compares token against every configured bearer token in constant
 // time and without short-circuiting, so the comparison cost does not reveal

@@ -13,7 +13,7 @@ func TestAuthBrowserConfigValidation(t *testing.T) {
 		{
 			name: "valid browser auth",
 			cfg: AuthConfig{
-				Type:   AuthBrowser,
+				Type:     AuthBrowser,
 				LoginURL: "https://example.com/login",
 				Username: "user",
 				Password: "pass",
@@ -32,18 +32,18 @@ func TestAuthBrowserConfigValidation(t *testing.T) {
 		{
 			name: "missing username",
 			cfg: AuthConfig{
-				Type:        AuthBrowser,
-				LoginURL:    "https://example.com/login",
-				Password:    "pass",
+				Type:     AuthBrowser,
+				LoginURL: "https://example.com/login",
+				Password: "pass",
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing password",
 			cfg: AuthConfig{
-				Type:        AuthBrowser,
-				LoginURL:    "https://example.com/login",
-				Username:    "user",
+				Type:     AuthBrowser,
+				LoginURL: "https://example.com/login",
+				Username: "user",
 			},
 			wantErr: true,
 		},

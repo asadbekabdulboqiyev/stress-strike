@@ -21,13 +21,13 @@ import (
 
 // ProbeResult describes what we learned about a target's HTTP/3 support.
 type ProbeResult struct {
-	Host          string        `json:"host"`
-	Port          int           `json:"port"`
-	AltSvcH3      bool          `json:"alt_svc_h3"`   // target advertises h3 in Alt-Svc
-	H3Reachable   bool          `json:"h3_reachable"` // QUIC handshake succeeded
-	H3Latency     time.Duration `json:"h3_latency"`   // QUIC handshake latency
-	Negotiated    string        `json:"negotiated"`   // ALPN negotiated (h3 or "")
-	Error         string        `json:"error,omitempty"`
+	Host        string        `json:"host"`
+	Port        int           `json:"port"`
+	AltSvcH3    bool          `json:"alt_svc_h3"`   // target advertises h3 in Alt-Svc
+	H3Reachable bool          `json:"h3_reachable"` // QUIC handshake succeeded
+	H3Latency   time.Duration `json:"h3_latency"`   // QUIC handshake latency
+	Negotiated  string        `json:"negotiated"`   // ALPN negotiated (h3 or "")
+	Error       string        `json:"error,omitempty"`
 }
 
 // Probe checks whether host:port supports HTTP/3 over QUIC. It first tries to
@@ -48,17 +48,17 @@ func Probe(host string, port int) (*ProbeResult, error) {
 	// 2. Attempt a QUIC handshake to confirm H3 reachability.
 	start := time.Now()
 	cfg := &quic.Config{
-		HandshakeIdleTimeout: 5 * time.Second,
-		MaxIdleTimeout:       5 * time.Second,
-		KeepAlivePeriod:      0,
-		Allow0RTT:            false,
-		EnableDatagrams:      false,
-		MaxIncomingStreams:   10,
+		HandshakeIdleTimeout:  5 * time.Second,
+		MaxIdleTimeout:        5 * time.Second,
+		KeepAlivePeriod:       0,
+		Allow0RTT:             false,
+		EnableDatagrams:       false,
+		MaxIncomingStreams:    10,
 		MaxIncomingUniStreams: 10,
 	}
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true, // scanner targets may use self-signed certs
-		NextProtos:           []string{"h3"},
+		NextProtos:         []string{"h3"},
 	}
 
 	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))

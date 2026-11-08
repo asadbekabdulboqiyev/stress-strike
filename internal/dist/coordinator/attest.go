@@ -66,6 +66,8 @@ const (
 	progressAttestDomain = "stressstrike/worker-progress-attest/v1"
 	// reportAttestDomain versions the final-report statement.
 	reportAttestDomain = "stressstrike/worker-report-attest/v1"
+	// statusAttestDomain versions the status-heartbeat statement.
+	statusAttestDomain = "stressstrike/worker-status-attest/v1"
 )
 
 // SnapshotDigest returns the SHA-256 of the deterministic protobuf encoding of
@@ -154,6 +156,26 @@ func SignReport(kp *attest.Keypair, workerID, runID string, timestamp int64, rep
 	return attest.Sign(kp, ReportAttestationMessage(workerID, runID, timestamp, digest))
 }
 
+// StatusAttestationMessage returns the exact bytes a worker signs for one
+// status heartbeat and a master verifies. The statement carries the worker
+// identity, the health flag and the number of active runs, all emitted as
+// length-prefixed canonical strings. Heartbeats carry no run id, so the
+// statement is scoped to the worker rather than to a run.
+func StatusAttestationMessage(workerID string, healthy bool, activeRuns int64) []byte {
+	return attestationMessage(statusAttestDomain,
+		workerID,
+		strconv.FormatBool(healthy),
+		strconv.FormatInt(activeRuns, 10),
+	)
+}
+
+// SignStatus produces the signature a worker attaches to a StatusReport
+// heartbeat. It returns an error (never a partial/fake signature) when the
+// keypair is unusable.
+func SignStatus(kp *attest.Keypair, workerID string, healthy bool, activeRuns int64) ([]byte, error) {
+	return attest.Sign(kp, StatusAttestationMessage(workerID, healthy, activeRuns))
+}
+
 // attestProgress attaches this worker's identity and Ed25519 signature to a
 // progress snapshot. A worker without a keypair leaves both fields empty, which
 // only an unattested coordinator accepts. A keypair present but unusable is an
@@ -206,6 +228,13 @@ func (m *Master) VerifyReportSignature(workerID, runID string, timestamp int64, 
 		return false
 	}
 	return m.VerifyWorkerSignature(workerID, ReportAttestationMessage(workerID, runID, timestamp, digest), sig)
+}
+
+// VerifyStatusSignature checks a StatusReport heartbeat signature against the
+// public key pinned for workerID. It fails closed: an unpinned worker, a
+// missing signature, or a malformed/forged signature all return false.
+func (m *Master) VerifyStatusSignature(workerID string, healthy bool, activeRuns int64, sig []byte) bool {
+	return m.VerifyWorkerSignature(workerID, StatusAttestationMessage(workerID, healthy, activeRuns), sig)
 }
 
 // VerifyWorkerSignature checks sig over msg against the key pinned for
@@ -375,6 +404,43 @@ func (m *Master) handleRunCompleted(addr string, rc *distproto.RunCompleted, str
 	}
 	if !m.VerifyReportSignature(workerID, rc.GetRunId(), rc.GetTimestamp(), rc.GetReport(), rc.GetSignature()) {
 		m.rejectWorker(addr, workerID, "invalid or missing Ed25519 signature on final report", stream)
+		return false
+	}
+	if !m.bindWorker(addr, workerID) {
+		m.rejectWorker(addr, workerID, "connection is already bound to another worker identity", stream)
+		return false
+	}
+	return true
+}
+
+// handleStatusReport verifies one heartbeat from addr against the pinned worker
+// key when attestation is on, then lets the caller store it. It returns false
+// when the worker was rejected, which tells recvLoop to stop reading from that
+// connection.
+//
+// The heartbeat is verified with the same fail-closed posture as a progress
+// snapshot: identity present → identity matches the connection's earlier claim →
+// signature verifies against the pinned key. A heartbeat without a signature
+// (or with a bad one) drops the worker instead of letting an unauthenticated
+// liveness frame through.
+func (m *Master) handleStatusReport(addr string, sr *distproto.StatusReport, stream distproto.MasterWorker_CoordinateClient) bool {
+	if sr == nil {
+		return true
+	}
+	if !m.attestationRequired() {
+		return true
+	}
+	workerID := sr.GetWorkerId()
+	if workerID == "" {
+		m.rejectWorker(addr, "", "status heartbeat carries no worker_id while attestation is required", stream)
+		return false
+	}
+	if bound, ok := m.boundWorkerID(addr); ok && bound != workerID {
+		m.rejectWorker(addr, workerID, fmt.Sprintf("worker_id %q does not match the identity %q already attested on this connection", workerID, bound), stream)
+		return false
+	}
+	if !m.VerifyStatusSignature(workerID, sr.GetHealthy(), sr.GetActiveRuns(), sr.GetSignature()) {
+		m.rejectWorker(addr, workerID, "invalid or missing Ed25519 signature on status heartbeat", stream)
 		return false
 	}
 	if !m.bindWorker(addr, workerID) {

@@ -14,11 +14,11 @@ func TestPrintTLSInfo(t *testing.T) {
 		ForwardSecrecy: true,
 		HTTP2Supported: true,
 		Certificate: &scanner.CertInfo{
-			Subject:    "example.com",
-			Issuer:     "Let's Encrypt",
-			KeyType:    "RSA",
-			KeySize:    2048,
-			IsExpired:  false,
+			Subject:      "example.com",
+			Issuer:       "Let's Encrypt",
+			KeyType:      "RSA",
+			KeySize:      2048,
+			IsExpired:    false,
 			IsSelfSigned: false,
 		},
 		SupportedVersions: []string{"TLS 1.3", "TLS 1.2"},
@@ -28,21 +28,21 @@ func TestPrintTLSInfo(t *testing.T) {
 
 func TestPrintHTTPInfo(t *testing.T) {
 	http := &scanner.HTTPInfo{
-		Server:        "nginx",
-		XPoweredBy:    "PHP/8.1",
-		HTTPVersion:   "HTTP/1.1",
-		Technologies:  []string{"Nginx", "PHP"},
-		Methods:       []string{"GET", "POST"},
-		CORS:          &scanner.CORSInfo{AllowOrigin: "*"},
+		Server:       "nginx",
+		XPoweredBy:   "PHP/8.1",
+		HTTPVersion:  "HTTP/1.1",
+		Technologies: []string{"Nginx", "PHP"},
+		Methods:      []string{"GET", "POST"},
+		CORS:         &scanner.CORSInfo{AllowOrigin: "*"},
 	}
 	printHTTPInfo(http)
 }
 
 func TestPrintWAFInfo(t *testing.T) {
 	waf := &scanner.WAFInfo{
-		Detected:  true,
-		Name:      "Cloudflare",
-		Vendor:    "Cloudflare, Inc.",
+		Detected:   true,
+		Name:       "Cloudflare",
+		Vendor:     "Cloudflare, Inc.",
 		Confidence: 95.0,
 	}
 	printWAFInfo(waf)
@@ -163,7 +163,7 @@ func TestCalculateRiskScore(t *testing.T) {
 		TLS: &scanner.TLSInfo{
 			IsSecure: false,
 			Certificate: &scanner.CertInfo{
-				IsExpired:   true,
+				IsExpired:    true,
 				IsSelfSigned: true,
 			},
 			Version: "TLS 1.0",

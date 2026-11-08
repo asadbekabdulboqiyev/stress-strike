@@ -86,6 +86,13 @@ message StatusReport {
   bool healthy = 2;
   int64 active_runs = 3;
   SystemMetrics system = 4;
+  // Signature half of worker attestation for heartbeats. worker_id names the
+  // signer (it must match a key pinned by the coordinator) and signature is
+  // Ed25519 over the canonical status attestation statement — see
+  // internal/dist/coordinator/attest.go. Additive: an unattested worker (dev
+  // mode) leaves it empty and the coordinator accepts the heartbeat only when
+  // it is not requiring attestation.
+  bytes signature = 5;
 }
 
 message SessionMigrated {

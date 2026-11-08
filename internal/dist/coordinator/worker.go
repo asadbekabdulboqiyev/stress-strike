@@ -107,7 +107,7 @@ func (w *Worker) Coordinate(stream distproto.MasterWorker_CoordinateServer) erro
 		case *distproto.WorkerCommand_StopRun:
 			w.handleStopRun(p.StopRun)
 		case *distproto.WorkerCommand_GetStatus:
-			w.sendStatus(stream)
+			_ = w.sendStatus(stream)
 		case *distproto.WorkerCommand_MigrateSession:
 			// Session migration is a planned control-plane feature. Until it is
 			// implemented inside the engine, sessions are NOT transferred
@@ -243,7 +243,9 @@ func (w *Worker) runStream(runCtx context.Context, start *distproto.StartRun, st
 				return
 			}
 		case <-heartbeat.C:
-			w.sendStatus(stream)
+			if err := w.sendStatus(stream); err != nil {
+				w.cfg.Logf("status heartbeat send failed: %v", err)
+			}
 		case res := <-resultCh:
 			if res.err != nil && res.tel == nil {
 				w.cfg.Logf("run %s failed: %v", start.RunId, res.err)
@@ -293,22 +295,28 @@ func (w *Worker) handleStopRun(stop *distproto.StopRun) {
 	w.cancelRun(stop.RunId)
 }
 
-func (w *Worker) sendStatus(stream distproto.MasterWorker_CoordinateServer) {
+func (w *Worker) sendStatus(stream distproto.MasterWorker_CoordinateServer) error {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_ = w.send(stream, &distproto.WorkerEvent{
-		Payload: &distproto.WorkerEvent_StatusReport{
-			StatusReport: &distproto.StatusReport{
-				WorkerId:   w.cfg.ID,
-				Healthy:    true,
-				ActiveRuns: int64(w.ActiveRuns()),
-				System: &distproto.SystemMetrics{
-					CpuPercent:  w.cpuPercent(),
-					MemoryBytes: int64(m.Alloc),
-					Goroutines:  int64(runtime.NumGoroutine()),
-				},
-			},
+	sr := &distproto.StatusReport{
+		WorkerId:   w.cfg.ID,
+		Healthy:    true,
+		ActiveRuns: int64(w.ActiveRuns()),
+		System: &distproto.SystemMetrics{
+			CpuPercent:  w.cpuPercent(),
+			MemoryBytes: int64(m.Alloc),
+			Goroutines:  int64(runtime.NumGoroutine()),
 		},
+	}
+	if w.cfg.Keypair != nil {
+		sig, err := SignStatus(w.cfg.Keypair, w.cfg.ID, sr.GetHealthy(), sr.GetActiveRuns())
+		if err != nil {
+			return fmt.Errorf("status attestation: %w", err)
+		}
+		sr.Signature = sig
+	}
+	return w.send(stream, &distproto.WorkerEvent{
+		Payload: &distproto.WorkerEvent_StatusReport{StatusReport: sr},
 	})
 }
 

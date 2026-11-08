@@ -337,6 +337,116 @@ func TestSignedFinalReportAccepted(t *testing.T) {
 	}
 }
 
+// signedStatus builds the heartbeat a worker with kp emits for workerID.
+func signedStatus(t *testing.T, kp *attest.Keypair, workerID string, healthy bool, activeRuns int64) *distproto.StatusReport {
+	t.Helper()
+	sig, err := SignStatus(kp, workerID, healthy, activeRuns)
+	if err != nil {
+		t.Fatalf("sign status: %v", err)
+	}
+	return &distproto.StatusReport{
+		WorkerId:   workerID,
+		Healthy:    healthy,
+		ActiveRuns: activeRuns,
+		Signature:  sig,
+	}
+}
+
+// TestSignedStatusAccepted verifies the heartbeat half of the attestation: a
+// status heartbeat signed by the pinned worker verifies, is accepted and is
+// kept for the fleet monitor.
+func TestSignedStatusAccepted(t *testing.T) {
+	kp, err := attest.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("keypair: %v", err)
+	}
+	master := attestationTestMaster(t, "w1", kp)
+	const addr = "10.0.0.8:50061"
+
+	sr := signedStatus(t, kp, "w1", true, 2)
+	if !master.handleStatusReport(addr, sr, nil) {
+		t.Fatalf("signed status heartbeat must be accepted (rejected: %v)", master.RejectedWorkers())
+	}
+	master.storeStatus(addr, sr)
+	if got := master.StatusReports()[addr]; got == nil || got.GetWorkerId() != "w1" {
+		t.Fatalf("signed heartbeat was not stored: %+v", master.StatusReports()[addr])
+	}
+	if got := master.RejectedWorkers(); len(got) != 0 {
+		t.Fatalf("no rejection expected, got %v", got)
+	}
+}
+
+// TestUnsignedStatusRejected is the fail-closed half for heartbeats: once
+// attestation is on, an unsigned status heartbeat must be dropped.
+func TestUnsignedStatusRejected(t *testing.T) {
+	kp, err := attest.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("keypair: %v", err)
+	}
+	master := attestationTestMaster(t, "w1", kp)
+	const addr = "10.0.0.9:50061"
+
+	sr := &distproto.StatusReport{WorkerId: "w1", Healthy: true, ActiveRuns: 1}
+	if master.handleStatusReport(addr, sr, nil) {
+		t.Fatal("unsigned status heartbeat must be rejected when attestation is required")
+	}
+	if got := master.RejectedWorkers(); len(got) != 1 || got[addr] == "" {
+		t.Fatalf("rejection reason not recorded for %s: %v", addr, got)
+	}
+}
+
+// TestForgedStatusRejected covers forgeries of the heartbeat signature: a
+// signature produced by a different key than the pinned one, and a genuine
+// signature over a tampered health/active-runs payload.
+func TestForgedStatusRejected(t *testing.T) {
+	kp, err := attest.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("keypair: %v", err)
+	}
+	other, err := attest.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("second keypair: %v", err)
+	}
+
+	t.Run("signed by another key", func(t *testing.T) {
+		master := attestationTestMaster(t, "w1", kp)
+		const addr = "10.0.0.10:50061"
+		if master.handleStatusReport(addr, signedStatus(t, other, "w1", true, 2), nil) {
+			t.Fatal("signature from a different key must be rejected")
+		}
+		if len(master.RejectedWorkers()) != 1 {
+			t.Fatalf("forged worker must be recorded as rejected: %v", master.RejectedWorkers())
+		}
+	})
+
+	t.Run("heartbeat tampered after signing", func(t *testing.T) {
+		master := attestationTestMaster(t, "w1", kp)
+		const addr = "10.0.0.11:50061"
+		sr := signedStatus(t, kp, "w1", true, 2)
+		sr.Healthy = false // tamper after signing
+		if master.handleStatusReport(addr, sr, nil) {
+			t.Fatal("tampered heartbeat must not verify")
+		}
+	})
+}
+
+// TestStatusAttestationMessageIsDeterministic checks the canonical statement
+// the status signature is over: two calls with equal inputs must produce equal
+// bytes, and changing the signed payload must change them.
+func TestStatusAttestationMessageIsDeterministic(t *testing.T) {
+	first := StatusAttestationMessage("w1", true, 3)
+	second := StatusAttestationMessage("w1", true, 3)
+	if string(first) != string(second) {
+		t.Fatal("status attestation message must be deterministic")
+	}
+	if string(StatusAttestationMessage("w1", true, 3)) == string(StatusAttestationMessage("w1", false, 3)) {
+		t.Fatal("status attestation message must reflect the health flag")
+	}
+	if string(StatusAttestationMessage("w1", true, 3)) == string(StatusAttestationMessage("w1", true, 4)) {
+		t.Fatal("status attestation message must reflect active runs")
+	}
+}
+
 // TestAggregatorStrictGate is the defence-in-depth check: even a caller that
 // bypasses the recvLoop verification cannot push an unverified snapshot into a
 // strict aggregator.

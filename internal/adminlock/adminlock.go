@@ -51,10 +51,10 @@ type State struct {
 
 // Status is what the UI needs: never the code itself.
 type Status struct {
-	Active     bool      `json:"active"`
-	UnlockedAt time.Time `json:"unlocked_at,omitempty"`
-	ExpiresAt  time.Time `json:"expires_at,omitempty"`
-	SecondsLeft int64    `json:"seconds_left"`
+	Active      bool      `json:"active"`
+	UnlockedAt  time.Time `json:"unlocked_at,omitempty"`
+	ExpiresAt   time.Time `json:"expires_at,omitempty"`
+	SecondsLeft int64     `json:"seconds_left"`
 }
 
 // Store reads and writes the state file.
@@ -211,6 +211,7 @@ func statusOf(st State, now time.Time) Status {
 	}
 	return out
 }
+
 // Verify reports whether code matches the stored code.
 func (s *Store) Verify(code string) (bool, error) {
 	st, err := s.load()

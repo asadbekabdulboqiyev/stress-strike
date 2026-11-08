@@ -7,13 +7,13 @@ import (
 
 func TestProbeResultFields(t *testing.T) {
 	res := &ProbeResult{
-		Host:         "example.com",
-		Port:         443,
-		AltSvcH3:     true,
-		H3Reachable:  true,
-		H3Latency:    12 * time.Millisecond,
-		Negotiated:   "h3",
-		Error:        "",
+		Host:        "example.com",
+		Port:        443,
+		AltSvcH3:    true,
+		H3Reachable: true,
+		H3Latency:   12 * time.Millisecond,
+		Negotiated:  "h3",
+		Error:       "",
 	}
 	if res.Host != "example.com" {
 		t.Errorf("host = %q, want example.com", res.Host)

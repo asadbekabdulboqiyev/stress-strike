@@ -366,27 +366,27 @@ func renderPDF(a certificate.Assessment, cert *certificate.Certificate) []byte {
 // certificate.VerifyBytes accepts.
 func certJSONBytes(c *certificate.Certificate) ([]byte, error) {
 	return json.MarshalIndent(struct {
-		Assessment           certificate.Assessment `json:"assessment"`
-		Signature            string                 `json:"signature"`
-		PublicKey            string                 `json:"public_key"`
-		SignedAt             string                 `json:"signed_at"`
-		Version              string                 `json:"version"`
-		HTML                 string                 `json:"html"`
-		CertificateID        string                 `json:"certificate_id"`
-		PreviousCertificateHash string               `json:"previous_certificate_hash"`
-		ExperimentReference  string                 `json:"experiment_reference"`
-		ValidityPeriod       string                 `json:"validity_period"`
+		Assessment              certificate.Assessment `json:"assessment"`
+		Signature               string                 `json:"signature"`
+		PublicKey               string                 `json:"public_key"`
+		SignedAt                string                 `json:"signed_at"`
+		Version                 string                 `json:"version"`
+		HTML                    string                 `json:"html"`
+		CertificateID           string                 `json:"certificate_id"`
+		PreviousCertificateHash string                 `json:"previous_certificate_hash"`
+		ExperimentReference     string                 `json:"experiment_reference"`
+		ValidityPeriod          string                 `json:"validity_period"`
 	}{
-		Assessment:           c.Assessment,
-		Signature:            c.Signature,
-		PublicKey:            c.PublicKey,
-		SignedAt:             c.SignedAt,
-		Version:              c.Version,
-		HTML:                 c.HTML,
-		CertificateID:        c.CertificateID,
+		Assessment:              c.Assessment,
+		Signature:               c.Signature,
+		PublicKey:               c.PublicKey,
+		SignedAt:                c.SignedAt,
+		Version:                 c.Version,
+		HTML:                    c.HTML,
+		CertificateID:           c.CertificateID,
 		PreviousCertificateHash: c.PreviousCertificateHash,
-		ExperimentReference:  c.ExperimentReference,
-		ValidityPeriod:       c.ValidityPeriod,
+		ExperimentReference:     c.ExperimentReference,
+		ValidityPeriod:          c.ValidityPeriod,
 	}, "", "  ")
 }
 

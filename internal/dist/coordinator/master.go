@@ -539,6 +539,11 @@ func (m *Master) recvLoop(addr string, stream distproto.MasterWorker_CoordinateC
 			m.touch(addr)
 		case *distproto.WorkerEvent_StatusReport:
 			if p.StatusReport != nil {
+				// Same fail-closed posture as progress/final-report: verify the
+				// heartbeat signature before keeping it for the fleet monitor.
+				if !m.handleStatusReport(addr, p.StatusReport, stream) {
+					return
+				}
 				m.storeStatus(addr, p.StatusReport)
 			}
 			m.touch(addr)

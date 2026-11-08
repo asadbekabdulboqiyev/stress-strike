@@ -199,7 +199,7 @@ func (b *Browser) LoginForm(loginURL, usernameSel, passwordSel, username, passwo
 	actions = append(actions,
 		chromedp.SendKeys(chromedp.CSS(passwordSel), "\n"),
 		chromedp.WaitReady(chromedp.CSS("body")),
-		chromedp.Sleep(2000 * time.Millisecond),
+		chromedp.Sleep(2000*time.Millisecond),
 	)
 
 	if err := chromedp.Do(ctx, actions...); err != nil {

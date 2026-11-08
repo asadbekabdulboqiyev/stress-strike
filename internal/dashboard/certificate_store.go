@@ -176,13 +176,13 @@ func certStoreVerifyChain() int {
 
 // CertificateSummary is a lightweight view for the history list.
 type CertificateSummary struct {
-	CertificateID          string `json:"certificate_id"`
-	Target                 string `json:"target"`
-	Grade                  string `json:"grade"`
-	Verdict                string `json:"verdict"`
-	RiskScore              int    `json:"risk_score"`
-	SignedAt               string `json:"signed_at"`
-	ExperimentReference    string `json:"experiment_reference"`
+	CertificateID           string `json:"certificate_id"`
+	Target                  string `json:"target"`
+	Grade                   string `json:"grade"`
+	Verdict                 string `json:"verdict"`
+	RiskScore               int    `json:"risk_score"`
+	SignedAt                string `json:"signed_at"`
+	ExperimentReference     string `json:"experiment_reference"`
 	PreviousCertificateHash string `json:"previous_certificate_hash"`
 }
 

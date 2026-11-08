@@ -39,8 +39,8 @@ func dashboardCertificateKeyPath() string {
 }
 
 type certificateIssueRequest struct {
-	Report             json.RawMessage `json:"report"`
-	Issuer             string          `json:"issuer,omitempty"`
+	Report              json.RawMessage `json:"report"`
+	Issuer              string          `json:"issuer,omitempty"`
 	ExperimentReference string          `json:"experiment_reference,omitempty"`
 }
 
@@ -223,18 +223,18 @@ func (s *Server) handleCertificateVerify(w http.ResponseWriter, r *http.Request)
 	chainIntact := chainBreak == -1
 
 	resp := map[string]interface{}{
-		"valid":            true,
-		"certificate_id":   cert.CertificateID,
-		"target":           cert.Assessment.Target,
-		"grade":            cert.Assessment.Grade,
-		"verdict":          cert.Assessment.Verdict,
-		"risk_score":       cert.Assessment.RiskScore,
-		"signed_at":        cert.SignedAt,
-		"experiment_reference": cert.ExperimentReference,
+		"valid":                     true,
+		"certificate_id":            cert.CertificateID,
+		"target":                    cert.Assessment.Target,
+		"grade":                     cert.Assessment.Grade,
+		"verdict":                   cert.Assessment.Verdict,
+		"risk_score":                cert.Assessment.RiskScore,
+		"signed_at":                 cert.SignedAt,
+		"experiment_reference":      cert.ExperimentReference,
 		"previous_certificate_hash": cert.PreviousCertificateHash,
-		"chain_intact":     chainIntact,
-		"findings_count":   len(cert.Assessment.Findings),
-		"covered":          cert.Assessment.Covered,
+		"chain_intact":              chainIntact,
+		"findings_count":            len(cert.Assessment.Findings),
+		"covered":                   cert.Assessment.Covered,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)

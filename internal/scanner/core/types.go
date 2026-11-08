@@ -118,7 +118,7 @@ type SecurityDetail struct {
 // BySeverity sorts Vuln by severity (critical → info).
 type BySeverity []Vuln
 
-func (v BySeverity) Len() int           { return len(v) }
+func (v BySeverity) Len() int { return len(v) }
 func (v BySeverity) Less(i, j int) bool {
 	order := map[string]int{"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 	return order[v[i].Severity] < order[v[j].Severity]

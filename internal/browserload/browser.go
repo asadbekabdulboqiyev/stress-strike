@@ -16,18 +16,18 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/chromedp/chromedp"
 	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/chromedp"
 )
 
 // RunResult describes a single browser page-load measurement.
 type RunResult struct {
-	URL          string        `json:"url"`
-	LoadTime     time.Duration `json:"load_time"`     // navigationStart → loadEventEnd
-	DOMContent   time.Duration `json:"dom_content"`   // navigationStart → domContentLoadedEventEnd
-	StatusCode   int           `json:"status_code"`
-	Error        string        `json:"error,omitempty"`
-	JSErrors     []string      `json:"js_errors"`     // console errors captured during load
+	URL        string        `json:"url"`
+	LoadTime   time.Duration `json:"load_time"`   // navigationStart → loadEventEnd
+	DOMContent time.Duration `json:"dom_content"` // navigationStart → domContentLoadedEventEnd
+	StatusCode int           `json:"status_code"`
+	Error      string        `json:"error,omitempty"`
+	JSErrors   []string      `json:"js_errors"` // console errors captured during load
 }
 
 // Runner executes page loads in a real browser.

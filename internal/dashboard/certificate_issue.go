@@ -114,17 +114,21 @@ func (s *Server) handleCertificateIssue(w http.ResponseWriter, r *http.Request) 
 
 	a := certificate.BuildAssessment(report, issuer, s.versionOrDefault())
 	a.SignedAt = certTimestamp()
-	prevHash := certStoreLastHash()
-	cert, err := certificate.Issue(kp, a, prevHash, experimentRef)
+	// prevHash is set atomically by certStoreIssue at write time; pass empty here.
+	cert, err := certificate.Issue(kp, a, "", experimentRef)
 	if err != nil {
 		http.Error(w, "sign certificate: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err := certStoreAppend(*cert); err != nil {
+	// Atomic: sets PreviousCertificateHash to current newest hash and appends.
+	// Two concurrent issues cannot receive the same predecessor hash.
+	storedCert, _, err := certStoreIssue(*cert)
+	if err != nil {
 		http.Error(w, "store certificate: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	cert = storedCert
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Certificate-Key-Created", boolString(created))

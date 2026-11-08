@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 func guardNaN() float64 { return math.NaN() }
@@ -24,9 +26,9 @@ func guardMustURL(t *testing.T, raw string) *url.URL {
 	return u
 }
 
-// Guard is the Requester every probe depends on; this assertion makes a
+// Guard is the core.Requester every probe depends on; this assertion makes a
 // signature drift a build failure, not a runtime surprise.
-var _ Requester = (*Guard)(nil)
+var _ core.Requester = (*Guard)(nil)
 
 func mustGuard(t *testing.T, cfg GuardConfig) *Guard {
 	t.Helper()
@@ -93,15 +95,15 @@ func TestNewGuardDefaults(t *testing.T) {
 	if g.cfg.Timeout != DefaultTimeout {
 		t.Errorf("Timeout = %v, want %v", g.cfg.Timeout, DefaultTimeout)
 	}
-	if g.cfg.MaxBodyBytes != DefaultProbeLimit {
-		t.Errorf("MaxBodyBytes = %d, want %d", g.cfg.MaxBodyBytes, DefaultProbeLimit)
+	if g.cfg.MaxBodyBytes != core.DefaultProbeLimit {
+		t.Errorf("MaxBodyBytes = %d, want %d", g.cfg.MaxBodyBytes, core.DefaultProbeLimit)
 	}
 }
 
 func TestCheckFailClosedEmptyAllowlist(t *testing.T) {
 	g := mustGuard(t, GuardConfig{})
 	err := g.Check(context.Background(), "GET", "http://example.com/", false)
-	if !errors.Is(err, ErrOutOfScope) {
+	if !errors.Is(err, core.ErrOutOfScope) {
 		t.Fatalf("empty allowlist must refuse everything, got %v", err)
 	}
 	if g.Stats().RefusedOutOfScope != 1 {
@@ -158,8 +160,8 @@ func TestCheckScopeMatching(t *testing.T) {
 		"http:///",                     // empty host
 	}
 	for _, u := range refused {
-		if err := g.Check(ctx, "GET", u, false); !errors.Is(err, ErrOutOfScope) {
-			t.Errorf("Check(%s) = %v, want ErrOutOfScope", u, err)
+		if err := g.Check(ctx, "GET", u, false); !errors.Is(err, core.ErrOutOfScope) {
+			t.Errorf("Check(%s) = %v, want core.ErrOutOfScope", u, err)
 		}
 	}
 }
@@ -173,7 +175,7 @@ func TestCheckEffectivePortSchemeDefault(t *testing.T) {
 	if err := g.Check(ctx, "GET", "http://http.test/", false); err != nil {
 		t.Errorf("http default port 80 should match: %v", err)
 	}
-	if err := g.Check(ctx, "GET", "https://https.test:80/", false); !errors.Is(err, ErrOutOfScope) {
+	if err := g.Check(ctx, "GET", "https://https.test:80/", false); !errors.Is(err, core.ErrOutOfScope) {
 		t.Errorf("https on port 80 should not match a :443 entry, got %v", err)
 	}
 }
@@ -191,7 +193,7 @@ func TestCheckAllowAllStillStructural(t *testing.T) {
 		"http://anything.example:70000/",
 		"http:///",
 	} {
-		if err := g.Check(ctx, "GET", u, false); !errors.Is(err, ErrOutOfScope) {
+		if err := g.Check(ctx, "GET", u, false); !errors.Is(err, core.ErrOutOfScope) {
 			t.Errorf("AllowAll must still refuse %s structurally, got %v", u, err)
 		}
 	}
@@ -201,8 +203,8 @@ func TestCheckIntrusiveGate(t *testing.T) {
 	ctx := context.Background()
 
 	off := mustGuard(t, GuardConfig{AllowAll: true})
-	if err := off.Check(ctx, "GET", "http://t.test/", true); !errors.Is(err, ErrIntrusiveDisabled) {
-		t.Fatalf("intrusive probe with gate off = %v, want ErrIntrusiveDisabled", err)
+	if err := off.Check(ctx, "GET", "http://t.test/", true); !errors.Is(err, core.ErrIntrusiveDisabled) {
+		t.Fatalf("intrusive probe with gate off = %v, want core.ErrIntrusiveDisabled", err)
 	}
 	if err := off.Check(ctx, "GET", "http://t.test/", false); err != nil {
 		t.Fatalf("passive probe with gate off = %v, want allowed", err)
@@ -241,8 +243,8 @@ func TestDryRunCheckAllowsThenDoRefuses(t *testing.T) {
 		t.Errorf("DryRunChecked = %d, want 1", g.Stats().DryRunChecked)
 	}
 	req, _ := http.NewRequest("GET", "http://t.test/", nil)
-	if _, err := g.Do(req); !errors.Is(err, ErrDryRun) {
-		t.Fatalf("DryRun Do = %v, want ErrDryRun", err)
+	if _, err := g.Do(req); !errors.Is(err, core.ErrDryRun) {
+		t.Fatalf("DryRun Do = %v, want core.ErrDryRun", err)
 	}
 	if g.Stats().RefusedDryRun != 1 {
 		t.Errorf("RefusedDryRun = %d, want 1", g.Stats().RefusedDryRun)
@@ -254,8 +256,8 @@ func TestDryRunCheckAllowsThenDoRefuses(t *testing.T) {
 
 func TestDoSendsSetsUAAndCapsBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != ScannerUserAgent {
-			t.Errorf("User-Agent = %q, want %q", r.Header.Get("User-Agent"), ScannerUserAgent)
+		if r.Header.Get("User-Agent") != core.ScannerUserAgent {
+			t.Errorf("User-Agent = %q, want %q", r.Header.Get("User-Agent"), core.ScannerUserAgent)
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = io.WriteString(w, strings.Repeat("A", 4096))
@@ -271,9 +273,9 @@ func TestDoSendsSetsUAAndCapsBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	body, err := ReadBody(resp, DefaultProbeLimit)
+	body, err := core.ReadBody(resp, core.DefaultProbeLimit)
 	if err != nil {
-		t.Fatalf("ReadBody: %v", err)
+		t.Fatalf("core.ReadBody: %v", err)
 	}
 	if len(body) != 64 {
 		t.Errorf("body length = %d, want the 64-byte cap", len(body))
@@ -333,8 +335,8 @@ func TestDoReChecksScopeAndBudget(t *testing.T) {
 	g := mustGuard(t, GuardConfig{Allow: []string{"127.0.0.1"}, MaxRequests: 1})
 	// A caller that skipped Check still cannot escape the allowlist.
 	out, _ := http.NewRequest("GET", "http://evil.example/", nil)
-	if _, err := g.Do(out); !errors.Is(err, ErrOutOfScope) {
-		t.Fatalf("Do out-of-scope = %v, want ErrOutOfScope", err)
+	if _, err := g.Do(out); !errors.Is(err, core.ErrOutOfScope) {
+		t.Fatalf("Do out-of-scope = %v, want core.ErrOutOfScope", err)
 	}
 	if g.Stats().RefusedOutOfScope != 1 {
 		t.Errorf("RefusedOutOfScope = %d, want 1", g.Stats().RefusedOutOfScope)
@@ -353,8 +355,8 @@ func TestDoReChecksScopeAndBudget(t *testing.T) {
 	_ = resp.Body.Close()
 
 	again, _ := http.NewRequest("GET", srv.URL+"/", nil)
-	if _, err := g.Do(again); !errors.Is(err, ErrBudgetExhausted) {
-		t.Fatalf("second Do = %v, want ErrBudgetExhausted", err)
+	if _, err := g.Do(again); !errors.Is(err, core.ErrBudgetExhausted) {
+		t.Fatalf("second Do = %v, want core.ErrBudgetExhausted", err)
 	}
 	if g.Stats().RefusedBudget != 1 {
 		t.Errorf("RefusedBudget = %d, want 1", g.Stats().RefusedBudget)

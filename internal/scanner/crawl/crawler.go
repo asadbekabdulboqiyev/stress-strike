@@ -1,4 +1,4 @@
-package scanner
+package crawl
 
 // crawler.go implements the site-crawling module (spider) for stress-strike.
 // It performs a breadth-first crawl of a target web application, discovering
@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/browser"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // --- Public API -------------------------------------------------------------
@@ -448,7 +449,7 @@ func resolveTarget(base *url.URL, raw string) (*url.URL, bool) {
 }
 
 func sameHost(a, b *url.URL) bool {
-	return strings.EqualFold(a.Host, b.Host)
+	return core.SameHost(a, b)
 }
 
 // queueKey collapses a URL to scheme://host/path so query-string variants of

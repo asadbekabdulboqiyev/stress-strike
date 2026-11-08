@@ -1,11 +1,11 @@
-// guard.go is the production Requester: the single place where a probe's
+// guard.go is the production core.Requester: the single place where a probe's
 // network access is decided.
 //
 // A vulnerability scanner is an offensive tool. The difference between a
 // sanctioned assessment and an attack is entirely policy: who said you may
 // touch this host, how hard you may push, and whether you actually stop. Guard
 // is that policy, and probe.go makes it unskippable — every check family is
-// written against the Requester interface, and Guard is the only real
+// written against the core.Requester interface, and Guard is the only real
 // implementation.
 //
 // Guard enforces, in order:
@@ -95,10 +95,10 @@ type GuardConfig struct {
 	Timeout time.Duration
 
 	// MaxBodyBytes caps how many response bytes Guard will ever hand back.
-	// 0 means DefaultProbeLimit.
+	// 0 means core.DefaultProbeLimit.
 	MaxBodyBytes int64
 
-	// DryRun evaluates policy but never sends. Do() returns ErrDryRun.
+	// DryRun evaluates policy but never sends. Do() returns core.ErrDryRun.
 	DryRun bool
 
 	// Fingerprint, when non-empty, makes Guard's client present the given TLS
@@ -151,7 +151,7 @@ type guardStatsInternal struct {
 	bytesRead         atomic.Int64
 }
 
-// Guard is the Requester every probe uses.
+// Guard is the core.Requester every probe uses.
 type Guard struct {
 	cfg      GuardConfig
 	patterns []scopePattern
@@ -211,7 +211,7 @@ func NewGuard(cfg GuardConfig) (*Guard, error) {
 		cfg.Timeout = DefaultTimeout
 	}
 	if cfg.MaxBodyBytes == 0 {
-		cfg.MaxBodyBytes = DefaultProbeLimit
+		cfg.MaxBodyBytes = core.DefaultProbeLimit
 	}
 	cfg.RPS = rps
 	cfg.Burst = burst
@@ -258,28 +258,28 @@ func (g *Guard) Stats() GuardStats {
 // side effects beyond refusal counters: it never consumes budget or a rate
 // token, so a probe may call it freely before building a request.
 //
-// It returns exactly one of ErrOutOfScope, ErrIntrusiveDisabled or
-// ErrBudgetExhausted when policy forbids the probe, and nil otherwise. In
+// It returns exactly one of core.ErrOutOfScope, core.ErrIntrusiveDisabled or
+// core.ErrBudgetExhausted when policy forbids the probe, and nil otherwise. In
 // DryRun it returns nil (the request is within policy) and records the check in
 // DryRunChecked; the refusal is applied by Do.
 func (g *Guard) Check(ctx context.Context, method, rawURL string, intrusive bool) error {
 	_ = ctx
 	_ = method
 	if g == nil {
-		return ErrOutOfScope
+		return core.ErrOutOfScope
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return g.refuse(fmt.Errorf("%w: unparseable url %q: %v", ErrOutOfScope, rawURL, err), nil)
+		return g.refuse(fmt.Errorf("%w: unparseable url %q: %v", core.ErrOutOfScope, rawURL, err), nil)
 	}
 	if err := g.checkScope(u); err != nil {
 		return g.refuse(err, nil)
 	}
 	if intrusive && !g.cfg.Intrusive {
-		return g.refuse(ErrIntrusiveDisabled, nil)
+		return g.refuse(core.ErrIntrusiveDisabled, nil)
 	}
 	if !g.cfg.DryRun && g.budget.Load() >= g.cfg.MaxRequests {
-		return g.refuse(ErrBudgetExhausted, nil)
+		return g.refuse(core.ErrBudgetExhausted, nil)
 	}
 	if g.cfg.DryRun {
 		g.stats.dryRunChecked.Add(1)
@@ -293,20 +293,20 @@ func (g *Guard) Check(ctx context.Context, method, rawURL string, intrusive bool
 // followed.
 func (g *Guard) Do(req *http.Request) (*http.Response, error) {
 	if g == nil {
-		return nil, ErrOutOfScope
+		return nil, core.ErrOutOfScope
 	}
 	if req == nil || req.URL == nil {
-		return nil, g.refuse(fmt.Errorf("%w: nil request", ErrOutOfScope), nil)
+		return nil, g.refuse(fmt.Errorf("%w: nil request", core.ErrOutOfScope), nil)
 	}
 	if g.cfg.DryRun {
 		g.stats.refusedDryRun.Add(1)
-		return nil, ErrDryRun
+		return nil, core.ErrDryRun
 	}
 	if err := g.checkScope(req.URL); err != nil {
 		return nil, g.refuse(err, nil)
 	}
 	if !g.reserveBudget() {
-		return nil, g.refuse(ErrBudgetExhausted, nil)
+		return nil, g.refuse(core.ErrBudgetExhausted, nil)
 	}
 	if err := g.acquireRate(req.Context(), strings.ToLower(req.URL.Host)); err != nil {
 		return nil, g.refuse(err, nil)
@@ -314,14 +314,14 @@ func (g *Guard) Do(req *http.Request) (*http.Response, error) {
 	if g.cfg.Fingerprint != fingerprint.Default {
 		core.ApplyHeaders(req, g.cfg.Fingerprint)
 	} else if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", ScannerUserAgent)
+		req.Header.Set("User-Agent", core.ScannerUserAgent)
 	}
 	resp, err := g.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	g.stats.requestsSent.Add(1)
-	// Cap the body at the Guard level too, so a caller that ignores ReadBody's
+	// Cap the body at the Guard level too, so a caller that ignores core.ReadBody's
 	// limit still cannot be made to read an unbounded response.
 	resp.Body = &cappedBody{rc: resp.Body, remaining: g.cfg.MaxBodyBytes, g: g}
 	return resp, nil
@@ -331,15 +331,15 @@ func (g *Guard) Do(req *http.Request) (*http.Response, error) {
 func (g *Guard) refuse(err error, _ *string) error {
 	g.stats.requestsRefused.Add(1)
 	switch {
-	case errors.Is(err, ErrOutOfScope):
+	case errors.Is(err, core.ErrOutOfScope):
 		g.stats.refusedOutOfScope.Add(1)
-	case errors.Is(err, ErrIntrusiveDisabled):
+	case errors.Is(err, core.ErrIntrusiveDisabled):
 		g.stats.refusedIntrusive.Add(1)
-	case errors.Is(err, ErrBudgetExhausted):
+	case errors.Is(err, core.ErrBudgetExhausted):
 		g.stats.refusedBudget.Add(1)
-	case errors.Is(err, ErrRateLimited):
+	case errors.Is(err, core.ErrRateLimited):
 		g.stats.refusedRate.Add(1)
-	case errors.Is(err, ErrDryRun):
+	case errors.Is(err, core.ErrDryRun):
 		g.stats.refusedDryRun.Add(1)
 	}
 	return err
@@ -366,7 +366,7 @@ func (g *Guard) acquireRate(ctx context.Context, key string) error {
 			return nil
 		}
 		if !time.Now().Before(deadline) {
-			return ErrRateLimited
+			return core.ErrRateLimited
 		}
 		select {
 		case <-ctx.Done():
@@ -379,30 +379,30 @@ func (g *Guard) acquireRate(ctx context.Context, key string) error {
 // checkScope enforces structural validity plus the allowlist.
 func (g *Guard) checkScope(u *url.URL) error {
 	if u == nil {
-		return fmt.Errorf("%w: nil url", ErrOutOfScope)
+		return fmt.Errorf("%w: nil url", core.ErrOutOfScope)
 	}
 	scheme := strings.ToLower(u.Scheme)
 	if scheme != "http" && scheme != "https" {
-		return fmt.Errorf("%w: scheme %q is not http(s)", ErrOutOfScope, u.Scheme)
+		return fmt.Errorf("%w: scheme %q is not http(s)", core.ErrOutOfScope, u.Scheme)
 	}
 	if u.User != nil {
-		return fmt.Errorf("%w: url carries userinfo", ErrOutOfScope)
+		return fmt.Errorf("%w: url carries userinfo", core.ErrOutOfScope)
 	}
 	host := strings.ToLower(u.Hostname())
 	if host == "" {
-		return fmt.Errorf("%w: url has no host", ErrOutOfScope)
+		return fmt.Errorf("%w: url has no host", core.ErrOutOfScope)
 	}
 	if p := u.Port(); p != "" {
 		n, err := strconv.Atoi(p)
 		if err != nil || n < 1 || n > 65535 {
-			return fmt.Errorf("%w: invalid port %q", ErrOutOfScope, p)
+			return fmt.Errorf("%w: invalid port %q", core.ErrOutOfScope, p)
 		}
 	}
 	if g.cfg.AllowAll {
 		return nil
 	}
 	if len(g.patterns) == 0 {
-		return fmt.Errorf("%w: the allowlist is empty (fail-closed)", ErrOutOfScope)
+		return fmt.Errorf("%w: the allowlist is empty (fail-closed)", core.ErrOutOfScope)
 	}
 	effPort := effectivePort(u)
 	escPath := u.EscapedPath()
@@ -414,7 +414,7 @@ func (g *Guard) checkScope(u *url.URL) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: %s is not covered by any allowed pattern", ErrOutOfScope, host)
+	return fmt.Errorf("%w: %s is not covered by any allowed pattern", core.ErrOutOfScope, host)
 }
 
 func effectivePort(u *url.URL) int {

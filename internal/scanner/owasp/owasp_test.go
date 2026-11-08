@@ -1,4 +1,4 @@
-package scanner
+package owasp
 
 import (
 	"fmt"

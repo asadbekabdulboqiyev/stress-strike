@@ -8,6 +8,8 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
@@ -89,4 +91,12 @@ func ApplyHeaders(req *http.Request, profile fingerprint.Profile) {
 			req.Header.Set(k, v)
 		}
 	}
+}
+
+// SameHost reports whether two URLs identify the same host, ignoring scheme,
+// port and path. It is the shared host-identity primitive used by the crawl and
+// passive-check code paths so both agree on what "same host" means without
+// duplicating the comparison at every call site.
+func SameHost(a, b *url.URL) bool {
+	return strings.EqualFold(a.Host, b.Host)
 }

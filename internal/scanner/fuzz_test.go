@@ -22,7 +22,7 @@ func (f *fakeRequester) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestNewFuzzerValidation(t *testing.T) {
-	// nil Requester.
+	// nil core.Requester.
 	if _, err := NewFuzzer(FuzzConfig{BaseURL: "http://x.test", Paths: []string{"/"}}, nil); err == nil {
 		t.Error("NewFuzzer(nil req) = nil error, want error")
 	}

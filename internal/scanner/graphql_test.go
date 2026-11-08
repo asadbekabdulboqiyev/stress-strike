@@ -2,7 +2,7 @@ package scanner
 
 // graphql_test.go — coverage for the GraphQL introspection scanner.
 //
-// The scanner never dials: every request goes through Requester, so the tests
+// The scanner never dials: every request goes through core.Requester, so the tests
 // use the passiveFakeRequester from checks_passive_test.go to script answers.
 
 import (
@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 func TestScanGraphQLIntrospectionEnabled(t *testing.T) {
@@ -123,7 +125,7 @@ func TestScanGraphQLNonJSONResponse(t *testing.T) {
 }
 
 func TestScanGraphQLGateRefusal(t *testing.T) {
-	fr := &passiveFakeRequester{refuse: ErrOutOfScope}
+	fr := &passiveFakeRequester{refuse: core.ErrOutOfScope}
 	res := ScanGraphQL(context.Background(), "https://out-of-scope.example.test/graphql", fr)
 	if res.Reachable {
 		t.Error("Reachable = true although the gate refused")

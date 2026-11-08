@@ -1,4 +1,4 @@
-package scanner
+package auth
 
 // Authentication support for authenticated scanning. It lets the scanner
 // operate behind a login wall (form sessions, raw cookies, or static headers)

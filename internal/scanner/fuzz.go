@@ -6,7 +6,7 @@ package scanner
 // request inputs (path, query, body, headers) and tracks which server
 // responses differ from the baseline (new status codes, new response bodies,
 // new headers, timeouts, crashes). Every mutation is sent through the
-// Requester gate so scope/rate/budget/dry-run are always enforced.
+// core.Requester gate so scope/rate/budget/dry-run are always enforced.
 //
 // Design notes:
 //   * stdlib-only: no external fuzzing crate, no libc, no compiler
@@ -14,7 +14,7 @@ package scanner
 //     signal instead of edge coverage.
 //   * deterministic seeded PRNG so a campaign is reproducible from its seed.
 //   * intrusive mutations (write methods, SQLi-ish, path traversal) only run
-//     when the Requester allows intrusive probes.
+//     when the core.Requester allows intrusive probes.
 
 import (
 	"bytes"
@@ -30,6 +30,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // FuzzConfig configures a fuzzing campaign.
@@ -49,7 +51,7 @@ type FuzzConfig struct {
 	// Timeout per request.
 	Timeout time.Duration
 	// Intrusive enables state-changing/payload mutations (PUT, DELETE,
-	// traversal, injection-ish strings). Requires Requester.Intrusive.
+	// traversal, injection-ish strings). Requires core.Requester.Intrusive.
 	Intrusive bool
 }
 
@@ -80,7 +82,7 @@ type FuzzFinding struct {
 // Fuzzer runs a coverage-aware HTTP fuzzing campaign.
 type Fuzzer struct {
 	cfg   FuzzConfig
-	req   Requester
+	req   core.Requester
 	rng   *lockedRand
 	stats fuzzStats
 }
@@ -139,10 +141,10 @@ type fuzzStats struct {
 	interesting int
 }
 
-// NewFuzzer builds a fuzzer. It fails closed on a nil Requester.
-func NewFuzzer(cfg FuzzConfig, req Requester) (*Fuzzer, error) {
+// NewFuzzer builds a fuzzer. It fails closed on a nil core.Requester.
+func NewFuzzer(cfg FuzzConfig, req core.Requester) (*Fuzzer, error) {
 	if req == nil {
-		return nil, fmt.Errorf("scanner: fuzzer requires a non-nil Requester")
+		return nil, fmt.Errorf("scanner: fuzzer requires a non-nil core.Requester")
 	}
 	if cfg.BaseURL == "" {
 		return nil, fmt.Errorf("scanner: fuzzer requires BaseURL")
@@ -165,7 +167,7 @@ func NewFuzzer(cfg FuzzConfig, req Requester) (*Fuzzer, error) {
 	return &Fuzzer{cfg: cfg, req: req, rng: newLockedRand(cfg.Seed)}, nil
 }
 
-// Run executes the campaign. Every request goes through the Requester gate;
+// Run executes the campaign. Every request goes through the core.Requester gate;
 // refused requests are counted but never sent.
 func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 	res := &FuzzResult{BaseURL: f.cfg.BaseURL, Seed: f.cfg.Seed}
@@ -323,7 +325,7 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 	return res
 }
 
-// sendProbe builds and sends one request through the Requester gate.
+// sendProbe builds and sends one request through the core.Requester gate.
 func (f *Fuzzer) sendProbe(ctx context.Context, method, path string, body []byte, intrusive bool) *httpResponseSnapshot {
 	u, err := url.Parse(f.cfg.BaseURL + path)
 	if err != nil {
@@ -344,7 +346,7 @@ func (f *Fuzzer) sendProbe(ctx context.Context, method, path string, body []byte
 	}
 	resp, err := f.req.Do(req)
 	if err != nil {
-		// Requester.Do may return ErrRateLimited/ErrBudgetExhausted/etc.
+		// core.Requester.Do may return core.ErrRateLimited/core.ErrBudgetExhausted/etc.
 		return nil
 	}
 	if resp == nil {

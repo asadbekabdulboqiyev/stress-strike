@@ -6,8 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/auth"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/crawl"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/http"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/owasp"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/security"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/tls"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/waf"
@@ -45,6 +48,60 @@ type SecurityDetail = core.SecurityDetail
 
 // BySeverity sorts Vuln by severity (re-exported from core).
 type BySeverity = core.BySeverity
+
+// AuthType selects how a scan session authenticates against a target
+// (re-exported from the auth subpackage).
+type AuthType = auth.AuthType
+
+const (
+	AuthNone    AuthType = 0 // no authentication
+	AuthForm    AuthType = 1 // POST credentials to a login URL, keep session cookies
+	AuthCookie  AuthType = 2 // inject a raw Cookie header on every request (static override)
+	AuthHeader  AuthType = 3 // inject a static header (e.g. Authorization: Bearer x)
+	AuthBrowser AuthType = 4 // headless Chromium: OAuth / deep login flows in browser
+)
+
+// AuthConfig configures an authenticated scanning session
+// (re-exported from the auth subpackage).
+type AuthConfig = auth.AuthConfig
+
+// AuthSession is an authenticated scanning session
+// (re-exported from the auth subpackage).
+type AuthSession = auth.AuthSession
+
+// NewAuthSession creates an authenticated scanning session from the given
+// config. Returns nil when no auth type is configured. Never logs credentials.
+func NewAuthSession(cfg AuthConfig, timeout time.Duration) (*AuthSession, error) {
+	return auth.NewAuthSession(cfg, timeout)
+}
+
+// Endpoint / CrawlResult / CrawlOptions / Crawler are the attack-surface
+// crawl primitives (re-exported from the crawl subpackage).
+type (
+	Endpoint     = crawl.Endpoint
+	CrawlResult  = crawl.CrawlResult
+	CrawlOptions = crawl.CrawlOptions
+)
+
+// Crawler spiders a target to discover endpoints and forms.
+type Crawler = crawl.Crawler
+
+// NewCrawler returns a new crawler for the given start URL and options.
+func NewCrawler(startURL string, opts CrawlOptions) *Crawler {
+	return crawl.NewCrawler(startURL, opts)
+}
+
+// OWASP re-exports (facade) — implementation lives in the owasp subpackage.
+type (
+	OWASPChecker  = owasp.OWASPChecker
+	OWASPReport   = owasp.OWASPReport
+	OWASPCategory = owasp.OWASPCategory
+)
+
+// NewOWASPChecker returns a new OWASP Top 10 checker for the given target.
+func NewOWASPChecker(target string) *OWASPChecker {
+	return owasp.NewOWASPChecker(target)
+}
 
 // Scan performs a full scan on target:port (TLS, HTTP, WAF, Security).
 func Scan(target string, port int) (*ScanResult, error) {

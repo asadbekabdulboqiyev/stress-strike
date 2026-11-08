@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// httpRequester adapts *http.Client to the Requester interface (Check always allows).
+// httpRequester adapts *http.Client to the core.Requester interface (Check always allows).
 type httpRequester struct{ c *http.Client }
 
 func (r *httpRequester) Check(ctx context.Context, method, rawURL string, intrusive bool) error {

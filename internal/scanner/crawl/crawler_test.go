@@ -1,4 +1,4 @@
-package scanner
+package crawl
 
 // crawler_test.go exercises the crawler against a small in-memory multi-page
 // site: relative links, query-param URLs, POST/GET forms, an offsite target,

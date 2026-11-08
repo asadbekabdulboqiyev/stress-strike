@@ -1,7 +1,7 @@
 package scanner
 
 // Tests for the passive check family. They are written entirely against the
-// Requester seam: passiveFakeRequester answers from memory, so no socket is ever
+// core.Requester seam: passiveFakeRequester answers from memory, so no socket is ever
 // opened and no Guard is constructed. Every assertion is about behaviour that a
 // reviewer can reproduce by reading the fake's routes.
 
@@ -18,13 +18,15 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // ---------------------------------------------------------------------------
-// In-memory Requester
+// In-memory core.Requester
 // ---------------------------------------------------------------------------
 
-// passiveFakeRequester is a Requester that answers from a handler. It records
+// passiveFakeRequester is a core.Requester that answers from a handler. It records
 // every request line and Host override so a test can prove what was NOT fetched.
 type passiveFakeRequester struct {
 	handler   func(*http.Request) (*http.Response, error)
@@ -45,7 +47,7 @@ type passiveFakeRequester struct {
 
 func (f *passiveFakeRequester) Check(_ context.Context, _ string, _ string, intrusive bool) error {
 	if intrusive {
-		return ErrIntrusiveDisabled
+		return core.ErrIntrusiveDisabled
 	}
 	return f.refuse
 }
@@ -150,7 +152,7 @@ func passiveHeader(kv ...string) http.Header {
 	return h
 }
 
-// passiveTestResponse mirrors what a Requester returns: a status, a header map
+// passiveTestResponse mirrors what a core.Requester returns: a status, a header map
 // and a body. The header is copied so two responses never share a map.
 func passiveTestResponse(status int, header http.Header, body string) *http.Response {
 	out := http.Header{}
@@ -207,7 +209,7 @@ func passiveNotFoundRoute() passiveRoute {
 // ---------------------------------------------------------------------------
 
 // passiveScan builds a scanner through the public constructor and runs it once.
-func passiveScan(t *testing.T, baseURL string, req Requester, opts PassiveOptions) ([]Vulnerability, []PassiveProbeNote) {
+func passiveScan(t *testing.T, baseURL string, req core.Requester, opts PassiveOptions) ([]Vulnerability, []PassiveProbeNote) {
 	t.Helper()
 	scanner, err := NewPassiveScanner(baseURL, req, opts)
 	if err != nil {
@@ -269,7 +271,7 @@ func TestPassiveNewScannerFailsClosed(t *testing.T) {
 	cases := []struct {
 		name    string
 		baseURL string
-		req     Requester
+		req     core.Requester
 		paths   []string
 		wantErr bool
 	}{
@@ -429,7 +431,7 @@ func TestPassiveWithinPercentBoundaries(t *testing.T) {
 }
 
 // passiveMakeResponse builds a passiveResponse the way passiveFetch would, so a
-// unit test can exercise a check's decision without a Requester.
+// unit test can exercise a check's decision without a core.Requester.
 func passiveMakeResponse(status int, header http.Header, body string) *passiveResponse {
 	resp := &passiveResponse{rawURL: "https://example.com/probe", status: status, header: header, body: []byte(body)}
 	if passiveLooksHTML(header.Get("Content-Type"), resp.body) {
@@ -1450,10 +1452,10 @@ func TestPassiveRefusalsBecomeNotes(t *testing.T) {
 		err  error
 		want string
 	}{
-		{name: "out of scope", err: ErrOutOfScope, want: "ErrOutOfScope"},
-		{name: "budget", err: fmt.Errorf("guard: %w", ErrBudgetExhausted), want: "ErrBudgetExhausted"},
-		{name: "rate limit", err: ErrRateLimited, want: "ErrRateLimited"},
-		{name: "dry run", err: ErrDryRun, want: "ErrDryRun"},
+		{name: "out of scope", err: core.ErrOutOfScope, want: "core.ErrOutOfScope"},
+		{name: "budget", err: fmt.Errorf("guard: %w", core.ErrBudgetExhausted), want: "core.ErrBudgetExhausted"},
+		{name: "rate limit", err: core.ErrRateLimited, want: "core.ErrRateLimited"},
+		{name: "dry run", err: core.ErrDryRun, want: "core.ErrDryRun"},
 		{name: "unknown", err: errors.New("dial tcp: connection refused"), want: ""},
 	}
 	for _, tc := range cases {

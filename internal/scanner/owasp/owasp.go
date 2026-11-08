@@ -1,4 +1,4 @@
-package scanner
+package owasp
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // OWASPChecker performs automated OWASP Top 10 checks
@@ -28,7 +30,7 @@ type OWASPChecker struct {
 	// dry-run mode. Production callers (scan/pentest) always set it; without
 	// it the checker falls back to its own unrestricted client, which is
 	// test-only behaviour.
-	Requester Requester
+	Requester core.Requester
 
 	// intrusiveNow marks the category currently running as intrusive. Set by
 	// runIntrusive only; controls whether makeRequest reports the probe as
@@ -268,7 +270,7 @@ func (c *OWASPChecker) makeRequestURL(method, baseURL, path string, headers http
 		if err != nil {
 			return nil, ""
 		}
-		respBody, _ := ReadBody(resp, DefaultProbeLimit)
+		respBody, _ := core.ReadBody(resp, core.DefaultProbeLimit)
 		c.noteProbe()
 		return resp, string(respBody)
 	}

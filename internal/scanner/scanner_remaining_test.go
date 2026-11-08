@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 func TestGuardConfigMethod(t *testing.T) {
@@ -96,7 +98,7 @@ func TestTLSVersionName(t *testing.T) {
 func TestTestWebSocketRefusedByGate(t *testing.T) {
 	ctx := context.Background()
 
-	// Use a Requester that refuses.
+	// Use a core.Requester that refuses.
 	refuser := &refusingRequester{}
 	res := TestWebSocket(ctx, "ws://127.0.0.1:1/socket", refuser)
 	if res == nil {
@@ -141,8 +143,8 @@ func TestTestWebSocketCannotConnect(t *testing.T) {
 type refusingRequester struct{}
 
 func (r *refusingRequester) Check(ctx context.Context, method, rawURL string, intrusive bool) error {
-	return ErrOutOfScope
+	return core.ErrOutOfScope
 }
 func (r *refusingRequester) Do(req *http.Request) (*http.Response, error) {
-	return nil, ErrOutOfScope
+	return nil, core.ErrOutOfScope
 }

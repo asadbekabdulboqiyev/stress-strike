@@ -4,10 +4,10 @@ package scanner
 //
 // Tests a WebSocket endpoint for common weaknesses: missing origin validation,
 // unauthenticated access, message flooding tolerance, and subprotocol
-// downgrade. Every message goes through the Requester gate when a
-// Requester-based transport is available (note: the standard
+// downgrade. Every message goes through the core.Requester gate when a
+// core.Requester-based transport is available (note: the standard
 // gorilla/websocket client performs its own dial; here we report structural
-// issues and, where a Requester is present, gate the HTTP upgrade).
+// issues and, where a core.Requester is present, gate the HTTP upgrade).
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 	"github.com/gorilla/websocket"
 )
 
@@ -30,7 +31,7 @@ type WebSocketResult struct {
 }
 
 // TestWebSocket connects to url and runs passive checks.
-func TestWebSocket(ctx context.Context, url string, req Requester) *WebSocketResult {
+func TestWebSocket(ctx context.Context, url string, req core.Requester) *WebSocketResult {
 	res := &WebSocketResult{URL: url}
 	start := nowSeconds()
 
@@ -40,7 +41,7 @@ func TestWebSocket(ctx context.Context, url string, req Requester) *WebSocketRes
 		WriteBufferSize:  4096,
 	}
 
-	// Requester gate is applied to the HTTP upgrade: if we have a Requester,
+	// core.Requester gate is applied to the HTTP upgrade: if we have a core.Requester,
 	// we Check the URL before dialing. The actual dial is performed by the
 	// websocket library (it performs its own TLS/TCP), which is acceptable
 	// for a security-testing tool run against authorized targets.

@@ -21,7 +21,7 @@
 //     never reach Evidence or PoC, and neither can anything credential-shaped.
 //  4. Bounded work. MaxParams/MaxEndpoints caps, hard-coded per-probe request
 //     caps (documented as consts below), a hard cap on the SENT sleep
-//     duration, the Requester's timeout/budget/rate policy, and ReadBody caps
+//     duration, the core.Requester's timeout/budget/rate policy, and core.ReadBody caps
 //     on every response (4 KiB for traversal).
 //  5. Read-only verbs by default. GET only unless AllowPost is set explicitly;
 //     the only PUT/DELETE in this file is the write-method probe.
@@ -31,7 +31,7 @@
 //     never a guess.
 //
 // A probe runs only when BOTH its IntrusiveOptions flag is set AND the
-// Requester's intrusive opt-in allows it (Check(ctx, method, url, true)).
+// core.Requester's intrusive opt-in allows it (Check(ctx, method, url, true)).
 // With every flag false, ScanAll returns nothing, Enabled() returns nothing,
 // and not a single byte is sent.
 //
@@ -66,6 +66,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // ── public API ───────────────────────────────────────────────────────────────
@@ -115,11 +117,11 @@ type IntrusiveOptions struct {
 // NewIntrusiveScanner, which fails closed on anything questionable.
 type IntrusiveScanner struct {
 	base *url.URL
-	req  Requester
+	req  core.Requester
 	opts IntrusiveOptions
 
 	// budget and timeBudget bound the total requests this scanner will ever
-	// attempt, independently of the Requester's own budget.
+	// attempt, independently of the core.Requester's own budget.
 	budget     int
 	timeBudget int
 
@@ -128,21 +130,21 @@ type IntrusiveScanner struct {
 	// SLEEP(2)/pg_sleep(2) that is actually SENT to the target.
 	timeFloor time.Duration
 
-	// gateClosed records a structural refusal from the Requester
-	// (ErrIntrusiveDisabled or ErrOutOfScope), so the scan stops asking instead
+	// gateClosed records a structural refusal from the core.Requester
+	// (core.ErrIntrusiveDisabled or core.ErrOutOfScope), so the scan stops asking instead
 	// of burning the whole budget on refusals.
 	gateClosed bool
 }
 
 // NewIntrusiveScanner builds an intrusive scanner for baseURL.
 //
-// It fails closed: a nil Requester, an empty or unparsable URL, a URL without a
+// It fails closed: a nil core.Requester, an empty or unparsable URL, a URL without a
 // host, a URL carrying userinfo, or a scheme other than http/https are all
 // construction errors. Nothing is sent here — the constructor touches no
 // network at all.
-func NewIntrusiveScanner(baseURL string, req Requester, opts IntrusiveOptions) (*IntrusiveScanner, error) {
+func NewIntrusiveScanner(baseURL string, req core.Requester, opts IntrusiveOptions) (*IntrusiveScanner, error) {
 	if req == nil {
-		return nil, errors.New("intrusive scanner: nil Requester (fail closed)")
+		return nil, errors.New("intrusive scanner: nil core.Requester (fail closed)")
 	}
 	raw := strings.TrimSpace(baseURL)
 	if raw == "" {
@@ -183,7 +185,7 @@ func NewIntrusiveScanner(baseURL string, req Requester, opts IntrusiveOptions) (
 // run, in a fixed order, so a CLI can report them honestly.
 //
 // It reflects the IntrusiveOptions only and performs no network I/O: whether
-// the Requester's intrusive opt-in also allows a family is discovered at scan
+// the core.Requester's intrusive opt-in also allows a family is discovered at scan
 // time, never here. With no option set it returns an empty slice.
 func (i *IntrusiveScanner) Enabled() []string {
 	if i == nil {
@@ -215,7 +217,7 @@ func (i *IntrusiveScanner) Enabled() []string {
 // deterministic order: endpoint order, then probe family, then parameter order.
 //
 // It returns an empty (never nil) slice when nothing is enabled, and never
-// panics: a refusal from the Requester, a dead context or a transport error all
+// panics: a refusal from the core.Requester, a dead context or a transport error all
 // simply produce no findings.
 func (i *IntrusiveScanner) ScanAll(ctx context.Context) []Vulnerability {
 	findings := []Vulnerability{}
@@ -253,7 +255,7 @@ const (
 )
 
 // intrusiveMaxTotalRequests is the whole-scan request allowance this file will
-// ever attempt, on top of the Requester's own budget. Worst case with the
+// ever attempt, on top of the core.Requester's own budget. Worst case with the
 // default caps: per endpoint CRLF 3 + Boolean 3x6=18 + traversal 12 + SSRF 16
 // = 49, times 5 endpoints = 245, plus the time-based cap (18, counted
 // separately) and the write-method probe (4).
@@ -606,7 +608,7 @@ func intrusiveParseQuery(rawQuery string) []intrusiveParam {
 	return out
 }
 
-// ── the one place this file talks to the Requester ───────────────────────────
+// ── the one place this file talks to the core.Requester ───────────────────────────
 
 // intrusiveSnapshot is a fully read, already closed response.
 type intrusiveSnapshot struct {
@@ -668,7 +670,7 @@ func (s intrusiveSnapshot) containsFold(needles []string) string {
 }
 
 // fetch is the only function in this file that touches the network. It applies,
-// in order: the Requester's intrusive opt-in (before the request is built!), the
+// in order: the core.Requester's intrusive opt-in (before the request is built!), the
 // local budget, and a bounded body read that always closes the response.
 //
 // The second result is false whenever nothing usable came back: the caller
@@ -685,10 +687,10 @@ func (i *IntrusiveScanner) fetch(ctx context.Context, method, rawURL string, bod
 		return empty, false
 	}
 	// Rule: activating a family requires BOTH the scanner option and the
-	// Requester's intrusive opt-in. Ask before building anything.
+	// core.Requester's intrusive opt-in. Ask before building anything.
 	if err := i.req.Check(ctx, method, rawURL, true); err != nil {
-		if errors.Is(err, ErrIntrusiveDisabled) || errors.Is(err, ErrOutOfScope) {
-			// Structural refusal: this Requester will never allow intrusive
+		if errors.Is(err, core.ErrIntrusiveDisabled) || errors.Is(err, core.ErrOutOfScope) {
+			// Structural refusal: this core.Requester will never allow intrusive
 			// work for this target, so stop asking.
 			i.gateClosed = true
 		}
@@ -714,13 +716,13 @@ func (i *IntrusiveScanner) fetch(ctx context.Context, method, rawURL string, bod
 		httpReq.ContentLength = int64(len(body))
 	}
 	// User-Agent is deliberately not set here: identification policy belongs to
-	// the Requester (Guard sets ScannerUserAgent).
+	// the core.Requester (Guard sets core.ScannerUserAgent).
 
 	resp, err := i.req.Do(httpReq)
 	if err != nil || resp == nil {
 		return empty, false
 	}
-	raw, _ := ReadBody(resp, limit) // ReadBody always closes the body
+	raw, _ := core.ReadBody(resp, limit) // core.ReadBody always closes the body
 	return intrusiveSnapshot{
 		status: resp.StatusCode,
 		header: resp.Header,

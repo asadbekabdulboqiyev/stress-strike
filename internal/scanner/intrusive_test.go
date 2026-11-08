@@ -18,6 +18,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // ── shared plumbing ──────────────────────────────────────────────────────────
@@ -110,7 +112,7 @@ func intrusiveGuard(t *testing.T, cfg GuardConfig) *Guard {
 	return mustGuard(t, cfg)
 }
 
-// intrusiveGuardAllowAll is the Requester every happy-path test uses: the whole
+// intrusiveGuardAllowAll is the core.Requester every happy-path test uses: the whole
 // loopback range is in scope and the intrusive gate is open.
 func intrusiveGuardAllowAll(t *testing.T) *Guard {
 	t.Helper()
@@ -292,7 +294,7 @@ func TestNewIntrusiveScannerFailsClosed(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			g := intrusiveGuardAllowAll(t)
-			var req Requester = g
+			var req core.Requester = g
 			if tc.noReq {
 				req = nil
 			}

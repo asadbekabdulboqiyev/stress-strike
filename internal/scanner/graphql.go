@@ -4,7 +4,7 @@ package scanner
 //
 // Probes a GraphQL endpoint for introspection being enabled (a serious
 // information-disclosure issue), schema exposure, and dangerous fields.
-// Every request goes through the Requester gate.
+// Every request goes through the core.Requester gate.
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // GraphQLResult is the output of a GraphQL scan.
@@ -28,7 +30,7 @@ type GraphQLResult struct {
 }
 
 // ScanGraphQL probes target (a GraphQL HTTP endpoint) for introspection.
-func ScanGraphQL(ctx context.Context, target string, req Requester) *GraphQLResult {
+func ScanGraphQL(ctx context.Context, target string, req core.Requester) *GraphQLResult {
 	res := &GraphQLResult{Endpoint: target}
 	start := nowSeconds()
 

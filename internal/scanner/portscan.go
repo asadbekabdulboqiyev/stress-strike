@@ -4,7 +4,7 @@ package scanner
 //
 // Network service discovery: scans TCP ports on a target host, identifies
 // open ports, and attempts service banner grabbing. All scanning is bounded
-// by concurrency, timeout, and (optionally) a Requester gate for scope
+// by concurrency, timeout, and (optionally) a core.Requester gate for scope
 // enforcement when used from the dashboard.
 
 import (
@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // PortScanResult is the output of a port scan.
@@ -43,7 +45,7 @@ var commonPorts = []int{
 }
 
 // ScanPorts scans the given ports on target (host or host:port).
-func ScanPorts(ctx context.Context, target string, ports []int, req Requester) *PortScanResult {
+func ScanPorts(ctx context.Context, target string, ports []int, req core.Requester) *PortScanResult {
 	res := &PortScanResult{Target: target}
 	start := time.Now()
 

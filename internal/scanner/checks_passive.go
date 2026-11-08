@@ -7,9 +7,9 @@
 // a URL that is either a configured scan path, a well-known public location
 // (/robots.txt, /.env, ...), or a deliberately nonexistent control path used to
 // calibrate the soft-404 baseline. There is no SQL payload, no fuzzing, no HTTP
-// method other than GET, and no login. Everything goes through Requester
+// method other than GET, and no login. Everything goes through core.Requester
 // (probe.go) so Guard's scope allowlist, rate limit, budget and timeout still
-// apply, and every probe is unit-tested against an in-memory fake Requester.
+// apply, and every probe is unit-tested against an in-memory fake core.Requester.
 //
 // What this file refuses to do
 // ----------------------------
@@ -56,6 +56,8 @@ import (
 	"sync"
 
 	"golang.org/x/net/html"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // ---------------------------------------------------------------------------
@@ -251,11 +253,11 @@ type PassiveOptions struct {
 	Paths []string
 
 	// MaxBodyBytes caps how much of each response is read. 0 (or negative) means
-	// DefaultProbeLimit. It is never reduced below 1.
+	// core.DefaultProbeLimit. It is never reduced below 1.
 	MaxBodyBytes int64
 
-	// UserAgent overrides ScannerUserAgent for these probes. Empty means
-	// ScannerUserAgent, so a probe is always identifiable in the target's log.
+	// UserAgent overrides core.ScannerUserAgent for these probes. Empty means
+	// core.ScannerUserAgent, so a probe is always identifiable in the target's log.
 	UserAgent string
 
 	// KnownSubdomains tells the HSTS check the operator has confirmed subdomains
@@ -268,7 +270,7 @@ type PassiveOptions struct {
 // for sequential use; ScanAll itself is not concurrent.
 type PassiveScanner struct {
 	base    *url.URL
-	req     Requester
+	req     core.Requester
 	opts    PassiveOptions
 	maxBody int64
 	paths   []passivePath
@@ -290,10 +292,10 @@ type PassiveProbeNote struct {
 }
 
 // NewPassiveScanner builds a scanner for baseURL. It fails closed: a nil
-// Requester, an empty or unparseable URL, a missing host, userinfo in the URL,
+// core.Requester, an empty or unparseable URL, a missing host, userinfo in the URL,
 // or a scheme other than http/https all return an error. It never guesses a
 // scheme and never prepends "http://".
-func NewPassiveScanner(baseURL string, req Requester, opts PassiveOptions) (*PassiveScanner, error) {
+func NewPassiveScanner(baseURL string, req core.Requester, opts PassiveOptions) (*PassiveScanner, error) {
 	if req == nil {
 		return nil, errors.New("passive: requester is nil (build a Guard first)")
 	}
@@ -315,7 +317,7 @@ func NewPassiveScanner(baseURL string, req Requester, opts PassiveOptions) (*Pas
 		return nil, fmt.Errorf("passive: base URL %q has no host", raw)
 	}
 	if base.User != nil {
-		return nil, fmt.Errorf("passive: base URL %q must not carry userinfo; use the Requester for credentials", raw)
+		return nil, fmt.Errorf("passive: base URL %q must not carry userinfo; use the core.Requester for credentials", raw)
 	}
 	base.Scheme = strings.ToLower(base.Scheme)
 	base.Fragment = ""
@@ -351,7 +353,7 @@ func NewPassiveScanner(baseURL string, req Requester, opts PassiveOptions) (*Pas
 
 	maxBody := opts.MaxBodyBytes
 	if maxBody <= 0 {
-		maxBody = DefaultProbeLimit
+		maxBody = core.DefaultProbeLimit
 	}
 
 	return &PassiveScanner{
@@ -397,7 +399,7 @@ func (p *PassiveScanner) ScanAll(ctx context.Context) []Vulnerability {
 	}
 	acc := passiveNewFindingSet()
 	// The baseline and the page set are fetched outside the per-check recover,
-	// so they are guarded too: a Requester that panics must degrade the scan to
+	// so they are guarded too: a core.Requester that panics must degrade the scan to
 	// "nothing seen", never take the process down.
 	var baseline *passiveSoft404Baseline
 	var pages []*passiveResponse
@@ -414,7 +416,7 @@ func (p *PassiveScanner) ScanAll(ctx context.Context) []Vulnerability {
 
 // passiveGuard runs fn, converting any panic into a probe note. It is the
 // shared recover used by every phase of ScanAll, including the baseline and the
-// page fetch, so a Requester that panics degrades the scan instead of ending it.
+// page fetch, so a core.Requester that panics degrades the scan instead of ending it.
 func (p *PassiveScanner) passiveGuard(what string, fn func()) {
 	defer func() {
 		r := recover()
@@ -463,7 +465,7 @@ func (p *PassiveScanner) passiveRunCheck(c passiveCheck, ctx context.Context, ac
 	p.passiveGuard("check "+c.name, func() { c.run(p, ctx, acc, pages, baseline) })
 }
 
-// passiveFetchPages fetches the configured page set. A page the Requester
+// passiveFetchPages fetches the configured page set. A page the core.Requester
 // refuses is simply absent; the refusal is already recorded in Notes.
 func (p *PassiveScanner) passiveFetchPages(ctx context.Context) []*passiveResponse {
 	pages := make([]*passiveResponse, 0, len(p.paths))
@@ -660,8 +662,8 @@ type passiveResponse struct {
 	html   passiveHTMLInfo
 }
 
-// passiveFetch performs one policy-checked GET through the Requester. It never
-// builds an *http.Client: the Requester seam is the only network path.
+// passiveFetch performs one policy-checked GET through the core.Requester. It never
+// builds an *http.Client: the core.Requester seam is the only network path.
 func (p *PassiveScanner) passiveFetch(ctx context.Context, rawURL string, extraHeaders map[string]string, hostOverride string) (*passiveResponse, error) {
 	if p == nil || p.req == nil {
 		return nil, errors.New("passive: scanner is not initialised")
@@ -679,7 +681,7 @@ func (p *PassiveScanner) passiveFetch(ctx context.Context, rawURL string, extraH
 	}
 	ua := strings.TrimSpace(p.opts.UserAgent)
 	if ua == "" {
-		ua = ScannerUserAgent
+		ua = core.ScannerUserAgent
 	}
 	req.Header.Set("User-Agent", ua)
 	for k, v := range extraHeaders {
@@ -698,7 +700,7 @@ func (p *PassiveScanner) passiveFetch(ctx context.Context, rawURL string, extraH
 	if resp == nil {
 		return nil, errors.New("passive: requester returned a nil response")
 	}
-	body, err := ReadBody(resp, p.maxBody)
+	body, err := core.ReadBody(resp, p.maxBody)
 	if err != nil {
 		p.passiveNote(rawURL, http.MethodGet, err)
 		return nil, err
@@ -722,16 +724,16 @@ func passiveSentinelName(err error) string {
 	switch {
 	case err == nil:
 		return ""
-	case errors.Is(err, ErrOutOfScope):
-		return "ErrOutOfScope"
-	case errors.Is(err, ErrBudgetExhausted):
-		return "ErrBudgetExhausted"
-	case errors.Is(err, ErrRateLimited):
-		return "ErrRateLimited"
-	case errors.Is(err, ErrIntrusiveDisabled):
-		return "ErrIntrusiveDisabled"
-	case errors.Is(err, ErrDryRun):
-		return "ErrDryRun"
+	case errors.Is(err, core.ErrOutOfScope):
+		return "core.ErrOutOfScope"
+	case errors.Is(err, core.ErrBudgetExhausted):
+		return "core.ErrBudgetExhausted"
+	case errors.Is(err, core.ErrRateLimited):
+		return "core.ErrRateLimited"
+	case errors.Is(err, core.ErrIntrusiveDisabled):
+		return "core.ErrIntrusiveDisabled"
+	case errors.Is(err, core.ErrDryRun):
+		return "core.ErrDryRun"
 	default:
 		return ""
 	}
@@ -2745,7 +2747,7 @@ func (p *PassiveScanner) checkSourceMaps(ctx context.Context, acc *passiveFindin
 			if abs.Scheme != "http" && abs.Scheme != "https" {
 				continue
 			}
-			if !sameHost(abs, p.base) {
+			if !core.SameHost(abs, p.base) {
 				continue
 			}
 			mapURL := *abs

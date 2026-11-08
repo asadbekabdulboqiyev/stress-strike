@@ -4,7 +4,7 @@ package scanner
 //
 // Passive subdomain discovery: certificate transparency logs (crt.sh),
 // DNS resolution, and common DNS records. No active probing of discovered
-// hostnames is performed unless a Requester is supplied and allowed.
+// hostnames is performed unless a core.Requester is supplied and allowed.
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // Test seams. Passive enumeration is network-bound, so the DNS lookups and the
@@ -57,7 +59,7 @@ type crtShEntry struct {
 // EnumerateSubdomains passively discovers subdomains for target.
 // If req is non-nil, each discovered name is DNS-resolved (local resolution,
 // not network probing through the gate).
-func EnumerateSubdomains(ctx context.Context, target string, req Requester) *SubdomainResult {
+func EnumerateSubdomains(ctx context.Context, target string, req core.Requester) *SubdomainResult {
 	res := &SubdomainResult{Target: target}
 	start := time.Now()
 

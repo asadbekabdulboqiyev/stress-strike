@@ -3,7 +3,7 @@ package scanner
 // --- Directory brute-forcer --------------------------------------------------
 //
 // Discovers hidden files/directories on a web server by guessing common
-// paths. Every request goes through the Requester gate so scope/rate/budget
+// paths. Every request goes through the core.Requester gate so scope/rate/budget
 // are enforced. Returns paths that respond with non-404 status codes.
 
 import (
@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
 )
 
 // DirBustResult is the output of a directory brute-force run.
@@ -65,7 +67,7 @@ var commonPaths = []string{
 }
 
 // DirBust runs a directory brute-force against base (e.g. https://example.com).
-func DirBust(ctx context.Context, base string, paths []string, req Requester) *DirBustResult {
+func DirBust(ctx context.Context, base string, paths []string, req core.Requester) *DirBustResult {
 	res := &DirBustResult{Target: base}
 	start := time.Now()
 

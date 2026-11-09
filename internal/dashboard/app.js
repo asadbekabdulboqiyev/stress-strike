@@ -2917,6 +2917,36 @@ function certIssueApi(raw, issuer, experimentRef) {
     toast('Certificate issued', 'ok');
     var actions = document.getElementById('certActions');
     if (actions) actions.classList.remove('hidden');
+
+    // Auto-download certificate files
+    if (certState.certId) {
+      // Download JSON
+      var urlJson = API + '/api/certificate/download/' + encodeURIComponent(certState.certId) + '?format=json';
+      var aJson = document.createElement('a');
+      aJson.href = urlJson;
+      aJson.download = certState.certId + '.json';
+      document.body.appendChild(aJson);
+      aJson.click();
+      document.body.removeChild(aJson);
+
+      // Download HTML
+      var urlHtml = API + '/api/certificate/download/' + encodeURIComponent(certState.certId) + '?format=html';
+      var aHtml = document.createElement('a');
+      aHtml.href = urlHtml;
+      aHtml.download = certState.certId + '.html';
+      document.body.appendChild(aHtml);
+      aHtml.click();
+      document.body.removeChild(aHtml);
+
+      // Download PDF
+      var urlPdf = API + '/api/certificate/download/' + encodeURIComponent(certState.certId) + '?format=pdf';
+      var aPdf = document.createElement('a');
+      aPdf.href = urlPdf;
+      aPdf.download = certState.certId + '.pdf';
+      document.body.appendChild(aPdf);
+      aPdf.click();
+      document.body.removeChild(aPdf);
+    }
   }).catch(function() {
     certStatus('Could not reach the dashboard API.', 'bad');
   });

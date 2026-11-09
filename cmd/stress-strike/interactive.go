@@ -763,10 +763,11 @@ func interactivePicker() {
 	fmt.Println("  1) CLI   — run a load test and print the report here")
 	fmt.Println("  2) WEB   — open the real-time dashboard in your browser")
 	fmt.Println("  3) AUTH  — certificate, authorization, audit trail, verify")
+	fmt.Println("  4) TOOLS   — GitOps, AI fuzzing, SIEM webhooks")
 	fmt.Println("  0) Quit")
 	fmt.Println()
 
-	choice := strings.TrimSpace(readLine(r, "Select [1-3/0]"))
+	choice := strings.TrimSpace(readLine(r, "Select [1-4/0]"))
 
 	switch choice {
 	case "1", "cli":
@@ -775,6 +776,8 @@ func interactivePicker() {
 		interactiveDashboard(r)
 	case "3", "auth", "certificate", "cert", "authorize", "audit", "verify":
 		interactiveAuth(r)
+	case "4", "tools", "enhance":
+		interactiveTools(r)
 	case "0", "q", "quit", "exit":
 		fmt.Println("Bye.")
 		exitProcess(0)
@@ -814,6 +817,38 @@ func interactiveAuth(r *bufio.Reader) {
 			interactiveVerify(r)
 			return
 		case "0", "back", "q", "quit", "exit", "":
+			interactivePicker()
+			return
+		default:
+			fmt.Println("    unknown choice, try again")
+		}
+	}
+}
+
+// interactiveTools provides access to CI/CD enhancement features:
+func interactiveTools(r *bufio.Reader) {
+	for {
+		fmt.Println()
+		fmt.Println("TOOLS - enhancement features:")
+		fmt.Println()
+		fmt.Println("  1) GitOps Rich-Markdown  - post assessment reports to PR/issue comments")
+		fmt.Println("  2) AI Fuzzing Gateway    - generate fuzzing payloads via local Ollama LLM")
+		fmt.Println("  3) SIEM Telegram alerts  - send security alerts to Telegram chat")
+		fmt.Println("  0) Back")
+		fmt.Println()
+
+		choice := strings.TrimSpace(readLine(r, "Select [1-4/0]"))
+		switch choice {
+		case "1", "github":
+			fmt.Println("    GitOps: requires GITHUB_TOKEN env var set in GitHub Actions")
+			fmt.Println("    Will post RichReport to PR/issue comments automatically")
+		case "2", "ai":
+			fmt.Println("    AI Fuzzing: ensure Ollama is running: ollama pull deepseek-coder:1.5b")
+			fmt.Println("    Generates 20 fuzzing payloads for SQLi, XSS, traversal, etc.")
+		case "3", "siem":
+			fmt.Println("    SIEM Telegram: set BOT_TOKEN and CHATID env vars")
+			fmt.Println("    Sends Markdown alerts on HTTP 500, security findings, etc.")
+		case "0", "back":
 			interactivePicker()
 			return
 		default:

@@ -21,6 +21,10 @@ type TelegramConfig struct {
 	Timeout time.Duration
 }
 
+// telegramAPIBase is the Telegram Bot API root. It is a package variable so
+// tests can redirect calls to an httptest server.
+var telegramAPIBase = "https://api.telegram.org"
+
 // DefaultTelegramConfig returns saner defaults.
 func DefaultTelegramConfig() TelegramConfig {
 	return TelegramConfig{
@@ -49,7 +53,7 @@ func SendTelegram(cfg TelegramConfig, alert TelegramAlert) error {
 		cfg.Timeout = 10 * time.Second
 	}
 
-	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", cfg.BotToken)
+	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", telegramAPIBase, cfg.BotToken)
 
 	payload := map[string]any{
 		"chat_id":    cfg.ChatID,

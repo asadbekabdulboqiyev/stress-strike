@@ -60,11 +60,17 @@ type PayloadInfo struct {
 //
 // This function is "0 cost" — it only uses the operator's local compute.
 func GeneratePayloads(cfg OllamaConfig, prompt string) ([]PayloadInfo, error) {
+	// Fill in only the fields the caller left empty. Replacing the whole config
+	// here would silently discard a custom BaseURL or Temperature whenever the
+	// caller omitted the model name.
 	if cfg.Model == "" {
-		cfg = DefaultOllamaConfig()
+		cfg.Model = DefaultOllamaConfig().Model
+	}
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = DefaultOllamaConfig().BaseURL
 	}
 	if cfg.Timeout <= 0 {
-		cfg.Timeout = 30 * time.Second
+		cfg.Timeout = DefaultOllamaConfig().Timeout
 	}
 
 	endpoint := cfg.BaseURL + "/api/generate"
@@ -90,7 +96,7 @@ func GeneratePayloads(cfg OllamaConfig, prompt string) ([]PayloadInfo, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
 	defer cancel()
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("ai: request to ollama: %w", err)
 	}

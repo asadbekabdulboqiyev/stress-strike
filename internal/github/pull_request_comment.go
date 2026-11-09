@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 // --- Data types ------------------------------------------------------------
@@ -57,11 +58,24 @@ type CreateCommentInput struct {
 // APIBase is the base URL for the GitHub REST API v3.
 const APIBase = "https://api.github.com"
 
+// apiBase is the URL doRequest talks to. It shadows APIBase so tests can point
+// the client at an httptest server without changing the public API.
+var apiBase = APIBase
+
+// httpClient is used for every GitHub call. A timeout is mandatory here: the
+// zero-value client waits forever, and a hung connection in CI would stall the
+// job instead of failing it.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
 // doRequest performs a single GET/POST/PATCH/DELETE request and returns the
 // response body. It handles basic auth (token in Authorization header) and
 // returns an error if the HTTP status is not 2xx.
 func doRequest(method, endpoint string, body io.Reader) ([]byte, int, error) {
-	u, _ := url.Parse(APIBase + endpoint)
+	full := apiBase + endpoint
+	u, err := url.Parse(full)
+	if err != nil {
+		return nil, 0, fmt.Errorf("github: parse url %q: %w", full, err)
+	}
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
 		return nil, 0, fmt.Errorf("github: new %s request: %w", method, err)
@@ -74,8 +88,7 @@ func doRequest(method, endpoint string, body io.Reader) ([]byte, int, error) {
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("github: do %s %s: %w", method, endpoint, err)
 	}
@@ -150,12 +163,15 @@ func ListComments(ownerRepo string, issueNumber int) ([]Comment, error) {
 
 // UpdateComment replaces the body of an existing comment.
 //
-//	commentID    the GitHub-assigned comment ID
+//	ownerRepo    e.g. "adsr/strike" — the repository the comment lives in
+//	commentID    the GitHub-assigned comment ID (not the issue number)
 //	body         new Markdown body
 //
-// Returns true on success, or an error.
-func UpdateComment(commentID int64, body string) error {
-	issuePath := "/repos/" + fmt.Sprintf("%d", commentID) + "/comments"
+// Returns nil on success, or an error.
+func UpdateComment(ownerRepo string, commentID int64, body string) error {
+	// GitHub's comment update endpoint is repo-scoped and lives under
+	// /issues/comments: PATCH /repos/{owner}/{repo}/issues/comments/{id}
+	issuePath := "/repos/" + ownerRepo + "/issues/comments/" + fmt.Sprintf("%d", commentID)
 	b, statusCode, err := doRequest("PATCH", issuePath, bytes.NewReader(mustJSON(CreateCommentInput{Body: body})))
 	if err != nil {
 		return fmt.Errorf("github: update comment %d: %w", commentID, err)

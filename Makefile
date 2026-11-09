@@ -132,8 +132,21 @@ bench-power: ## Real-world throughput sweep against the demo server (POWER)
 	./scripts/bench.sh
 
 .PHONY: install
-install: ## Build and install stress-strike into PATH
-	$(GO) build -ldflags="-s -w -X main.version=$(VERSION)" -o $(GOBIN)/stress-strike ./cmd/stress-strike
+install: ## Build, install and macOS-sign every binary into PATH
+	./scripts/install-local.sh $(VERSION)
+
+.PHONY: sign
+sign: ## Repair macOS code signatures in place (fixes "zsh: killed" / rc=137)
+	@dest="$${STRESS_STRIKE_INSTALL_DIR:-$$(go env GOBIN)}"; \
+	[ -n "$$dest" ] || dest="$$(go env GOPATH)/bin"; \
+	if [ "$$(uname -s)" != "Darwin" ]; then echo "not macOS — nothing to sign"; exit 0; fi; \
+	for b in stress-strike stress-strike-dashboard stress-strike-scan stress-strike-master stress-strike-replay stress-strike-worker; do \
+	  [ -f "$$dest/$$b" ] || continue; \
+	  xattr -d com.apple.provenance "$$dest/$$b" 2>/dev/null || true; \
+	  codesign --force --sign - --timestamp=none "$$dest/$$b" >/dev/null 2>&1 || true; \
+	  "$$dest/$$b" --version >/dev/null 2>&1; rc=$$?; \
+	  if [ $$rc -eq 137 ]; then echo "  FAIL $$b (SIGKILL — still invalid)"; else echo "  ok   $$b"; fi; \
+	done
 
 .PHONY: version
 version: ## Print the current version

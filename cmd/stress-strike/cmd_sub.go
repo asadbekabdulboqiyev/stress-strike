@@ -27,11 +27,7 @@ func runSubCommand(name string, args []string) {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				exitProcess(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: %s command failed: %v\n", name, err)
-			exitProcess(1)
+			exitFromChild(name, bin, "", err)
 		}
 		return
 	}
@@ -44,12 +40,39 @@ func runSubCommand(name string, args []string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s command failed. Build with: go build -o bin/%s ./cmd/%s\n", name, name, name)
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitProcess(exitErr.ExitCode())
+		hint := fmt.Sprintf("Error: %s command failed. Build with: go build -o bin/%s ./cmd/%s\n", name, name, name)
+		exitFromChild(name, "", hint, err)
+	}
+}
+
+// exitFromChild turns a failed child process into a truthful exit status. A
+// child that was killed by a signal has no exit code at all — reporting one
+// (Go returns -1) hides the cause, and on macOS an invalid ad-hoc signature
+// shows up exactly that way: the kernel SIGKILLs the binary at launch.
+func exitFromChild(name, bin, hint string, err error) {
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		if hint != "" {
+			fmt.Fprint(os.Stderr, hint)
 		}
+		fmt.Fprintf(os.Stderr, "Error: %s command failed: %v\n", name, err)
 		exitProcess(1)
 	}
+	if sig, killed := killedBySignal(exitErr); killed {
+		fmt.Fprintf(os.Stderr, "\nError: %s was killed by a signal (%s) before it could report anything.\n", name, sig)
+		if sig.String() == "killed" {
+			fmt.Fprintln(os.Stderr, "Hint: macOS kills a binary whose code signature does not match the file on disk.")
+			if bin != "" {
+				fmt.Fprintf(os.Stderr, "      Re-sign it:  codesign --force --sign - %q\n", bin)
+			}
+			fmt.Fprintln(os.Stderr, "      Or reinstall everything:  make install")
+		}
+		exitProcess(signalExitCode(sig))
+	}
+	if hint != "" {
+		fmt.Fprint(os.Stderr, hint)
+	}
+	exitProcess(exitErr.ExitCode())
 }
 
 func cmdReplay()    { runSubCommand("stress-strike-replay", os.Args[2:]) }

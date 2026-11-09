@@ -166,10 +166,33 @@ for b in "${BINARIES[@]}"; do
   src="${TMP}/${b}"
   [ "$os" = "windows" ] && src="${src}.exe"
   [ -f "$src" ] || continue
-  cp "$src" "${PREFIX}/${b}"
-  chmod 0755 "${PREFIX}/${b}"
+  # Atomic replace: rename over the destination instead of copying into it.
+  cp "$src" "${PREFIX}/${b}.new"
+  chmod 0755 "${PREFIX}/${b}.new"
+  mv -f "${PREFIX}/${b}.new" "${PREFIX}/${b}"
   ok "$b"
 done
+
+# macOS validates the Mach-O ad-hoc signature at exec time. A copied binary can
+# be rejected by taskgated ("zsh: killed", rc=137) even though `codesign
+# --verify` says valid on disk, so re-sign after the file lands in place.
+if [ "$os" = "darwin" ] && command -v codesign >/dev/null 2>&1; then
+  step "repairing macOS code signatures"
+  for b in "${BINARIES[@]}"; do
+    [ -f "${PREFIX}/${b}" ] || continue
+    xattr -d com.apple.provenance "${PREFIX}/${b}" 2>/dev/null || true
+    codesign --force --sign - --timestamp=none "${PREFIX}/${b}" >/dev/null 2>&1 || true
+    set +e
+    "${PREFIX}/${b}" --version >/dev/null 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" -eq 137 ]; then
+      err "${b}: still rejected by macOS (SIGKILL) — try: sudo codesign --force --sign - ${PREFIX}/${b}"
+      exit 1
+    fi
+    ok "${b} (launch verified)"
+  done
+fi
 
 say
 ok "stress-strike v${VERSION} installed"

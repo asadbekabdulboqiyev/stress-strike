@@ -29,9 +29,8 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/opsserver"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
-
-var version = "0.14.6"
 
 var (
 	listenAddr  = flag.String("listen", ":50051", "Master listen address (for worker registration)")
@@ -73,7 +72,7 @@ func main() {
 	// `--version` is how the image build proves the binary it is about to ship
 	// is not a dev build; without it Dockerfile.master logs "Unknown flag".
 	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
-		fmt.Printf("stress-strike-master v%s\n", version)
+		fmt.Printf("stress-strike-master v%s\n", version.Full())
 		return
 	}
 
@@ -107,7 +106,7 @@ func main() {
 			"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
 		},
 	})
-	coordinator.Version = version
+	coordinator.Version = version.Version
 
 	if *configPath == "" && *url == "" {
 		fatal("Either --config or --url is required")

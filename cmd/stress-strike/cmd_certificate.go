@@ -391,4 +391,4 @@ func certJSONBytes(c *certificate.Certificate) ([]byte, error) {
 }
 
 // binaryVersion is the build version stamped into issued certificates.
-func binaryVersion() string { return version }
+func binaryVersion() string { return buildVersion }

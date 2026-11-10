@@ -7,14 +7,12 @@ import (
 	"strings"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
 
-// version is overridden at build time via:
-//
-//	go build -ldflags "-X main.version=0.14.2"
-//
-// The default mirrors the latest release tag.
-var version = "0.14.6"
+// buildVersion is the release version, overridden at build time via ldflags.
+// Falls back to internal/version.Version (from VERSION file / debug.ReadBuildInfo).
+var buildVersion = version.Version
 
 // knownCommands is the source of truth for command suggestions and the
 // "unknown command" listing. Keep in sync with the switch in main().
@@ -107,7 +105,7 @@ func main() {
 			printFullHelp()
 			return
 		case "version", "--version", "-v":
-			fmt.Printf("stress-strike v%s\n", version)
+			fmt.Printf("stress-strike v%s\n", version.Full())
 			return
 		default:
 			unknownCommand(cmd)
@@ -153,7 +151,7 @@ func shouldFailGate(ratePct, threshold float64) bool {
 
 func printFullHelp() {
 	fmt.Fprintf(os.Stderr, `
-stress-strike v%s — Ultra-Fast Load Testing & Security Suite
+stress-strike %s — Ultra-Fast Load Testing & Security Suite
 
  USAGE
    stress-strike <command> [flags]
@@ -398,5 +396,5 @@ stress-strike v%s — Ultra-Fast Load Testing & Security Suite
  WARNING: Only test systems you own or have explicit permission to test.
           Unauthorized load testing is illegal.
 ═══════════════════════════════════════════════════════════════════════
-`, version)
+`, buildVersion)
 }

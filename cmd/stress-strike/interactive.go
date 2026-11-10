@@ -1191,7 +1191,7 @@ func readInt(r *bufio.Reader, prompt string, def int) int {
 func banner() {
 	fmt.Println("┌─────────────────────────────────────────────────────────┐")
 	fmt.Println("│           stress-strike — Load Testing Suite           │")
-	fmt.Printf("│                     version %-10s                │\n", version)
+	fmt.Printf("│                     version %-10s                │\n", buildVersion)
 	fmt.Println("└─────────────────────────────────────────────────────────┘")
 	fmt.Println()
 	fmt.Println("WARNING: Only test systems you own or have explicit permission to test.")

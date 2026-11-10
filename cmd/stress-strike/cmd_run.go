@@ -160,7 +160,7 @@ func cmdRun() {
 	})
 
 	if showVersion {
-		fmt.Printf("stress-strike v%s\n", version)
+		fmt.Printf("stress-strike v%s\n", buildVersion)
 		return
 	}
 
@@ -306,7 +306,7 @@ func cmdRun() {
 	}()
 
 	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
-		version, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
+		buildVersion, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
 
 	var progress *engine.ProgressTracker
 	if !quiet {
@@ -618,7 +618,7 @@ func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, sce
 		Collector:      collector,
 		WorkerKey:      kp,
 		CoordinatorKey: kp,
-		Tool:           attest.Tool{Name: "stress-strike", Version: version},
+		Tool:           attest.Tool{Name: "stress-strike", Version: buildVersion},
 		Run: attest.Run{
 			Target:     targetDisplay(scenario),
 			Profile:    scenario.Profile.Type,

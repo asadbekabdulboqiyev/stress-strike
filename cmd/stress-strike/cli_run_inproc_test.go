@@ -72,7 +72,7 @@ func TestInprocRunHelpAndVersion(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("version exit = %d, want 0", res.code)
 	}
-	if !strings.Contains(res.stdout, "stress-strike v"+version) {
+	if !strings.Contains(res.stdout, "stress-strike v"+buildVersion) {
 		t.Errorf("stdout = %q, want the version", res.stdout)
 	}
 }
@@ -125,7 +125,7 @@ func TestInprocRunHappyPath(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 	}
-	for _, want := range []string{"WARNING: stress-strike is a load testing tool", "stress-strike v" + version, "Reports written:"} {
+	for _, want := range []string{"WARNING: stress-strike is a load testing tool", "stress-strike v" + buildVersion, "Reports written:"} {
 		if !strings.Contains(res.stderr, want) {
 			t.Errorf("stderr missing %q:\n%s", want, res.stderr)
 		}

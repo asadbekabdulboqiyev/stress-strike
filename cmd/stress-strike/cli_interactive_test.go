@@ -53,7 +53,7 @@ func TestBanner(t *testing.T) {
 	if !strings.Contains(string(out), "stress-strike") {
 		t.Errorf("banner missing program name: %q", string(out))
 	}
-	if !strings.Contains(string(out), version) {
+	if !strings.Contains(string(out), buildVersion) {
 		t.Errorf("banner missing version: %q", string(out))
 	}
 }

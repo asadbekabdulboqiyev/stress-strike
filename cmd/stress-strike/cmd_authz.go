@@ -175,7 +175,7 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 		Allowed: out.Allowed,
 		Rule:    out.Rule,
 		Reason:  out.Reason,
-		Version: version,
+		Version: buildVersion,
 		Argv:    argv,
 	}, g.auditPath, g.webhook)
 

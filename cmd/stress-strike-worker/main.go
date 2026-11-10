@@ -26,9 +26,8 @@ import (
 	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/opsserver"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
-
-var version = "0.14.6"
 
 var (
 	listenAddr = flag.String("listen", ":0", "Worker listen address")
@@ -55,7 +54,7 @@ func main() {
 	// `--version` is how the image build proves the binary it is about to ship
 	// is not a dev build; without it Dockerfile.worker logs "Unknown flag".
 	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
-		fmt.Printf("stress-strike-worker v%s\n", version)
+		fmt.Printf("stress-strike-worker %s\n", version.Full())
 		return
 	}
 
@@ -88,7 +87,7 @@ func main() {
 			"stress-strike worker --listen :50052",
 		},
 	})
-	coordinator.Version = version
+	coordinator.Version = version.Version
 
 	if *workerID == "" {
 		hostname, _ := os.Hostname()

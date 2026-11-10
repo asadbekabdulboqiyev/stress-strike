@@ -188,7 +188,7 @@ func recordAdminEvent(rule string, allowed bool, reason string) {
 		Allowed: allowed,
 		Rule:    rule,
 		Reason:  reason,
-		Version: version,
+		Version: buildVersion,
 		Argv:    os.Args,
 	}, "", "")
 }

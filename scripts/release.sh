@@ -35,8 +35,11 @@ PLATFORMS=(
 
 # ── Build ──────────────────────────────────────────────────────────────────────
 
-rm -rf "${DIST_DIR}"
-mkdir -p "${DIST_DIR}"
+# Only clean the release subdirectory — never dist/linux-worker/ (worker
+# packages) or dist/docker-compose.generated.yml (generated compose fleet file).
+rm -rf "${DIST_DIR}/release"
+mkdir -p "${DIST_DIR}/release"
+DIST_DIR="${DIST_DIR}/release"
 
 echo "==> Building ${BIN_NAME} ${VERSION} for ${#PLATFORMS[@]} platforms"
 echo

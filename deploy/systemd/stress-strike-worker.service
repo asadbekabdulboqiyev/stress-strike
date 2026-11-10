@@ -25,6 +25,8 @@ Group=stress-strike
 # Basic hardening — the worker only needs outbound network + ephemeral ports.
 NoNewPrivileges=true
 ProtectSystem=strict
+# Worker writes reports under /var/lib/stress-strike; allow writes there only.
+ReadWritePaths=/var/lib/stress-strike
 ProtectHome=true
 PrivateTmp=true
 ProtectKernelTunables=true

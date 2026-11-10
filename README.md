@@ -73,8 +73,11 @@ when you&rsquo;re done and cleans up the demo site.
 # Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
 go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 
-# Or use the convenience installer (installs every binary, pin with ./scripts/install.sh v0.14.4)
-curl -fsSL https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh | bash
+# Or use the convenience installer (installs every binary; pinned release, checksum-verified)
+# Download first, review, then run — never pipe remote code straight into bash.
+curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/v0.14.5/scripts/install.sh
+less install.sh
+./install.sh v0.14.5
 ```
 
 If `stress-strike` isn't found after installing, add Go's bin directory to your `PATH`:
@@ -88,7 +91,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 > Upgrade an old install anytime:
 > ```sh
 > go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
-> ./scripts/install.sh   # or: ./scripts/install.sh v0.14.4
+> ./scripts/install.sh   # or: ./scripts/install.sh v0.14.5
 > ```
 
 ### Your first test in 60 seconds
@@ -839,10 +842,10 @@ the repo:
 
 ```sh
 # one host manually
-scp dist/linux-worker/stress-strike-worker-v0.14.4-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+scp dist/linux-worker/stress-strike-worker-v0.14.5-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
 ssh root@HOST 'cd /tmp && \
   SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
-  bash bootstrap-worker.sh stress-strike-worker-v0.14.4-linux-amd64.tar.gz'
+  bash bootstrap-worker.sh stress-strike-worker-v0.14.5-linux-amd64.tar.gz'
 
 # a whole fleet (builds packages, scp + installs, prints the master command)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12

@@ -62,6 +62,13 @@ services:
       - "50051:50051"
       # Exposes /healthz, /readyz and /metrics to the host (Prometheus).
       - "9090:9090"
+    deploy:
+      resources:
+        reservations:
+          memory: 256m
+        limits:
+          memory: 512m
+          cpus: "1.0"
     # The master image is distroless (no shell, no wget/curl), so the probe has
     # to be the binary itself (see the header note: the `healthcheck`
     # subcommand does not exist on this binary yet, so it never reports
@@ -94,12 +101,17 @@ services:
       - "worker-1:50061"
       - -master
       - "master:50051"
-      - -token
-      - ${STRESS_STRIKE_TOKEN:-}
     ulimits:
       nofile:
         soft: 1048576
         hard: 1048576
+    deploy:
+      resources:
+        reservations:
+          memory: 256m
+        limits:
+          memory: 512m
+          cpus: "1.0"
     # distroless image: probe via the worker binary, not a shell
     # (see the header note: the `healthcheck` subcommand is not implemented yet).
     healthcheck:
@@ -132,12 +144,17 @@ services:
       - "worker-2:50061"
       - -master
       - "master:50051"
-      - -token
-      - ${STRESS_STRIKE_TOKEN:-}
     ulimits:
       nofile:
         soft: 1048576
         hard: 1048576
+    deploy:
+      resources:
+        reservations:
+          memory: 256m
+        limits:
+          memory: 512m
+          cpus: "1.0"
     healthcheck:
       test: ["CMD", "/usr/local/bin/stress-strike-worker", "healthcheck", "--addr", "http://127.0.0.1:9091/healthz"]
       interval: 30s

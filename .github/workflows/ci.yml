@@ -70,6 +70,19 @@ jobs:
           # incrementally. Drop this line once `golangci-lint run ./...` is clean.
           only-new-issues: true
 
+  # ── shellcheck: lint all shell scripts ──────────────────────────────────────
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck on all scripts
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: scripts deploy
+
   # ── unit + integration tests, race detector, coverage ──────────────────────
   test:
     name: Test (${{ matrix.os }}, race)

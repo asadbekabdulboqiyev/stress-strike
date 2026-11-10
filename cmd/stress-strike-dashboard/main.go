@@ -20,8 +20,8 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
 
 // version is overridden at build time via ldflags.

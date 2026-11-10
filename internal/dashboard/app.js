@@ -121,7 +121,10 @@ function connect() {
     if (!S.everOpened) { probeAuth(); return; }  // handshake never opened — could be auth
     scheduleReconnect();
   };
-  ws.onerror = function() {};
+  ws.onerror = function(e) {
+    updateConnStatus();
+    toast('WebSocket xatolik yuz berdi, qayta ulanishga harakat qilinmoqda…', 'error');
+  };
 }
 
 function scheduleReconnect() {
@@ -2722,6 +2725,7 @@ function certVerify(raw, obj) {
   }).then(function(r) { return r.json(); }).then(function(res) {
     certState.cert = obj;
     certState.html = obj.html || '';
+    certState.certId = res.certificate_id || '';
     if (String(res.valid) === 'true') {
       certStatus('Valid certificate.', 'ok');
       certShowResult('verify-valid', obj);
@@ -2999,6 +3003,7 @@ function certVerifyFile(file) {
         certAppendFact(facts, 'Experiment', res.experiment_reference || '—');
         certAppendFact(facts, 'Findings', res.findings_count);
         certAppendFact(facts, 'Covered', (res.covered || []).join(', ') || '—');
+        certState.certId = res.certificate_id || '';
         var chainEl = document.createElement('div');
         chainEl.className = 'chain-ok';
         chainEl.textContent = 'Hash chain: ' + (res.chain_intact ? 'INTACT' : 'BROKEN');

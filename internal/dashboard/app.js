@@ -74,10 +74,11 @@ function connect() {
       pushHist('rpsHist', d.rps || 0);
       pushHist('latAvgHist', d.avg_latency_ms || 0);
       pushHist('latP50Hist', d.p50_latency_ms || 0);
-      pushHist('latP95Hist', d.p95_latency_ms || 0);
+      pushHist('latP95Hist', d.p99_latency_ms || 0);
       pushHist('latP99Hist', d.p99_latency_ms || 0);
       pushHist('errHist', d.error_rate || 0);
       pushHist('userHist', d.active_users || 0);
+      try { render(); } catch (e) { logRenderError(e); }
     } else if (msg.type === 'run_state') {
       var prev = S.run.status;
       var st = (msg.data && msg.data.status) || '';
@@ -112,7 +113,7 @@ function connect() {
         fetchAttestation();
       }
     }
-    render();
+    try { render(); } catch (e) { logRenderError(e); }
   };
   ws.onclose = function() {
     S.connected = false;
@@ -630,6 +631,9 @@ function setHint(id, txt) {
 /* ==========================================================================
    RENDER
    ========================================================================== */
+function logRenderError(e) {
+  try { console.error('[stress-strike] render error:', e); } catch (_) {}
+}
 function render() {
   var s = S.snapshot || {};
   var r = S.run || {};
@@ -650,7 +654,8 @@ function render() {
 
   // Buttons
   updateStartButton();
-  document.getElementById('btnStop').disabled = !running;
+  var btnStop = document.getElementById('btnStop');
+  if (btnStop) btnStop.disabled = !running;
   if (!running) disarmStop();
   var cf = document.getElementById('controlsForm');
   if (cf) cf.classList.toggle('is-running', !!running);
@@ -674,48 +679,74 @@ function render() {
   // Populate inputs from config when running (guards: skip the field the user
   // is actively editing, including the linked sliders)
   if (r.config) {
-    if (document.activeElement.id !== 'inpUrl') document.getElementById('inpUrl').value = r.config.target_url || '';
-    if (document.activeElement.id !== 'inpUsers' && document.activeElement.id !== 'rngUsers') document.getElementById('inpUsers').value = r.config.users || 10;
-    if (document.activeElement.id !== 'inpDuration' && document.activeElement.id !== 'rngDuration') document.getElementById('inpDuration').value = r.config.duration_seconds || 30;
-    if (document.activeElement.id !== 'inpMethod') document.getElementById('inpMethod').value = r.config.method || 'GET';
-    if (document.activeElement.id !== 'inpRate') document.getElementById('inpRate').value = r.config.rate_limit || 0;
-    if (document.activeElement.id !== 'inpProfile' && r.config.profile) document.getElementById('inpProfile').value = r.config.profile;
-    if (document.activeElement.id !== 'inpFingerprint' && r.config.tls_fingerprint) document.getElementById('inpFingerprint').value = r.config.tls_fingerprint;
+    var inpUrl = document.getElementById('inpUrl');
+    if (inpUrl && document.activeElement.id !== 'inpUrl') inpUrl.value = r.config.target_url || '';
+    var inpUsers = document.getElementById('inpUsers');
+    if (inpUsers && document.activeElement.id !== 'inpUsers' && document.activeElement.id !== 'rngUsers') inpUsers.value = r.config.users || 10;
+    var inpDuration = document.getElementById('inpDuration');
+    if (inpDuration && document.activeElement.id !== 'inpDuration' && document.activeElement.id !== 'rngDuration') inpDuration.value = r.config.duration_seconds || 30;
+    var inpMethod = document.getElementById('inpMethod');
+    if (inpMethod && document.activeElement.id !== 'inpMethod') inpMethod.value = r.config.method || 'GET';
+    var inpRate = document.getElementById('inpRate');
+    if (inpRate && document.activeElement.id !== 'inpRate') inpRate.value = r.config.rate_limit || 0;
+    var inpProfile = document.getElementById('inpProfile');
+    if (inpProfile && document.activeElement.id !== 'inpProfile' && r.config.profile) inpProfile.value = r.config.profile;
+    var inpFingerprint = document.getElementById('inpFingerprint');
+    if (inpFingerprint && document.activeElement.id !== 'inpFingerprint' && r.config.tls_fingerprint) inpFingerprint.value = r.config.tls_fingerprint;
   }
   updateFieldHints();
 
   // Config meta + live latency strip
-  document.getElementById('metaProfile').textContent = (r.config && r.config.profile) || '\u2014';
-  document.getElementById('metaRate').textContent = (r.config && r.config.rate_limit) ? r.config.rate_limit + ' req/s' : '\u2014';
-  document.getElementById('metaFingerprint').textContent = (r.config && r.config.tls_fingerprint) || '\u2014';
-  document.getElementById('metaP50').textContent = (s.p50_latency_ms || 0).toFixed(1) + ' ms';
-  document.getElementById('metaP95').textContent = (s.p95_latency_ms || 0).toFixed(1) + ' ms';
-  document.getElementById('metaP99').textContent = (s.p99_latency_ms || 0).toFixed(1) + ' ms';
-  document.getElementById('metaAvg').textContent = (s.avg_latency_ms || 0).toFixed(1) + ' ms';
-  document.getElementById('metaMax').textContent = (s.max_latency_ms || 0).toFixed(1) + ' ms';
+  var metaProfile = document.getElementById('metaProfile');
+  if (metaProfile) metaProfile.textContent = (r.config && r.config.profile) || '\u2014';
+  var metaRate = document.getElementById('metaRate');
+  if (metaRate) metaRate.textContent = (r.config && r.config.rate_limit) ? r.config.rate_limit + ' req/s' : '\u2014';
+  var metaFingerprint = document.getElementById('metaFingerprint');
+  if (metaFingerprint) metaFingerprint.textContent = (r.config && r.config.tls_fingerprint) || '\u2014';
+  var metaP50 = document.getElementById('metaP50');
+  if (metaP50) metaP50.textContent = (s.p50_latency_ms || 0).toFixed(1) + ' ms';
+  var metaP95 = document.getElementById('metaP95');
+  if (metaP95) metaP95.textContent = (s.p95_latency_ms || 0).toFixed(1) + ' ms';
+  var metaP99 = document.getElementById('metaP99');
+  if (metaP99) metaP99.textContent = (s.p99_latency_ms || 0).toFixed(1) + ' ms';
+  var metaAvg = document.getElementById('metaAvg');
+  if (metaAvg) metaAvg.textContent = (s.avg_latency_ms || 0).toFixed(1) + ' ms';
+  var metaMax = document.getElementById('metaMax');
+  if (metaMax) metaMax.textContent = (s.max_latency_ms || 0).toFixed(1) + ' ms';
 
   // Metric cards
   var rps = s.rps || 0;
-  document.getElementById('valRPS').textContent = Math.round(rps);
-  document.getElementById('subRPS').textContent = fmt(s.total_requests || 0) + ' total requests';
+  var valRPS = document.getElementById('valRPS');
+  if (valRPS) valRPS.textContent = Math.round(rps);
+  var subRPS = document.getElementById('subRPS');
+  if (subRPS) subRPS.textContent = fmt(s.total_requests || 0) + ' total requests';
 
   var avg = s.avg_latency_ms || 0;
-  document.getElementById('valAvg').textContent = avg.toFixed(1) + ' ms';
-  document.getElementById('subLatency').textContent =
+  var valAvg = document.getElementById('valAvg');
+  if (valAvg) valAvg.textContent = avg.toFixed(1) + ' ms';
+  var subLatency = document.getElementById('subLatency');
+  if (subLatency) subLatency.textContent =
     'P50: ' + (s.p50_latency_ms || 0).toFixed(1) + ' \u00b7 P95: ' + (s.p95_latency_ms || 0).toFixed(1) + ' \u00b7 P99: ' + (s.p99_latency_ms || 0).toFixed(1) + ' ms';
 
   var errRate = s.error_rate || 0;
   var errEl = document.getElementById('valErrors');
-  errEl.style.color = errRate > 5 ? 'var(--red)' : errRate > 1 ? 'var(--yellow)' : 'var(--green)';
-  errEl.textContent = errRate.toFixed(2) + ' %';
-  document.getElementById('subErrors').textContent = fmt(s.total_errors || 0) + ' errors / ' + fmt(s.total_requests || 0) + ' total';
+  if (errEl) {
+    errEl.style.color = errRate > 5 ? 'var(--red)' : errRate > 1 ? 'var(--yellow)' : 'var(--green)';
+    errEl.textContent = errRate.toFixed(2) + ' %';
+  }
+  var subErrors = document.getElementById('subErrors');
+  if (subErrors) subErrors.textContent = fmt(s.total_errors || 0) + ' errors / ' + fmt(s.total_requests || 0) + ' total';
 
-  document.getElementById('valUsers').textContent = s.active_users || 0;
+  var valUsers = document.getElementById('valUsers');
+  if (valUsers) valUsers.textContent = s.active_users || 0;
 
   // Latency detail cards
-  document.getElementById('latP50').textContent = (s.p50_latency_ms || 0).toFixed(1);
-  document.getElementById('latP95').textContent = (s.p95_latency_ms || 0).toFixed(1);
-  document.getElementById('latP99').textContent = (s.p99_latency_ms || 0).toFixed(1);
+  var latP50 = document.getElementById('latP50');
+  if (latP50) latP50.textContent = (s.p50_latency_ms || 0).toFixed(1);
+  var latP95 = document.getElementById('latP95');
+  if (latP95) latP95.textContent = (s.p95_latency_ms || 0).toFixed(1);
+  var latP99 = document.getElementById('latP99');
+  if (latP99) latP99.textContent = (s.p99_latency_ms || 0).toFixed(1);
 
   // Status codes
   renderStatusCodes(s.status_codes || {});
@@ -1110,7 +1141,7 @@ setInterval(function() {
       pushHist('latP99Hist', d.p99_latency_ms || 0);
       pushHist('errHist', d.error_rate || 0);
       pushHist('userHist', d.active_users || 0);
-      render();
+      try { render(); } catch (e) { logRenderError(e); }
     }).catch(function() {});
   }
 }, 1000);
@@ -1136,7 +1167,7 @@ document.addEventListener('keydown', function(e) {
    ========================================================================== */
 restoreLastConfig();
 connect();
-render();
+try { render(); } catch (e) { logRenderError(e); }
 refreshDemoStore();
 
 /* ---- Controls wired via addEventListener (strict CSP: no inline handlers) ---- */

@@ -31,7 +31,7 @@ func NewHTTPClient(profile fingerprint.Profile, timeout time.Duration, insecure 
 	tr := &http.Transport{
 		DialContext:           (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext,
 		ForceAttemptHTTP2:     false,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecure, MinVersion: tls.VersionTLS12},
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecure, MinVersion: tls.VersionTLS12}, // #nosec G402 -- caller opts in for authorized scanner targets
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   timeout,
@@ -43,7 +43,7 @@ func NewHTTPClient(profile fingerprint.Profile, timeout time.Duration, insecure 
 	if profile != fingerprint.Default {
 		tr.DialTLSContext = fingerprint.NewDialer(fingerprint.Options{
 			Fingerprint:        profile,
-			InsecureSkipVerify: insecure,
+			InsecureSkipVerify: insecure, // #nosec G402 -- caller opts in for authorized scanner targets
 			NextProtos:         []string{"h2", "http/1.1"},
 		})
 	}

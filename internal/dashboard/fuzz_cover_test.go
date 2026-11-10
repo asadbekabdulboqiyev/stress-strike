@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -288,9 +289,9 @@ func TestFuzzScanPolicyError(t *testing.T) {
 func TestFuzzScanAgainstLoopback(t *testing.T) {
 	s := owaspTestServer(t)
 
-	var hits int
+	var hits atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hits++
+		hits.Add(1)
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte("ok"))
 	}))
@@ -316,7 +317,7 @@ func TestFuzzScanAgainstLoopback(t *testing.T) {
 	if len(res.Scope) != 1 || res.Scope[0] != "127.0.0.1" {
 		t.Errorf("scope = %v, want [127.0.0.1]", res.Scope)
 	}
-	if hits == 0 {
+	if hits.Load() == 0 {
 		t.Error("fuzzer never contacted the loopback server")
 	}
 	if res.Gate.RequestsSent == 0 {

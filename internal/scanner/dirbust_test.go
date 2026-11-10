@@ -59,7 +59,7 @@ func TestDirBust(t *testing.T) {
 			t.Errorf("Entry %s should not be in results (404 filtered)", e.URL)
 		}
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }
@@ -74,7 +74,7 @@ func TestDirBustDefaultPaths(t *testing.T) {
 	if res == nil {
 		t.Fatal("DirBust returned nil")
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }

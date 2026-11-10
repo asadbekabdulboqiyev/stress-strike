@@ -81,10 +81,12 @@ type FuzzFinding struct {
 
 // Fuzzer runs a coverage-aware HTTP fuzzing campaign.
 type Fuzzer struct {
-	cfg   FuzzConfig
-	req   core.Requester
-	rng   *lockedRand
-	stats fuzzStats
+	cfg        FuzzConfig
+	req        core.Requester
+	rng        *lockedRand
+	stats      fuzzStats
+	statsMu    sync.Mutex
+	findingsMu sync.Mutex
 }
 
 // lockedRand wraps math/rand with a mutex (stdlib rand is not safe for
@@ -263,12 +265,16 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 				}
 				snap := f.sendProbe(ctx, j.method, j.path, j.baseBody, f.cfg.Intrusive || j.intrusive)
 				if snap == nil {
+					f.statsMu.Lock()
 					f.stats.refused++
+					f.statsMu.Unlock()
 					continue
 				}
 				// Count only requests that were actually sent through the gate;
 				// attempts refused by policy never reach the network.
+				f.statsMu.Lock()
 				f.stats.sent++
+				f.statsMu.Unlock()
 				baseMu.Lock()
 				base, ok := baseline[key(j.method, j.path)]
 				baseMu.Unlock()
@@ -276,7 +282,9 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 					continue
 				}
 				if isInteresting(*snap, base) {
+					f.statsMu.Lock()
 					f.stats.interesting++
+					f.statsMu.Unlock()
 					finding := FuzzFinding{
 						Method:       j.method,
 						URL:          f.cfg.BaseURL + j.path,
@@ -295,7 +303,9 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 							}
 						}
 					}
+					f.findingsMu.Lock()
 					res.Findings = append(res.Findings, finding)
+					f.findingsMu.Unlock()
 				}
 			}
 		}()
@@ -318,6 +328,7 @@ func (f *Fuzzer) Run(ctx context.Context) *FuzzResult {
 	close(jobs)
 	wg.Wait()
 
+	// wg.Wait() above creates the happens-before edge for the counters.
 	res.Sent = f.stats.sent
 	res.Refused = f.stats.refused
 	res.Interesting = f.stats.interesting

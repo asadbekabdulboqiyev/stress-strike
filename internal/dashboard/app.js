@@ -3164,11 +3164,18 @@ function wireAdmin() {
     ev.preventDefault();
     var minutes = parseInt((document.getElementById('adminMinutes') || {}).value || '15', 10);
     if (!minutes || minutes < 1) minutes = 15;
+    var codeInput = document.getElementById('adminCode');
+    var code = ((codeInput || {}).value || '').trim();
+    if (!code) {
+      adminSetStatus('Enter the admin code shown by `stress-strike admin code`.', 'bad');
+      adminWarning('Admin bypass is OFF. Authorization is enforced.');
+      return;
+    }
     adminSetStatus('Opening the bypass window…', '');
     fetch(API + '/api/admin/unlock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: '', minutes: minutes })
+      body: JSON.stringify({ code: code, minutes: minutes })
     }).then(function(r) {
       return r.json().then(function(j) { return { ok: r.ok, body: j }; });
     }).then(function(res) {

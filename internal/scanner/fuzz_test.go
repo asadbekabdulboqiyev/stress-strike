@@ -89,7 +89,7 @@ func TestFuzzerRun(t *testing.T) {
 	if res.Sent == 0 {
 		t.Error("Sent = 0, want > 0")
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }

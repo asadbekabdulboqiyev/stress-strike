@@ -5,7 +5,20 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
+
+// subBinaryName renders the on-disk name of a sibling sub-binary. Windows
+// resolves executables by extension, so a bare "stress-strike-scan" never
+// matches "stress-strike-scan.exe": without this the Windows build would always
+// miss the shipped sibling and fall through to `go run`, which a distributed
+// binary cannot do.
+func subBinaryName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
 
 // runSubCommand locates and executes a sub-binary by name.
 // It first tries the sibling binary next to the current executable,
@@ -18,7 +31,7 @@ func runSubCommand(name string, args []string) {
 	}
 	exe = filepath.Clean(exe)
 	binDir := filepath.Dir(exe)
-	bin := filepath.Join(binDir, name)
+	bin := filepath.Join(binDir, subBinaryName(name))
 
 	if _, err := os.Stat(bin); err == nil {
 		// Found standalone binary — run it directly

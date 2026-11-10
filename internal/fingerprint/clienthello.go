@@ -9,7 +9,7 @@ package fingerprint
 // truncated extension block.
 
 import (
-	"crypto/md5"
+	"crypto/md5" // #nosec G401 G501 -- JA3 fingerprint spec requires MD5 over the concatenated ClientHello fields
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -215,7 +215,7 @@ func JA3FromRecord(record []byte) (string, string, error) {
 		joinU16s(ch.groups),
 		joinBytes(ch.points),
 	}, ",")
-	sum := md5.Sum([]byte(ja3))
+	sum := md5.Sum([]byte(ja3)) // #nosec G401 G501 -- JA3 fingerprint spec requires MD5 over the concatenated ClientHello fields
 	return ja3, hex.EncodeToString(sum[:]), nil
 }
 

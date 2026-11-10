@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
@@ -81,12 +82,17 @@ func EnumerateSubdomains(ctx context.Context, target string, req core.Requester)
 	}
 
 	// 1) crt.sh certificate transparency log (best-effort).
+	// 2) Common DNS record queries for the apex and www.
+	// Both run through bounded context checks; we wait for them deterministically
+	// before snapshotting the findings, so no reader ever races a writer.
+	var passiveWG sync.WaitGroup
+	passiveWG.Add(2)
 	go func() {
+		defer passiveWG.Done()
 		_ = crtSh(ctx, target, add)
 	}()
-
-	// 2) Common DNS record queries for the apex and www.
 	go func() {
+		defer passiveWG.Done()
 		dnsQuery(ctx, target, add, "A", "AAAA", "CNAME", "MX", "TXT")
 		dnsQuery(ctx, "www."+target, add, "A", "AAAA", "CNAME")
 	}()
@@ -96,11 +102,21 @@ func EnumerateSubdomains(ctx context.Context, target string, req core.Requester)
 	case <-ctx.Done():
 	case <-time.After(passiveWait):
 	}
+	passiveWG.Wait()
 
-	// Resolve discovered names (local resolver, not through gate).
-	var wg sync.WaitGroup
-	resolved := 0
+	// Resolve discovered names (local resolver, not through gate). Snapshot
+	// the map under the lock: iterating the map while the background goroutines
+	// still hold the write lock would race.
+	names := make([]*Subdomain, 0, len(found))
+	mu.Lock()
 	for _, s := range found {
+		names = append(names, s)
+	}
+	mu.Unlock()
+
+	var wg sync.WaitGroup
+	resolved := int64(0)
+	for _, s := range names {
 		wg.Add(1)
 		go func(s *Subdomain) {
 			defer wg.Done()
@@ -108,17 +124,18 @@ func EnumerateSubdomains(ctx context.Context, target string, req core.Requester)
 			if len(ips) > 0 {
 				s.IPs = ips
 				s.Methods = appendUnique(s.Methods, methods...)
-				atomicAdd(&resolved)
+				atomic.AddInt64(&resolved, 1)
 			}
 		}(s)
 	}
 	wg.Wait()
 
-	for _, s := range found {
+	res.Subdomains = make([]Subdomain, 0, len(names))
+	for _, s := range names {
 		res.Subdomains = append(res.Subdomains, *s)
 	}
-	res.Found = len(found)
-	res.Resolved = resolved
+	res.Found = len(names)
+	res.Resolved = int(resolved)
 	res.Duration = time.Since(start)
 	return res
 }

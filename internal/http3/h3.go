@@ -10,9 +10,12 @@
 package http3
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -57,7 +60,7 @@ func Probe(host string, port int) (*ProbeResult, error) {
 		MaxIncomingUniStreams: 10,
 	}
 	tlsCfg := &tls.Config{
-		InsecureSkipVerify: true, // scanner targets may use self-signed certs
+		InsecureSkipVerify: true, // #nosec G402 -- probe targets may present self-signed certificates
 		NextProtos:         []string{"h3"},
 	}
 
@@ -78,51 +81,49 @@ func Probe(host string, port int) (*ProbeResult, error) {
 	return res, nil
 }
 
+// Timeouts for the Alt-Svc probe. Without them a silent server would block
+// Probe forever: tls.Dial and conn.Read have no deadline by default.
+const (
+	altSvcDialTimeout = 3 * time.Second
+	altSvcReadTimeout = 5 * time.Second
+	altSvcMaxHeader   = 64 << 10
+)
+
 // checkAltSvc attempts a TLS handshake and reads the Alt-Svc header to see if
 // the server advertises HTTP/3. Returns true if "h3=" or "h3-29=" appears.
 func checkAltSvc(host string, port int) (bool, error) {
 	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-	conn, err := tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: true})
+	dialer := &net.Dialer{Timeout: altSvcDialTimeout}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{InsecureSkipVerify: true}) // #nosec G402 -- Alt-Svc probe tolerates self-signed targets
 	if err != nil {
 		return false, err
 	}
 	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(altSvcReadTimeout))
 
 	// Alt-Svc is a response header, so we need an HTTP response. Send a minimal
-	// GET and read just enough headers.
+	// GET and read the header block.
 	req := "GET / HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
 	if _, err := conn.Write([]byte(req)); err != nil {
 		return false, err
 	}
 
-	buf := make([]byte, 8192)
-	n, err := conn.Read(buf)
-	if err != nil && n == 0 {
-		return false, err
-	}
-	head := string(buf[:n])
-
-	for _, line := range splitLines(head) {
-		if isAltSvcH3(line) {
+	br := bufio.NewReader(io.LimitReader(conn, altSvcMaxHeader))
+	for {
+		line, readErr := br.ReadString('\n')
+		if line != "" && isAltSvcH3(line) {
 			return true, nil
 		}
-	}
-	return false, nil
-}
-
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				return false, nil // headers ended without an H3 advertisement
+			}
+			return false, readErr
+		}
+		if line == "\r\n" || line == "\n" {
+			return false, nil // end of header block
 		}
 	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
 }
 
 func isAltSvcH3(line string) bool {

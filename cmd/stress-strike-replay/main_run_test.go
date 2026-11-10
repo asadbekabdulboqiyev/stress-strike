@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
@@ -146,9 +147,9 @@ const replayHAR = `{
 }`
 
 func TestReplayMainFullRun(t *testing.T) {
-	var got int
+	var got atomic.Int64
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got++
+		got.Add(1)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	}))
@@ -195,8 +196,8 @@ func TestReplayMainFullRun(t *testing.T) {
 			t.Errorf("output missing %q:\n%s", want, out)
 		}
 	}
-	if got < 2 {
-		t.Errorf("target saw %d requests, want at least 2", got)
+	if n := got.Load(); n < 2 {
+		t.Errorf("target saw %d requests, want at least 2", n)
 	}
 	for _, name := range []string{"replay.json", "latency.csv"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {

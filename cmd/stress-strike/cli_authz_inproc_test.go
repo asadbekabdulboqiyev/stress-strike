@@ -116,7 +116,9 @@ func TestInprocAuditShowVerify(t *testing.T) {
 		if res.code != 1 {
 			t.Fatalf("audit verify exit = %d, want 1 (stderr: %s)", res.code, res.stderr)
 		}
-		if !strings.Contains(res.stderr, "no such file or directory") {
+		// On Windows the reported error is localised ("The system cannot find the
+		// file specified."), so assert on the path the tool was asked to verify.
+		if !strings.Contains(res.stderr, missing) {
 			t.Errorf("stderr = %q, want the missing-file error", res.stderr)
 		}
 	})

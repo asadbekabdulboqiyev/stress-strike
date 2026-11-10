@@ -43,7 +43,7 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
         -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
       -o /out/stress-strike-worker ./cmd/stress-strike-worker
 
-RUN /out/stress-strike-worker --version || true
+RUN /out/stress-strike-worker --version
 
 FROM gcr.io/distroless/static-debian12:nonroot
 

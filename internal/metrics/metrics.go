@@ -112,6 +112,7 @@ type Telemetry struct {
 	ActiveUsers atomic.Int64
 	PeakUsers   atomic.Int64
 	Timeline    Timeline
+	mu          sync.Mutex // guards Steps (read by TotalRequests/Errors/StatusCodes/RPS while AddStep appends)
 	warmupUntil atomic.Int64
 	// finished/elapsedNanos let Elapsed() read a finished run's duration
 	// without a lock, so it stays safe to call concurrently with Finish().
@@ -148,6 +149,8 @@ func (t *Telemetry) Recording() bool {
 }
 
 func (t *Telemetry) AddStep(stats *StepStats) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.Steps = append(t.Steps, stats)
 }
 
@@ -169,6 +172,8 @@ func (t *Telemetry) Elapsed() time.Duration {
 }
 
 func (t *Telemetry) TotalRequests() uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var n uint64
 	for _, s := range t.Steps {
 		n += s.Requests()
@@ -177,6 +182,8 @@ func (t *Telemetry) TotalRequests() uint64 {
 }
 
 func (t *Telemetry) TotalErrors() uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var n uint64
 	for _, s := range t.Steps {
 		n += s.ErrorCount()
@@ -193,6 +200,8 @@ func (t *Telemetry) RPS() float64 {
 }
 
 func (t *Telemetry) StatusCodes() map[int]uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	out := make(map[int]uint64)
 	for _, s := range t.Steps {
 		for code, n := range s.StatusCodes() {
@@ -203,6 +212,8 @@ func (t *Telemetry) StatusCodes() map[int]uint64 {
 }
 
 func (t *Telemetry) Errors() map[string]uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	out := make(map[string]uint64)
 	for _, s := range t.Steps {
 		for name, n := range s.Errors() {

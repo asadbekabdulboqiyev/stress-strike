@@ -209,7 +209,7 @@ func issueCertificate(from, out, format, keyPath, issuer string, quiet bool) {
 	written := []string{}
 	write := func(ext string, data []byte) {
 		path := stem + ext
-		if err := os.WriteFile(path, data, 0o644); err != nil {
+		if err := os.WriteFile(path, data, 0o644); err != nil { // #nosec G306 G703 -- out path is the caller's own CLI output target
 			fatal(fmt.Errorf("write %s: %w", path, err))
 		}
 		written = append(written, path)

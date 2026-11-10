@@ -76,14 +76,3 @@ func TestContains(t *testing.T) {
 		t.Error("contains empty in empty should be true")
 	}
 }
-
-func TestSplitLines(t *testing.T) {
-	lines := splitLines("a\nb\nc")
-	if len(lines) != 3 || lines[0] != "a" || lines[1] != "b" || lines[2] != "c" {
-		t.Errorf("splitLines = %v, want [a b c]", lines)
-	}
-	lines = splitLines("single")
-	if len(lines) != 1 || lines[0] != "single" {
-		t.Errorf("splitLines = %v, want [single]", lines)
-	}
-}

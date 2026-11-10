@@ -67,7 +67,7 @@ func TestScanGraphQLIntrospectionEnabled(t *testing.T) {
 			t.Errorf("Issues do not flag the sensitive type %q: %v", name, res.Issues)
 		}
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want a positive value", res.Duration)
 	}
 	if got == nil {
@@ -101,7 +101,7 @@ func TestScanGraphQLNoIntrospection(t *testing.T) {
 	if len(res.Issues) != 0 {
 		t.Errorf("Issues = %v, want none for a schema-less answer", res.Issues)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v", res.Duration)
 	}
 }
@@ -174,7 +174,7 @@ func TestScanGraphQLInvalidURL(t *testing.T) {
 	if !strings.Contains(strings.Join(res.Issues, " "), "invalid URL") {
 		t.Errorf("Issues = %v", res.Issues)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v", res.Duration)
 	}
 }

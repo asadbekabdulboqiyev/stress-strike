@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -518,9 +519,15 @@ func TestRecordScanAuthz(t *testing.T) {
 		t.Errorf("audit log = %q", data)
 	}
 
-	// An unwritable path warns instead of failing.
+	// An unwritable path warns instead of failing. A regular file standing in
+	// for a directory is unwritable on every platform; "/dev/null/..." only
+	// fails on Unix, and Windows silently creates it under the drive root.
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
 	out := captureStderrScan(t, func() {
-		recordScanAuthz(authz.Entry{Action: "scan"}, "/dev/null/not-a-dir/audit.log")
+		recordScanAuthz(authz.Entry{Action: "scan"}, filepath.Join(blocker, "audit.log"))
 	})
 	if !strings.Contains(out, "warning: cannot write audit log") {
 		t.Errorf("expected a warning, got %q", out)

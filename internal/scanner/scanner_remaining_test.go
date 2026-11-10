@@ -30,7 +30,7 @@ func TestScanFunctionsDeadPort(t *testing.T) {
 	if res.Target != "127.0.0.1" {
 		t.Errorf("Target = %q, want 127.0.0.1", res.Target)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 
@@ -65,7 +65,7 @@ func TestScanSSLDeadPort(t *testing.T) {
 	if res.Target != "127.0.0.1:1" {
 		t.Errorf("Target = %q, want 127.0.0.1:1", res.Target)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 	// Connection refused → cannot connect issue.
@@ -134,7 +134,7 @@ func TestTestWebSocketCannotConnect(t *testing.T) {
 	if !res.Connected {
 		// expected: connection refused
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }

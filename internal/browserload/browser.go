@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/runtime"
@@ -84,59 +85,76 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 
 	result := &RunResult{URL: urlStr}
 
+	// Listen runs on the CDP event goroutine, so the slice needs its own lock;
+	// snapshot() copies it before the caller sees it.
+	var jsMu sync.Mutex
 	var jsErrors []string
+	snapshot := func() []string {
+		jsMu.Lock()
+		defer jsMu.Unlock()
+		if len(jsErrors) == 0 {
+			return nil
+		}
+		return append([]string(nil), jsErrors...)
+	}
 	_ = chromedp.Listen(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *runtime.EventConsoleAPICalled:
 			if ev.Type == "error" {
+				jsMu.Lock()
 				for _, a := range ev.Args {
 					jsErrors = append(jsErrors, string(a.Value))
 				}
+				jsMu.Unlock()
 			}
 		case *runtime.EventExceptionThrown:
+			jsMu.Lock()
 			jsErrors = append(jsErrors, fmt.Sprintf("exception: %v", ev.ExceptionDetails.Text))
+			jsMu.Unlock()
 		}
 	})
 
-	var navStart, loadEnd, domEnd float64
 	// Navigate first (void action)
-	if err := chromedp.Do(ctx,
-		chromedp.Navigate(urlStr),
-	); err != nil {
+	if err := chromedp.Do(ctx, chromedp.Navigate(urlStr)); err != nil {
 		result.Error = err.Error()
-		result.JSErrors = jsErrors
+		result.JSErrors = snapshot()
 		return result, err
 	}
 
-	// Then evaluate timing (returning values)
-	navStart, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.navigationStart`))
+	// Then evaluate timing (returning values).
+	navStart, err := chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.navigationStart`))
 	if err != nil {
 		result.Error = err.Error()
-		result.JSErrors = jsErrors
+		result.JSErrors = snapshot()
 		return result, err
 	}
-	loadEnd, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.loadEventEnd`))
+	loadEnd, err := chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.loadEventEnd`))
 	if err != nil {
 		result.Error = err.Error()
-		result.JSErrors = jsErrors
+		result.JSErrors = snapshot()
 		return result, err
 	}
-	domEnd, err = chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.domContentLoadedEventEnd`))
+	domEnd, err := chromedp.Run(ctx, chromedp.Evaluate[float64](`performance.timing.domContentLoadedEventEnd`))
 	if err != nil {
 		result.Error = err.Error()
-		result.JSErrors = jsErrors
+		result.JSErrors = snapshot()
 		return result, err
 	}
 
 	result.LoadTime = time.Duration(loadEnd-navStart) * time.Millisecond
 	result.DOMContent = time.Duration(domEnd-navStart) * time.Millisecond
-	result.JSErrors = jsErrors
+	result.JSErrors = snapshot()
 
 	// Attempt to read the HTTP status code via fetch (may not always work
-	// depending on page/cors).
+	// depending on page/cors). EvalAwaitPromise is required: without it the
+	// result is the Promise object, not the status, and StatusCode stays 0.
 	var status int
-	if _, err := chromedp.Run(ctx, chromedp.Evaluate[int](`fetch(window.location.href).then(r=>r.status).catch(()=>0)`)); err != nil {
+	if _, err := chromedp.Run(ctx, chromedp.Evaluate[int](
+		`fetch(window.location.href).then(r=>r.status).catch(()=>0)`,
+		chromedp.EvalAwaitPromise,
+	)); err != nil {
 		// Ignore fetch errors - status may not be available
+		status = 0
 	}
 	result.StatusCode = status
 

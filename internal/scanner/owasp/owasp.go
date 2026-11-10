@@ -111,7 +111,7 @@ var owaspCategories = map[string]string{
 func NewOWASPChecker(target string) *OWASPChecker {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402 -- authorized pentest targets may use self-signed certificates
 		},
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 10 * time.Second,
@@ -441,7 +441,7 @@ func (c *OWASPChecker) checkA02() *OWASPCategory {
 			{"TLS 1.1", tls.VersionTLS11, tls.VersionTLS11},
 		} {
 			config := &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // #nosec G402 -- authorized pentest targets may use self-signed certificates
 				MinVersion:         tv.min,
 				MaxVersion:         tv.max,
 			}

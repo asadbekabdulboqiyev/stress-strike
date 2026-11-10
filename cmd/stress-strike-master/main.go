@@ -70,6 +70,12 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		exitProcess(probe.Run(os.Args[2:], "http://127.0.0.1:9090/healthz"))
 	}
+	// `--version` is how the image build proves the binary it is about to ship
+	// is not a dev build; without it Dockerfile.master logs "Unknown flag".
+	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
+		fmt.Printf("stress-strike-master v%s\n", version)
+		return
+	}
 
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
 	flag.CommandLine.Init("stress-strike-master", flag.ContinueOnError)
@@ -541,4 +547,15 @@ func parseAuthorizedKeys(raw string) (map[string]string, error) {
 		pins[id] = strings.ToLower(hexKey)
 	}
 	return pins, nil
+}
+
+// isVersionArg reports whether the first CLI argument asks for the version.
+// Dockerfile.master runs `--version` to prove the shipped binary is not a dev
+// build, and the flag package would otherwise reject it as unknown.
+func isVersionArg(arg string) bool {
+	switch arg {
+	case "version", "--version", "-version", "-v":
+		return true
+	}
+	return false
 }

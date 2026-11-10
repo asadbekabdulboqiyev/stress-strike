@@ -745,16 +745,27 @@ func TestGetDashboardDataDirCreatesTree(t *testing.T) {
 
 func TestGetDashboardDataDirMkdirFailure(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", "")
-	// A regular file where the parent directory must be: MkdirAll fails.
-	blocker := filepath.Join(home, "Library", "Application Support")
-	if err := os.MkdirAll(filepath.Dir(blocker), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", home)
+
+	// Block the platform's own config directory instead of hardcoding the
+	// macOS one: os.UserConfigDir resolves HOME on macOS, XDG_CONFIG_HOME on
+	// Linux and AppData on Windows, so only a derived path is portable.
+	cfg, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("os.UserConfigDir: %v", err)
+	}
+	// A regular file where the parent directory must be: MkdirAll fails.
+	blocker := filepath.Join(cfg, "stress-strike")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		if mkErr := os.MkdirAll(filepath.Dir(blocker), 0o750); mkErr != nil {
+			t.Fatal(mkErr)
+		}
+		if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	if dir, err := getDashboardDataDir(); err == nil {
 		t.Fatalf("getDashboardDataDir succeeded with a file blocking the path: %q", dir)
@@ -762,8 +773,15 @@ func TestGetDashboardDataDirMkdirFailure(t *testing.T) {
 }
 
 func TestGetDashboardDataDirNoHome(t *testing.T) {
+	// Every platform gets its own "nowhere to look" env so the fallback chain
+	// fails on all three: os.UserConfigDir reads XDG_CONFIG_HOME (Linux) and
+	// AppData (Windows); os.UserHomeDir reads HOME (Unix) and USERPROFILE.
 	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", "")
 	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+	t.Setenv("HOMEDRIVE", "")
+	t.Setenv("HOMEPATH", "")
 	if dir, err := getDashboardDataDir(); err == nil {
 		t.Fatalf("getDashboardDataDir without a home = %q, want an error", dir)
 	}

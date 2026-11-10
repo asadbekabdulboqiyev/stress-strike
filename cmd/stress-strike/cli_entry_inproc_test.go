@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -193,14 +194,39 @@ func writeExecSibling(t *testing.T, name, script string) {
 	if err != nil {
 		t.Fatalf("os.Executable: %v", err)
 	}
-	path := filepath.Join(filepath.Dir(exe), name)
+	// Match the name runSubCommand looks for, which carries .exe on Windows.
+	path := filepath.Join(filepath.Dir(exe), subBinaryName(name))
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatalf("write sibling %s: %v", path, err)
 	}
 	t.Cleanup(func() { _ = os.Remove(path) })
 }
 
+// skipUnlessPOSIXExec skips on Windows: these cases drive sibling discovery
+// with `#!/bin/sh` scripts, and Windows can only execute PE images, not scripts
+// with an interpreter line. The Windows half of the same logic — the ".exe"
+// suffix that runSubCommand must look for — is covered by
+// TestSubBinaryNameWindowsSuffix.
+func skipUnlessPOSIXExec(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("sibling dispatch is driven by /bin/sh scripts; Windows needs real PE binaries")
+	}
+}
+
+func TestSubBinaryNameSuffix(t *testing.T) {
+	want := "stress-strike-scan"
+	if runtime.GOOS == "windows" {
+		want += ".exe"
+	}
+	if got := subBinaryName("stress-strike-scan"); got != want {
+		t.Errorf("subBinaryName = %q, want %q", got, want)
+	}
+}
+
 func TestInprocRunSubCommandSibling(t *testing.T) {
+	skipUnlessPOSIXExec(t)
+
 	writeExecSibling(t, "stress-strike-test-ok", "#!/bin/sh\nexit 0\n")
 	res := runCommandFn(t, func() { runSubCommand("stress-strike-test-ok", []string{"--flag"}) }, "x")
 	if res.code != 0 {
@@ -217,6 +243,7 @@ func TestInprocRunSubCommandSibling(t *testing.T) {
 // TestInprocRunSubCommandGoFallback replaces `go` on PATH: the missing sibling
 // falls through to `go run`, which the stub answers without compiling anything.
 func TestInprocRunSubCommandGoFallback(t *testing.T) {
+	skipUnlessPOSIXExec(t)
 	dir := t.TempDir()
 	goStub := "#!/bin/sh\nexit 0\n"
 	if err := os.WriteFile(filepath.Join(dir, "go"), []byte(goStub), 0o755); err != nil {
@@ -244,6 +271,7 @@ func TestInprocRunSubCommandGoFallback(t *testing.T) {
 // TestInprocSubCommandWrappers drives the five one-line dispatchers. Each
 // finds the sibling script it names, so the real sub-binaries are never built.
 func TestInprocSubCommandWrappers(t *testing.T) {
+	skipUnlessPOSIXExec(t)
 	cases := []struct {
 		name string
 		fn   func()

@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -156,7 +157,7 @@ type dnsStub struct {
 	mx       map[string][]*net.MX
 	txt      map[string][]string
 	hostsErr error
-	calls    int
+	calls    atomic.Int64
 }
 
 func withDNSStub(t *testing.T, st *dnsStub) {
@@ -167,7 +168,7 @@ func withDNSStub(t *testing.T, st *dnsStub) {
 	}
 
 	lookupHostFn = func(_ context.Context, host string) ([]string, error) {
-		st.calls++
+		st.calls.Add(1)
 		if st.hostsErr != nil {
 			return nil, st.hostsErr
 		}
@@ -282,8 +283,8 @@ func TestDNSQueryCancelledContext(t *testing.T) {
 	if len(*got) != 0 {
 		t.Errorf("dnsQuery queried with a cancelled context: %+v", *got)
 	}
-	if st.calls != 0 {
-		t.Errorf("resolver was called %d time(s) after cancellation", st.calls)
+	if st.calls.Load() != 0 {
+		t.Errorf("resolver was called %d time(s) after cancellation", st.calls.Load())
 	}
 }
 
@@ -367,7 +368,7 @@ func TestEnumerateSubdomainsCancelled(t *testing.T) {
 	if res.Target != "localhost" {
 		t.Errorf("Target = %q", res.Target)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 	// The passive goroutines are detached from the ctx.Done exit; give them a
@@ -422,7 +423,7 @@ func TestEnumerateSubdomainsFullRun(t *testing.T) {
 	if res.Resolved != 2 {
 		t.Errorf("Resolved = %d, want 2", res.Resolved)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v", res.Duration)
 	}
 }

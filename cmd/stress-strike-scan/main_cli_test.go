@@ -9,11 +9,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
 )
+
+// exeSuffix keeps the compiled test binary addressable on Windows, where
+// CreateProcess only runs files with an executable extension.
+var exeSuffix = func() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+	return ""
+}()
 
 // scanBin is the compiled stress-strike-scan binary, built once by TestMain so
 // the CLI tests exercise main() end to end including the os.Exit paths.
@@ -24,7 +34,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(1)
 	}
-	scanBin = filepath.Join(dir, "stress-strike-scan")
+	scanBin = filepath.Join(dir, "stress-strike-scan"+exeSuffix)
 
 	build := exec.Command("go", "build", "-o", scanBin, ".")
 	if out, err := build.CombinedOutput(); err != nil {

@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+// TestIsVersionArg covers the flag Dockerfile.worker runs at build time; without
+// it the image build logged "Unknown flag --version".
+func TestIsVersionArg(t *testing.T) {
+	for _, arg := range []string{"version", "--version", "-version", "-v"} {
+		if !isVersionArg(arg) {
+			t.Errorf("isVersionArg(%q) = false, want true", arg)
+		}
+	}
+	for _, arg := range []string{"", "healthcheck", "--verbose", "v", "-version=1"} {
+		if isVersionArg(arg) {
+			t.Errorf("isVersionArg(%q) = true, want false", arg)
+		}
+	}
+}
+
 // listenOn binds a real TCP listener on 127.0.0.1 with an ephemeral port
 // (port 0) and returns it. No external network traffic is generated and the
 // listener is always closed by the caller.

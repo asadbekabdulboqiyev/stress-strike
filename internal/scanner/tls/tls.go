@@ -70,7 +70,7 @@ func ScanTLS(host string, port int) (*core.TLSInfo, error) {
 
 	for _, tv := range tlsVersions {
 		config := &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402 -- authorized pentest targets may use self-signed certificates
 			MinVersion:         tv.min,
 			MaxVersion:         tv.max,
 		}
@@ -128,7 +128,7 @@ func ScanTLS(host string, port int) (*core.TLSInfo, error) {
 	}
 
 	// Session resumption check
-	config := &tls.Config{InsecureSkipVerify: true}
+	config := &tls.Config{InsecureSkipVerify: true} // #nosec G402 -- authorized pentest targets may use self-signed certificates
 	conn1, err := tls.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}, "tcp", addr, config)
 	if err == nil {
 		conn1.Close()

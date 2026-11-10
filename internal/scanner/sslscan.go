@@ -55,7 +55,7 @@ func ScanSSL(ctx context.Context, target string) *SSLResult {
 
 	config := &tls.Config{
 		// nolint:gosec
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // #nosec G402 -- authorized pentest targets may use self-signed certificates
 		ServerName:         host,
 		MinVersion:         tls.VersionTLS10,
 	}

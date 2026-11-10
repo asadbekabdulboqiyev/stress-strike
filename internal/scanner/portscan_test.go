@@ -106,7 +106,7 @@ func TestScanPortsOpenPort(t *testing.T) {
 	if entry.Service != "ssh" {
 		t.Errorf("Service = %q, want ssh", entry.Service)
 	}
-	if res.Duration <= 0 {
+	if res.Duration < 0 { // zero is a valid measurement where the timer resolution is coarse (Windows ~15.6ms)
 		t.Errorf("Duration = %v, want positive", res.Duration)
 	}
 }

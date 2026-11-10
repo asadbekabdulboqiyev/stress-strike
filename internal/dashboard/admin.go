@@ -157,16 +157,15 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// Secret hash reveal only — no admin code required. Use the store's current
-	// code when the dashboard sends an empty one.
+	// The code is the gate. An empty code is rejected instead of falling back
+	// to the stored one: a fallback would let any local HTTP client open the
+	// bypass without ever reading the code from the host.
 	code := strings.TrimSpace(req.Code)
 	if code == "" {
-		code, err = store.Code()
-		if err != nil {
-			adminAttempts.fail(now)
-			writeAdminError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		adminAttempts.fail(now)
+		writeAdminError(w, http.StatusBadRequest,
+			"admin code required — run `stress-strike admin code` on the host and enter it here")
+		return
 	}
 	st, err := store.Unlock(code, time.Duration(req.Minutes)*time.Minute)
 	if err != nil {

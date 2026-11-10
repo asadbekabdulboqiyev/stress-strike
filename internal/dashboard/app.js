@@ -123,7 +123,7 @@ function connect() {
   };
   ws.onerror = function(e) {
     updateConnStatus();
-    toast('WebSocket xatolik yuz berdi, qayta ulanishga harakat qilinmoqda…', 'error');
+    toast('WebSocket error — reconnecting…', 'error');
   };
 }
 
@@ -2578,9 +2578,13 @@ function revealAdmin(open) {
 function wireAdminReveal() {
   try { if (sessionStorage.getItem('ss_admin_revealed') === '1') revealAdmin(false); } catch (e) {}
 
-  if (location.hash === '#slasz#') revealAdmin(true);
+  // Brauzer '#' belgisini avtomatik '%23' ga o'tkazishi mumkin,
+  # shuning uchun 'slasz' so'zi bo'yicha tekshiramiz.
+  function hashIsAdmin(h) { return h.indexOf('slasz') >= 0; }
+
+  if (hashIsAdmin(location.hash)) revealAdmin(true);
   window.addEventListener('hashchange', function() {
-    if (location.hash === '#slasz#') revealAdmin(true);
+    if (hashIsAdmin(location.hash)) revealAdmin(true);
   });
 }
 

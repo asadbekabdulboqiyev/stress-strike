@@ -20,11 +20,12 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
 )
 
-// version is overridden at build time with -ldflags "-X main.version=...".
-var version = "0.14.6"
+// version is overridden at build time via ldflags.
+var buildVersion = version.Version
 
 // flagStrings collects a repeatable string flag (e.g. -auth-token a -auth-token b).
 type flagStrings []string
@@ -99,7 +100,7 @@ Examples:
 	})
 
 	srv := dashboard.NewServer()
-	srv.SetVersion(version)
+	srv.SetVersion(buildVersion)
 	bridge := dashboard.NewEngineBridge(srv)
 
 	// Lifecycle of the currently running engine run (guarded by runMu).

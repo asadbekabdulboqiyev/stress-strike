@@ -700,14 +700,14 @@ function render() {
   document.getElementById('subRPS').textContent = fmt(s.total_requests || 0) + ' total requests';
 
   var avg = s.avg_latency_ms || 0;
-  document.getElementById('valAvg').innerHTML = avg.toFixed(1) + ' <small>ms</small>';
+  document.getElementById('valAvg').textContent = avg.toFixed(1) + ' ms';
   document.getElementById('subLatency').textContent =
     'P50: ' + (s.p50_latency_ms || 0).toFixed(1) + ' \u00b7 P95: ' + (s.p95_latency_ms || 0).toFixed(1) + ' \u00b7 P99: ' + (s.p99_latency_ms || 0).toFixed(1) + ' ms';
 
   var errRate = s.error_rate || 0;
   var errEl = document.getElementById('valErrors');
   errEl.style.color = errRate > 5 ? 'var(--red)' : errRate > 1 ? 'var(--yellow)' : 'var(--green)';
-  errEl.innerHTML = errRate.toFixed(2) + ' <small>%</small>';
+  errEl.textContent = errRate.toFixed(2) + ' %';
   document.getElementById('subErrors').textContent = fmt(s.total_errors || 0) + ' errors / ' + fmt(s.total_requests || 0) + ' total';
 
   document.getElementById('valUsers').textContent = s.active_users || 0;

@@ -508,7 +508,7 @@ func TestRecordScanAuthz(t *testing.T) {
 		Allowed: true,
 		Rule:    "example.com",
 		Reason:  "covered by authorization",
-		Version: version,
+		Version: buildVersion,
 	}, path)
 
 	data, err := os.ReadFile(path)

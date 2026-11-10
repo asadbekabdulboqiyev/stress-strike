@@ -27,10 +27,11 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
 
-// version is stamped at build time: go build -ldflags "-X main.version=0.14.5"
-var version = "0.14.6"
+// version is stamped at build time: go build -ldflags "-X buildVersion=0.14.7"
+var buildVersion = version.Version
 
 const (
 	// authzDeniedExitCode is returned when the authorization policy blocks the
@@ -1153,7 +1154,7 @@ func enforceScanAuthz(targetURL string, opts scanGateOptions) {
 			Allowed: d.Allowed,
 			Rule:    d.Rule,
 			Reason:  d.Reason,
-			Version: version,
+			Version: buildVersion,
 			Argv:    os.Args,
 		}, opts.auditPath)
 	}

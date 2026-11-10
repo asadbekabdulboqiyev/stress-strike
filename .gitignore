@@ -1,5 +1,7 @@
 bin/
 reports/
+# Test/demo reports and artifacts — never commit generated scan results.
+cmd/stress-strike/reports/
 # Build output only! Root-anchored so source under internal/dist/ (the
 # distributed control plane) is NOT ignored — a bare `dist/` pattern would
 # swallow internal/dist/ and hide the whole subsystem from version control.

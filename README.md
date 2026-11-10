@@ -10,7 +10,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.14.5-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.14.8-green.svg)]()
 
 Ultra-fast multi-protocol load testing, traffic replay, and security audit suite — written in Go.
 
@@ -75,9 +75,9 @@ go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
 
 # Or use the convenience installer (installs every binary; pinned release, checksum-verified)
 # Download first, review, then run — never pipe remote code straight into bash.
-curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/v0.14.5/scripts/install.sh
+curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/v0.14.8/scripts/install.sh
 less install.sh
-./install.sh v0.14.5
+./install.sh v0.14.8
 ```
 
 If `stress-strike` isn't found after installing, add Go's bin directory to your `PATH`:
@@ -91,7 +91,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 > Upgrade an old install anytime:
 > ```sh
 > go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
-> ./scripts/install.sh   # or: ./scripts/install.sh v0.14.5
+> ./scripts/install.sh   # or: ./scripts/install.sh v0.14.8
 > ```
 
 ### Your first test in 60 seconds
@@ -563,7 +563,7 @@ fault tolerance, security, Docker and systemd deployment, and the Linux worker
 cross-compile script:
 
 ```sh
-./scripts/build-worker-linux.sh 0.14.4   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.14.8   # or: make worker-linux
 ```
 
 ---
@@ -829,7 +829,7 @@ stress-strike-worker -listen :50052 -token "$STRESS_TOKEN" ...
 ### Deploying to real Linux load hosts
 
 ```sh
-./scripts/build-worker-linux.sh 0.14.4   # or: make worker-linux
+./scripts/build-worker-linux.sh 0.14.8   # or: make worker-linux
 ```
 
 Each archive (amd64/arm64) ships the worker, the master, a hardened systemd
@@ -842,10 +842,10 @@ the repo:
 
 ```sh
 # one host manually
-scp dist/linux-worker/stress-strike-worker-v0.14.5-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+scp dist/linux-worker/stress-strike-worker-v0.14.8-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
 ssh root@HOST 'cd /tmp && \
   SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
-  bash bootstrap-worker.sh stress-strike-worker-v0.14.5-linux-amd64.tar.gz'
+  bash bootstrap-worker.sh stress-strike-worker-v0.14.8-linux-amd64.tar.gz'
 
 # a whole fleet (builds packages, scp + installs, prints the master command)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12
@@ -1082,7 +1082,7 @@ cd stress-strike
 | `make bench` | Run benchmarks |
 | `make clean` | Remove build artifacts |
 | `make install` | Install into `PATH` |
-| `make release VERSION=0.14.4` | Cross-compile all platforms into `./dist` |
+| `make release VERSION=0.14.8` | Cross-compile all platforms into `./dist` |
 
 ### Cross-compilation
 
@@ -1316,6 +1316,7 @@ The bundle is **tamper-evidence + pre-commitment binding**, not a proof of physi
 - **Template escaping** — `{{var}}` placeholders in JSON bodies are JSON-escaped automatically
 - **Error classes** — `timeout`, `connection_error`, `status_4xx`, `status_5xx`, `extract_error`, `redirect_limit`, `assert_failed`, `canceled`
 - **Safety limits** — max 100K users, 256–20K per-host connections, 10 redirect hops, 8 MiB response cap, `0600` report permissions (POSIX; Windows has no mode bits, so there the file inherits the user-profile directory's ACL)
+- **Dashboard UI** — shake animation on invalid input, focus-visible outlines for keyboard navigation, loading spinners on action buttons, active button scaling (`scale(0.97)`), and `innerHTML` → `textContent` migration for XSS defense
 
 ---
 

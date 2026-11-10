@@ -867,10 +867,8 @@
         <form class="admin-form" id="adminForm" autocomplete="off" novalidate>
           <div class="field field-sm">
             <label class="field-label" for="adminCode">Admin code</label>
-            <input id="adminCode" type="text" name="adminCode" placeholder="K7QM-3XPA"
-                   autocapitalize="characters" autocomplete="off" spellcheck="false"
-                   inputmode="text" aria-describedby="adminCodeHelp">
-            <p class="field-hint" id="adminCodeHelp">Run <code>stress-strike admin code</code> on the host. The code is never sent to the browser by itself.</p>
+            <input id="adminCode" type="text" name="adminCode" placeholder="" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="adminCodeHelp">
+            <p class="field-hint" id="adminCodeHelp">The admin code is read from the <code>STRESS_STRIKE_ADMIN_CODE</code> environment variable. Generate it with: <code>stress-strike admin code</code>.</p>
           </div>
           <div class="field field-sm">
             <label class="field-label" for="adminMinutes">Minutes</label>

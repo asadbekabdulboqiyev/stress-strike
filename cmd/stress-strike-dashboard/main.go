@@ -24,7 +24,7 @@ import (
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".
-var version = "0.14.5"
+var version = "0.14.6"
 
 // flagStrings collects a repeatable string flag (e.g. -auth-token a -auth-token b).
 type flagStrings []string

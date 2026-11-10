@@ -314,7 +314,7 @@ func authorizeAdd(args []string) {
 	if *until != "" {
 		ts, err := time.Parse(time.RFC3339, *until)
 		if err != nil {
-			fatal(fmt.Errorf("--until must be RFC3339: %w", err))
+			fatal(fmt.Errorf("--until must be RFC3339 (e.g. 2026-12-31T00:00:00Z): %w", err))
 		}
 		r.Until = ts
 	}

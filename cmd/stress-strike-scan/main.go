@@ -74,8 +74,8 @@ func main() {
 	fs.Init("stress-strike-scan", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	target := fs.String("target", "", "Target host to scan (e.g. example.com)")
-	port := fs.Int("port", 443, "Target port")
+	target := fs.String("target", "", "Target host to scan (e.g. example.com or example.com:9999)")
+	port := fs.Int("port", 443, "Target port (ignored if --target already carries a port)")
 	outputJSON := fs.String("output-json", "", "Export results to JSON file")
 	scanAll := fs.Bool("all", false, "Run all scans (TLS + HTTP + WAF + Security)")
 	tlsOnly := fs.Bool("tls", false, "TLS scan only")
@@ -185,9 +185,18 @@ Examples:
 		*scanAll = true
 	}
 
+	// Parse --target: if it already carries a port (host:port), use that and
+	// ignore --port's default of 443. Otherwise fall back to --port.
+	scanHost := *target
+	scanPort := *port
+	if h, p, err := net.SplitHostPort(*target); err == nil {
+		scanHost = h
+		scanPort, _ = strconv.Atoi(p)
+	}
+
 	// Configuration errors are usage errors (exit 2), resolved before any
 	// network work.
-	baseURL, err := targetBaseURL(*target, *port)
+	baseURL, err := targetBaseURL(scanHost+":"+strconv.Itoa(scanPort), scanPort)
 	if err != nil {
 		usageError("invalid --target: %v", err)
 	}
@@ -209,7 +218,7 @@ Examples:
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  stress-strike scan — Deep Security Scanner                  ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
-	fmt.Printf("  Target: %s:%d\n", *target, *port)
+	fmt.Printf("  Target: %s:%d\n", scanHost, scanPort)
 	fmt.Printf("  URL:    %s\n", baseURL)
 
 	// ── safety gate scope ───────────────────────────────────────────────────
@@ -291,7 +300,7 @@ Examples:
 	// TLS Scan
 	if runTLS {
 		nextStep("TLS Scan")
-		tlsInfo, err := scanner.ScanTLS(*target, *port)
+		tlsInfo, err := scanner.ScanTLS(scanHost, scanPort)
 		if err != nil {
 			fmt.Printf("    ⚠ TLS scan error: %v\n", err)
 		} else {
@@ -301,7 +310,7 @@ Examples:
 	}
 
 	// HTTP Fingerprint
-	httpTarget := fmt.Sprintf("http://%s:%d", *target, *port)
+	httpTarget := fmt.Sprintf("http://%s:%d", scanHost, scanPort)
 	if runHTTP {
 		nextStep("HTTP Fingerprint")
 		httpInfo, err := scanner.ScanHTTP(httpTarget)

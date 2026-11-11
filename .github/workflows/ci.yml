@@ -152,12 +152,28 @@ jobs:
           pattern: coverage-*
           merge-multiple: true
 
+      # The three runners each write a coverage profile with its own "mode:"
+      # header, and download-artifact concatenates files that share a name.
+      # go tool cover refuses a profile that carries more than one header
+      # ("cover: line \"mode: atomic\" doesn't match expected format"), so the
+      # extra headers are dropped before the profile is read. The first line
+      # is kept, so the profile still declares its mode.
+      - name: Merge the coverage profiles
+        run: |
+          awk 'NR == 1 || !/^mode:/' coverage.out > coverage.merged.out
+          mv coverage.merged.out coverage.out
+          head -1 coverage.out
+
       - name: Report total
         run: go tool cover -func=coverage.out | tail -1
 
       - name: Enforce minimum
         run: |
           total="$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')"
+          if [ -z "$total" ]; then
+            echo "::error::could not read the total coverage from coverage.out"
+            exit 1
+          fi
           echo "total coverage: ${total}%"
           floor=45
           ok=$(awk -v t="$total" -v f="$floor" 'BEGIN{print (t+0 >= f+0) ? "true" : "false"}')

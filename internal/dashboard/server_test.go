@@ -734,6 +734,25 @@ func TestSecurityHeadersApplied(t *testing.T) {
 	if !strings.Contains(csp, "ws://"+req.Host) {
 		t.Errorf("CSP missing same-origin WebSocket source: %q", csp)
 	}
+
+	// style-src is relaxed for the signed certificate report; script-src must
+	// never be. If this ever fails, an inline-styles exception has leaked into
+	// a directive that can execute code.
+	for _, directive := range strings.Split(csp, ";") {
+		d := strings.TrimSpace(directive)
+		if strings.HasPrefix(d, "script-src") && strings.Contains(d, "unsafe-inline") {
+			t.Errorf("script-src must never allow 'unsafe-inline': %q", d)
+		}
+		if strings.HasPrefix(d, "default-src") && strings.Contains(d, "unsafe-inline") {
+			t.Errorf("default-src must never allow 'unsafe-inline' (script-src would inherit it): %q", d)
+		}
+	}
+	if !strings.Contains(csp, "object-src 'none'") {
+		t.Errorf("CSP missing object-src 'none': %q", csp)
+	}
+	if !strings.Contains(csp, "base-uri 'none'") {
+		t.Errorf("CSP missing base-uri 'none': %q", csp)
+	}
 }
 
 func TestServesHardenedAssets(t *testing.T) {

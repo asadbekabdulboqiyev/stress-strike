@@ -143,7 +143,13 @@ func detectCertificateInput(path string) (certificateInput, error) {
 	if _, ok := probe["target"]; ok {
 		return inputPentestReport, nil
 	}
-	return inputUnknown, fmt.Errorf("%s is JSON but neither a pentest report (needs \"target\") nor a certificate (needs \"assessment\"+\"signature\")", path)
+	// A load-run attestation bundle carries "format": "vpmp/v1". It is not a
+	// certificate, so point the operator at the verifier that understands it
+	// instead of reporting a flat "not JSON we know".
+	if format, ok := probe["format"]; ok && strings.Contains(string(format), attest.FormatID) {
+		return inputUnknown, fmt.Errorf("%s is an attestation bundle (format %q), not a certificate.\nVerify it with:\n  stress-strike verify %s", path, attest.FormatID, path)
+	}
+	return inputUnknown, fmt.Errorf("%s is JSON but not a file we can use — expected a pentest report (needs \"target\"), a certificate (needs \"assessment\"+\"signature\"), or an attestation bundle (needs \"format\":%q)", path, attest.FormatID)
 }
 
 func verifyCertificateFile(path string, quiet bool) {

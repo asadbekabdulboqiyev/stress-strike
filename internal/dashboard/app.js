@@ -2774,6 +2774,66 @@ function certVerify(raw, obj) {
   });
 }
 
+// Verifies a load-run attestation bundle (the JSON the Overview card hands
+// out). The bundle carries the coordinator signature, the per-worker commit
+// signatures and the aggregates, so it can be audited on its own; without the
+// sample sidecar the per-record replay is skipped and reported as such.
+function certVerifyAttestation(raw) {
+  certStatus('Checking the bundle signature…', 'busy');
+  fetch(API + '/api/attestation/verify-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: raw
+  }).then(function(r) {
+    return r.json().then(function(body) {
+      if (!r.ok) throw body;
+      return body;
+    });
+  }).then(function(res) {
+    certShowAttestation(res);
+  }).catch(function(err) {
+    certStatus((err && err.reason) || 'Could not verify this bundle.', 'bad');
+  });
+}
+
+function certShowAttestation(res) {
+  var wrap = document.getElementById('certResult');
+  var title = document.getElementById('certResultTitle');
+  var verdict = document.getElementById('certVerdict');
+  var facts = document.getElementById('certFacts');
+  if (!wrap || !verdict || !facts) return;
+
+  certClear(facts);
+  var ok = !!res.valid;
+  verdict.className = 'cert-verdict ' + (ok ? 'ok' : 'bad');
+  if (ok) {
+    verdict.textContent = 'VALID — the bundle signature and its internal cross-sums check out.';
+    certStatus('Attestation bundle verified.', 'ok');
+  } else {
+    verdict.textContent = 'INVALID — ' + (res.reason || 'verification failed.');
+    certStatus('Attestation bundle failed verification.', 'bad');
+  }
+  if (title) title.textContent = 'Attestation bundle';
+
+  var s = res.summary || {};
+  facts.appendChild(certFact('Workers', (s.workers || res.workers || 0) + ' · ' + (s.workersOK || 0) + ' verified, ' + (s.workersFailed || 0) + ' failed'));
+  facts.appendChild(certFact('Checks', (s.checksRun || 0) + ' run · ' + (s.checksFailed || 0) + ' failed'));
+  facts.appendChild(certFact('Bundle digest', res.bundleDigest ? String(res.bundleDigest).slice(0, 32) + '…' : '\u2014'));
+  if (res.samplesAbsent) {
+    facts.appendChild(certFact('Sample evidence', 'not supplied — per-record replay skipped'));
+  }
+
+  var findingsWrap = document.getElementById('certFindingsWrap');
+  if (findingsWrap) findingsWrap.classList.add('hidden');
+  var htmlWrap = document.getElementById('certHtmlWrap');
+  if (htmlWrap) htmlWrap.classList.add('hidden');
+  var actions = document.getElementById('certActions');
+  if (actions) actions.classList.add('hidden');
+
+  wrap.classList.remove('hidden');
+  toast(ok ? 'Attestation bundle is valid' : 'Attestation bundle is invalid', ok ? 'ok' : 'error');
+}
+
 function certHandleFile(file) {
   if (!file) return;
   certState.fileName = file.name || 'certificate';
@@ -2796,13 +2856,20 @@ function certHandleFile(file) {
       certVerify(raw, obj);
       return;
     }
+    // The Overview Attestation card downloads a signed load-run bundle. It is
+    // not a certificate, but it is verifiable evidence — check it here instead
+    // of telling the operator their own file is "not a certificate".
+    if (obj.format === 'vpmp/v1' || (obj.workers && obj.aggregate && obj.signature && obj.signature.sig)) {
+      certVerifyAttestation(raw);
+      return;
+    }
     if (obj.target) {
       var issuer = document.getElementById('certIssuer') ? document.getElementById('certIssuer').value : 'stress-strike assessment';
       var experimentRef = document.getElementById('certExperiment') ? document.getElementById('certExperiment').value : '';
       certIssueApi(raw, issuer, experimentRef);
       return;
     }
-    certStatus('JSON, but neither a pentest report (needs "target") nor a certificate (needs "assessment" + "signature").', 'bad');
+    certStatus('JSON, but not a file we can verify — expected a pentest report ("target"), a certificate ("assessment" + "signature"), or an attestation bundle ("format": "vpmp/v1").', 'bad');
   };
   reader.onerror = function() { certStatus('Could not read the file.', 'bad'); };
   reader.readAsText(file);

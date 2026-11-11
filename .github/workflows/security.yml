@@ -30,13 +30,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
           cache: true
 
       - name: govulncheck ./...
         uses: golang/govulncheck-action@v1
         with:
-          go-version-input: "1.26.10"
+          go-version-input: "1.26.11"
           go-package: ./...
           # Symbol-level analysis, so unused-but-present vulnerable code does
           # not fail the build while reachable vulnerable code does.
@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
           cache: true
 
       - name: Run gosec

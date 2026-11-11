@@ -20,9 +20,10 @@ permissions:
 
 env:
   # Patch-pinned, not "1.26": net/http has a reachable advisory that is fixed in
-  # the standard library at go1.26.10, which only a patch-level pin can pick up
-  # (govulncheck reports it as `Found in: net/http@go1.26.5`).
-  GO_VERSION: "1.26.10"
+  # the standard library at go1.26.11, which only a patch-level pin can pick up
+  # (govulncheck reports it as `Found in: net/http@go1.26.10` — GO-2026-6859,
+  # an HTTP/1 server crash on a MaxBytesReader header race).
+  GO_VERSION: "1.26.11"
   # Pinned tool versions so CI failures are never caused by a tool auto-update.
   # Must be built with a Go >= the module's, or the linter refuses to load the
   # config: "the Go language version (go1.24) used to build golangci-lint is

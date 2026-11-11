@@ -30,7 +30,7 @@ import (
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
 )
 
-// version is stamped at build time: go build -ldflags "-X buildVersion=0.14.8"
+// version is stamped at build time: go build -ldflags "-X buildVersion=0.14.9"
 var buildVersion = version.Version
 
 const (

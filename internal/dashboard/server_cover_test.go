@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -698,6 +699,22 @@ func TestDemoStoreStartAlreadyRunning(t *testing.T) {
 	}
 }
 
+// freeLocalPort returns a loopback port that nothing is listening on right
+// now. It is only a hint: the point is that the test does not depend on the
+// machine's default demo-store address.
+func freeLocalPort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	return strconv.Itoa(port)
+}
+
 func TestDemoStoreStartFailureIsReported(t *testing.T) {
 	// No checkout above the temp dir and no PATH entry: the store cannot be
 	// located, so the endpoint reports the failure instead of spawning.
@@ -705,6 +722,11 @@ func TestDemoStoreStartFailureIsReported(t *testing.T) {
 	t.Setenv("PATH", "")
 
 	s := NewServer()
+	// Point the supervisor at a port nothing listens on. The default address
+	// belongs to the machine, not to the test: when a demo store happens to
+	// run there, the endpoint answers "already running" with 200 and the
+	// locate failure this test is about is never reached.
+	s.store = demostore.New(demostore.Options{URL: "http://127.0.0.1:" + freeLocalPort(t)})
 	req := httptest.NewRequest(http.MethodPost, "/api/demo-store/start", nil)
 	rec := httptest.NewRecorder()
 	s.handleDemoStoreStart(rec, req)

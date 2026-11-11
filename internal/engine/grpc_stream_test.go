@@ -13,6 +13,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
@@ -116,8 +117,13 @@ func TestGrpcStreamHappyPath(t *testing.T) {
 	if res.status != 200 {
 		t.Errorf("status = %d, want 200", res.status)
 	}
-	if res.latency <= 0 {
-		t.Error("latency = 0, want a measured stream duration")
+	// Windows cannot resolve a sub-millisecond loopback round trip: the Go
+	// runtime's monotonic clock there reads the system interrupt time (the
+	// ~15.6 ms tick), so a correctly measured fast RPC legitimately records
+	// 0 ns. On every other platform a positive latency is what proves the
+	// engine measured the call instead of fabricating a sample.
+	if res.latency < 0 || (res.latency == 0 && runtime.GOOS != "windows") {
+		t.Errorf("latency = %v, want a measured stream duration", res.latency)
 	}
 	if string(reply) != "ack" {
 		t.Errorf("reply = %q, want ack", reply)

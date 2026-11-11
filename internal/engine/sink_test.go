@@ -73,13 +73,25 @@ func TestSampleSinkReceivesEveryRecordedRequest(t *testing.T) {
 		t.Fatalf("sink samples = %d, telemetry requests = %d — they must match", len(got), want)
 	}
 
+	var withResponse, withoutResponse int
 	seen := make(map[uint64]bool, len(got))
 	for _, s := range got {
 		if s.Step != "health" {
 			t.Errorf("step = %q, want health", s.Step)
 		}
-		if s.Status != http.StatusOK {
-			t.Errorf("status = %d, want 200", s.Status)
+		// A status of 0 means the request never got a response. That is a
+		// real outcome, not a bug: when the run's duration expires the
+		// engine cancels the requests still in flight, and those samples
+		// carry no status. The sink's statuses must therefore agree with
+		// the telemetry's own histogram — a sample carrying a status the
+		// telemetry never saw would be the real bug.
+		switch s.Status {
+		case http.StatusOK:
+			withResponse++
+		case 0:
+			withoutResponse++
+		default:
+			t.Errorf("status = %d, want 200 (or 0 when the request got no response)", s.Status)
 		}
 		// Windows cannot resolve a sub-millisecond loopback round trip: the Go
 		// runtime's monotonic clock there reads the system interrupt time
@@ -106,6 +118,24 @@ func TestSampleSinkReceivesEveryRecordedRequest(t *testing.T) {
 		if !seen[i] {
 			t.Errorf("seq %d missing", i)
 		}
+	}
+
+	// The sink's statuses must line up with the telemetry's own counters.
+	codes := tel.StatusCodes()
+	var recorded uint64
+	for code, n := range codes {
+		if code != http.StatusOK {
+			t.Errorf("telemetry recorded a %d status, want only 200 from this server", code)
+		}
+		recorded += n
+	}
+	if uint64(withResponse) != codes[http.StatusOK] {
+		t.Errorf("samples with a response = %d, telemetry 200s = %d — they must match",
+			withResponse, codes[http.StatusOK])
+	}
+	if want := tel.TotalRequests() - recorded; uint64(withoutResponse) != want {
+		t.Errorf("samples without a response = %d, telemetry requests without a status = %d — they must match",
+			withoutResponse, want)
 	}
 }
 

@@ -127,12 +127,28 @@ func TestMasterMainHelp(t *testing.T) {
 // static-fleet dial step: one connection attempt to a dead loopback port with a
 // short run timeout, which ends in the "Failed to connect" fatal path.
 func TestMasterMainReachesWorkerConnect(t *testing.T) {
+	// The dead port is held for the whole test by a listener that accepts and
+	// resets each connection. Closing the listener and using the freed port
+	// number would race with any other program on the host that binds
+	// ephemeral ports.
 	dead, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	deadAddr := dead.Addr().String()
-	_ = dead.Close()
+	go func() {
+		for {
+			c, err := dead.Accept()
+			if err != nil {
+				return
+			}
+			if tcp, ok := c.(*net.TCPConn); ok {
+				_ = tcp.SetLinger(0)
+			}
+			_ = c.Close()
+		}
+	}()
+	t.Cleanup(func() { _ = dead.Close() })
 
 	listen, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

@@ -30,8 +30,18 @@ func runTestServer(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// deadLoopbackURL returns a loopback URL nothing listens on, so every
-// request to it fails immediately (connection refused).
+// deadLoopbackURL returns a loopback URL every request to it fails on.
+//
+// The port is held for the whole test by a listener that accepts the
+// connection and resets it immediately, so the client sees the same
+// connection_error a closed port produces.
+//
+// The obvious implementation — bind an ephemeral port, close it, use the freed
+// number — has a race: any other program on the host can take that port in
+// the window between the close and the first request. Under a parallel test
+// run that happens often enough to matter: the "unreachable target" starts
+// answering normally, the load test reports a green run, and the safety net
+// under test never fires. Holding the port removes the race entirely.
 func deadLoopbackURL(t *testing.T) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -39,9 +49,23 @@ func deadLoopbackURL(t *testing.T) string {
 		t.Fatalf("listen: %v", err)
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
-	if err := ln.Close(); err != nil {
-		t.Fatalf("close: %v", err)
-	}
+
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return // the listener was closed by the test cleanup
+			}
+			// Linger 0 makes Close send a RST instead of a FIN, so the
+			// client fails the request instead of waiting for a response.
+			if tcp, ok := c.(*net.TCPConn); ok {
+				_ = tcp.SetLinger(0)
+			}
+			_ = c.Close()
+		}
+	}()
+	t.Cleanup(func() { _ = ln.Close() })
+
 	return fmt.Sprintf("http://127.0.0.1:%d/", port)
 }
 

@@ -42,18 +42,34 @@ func okServer(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// unusedLoopbackURL returns a loopback URL nobody listens on.
+// unusedLoopbackURL returns a loopback URL whose port refuses every
+// connection for as long as the test runs.
+//
+// The port is held by a listener that accepts and immediately resets the
+// connection. Binding an ephemeral port, closing it and using the freed
+// number has a race: another program on the host can take the port in the
+// window before the first request, and then the "nothing is listening here"
+// assumption is silently wrong.
 func unusedLoopbackURL(t *testing.T) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
-	addr := ln.Addr().String()
-	if err := ln.Close(); err != nil {
-		t.Fatalf("close: %v", err)
-	}
-	return "http://" + addr + "/"
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return // the listener was closed by the test cleanup
+			}
+			if tcp, ok := c.(*net.TCPConn); ok {
+				_ = tcp.SetLinger(0)
+			}
+			_ = c.Close()
+		}
+	}()
+	t.Cleanup(func() { _ = ln.Close() })
+	return "http://" + ln.Addr().String() + "/"
 }
 
 // ── demo-store ────────────────────────────────────────────────────────────

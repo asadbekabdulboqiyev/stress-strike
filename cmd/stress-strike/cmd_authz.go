@@ -28,6 +28,22 @@ type gateOptions struct {
 	webhook      string
 	allowPrivate bool
 	authorized   string
+
+	// adminBypass reports whether the local, time-limited admin unlock is
+	// active. nil means "ask the real adminlock store".
+	//
+	// It is a field rather than a direct adminlock.Active() call so tests can
+	// pin it: the gate's behaviour must be a function of its inputs, never of
+	// whatever unlock happens to be open on the machine running the tests.
+	adminBypass func() bool
+}
+
+// bypassActive resolves the admin-unlock seam, defaulting to the host store.
+func (g gateOptions) bypassActive() bool {
+	if g.adminBypass != nil {
+		return g.adminBypass()
+	}
+	return adminlock.Active()
 }
 
 // addAuthzFlags registers the shared authorization flags on a FlagSet.
@@ -95,7 +111,7 @@ func evaluateAuthz(op authz.Operation, targets []string, g gateOptions) (authzOu
 	// The admin bypass is a local, time-limited override. It never unlocks
 	// cloud instance metadata: that path hands out credentials and stays
 	// closed no matter what the operator toggled on.
-	bypass := adminlock.Active()
+	bypass := g.bypassActive()
 
 	for _, raw := range targets {
 		tgt, err := authz.Classify(ctx, raw, nil)

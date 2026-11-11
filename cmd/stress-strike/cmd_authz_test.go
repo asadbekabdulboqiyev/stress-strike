@@ -15,6 +15,41 @@ func testGate(t *testing.T) gateOptions {
 	return gateOptions{
 		policyPath: filepath.Join(dir, "authz.json"),
 		auditPath:  filepath.Join(dir, "audit.jsonl"),
+		// Pin the admin unlock off. Without this, a bypass open on the machine
+		// running the tests would let private targets through and the gate
+		// tests would fail for reasons that have nothing to do with the code.
+		adminBypass: func() bool { return false },
+	}
+}
+
+// TestGateAdminBypassAllowsPrivate covers the other half of the seam: when the
+// local unlock is active, the gate steps aside for a private target. Metadata
+// stays closed regardless (covered by TestGateBlocksMetadata).
+func TestGateAdminBypassAllowsPrivate(t *testing.T) {
+	g := testGate(t)
+	g.adminBypass = func() bool { return true }
+
+	out, err := evaluateAuthz(authz.OpLoadTest, []string{privateTarget}, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !out.Allowed {
+		t.Fatalf("private target denied while the admin bypass is active: %s", out.Reason)
+	}
+}
+
+// TestGateAdminBypassNeverUnlocksMetadata pins the documented exception: the
+// bypass must never unlock the cloud metadata credential path.
+func TestGateAdminBypassNeverUnlocksMetadata(t *testing.T) {
+	g := testGate(t)
+	g.adminBypass = func() bool { return true }
+
+	out, err := evaluateAuthz(authz.OpLoadTest, []string{metadataTarget}, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Allowed {
+		t.Fatal("admin bypass must not unlock the cloud metadata endpoint")
 	}
 }
 
@@ -187,8 +222,12 @@ func TestGateDefaultPathsHonorEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Empty gateOptions: every path is the default.
-	out, err := evaluateAuthz(authz.OpPentest, []string{publicTarget}, gateOptions{authorized: "SEC-1"})
+	// Empty gateOptions: every path is the default. The admin seam is pinned off
+	// so an unlock open on this machine cannot mask a broken authorization path.
+	out, err := evaluateAuthz(authz.OpPentest, []string{publicTarget}, gateOptions{
+		authorized:  "SEC-1",
+		adminBypass: func() bool { return false },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

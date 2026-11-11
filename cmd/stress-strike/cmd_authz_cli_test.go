@@ -325,12 +325,21 @@ func TestScenarioTargets(t *testing.T) {
 }
 
 func TestRunAuthorizeWithGate(t *testing.T) {
+	// Pin the admin seam off: an unlock open on this machine would otherwise
+	// replace the "rule=..." outcome with an admin-unlock bypass and fail the
+	// assertions below for reasons unrelated to the code.
+	noBypass := func() bool { return false }
+
 	// No targets: the gate is a no-op and never writes an audit record.
-	enforceAuthz(authz.OpLoadTest, nil, nil, gateOptions{})
-	runAuthorizeWithGate(nil, authz.OpLoadTest, gateOptions{})
+	enforceAuthz(authz.OpLoadTest, nil, nil, gateOptions{adminBypass: noBypass})
+	runAuthorizeWithGate(nil, authz.OpLoadTest, gateOptions{adminBypass: noBypass})
 
 	dir := t.TempDir()
-	g := gateOptions{policyPath: filepath.Join(dir, "policy.json"), auditPath: filepath.Join(dir, "audit.jsonl")}
+	g := gateOptions{
+		policyPath:  filepath.Join(dir, "policy.json"),
+		auditPath:   filepath.Join(dir, "audit.jsonl"),
+		adminBypass: noBypass,
+	}
 	sc := &config.Scenario{
 		BaseURL: "https://93.184.216.34/",
 		Steps:   []config.Step{{URL: "https://93.184.216.34/health"}},

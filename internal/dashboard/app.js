@@ -1474,6 +1474,7 @@ var _pentestVulnWrap = document.getElementById('pentestVulnsWrap');
 var _pentestSubtitle = document.querySelector('#pentestVulnsWrap > .pentest-subtitle');
 var _pentestVulns    = document.getElementById('pentestVulns');
 var _pentestGate     = document.getElementById('pentestGate');
+var _pentestCert     = document.getElementById('pentestCert');
 var _pentestNotes    = document.getElementById('pentestNotes');
 
 function pentestClear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
@@ -1614,6 +1615,20 @@ function pentestRender(d) {
     _pentestNotes.appendChild(li);
   });
 
+  /* Every finished pentest is sealed into a certificate. Say what happened:
+     either the id that was issued, or the reason none was. */
+  var pc = d.certificate || {};
+  if (_pentestCert) {
+    if (pc.issued) {
+      _pentestCert.className = 'cert-status ok';
+      _pentestCert.textContent = 'Certificate ' + pc.certificate_id +
+        ' was sealed automatically \u2014 open the Certificate page to view or download it.';
+    } else {
+      _pentestCert.className = 'cert-status';
+      _pentestCert.textContent = pc.note || '';
+    }
+  }
+
   toast('Pentest finished \u2014 ' + d.tested + '/' + d.total + ' categories covered', 'ok');
 }
 
@@ -1627,13 +1642,15 @@ function pentestRun(ev) {
     return;
   }
 
+  var ticket = (document.getElementById('pentestTicket') || {}).value || '';
   var payload = {
     target: target,
     depth: parseInt(document.getElementById('pentestDepth').value, 10) || 2,
     paths: pentestSplitList(document.getElementById('pentestPaths').value),
     passive: document.getElementById('pentestPassive').checked,
     intrusive: document.getElementById('pentestIntrusive').checked,
-    dryRun: document.getElementById('pentestDryRun').checked
+    dryRun: document.getElementById('pentestDryRun').checked,
+    authorized: ticket.trim()
   };
 
   _pentestBtn.classList.add('loading');
@@ -2565,7 +2582,10 @@ function showView(id, opts) {
       body.appendChild(tr);
     }
   }
-  if (id === 'viewCertificate') certRefreshReset();
+  if (id === 'viewCertificate') {
+    certRefreshReset();
+    certLoadLatest();
+  }
   if (id === 'viewAdmin') adminStart();
   else adminStop();
 }
@@ -2834,6 +2854,109 @@ function certShowAttestation(res) {
   toast(ok ? 'Attestation bundle is valid' : 'Attestation bundle is invalid', ok ? 'ok' : 'error');
 }
 
+/* --------------------------------------------------------------------------
+   Latest pentest -> certificate.
+
+   The dashboard seals a certificate as soon as a pentest finishes, and
+   remembers the scan. This card puts that result one click away on the
+   Certificate page: no file to hunt for, no JSON to export first.
+   -------------------------------------------------------------------------- */
+var certLatest = null;
+
+function certLatestStatus(msg, cls) {
+  var el = document.getElementById('certLatestStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'cert-status' + (cls ? ' ' + cls : '');
+}
+
+function certLoadLatest() {
+  var wrap = document.getElementById('certLatest');
+  if (!wrap) return;
+  fetch(API + '/api/pentest/latest', { headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.exists) {
+        certLatest = null;
+        wrap.classList.add('hidden');
+        return;
+      }
+      certLatest = d;
+      certRenderLatest(d);
+      wrap.classList.remove('hidden');
+    })
+    .catch(function() {
+      certLatest = null;
+      wrap.classList.add('hidden');
+    });
+}
+
+function certRenderLatest(d) {
+  var facts = document.getElementById('certLatestFacts');
+  var note = document.getElementById('certLatestNote');
+  if (facts) {
+    certClear(facts);
+    facts.appendChild(certFact('Target', d.target));
+    facts.appendChild(certFact('Scanned', d.scanned_at));
+    facts.appendChild(certFact('Grade', (d.grade || '\u2014') + ' \u00b7 risk ' + (d.risk_score || 0) + '/100'));
+    facts.appendChild(certFact('Coverage', (d.tested || 0) + ' of ' + (d.total || 0) + ' categories'));
+    facts.appendChild(certFact('Findings', (d.findings || 0) + ' \u2014 ' +
+      (d.critical || 0) + ' critical, ' + (d.high || 0) + ' high, ' +
+      (d.medium || 0) + ' medium, ' + (d.low || 0) + ' low, ' + (d.info || 0) + ' info'));
+    facts.appendChild(certFact('Certificate', d.certificate_id || 'not issued'));
+  }
+  if (note) {
+    note.textContent = d.certificate_note ||
+      (d.dry_run ? 'This was a dry run \u2014 nothing was sent, so there is no evidence to certify.' : '');
+  }
+
+  var issued = !!d.certificate_id;
+  var issue = document.getElementById('btnCertLatestIssue');
+  var view = document.getElementById('btnCertLatestView');
+  var pdf = document.getElementById('btnCertLatestPdf');
+  var html = document.getElementById('btnCertLatestHtml');
+  if (issue) issue.classList.toggle('hidden', issued);
+  if (view) view.classList.toggle('hidden', !issued);
+  if (pdf) pdf.classList.toggle('hidden', !issued);
+  if (html) html.classList.toggle('hidden', !issued);
+}
+
+/* Issue a certificate from the remembered scan. The report travels as the
+   request body, exactly like a dropped file would. */
+function certIssueLatest() {
+  if (!certLatest || !certLatest.report) {
+    certLatestStatus('There is no pentest report to certify.', 'bad');
+    return;
+  }
+  var issuer = document.getElementById('certIssuer') ? document.getElementById('certIssuer').value : '';
+  var experimentRef = document.getElementById('certExperiment') ? document.getElementById('certExperiment').value : '';
+  certLatestStatus('Issuing a certificate for the last pentest\u2026', 'busy');
+  certIssueApi(JSON.stringify(certLatest.report), issuer, experimentRef);
+}
+
+/* Open the certificate that belongs to the last pentest in the result panel. */
+function certViewLatest() {
+  if (!certLatest || !certLatest.certificate_id) return;
+  var id = certLatest.certificate_id;
+  certLatestStatus('Loading certificate ' + id + '\u2026', 'busy');
+  fetch(API + '/api/certificate/download/' + encodeURIComponent(id) + '?format=json')
+    .then(function(r) { return r.json(); })
+    .then(function(cert) {
+      certState.cert = cert;
+      certState.certId = cert.certificate_id || id;
+      certState.html = cert.html || '';
+      certState.fileName = id + '.json';
+      certLatestStatus('Certificate ' + id + ' issued from the last pentest.', 'ok');
+      certStatus('Certificate issued from the last pentest.', 'ok');
+      certShowResult('issued', cert);
+      var actions = document.getElementById('certActions');
+      if (actions) actions.classList.remove('hidden');
+    })
+    .catch(function() {
+      certLatestStatus('Could not load the certificate.', 'bad');
+    });
+}
+
 function certHandleFile(file) {
   if (!file) return;
   certState.fileName = file.name || 'certificate';
@@ -2941,6 +3064,20 @@ function wireCertificate() {
   var reset = document.getElementById('btnCertReset');
   if (reset) reset.addEventListener('click', certReset);
 
+  /* ---- Latest pentest ---- */
+  var latestIssue = document.getElementById('btnCertLatestIssue');
+  if (latestIssue) latestIssue.addEventListener('click', certIssueLatest);
+  var latestView = document.getElementById('btnCertLatestView');
+  if (latestView) latestView.addEventListener('click', certViewLatest);
+  var latestPdf = document.getElementById('btnCertLatestPdf');
+  if (latestPdf) latestPdf.addEventListener('click', function() {
+    if (certLatest && certLatest.certificate_id) certDownloadApi(certLatest.certificate_id, 'pdf');
+  });
+  var latestHtml = document.getElementById('btnCertLatestHtml');
+  if (latestHtml) latestHtml.addEventListener('click', function() {
+    if (certLatest && certLatest.certificate_id) certDownloadApi(certLatest.certificate_id, 'html');
+  });
+
   /* ---- Tabs ---- */
   var tabs = document.querySelectorAll('.cert-tab');
   var panels = document.querySelectorAll('.cert-panel');
@@ -3020,6 +3157,8 @@ function certIssueApi(raw, issuer, experimentRef) {
     certStatus('Certificate issued.', 'ok');
     certShowResult('issued', res.body);
     toast('Certificate issued', 'ok');
+    // The latest-pentest card may now have a certificate to show.
+    certLoadLatest();
     var actions = document.getElementById('certActions');
     if (actions) actions.classList.remove('hidden');
 

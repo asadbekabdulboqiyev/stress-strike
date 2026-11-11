@@ -404,6 +404,11 @@
         <label class="field-label" for="pentestPaths">Extra paths (optional, comma separated)</label>
         <input id="pentestPaths" type="text" placeholder="/, /login" spellcheck="false">
       </div>
+      <div class="field pentest-field pentest-field--ticket">
+        <label class="field-label" for="pentestTicket">Authorization ticket</label>
+        <input id="pentestTicket" type="text" placeholder="e.g. SEC-1042" spellcheck="false" autocomplete="off">
+        <p class="field-hint">Required. Approve the target first: <code>stress-strike authorize add --pattern &lt;host&gt; --approver &lt;name&gt; --ticket &lt;id&gt;</code></p>
+      </div>
       <label class="pentest-check"><input type="checkbox" id="pentestPassive"> Passive checks (read-only)</label>
       <label class="pentest-check"><input type="checkbox" id="pentestIntrusive"> Intrusive probes</label>
       <label class="pentest-check"><input type="checkbox" id="pentestDryRun"> Dry run</label>
@@ -429,6 +434,7 @@
         <ul class="pentest-vuln-list" id="pentestVulns"></ul>
       </div>
       <div class="pentest-gate" id="pentestGate"></div>
+      <div class="cert-status" id="pentestCert"></div>
       <ul class="pentest-notes" id="pentestNotes"></ul>
     </div>
   </section>
@@ -765,6 +771,20 @@
 
     <!-- Issue: pentest report → signed certificate -->
     <div class="cert-panel active" id="panelCertIssue">
+      <!-- The last pentest the dashboard ran, ready to certify or open. -->
+      <div class="panel cert-latest hidden" id="certLatest">
+        <div class="panel-title"><span class="dot dot-blue"></span> <span>Latest pentest</span></div>
+        <p class="cert-note" id="certLatestNote"></p>
+        <div class="cert-facts mt-12" id="certLatestFacts"></div>
+        <div class="cert-latest-actions mt-12">
+          <button class="btn btn-primary" id="btnCertLatestIssue" type="button">Issue certificate</button>
+          <button class="btn btn-ghost" id="btnCertLatestView" type="button">View certificate</button>
+          <button class="btn btn-ghost" id="btnCertLatestPdf" type="button">Download PDF</button>
+          <button class="btn btn-ghost" id="btnCertLatestHtml" type="button">Download HTML</button>
+        </div>
+        <div class="cert-status" id="certLatestStatus" role="status" aria-live="polite"></div>
+      </div>
+
       <div class="cert-grid">
         <div class="panel cert-drop-panel">
           <div class="cert-drop" id="certDrop" tabindex="0" role="button" aria-label="Drop a pentest report or a certificate here, or click to choose a file">

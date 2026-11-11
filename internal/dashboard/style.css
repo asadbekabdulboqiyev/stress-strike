@@ -1949,6 +1949,14 @@ kbd {
   flex-direction: column;
   gap: 16px;
 }
+.cert-latest {
+  margin-bottom: 20px;
+}
+.cert-latest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .cert-drop {
   display: flex;
   flex-direction: column;

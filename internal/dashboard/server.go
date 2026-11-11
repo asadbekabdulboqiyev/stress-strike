@@ -487,6 +487,8 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleOWASPScan(w, r)
 	case path == "/api/pentest/scan":
 		s.handlePentestScan(w, r)
+	case path == "/api/pentest/latest":
+		s.handlePentestLatest(w, r)
 	case path == "/api/crawl/scan":
 		s.handleCrawlScan(w, r)
 	case path == "/api/fuzz/scan":

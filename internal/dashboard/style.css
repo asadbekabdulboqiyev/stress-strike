@@ -1,7 +1,7 @@
 /* ==========================================================================
-   stress-strike Dashboard — v2 Premium Dark-Tech (rekonstruksiya)
-   4px grid · mono raqamlar · mikro-interaktivlik · AA-safe holatlar
-   HTML ID'lar o'zgarmagan — app.js ularni id bo'yicha topishi saqlanadi.
+   stress-strike Dashboard — v2 Premium Dark-Tech (reconstruction)
+   4px grid · mono numerals · micro-interactions · AA-safe states
+   HTML IDs unchanged — app.js still resolves every element by id.
    ========================================================================== */
 
 /* ----- DESIGN TOKENS ----- */
@@ -1713,6 +1713,10 @@ kbd {
 /* ----- TEXT UTILITIES ----- */
 .hidden {
   display: none !important;
+}
+/* Spacing helper (CSP forbids inline style="" attributes). */
+.mt-12 {
+  margin-top: 12px;
 }
 .t-dim {
   color: var(--text-1);

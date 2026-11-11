@@ -2609,8 +2609,7 @@ function revealAdmin(open) {
 function wireAdminReveal() {
   try { if (sessionStorage.getItem('ss_admin_revealed') === '1') revealAdmin(false); } catch (e) {}
 
-  // Brauzer '#' belgisini avtomatik '%23' ga o'tkazishi mumkin,
-  # shuning uchun 'slasz' so'zi bo'yicha tekshiramiz.
+  // Browsers may encode '#' as '%23', so match on the secret substring instead.
   function hashIsAdmin(h) { return h.indexOf('slasz') >= 0; }
 
   if (hashIsAdmin(location.hash)) revealAdmin(true);

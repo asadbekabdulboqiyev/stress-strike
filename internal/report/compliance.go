@@ -66,6 +66,40 @@ const (
 	owaspCatOutdated  = "A06:2021 - Vulnerable and Outdated Components"
 )
 
+// owaspFullNames maps an OWASP check id ("A01") to the 2021 category name the
+// compliance mapping and the report templates use. It is the shared source of
+// truth: the CLI and the browser must key on the same names or a control would
+// pass in one and fail in the other.
+var owaspFullNames = map[string]string{
+	"A01": "A01:2021 - Broken Access Control",
+	"A02": "A02:2021 - Cryptographic Failures",
+	"A03": "A03:2021 - Injection",
+	"A04": "A04:2021 - Insecure Design",
+	"A05": "A05:2021 - Security Misconfiguration",
+	"A06": "A06:2021 - Vulnerable and Outdated Components",
+	"A07": "A07:2021 - Identification and Authentication Failures",
+	"A08": "A08:2021 - Software and Data Integrity Failures",
+	"A09": "A09:2021 - Security Logging and Monitoring Failures",
+	"A10": "A10:2021 - Server-Side Request Forgery",
+}
+
+// OWASPFullCategory returns the full OWASP 2021 name for a check id.
+func OWASPFullCategory(id string) (string, bool) {
+	full, ok := owaspFullNames[strings.ToUpper(strings.TrimSpace(id))]
+	return full, ok
+}
+
+// OWASPCategoryNames returns the ten full OWASP 2021 names in order.
+func OWASPCategoryNames() []string {
+	out := make([]string, 0, len(owaspFullNames))
+	for i := 1; i <= 10; i++ {
+		if full, ok := owaspFullNames[fmt.Sprintf("A%02d", i)]; ok {
+			out = append(out, full)
+		}
+	}
+	return out
+}
+
 var compFrameworkDefs = map[ComplianceFramework][]compControlDef{
 	CompPCI: {
 		{

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -45,8 +46,12 @@ func TestInprocKeygenHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat key file: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("key file mode = %o, want 0600", perm)
+	if runtime.GOOS != "windows" {
+		// POSIX permission bits do not exist on Windows: the mode is
+		// reported as 0666 and only the read-only bit is meaningful.
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("key file mode = %o, want 0600", perm)
+		}
 	}
 
 	// The advertised key must match what's on disk.

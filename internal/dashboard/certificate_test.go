@@ -9,21 +9,34 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
 	"github.com/asadbekabdulboqiyev/stress-strike/internal/certificate"
 )
 
-func resetCertStoreForTest() {
+// resetCertStoreForTest gives the test its own home and an empty certificate
+// store.
+//
+// The home matters. Without it the store points at $STRESS_STRIKE_HOME, or at
+// ~/.stress-strike when that is unset — so running the test suite on a
+// developer machine appended a couple of hundred throwaway certificates for
+// "https://example.com" to the real certificate history, and on a CI runner,
+// where ~/.stress-strike does not exist, every issue returned 500 and the
+// whole suite failed.
+//
+// The store path is only assigned inside a sync.Once that tests cannot reset,
+// so it is assigned here as well.
+func resetCertStoreForTest(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("STRESS_STRIKE_HOME", home)
+
 	certStoreMu.Lock()
 	defer certStoreMu.Unlock()
 	certStore = nil
 	certStoreByID = make(map[string]certificate.Certificate)
 	certStoreHash = nil
 	certStoreErr = nil
-	// Point the store at the current (isolated) home: t.TempDir() dirs are
-	// removed when a test finishes, and the path is only assigned inside the
-	// sync.Once, which tests cannot reset.
-	certStorePath = filepath.Join(authz.ConfigHome(), "certificates.jsonl")
+	certStorePath = filepath.Join(home, "certificates.jsonl")
+	return home
 }
 
 func pentestReportJSON() map[string]any {
@@ -55,7 +68,7 @@ func issueCertificateRequest(t *testing.T, report map[string]any) *httptest.Resp
 }
 
 func TestCertificateIssueMethodNotAllowed(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/certificate/issue", nil)
 	w := httptest.NewRecorder()
 	(&Server{}).handleCertificateIssue(w, req)
@@ -65,7 +78,7 @@ func TestCertificateIssueMethodNotAllowed(t *testing.T) {
 }
 
 func TestCertificateIssueCrossOriginRejected(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	body, _ := json.Marshal(pentestReportJSON())
 	req := httptest.NewRequest(http.MethodPost, "/api/certificate/issue", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -78,7 +91,7 @@ func TestCertificateIssueCrossOriginRejected(t *testing.T) {
 }
 
 func TestCertificateIssueEmptyBodyRejected(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/certificate/issue", nil)
 	w := httptest.NewRecorder()
 	(&Server{}).handleCertificateIssue(w, req)
@@ -88,7 +101,7 @@ func TestCertificateIssueEmptyBodyRejected(t *testing.T) {
 }
 
 func TestCertificateIssueInvalidJSONRejected(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/certificate/issue", strings.NewReader(`not json`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -99,7 +112,7 @@ func TestCertificateIssueInvalidJSONRejected(t *testing.T) {
 }
 
 func TestCertificateIssueReportWithoutTargetRejected(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	w := issueCertificateRequest(t, map[string]any{"risk_score": 5})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("report without target = %d, want 400: %s", w.Code, w.Body.String())
@@ -107,7 +120,7 @@ func TestCertificateIssueReportWithoutTargetRejected(t *testing.T) {
 }
 
 func TestCertificateIssueProducesSignedCertificate(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
 
 	w := issueCertificateRequest(t, pentestReportJSON())
@@ -143,7 +156,7 @@ func TestCertificateIssueProducesSignedCertificate(t *testing.T) {
 }
 
 func TestCertificateDownloadUnknownIDNotFound(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/certificate/download/does-not-exist", nil)
 	w := httptest.NewRecorder()
 	(&Server{}).handleCertificateDownload(w, req)
@@ -153,7 +166,7 @@ func TestCertificateDownloadUnknownIDNotFound(t *testing.T) {
 }
 
 func TestCertificateDownloadFormats(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
@@ -204,7 +217,7 @@ func TestCertificateDownloadFormats(t *testing.T) {
 }
 
 func TestCertificateVerifyRejectsInvalidCertificate(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	body, _ := json.Marshal(pentestReportJSON()) // a report, not a certificate
 	req := httptest.NewRequest(http.MethodPost, "/api/certificate/verify", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -226,7 +239,7 @@ func TestCertificateVerifyRejectsInvalidCertificate(t *testing.T) {
 }
 
 func TestCertificateVerifyAcceptsIssuedCertificate(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
@@ -271,7 +284,7 @@ func TestCertificateVerifyAcceptsIssuedCertificate(t *testing.T) {
 }
 
 func TestCertificateVerifyRejectsTamperedBody(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
@@ -306,7 +319,7 @@ func TestCertificateVerifyRejectsTamperedBody(t *testing.T) {
 }
 
 func TestCertificateHistory(t *testing.T) {
-	resetCertStoreForTest()
+	resetCertStoreForTest(t)
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
 	if w := issueCertificateRequest(t, pentestReportJSON()); w.Code != http.StatusOK {
 		t.Fatalf("issue = %d: %s", w.Code, w.Body.String())

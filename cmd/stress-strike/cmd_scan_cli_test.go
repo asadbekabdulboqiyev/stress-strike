@@ -18,6 +18,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -281,8 +282,12 @@ func TestScannerOutputJSONFileMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("output file not written: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("output file mode = %o, want 600", perm)
+	if runtime.GOOS != "windows" {
+		// POSIX permission bits do not exist on Windows: the mode is
+		// reported as 0666 and only the read-only bit is meaningful.
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("output file mode = %o, want 600", perm)
+		}
 	}
 	if !strings.Contains(res.stdout, "dirbust:") {
 		t.Errorf("human summary missing from stdout: %s", res.stdout)

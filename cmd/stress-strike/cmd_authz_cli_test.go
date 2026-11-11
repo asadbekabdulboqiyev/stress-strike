@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -411,6 +412,9 @@ func TestSavePolicyErrorBranches(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(readOnly, 0o700) })
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores directory permissions")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no POSIX directory permissions — a 0500 directory is still writable")
 	}
 	if err := savePolicy(filepath.Join(readOnly, "authz.json"), authz.DefaultPolicy()); err == nil {
 		t.Error("savePolicy should fail when the directory is read-only")

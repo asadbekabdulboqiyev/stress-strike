@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -250,8 +251,12 @@ func TestEmitScanJSONToFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("output file mode = %o, want 600 (never world-readable)", perm)
+	if runtime.GOOS != "windows" {
+		// POSIX permission bits do not exist on Windows: the mode is
+		// reported as 0666 and only the read-only bit is meaningful.
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("output file mode = %o, want 600 (never world-readable)", perm)
+		}
 	}
 }
 

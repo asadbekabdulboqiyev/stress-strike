@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -54,8 +55,12 @@ func TestOpenMissingStateMintsFreshCode(t *testing.T) {
 		t.Errorf("state file not created: %v", err)
 	}
 	if fi, err := os.Stat(filepath.Join(dir, "admin.json")); err == nil {
-		if fi.Mode().Perm() != 0o600 {
-			t.Errorf("state file mode = %o, want 600", fi.Mode().Perm())
+		if runtime.GOOS != "windows" {
+			// POSIX permission bits do not exist on Windows: the mode is
+			// reported as 0666 and only the read-only bit is meaningful.
+			if fi.Mode().Perm() != 0o600 {
+				t.Errorf("state file mode = %o, want 600", fi.Mode().Perm())
+			}
 		}
 	}
 }

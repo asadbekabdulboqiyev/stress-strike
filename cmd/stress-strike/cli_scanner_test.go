@@ -13,6 +13,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -277,8 +278,12 @@ func TestInprocOutputJSONFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat output file: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("mode = %o, want 600", perm)
+	if runtime.GOOS != "windows" {
+		// POSIX permission bits do not exist on Windows: the mode is
+		// reported as 0666 and only the read-only bit is meaningful.
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("mode = %o, want 600", perm)
+		}
 	}
 	// The audit log went into the throwaway home, not the real one.
 	if entries, err := os.ReadDir(home); err != nil {

@@ -8,7 +8,7 @@
 # Replace both hashes with the values from checksums.txt in the release.
 
 PackageIdentifier: asadbekabdulboqiyev.stress-strike
-PackageVersion: 0.14.10
+PackageVersion: 0.14.11
 DefaultLocale: en-US
 ManifestType: installer
 InstallerType: zip
@@ -16,8 +16,8 @@ License: Apache-2.0
 Publisher: asadbekabdulboqiyev
 Author: stress-strike maintainers
 Homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-ReleaseNotes: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.10
-ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.10
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.11
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.11
 InstallationNotes: |
   Pure Go build: no libpcap, no C runtime, no system dependencies.
 
@@ -40,7 +40,7 @@ InstallerSwitches:
 
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.10/stress-strike_0.14.10_windows_amd64.zip
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.11/stress-strike_0.14.11_windows_amd64.zip
     InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
 
 FileExtensions:

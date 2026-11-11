@@ -22,9 +22,12 @@ before:
 
 # ── Builds: 6 binaries x {linux,darwin,windows} x {amd64,arm64} ──────────────
 # The ldflags target the shared internal/version package, so all six binaries
-# report the same version. The extra -X main.version=... keeps the three mains
-# that still declare their own `var version` (stress-strike, -master, -worker)
-# working during the migration; it is a harmless no-op elsewhere.
+# report the same version. The master and worker also stamp the coordinator's
+# control-plane version, which the ping response advertises.
+#
+# There is no -X main.version any more: no main declares a `var version` any
+# more, so the flag was a no-op that only made the config look busier than it
+# was.
 builds:
   - id: stress-strike
     main: ./cmd/stress-strike
@@ -34,7 +37,6 @@ builds:
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X main.version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
@@ -59,8 +61,8 @@ builds:
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X main.version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator.Version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
 
@@ -72,8 +74,8 @@ builds:
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X main.version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator.Version={{ .Version }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
       - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
 

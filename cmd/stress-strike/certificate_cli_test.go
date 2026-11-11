@@ -63,3 +63,25 @@ func TestCertificateCLIIssueThenVerifyRoundTrip(t *testing.T) {
 		t.Errorf("verify output = %q", res.stdout)
 	}
 }
+
+// An attestation bundle is verifiable evidence, just not a certificate. Pointing
+// the operator at the wrong command is worse than saying nothing, so pin the
+// exact invocation the CLI prints: `verify` requires --bundle.
+func TestCertificateCLIAttestationBundleHint(t *testing.T) {
+	dir := t.TempDir()
+	bundle := filepath.Join(dir, "bundle.json")
+	if err := os.WriteFile(bundle, []byte(`{"format":"vpmp/v1","workers":[],"aggregate":{},"signature":{"alg":"ed25519"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res := runCommandFn(t, cmdCertificate, "certificate", bundle)
+	if res.code != 1 {
+		t.Fatalf("exit = %d, want 1; stdout = %s", res.code, res.stdout)
+	}
+	if !strings.Contains(res.stderr, "attestation bundle") {
+		t.Errorf("stderr should name the file as an attestation bundle: %q", res.stderr)
+	}
+	if want := "verify --bundle " + bundle; !strings.Contains(res.stderr, want) {
+		t.Errorf("stderr should suggest %q; got %q", want, res.stderr)
+	}
+}

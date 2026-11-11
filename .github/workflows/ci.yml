@@ -147,21 +147,25 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      # Each runner writes a coverage profile with its own "mode:" header.
+      # The artifacts are downloaded into separate directories and merged
+      # here on purpose: download-artifact's own merge concatenates files
+      # that share a name, and the result is a profile go tool cover cannot
+      # parse — it reported "cover: line \"mode: atomic\" doesn't match
+      # expected format" and then "couldn't find a before NumStmt" on a
+      # truncated line. Merging by hand keeps exactly one header and gives
+      # every line its own newline.
       - uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
-          merge-multiple: true
+          path: coverage-artifacts
+          merge-multiple: false
 
-      # The three runners each write a coverage profile with its own "mode:"
-      # header, and download-artifact concatenates files that share a name.
-      # go tool cover refuses a profile that carries more than one header
-      # ("cover: line \"mode: atomic\" doesn't match expected format"), so the
-      # extra headers are dropped before the profile is read. The first line
-      # is kept, so the profile still declares its mode.
       - name: Merge the coverage profiles
         run: |
-          awk 'NR == 1 || !/^mode:/' coverage.out > coverage.merged.out
-          mv coverage.merged.out coverage.out
+          set -euo pipefail
+          awk 'FNR == 1 && NR != 1 { next } { print }' \
+            coverage-artifacts/*/coverage.out > coverage.out
           head -1 coverage.out
 
       - name: Report total

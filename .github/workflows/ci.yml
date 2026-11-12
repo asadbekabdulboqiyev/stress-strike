@@ -275,6 +275,61 @@ jobs:
           path: bench.txt
           retention-days: 30
 
+  # ── fuzz: every parser that reads untrusted bytes, on every push ──────────
+  # A security scanner's input is hostile by construction, and the replay tool
+  # parses capture files and TCP streams nobody controls. Table tests sample
+  # those parsers; this job explores them. Each target runs for a bounded time
+  # so the job stays inside the budget; go-archives the corpus across runs, so
+  # coverage keeps growing instead of restarting from the seed set.
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: FuzzParseHTTPStream
+            package: ./internal/replay/
+          - target: FuzzParseHARBytes
+            package: ./internal/replay/
+          - target: FuzzAnalyzeJWT
+            package: ./internal/scanner/
+          - target: FuzzPassiveParseSetCookie
+            package: ./internal/scanner/
+          - target: FuzzPassiveParseCSP
+            package: ./internal/scanner/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      # Restore the corpus this target accumulated on earlier runs. Without it
+      # every run re-discovers the same inputs and the 30s budget is wasted.
+      - name: Restore corpus
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/go-fuzz/${{ matrix.target }}
+          key: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            fuzz-${{ matrix.target }}-
+
+      - name: Fuzz ${{ matrix.target }}
+        run: |
+          go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 45s ${{ matrix.package }}
+
+      - name: Upload crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: '**/testdata/fuzz/${{ matrix.target }}/'
+          retention-days: 30
+
   # ── docker: all three images, both architectures, build-only on PRs ────────
   # The previous workflow only built Dockerfile (the all-in-one) — the master
   # and worker images shipped completely untested.

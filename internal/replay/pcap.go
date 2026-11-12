@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -241,7 +242,25 @@ type tcpReplayStream struct {
 }
 
 func (s *tcpReplayStream) process() {
-	r := bufio.NewReader(&s.reader)
+	parseHTTPStream(&s.reader, func(pkt *Packet) bool {
+		pkt.Timestamp = time.Now()
+		pkt.SrcIP = net.ParseIP(s.net.Src().String())
+		pkt.DstIP = net.ParseIP(s.net.Dst().String())
+		s.parser.capture.AddPacket(pkt)
+		return true
+	})
+}
+
+// parseHTTPStream extracts every HTTP request from a reassembled TCP byte
+// stream.
+//
+// The bytes come from a capture file, which is untrusted input: a malformed or
+// deliberately hostile stream must terminate the loop, never panic, and never
+// allocate more than maxStreamBodyBytes per request. Keeping it free of the
+// parser and the gopacket flows makes that contract directly fuzzable — see
+// FuzzParseHTTPStream.
+func parseHTTPStream(src io.Reader, emit func(*Packet) bool) {
+	r := bufio.NewReader(src)
 	for {
 		req, err := http.ReadRequest(r)
 		if err != nil {
@@ -258,19 +277,22 @@ func (s *tcpReplayStream) process() {
 		}
 		req.Body.Close()
 
+		url := ""
+		if req.URL != nil {
+			url = req.URL.String()
+		}
 		pkt := &Packet{
-			Timestamp: time.Now(),
-			SrcIP:     net.ParseIP(s.net.Src().String()),
-			DstIP:     net.ParseIP(s.net.Dst().String()),
 			Protocol:  "http",
 			Method:    req.Method,
-			URL:       req.URL.String(),
+			URL:       url,
 			Headers:   req.Header,
 			Body:      body,
 			IsRequest: true,
 		}
-		s.parser.capture.AddPacket(pkt)
 		pcapHTTPRequests.Add(1)
+		if !emit(pkt) {
+			return
+		}
 	}
 }
 
@@ -287,6 +309,16 @@ func ParseHAR(path string) (*Capture, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read har: %w", err)
 	}
+	return ParseHARBytes(data, path)
+}
+
+// ParseHARBytes parses a HAR document already in memory.
+//
+// The document comes from a browser export, which is untrusted: it is decoded
+// with a size cap and must never panic on a malformed shape. Splitting the
+// decode from the file read is what makes that contract fuzzable — see
+// FuzzParseHARBytes.
+func ParseHARBytes(data []byte, source string) (*Capture, error) {
 	if len(data) > maxCaptureFileBytes {
 		return nil, fmt.Errorf("har file exceeds %d MiB limit", maxCaptureFileBytes>>20)
 	}
@@ -297,13 +329,27 @@ func ParseHAR(path string) (*Capture, error) {
 	}
 
 	capture := &Capture{
-		Source:   path,
+		Source:   source,
 		Format:   FormatHAR,
 		Packets:  make([]*Packet, 0, len(har.Log.Entries)),
 		Metadata: make(map[string]string),
 	}
+	// Entries that cannot become a replayable request are counted, not
+	// silently dropped: a HAR export whose request list is malformed should
+	// tell the operator how much of it was unusable.
+	skipped := 0
+	defer func() {
+		if skipped > 0 {
+			capture.Metadata["skipped_entries"] = fmt.Sprintf("%d", skipped)
+		}
+	}()
 
 	for _, entry := range har.Log.Entries {
+		if strings.TrimSpace(entry.Request.URL) == "" || strings.TrimSpace(entry.Request.Method) == "" {
+			skipped++
+			continue
+		}
+
 		ts, err := time.Parse(time.RFC3339Nano, entry.StartedDateTime)
 		if err != nil {
 			ts = time.Now()

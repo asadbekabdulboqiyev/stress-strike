@@ -1,10 +1,12 @@
 package dashboard
 
 import (
-	_ "embed"
+	"bytes"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -27,8 +29,41 @@ var dashboardHTML []byte
 //go:embed style.css
 var dashboardCSS []byte
 
-//go:embed app.js
-var dashboardJS []byte
+// The dashboard script is split into one file per feature under assets/ and
+// concatenated at start-up, in name order, into the single /app.js the page
+// requests. Splitting the source keeps each file reviewable — the previous
+// single app.js had grown past 3,400 lines and every change meant re-reading
+// it — while the browser still makes one request and the boot order stays
+// exactly what the numeric prefixes say it is.
+//
+//go:embed assets/*.js
+var dashboardAssets embed.FS
+
+// dashboardJS is the concatenated bundle, built once at start-up.
+var dashboardJS = bundleDashboardJS()
+
+func bundleDashboardJS() []byte {
+	paths, err := fs.Glob(dashboardAssets, "assets/*.js")
+	if err != nil {
+		panic("dashboard assets: " + err.Error())
+	}
+	if len(paths) == 0 {
+		panic("dashboard assets: no .js files embedded")
+	}
+
+	var buf bytes.Buffer
+	for _, p := range paths {
+		part, err := dashboardAssets.ReadFile(p)
+		if err != nil {
+			panic("dashboard asset " + p + ": " + err.Error())
+		}
+		buf.Write(part)
+		if len(part) > 0 && part[len(part)-1] != '\n' {
+			buf.WriteByte('\n')
+		}
+	}
+	return buf.Bytes()
+}
 
 // --- Limits -----------------------------------------------------------------
 //

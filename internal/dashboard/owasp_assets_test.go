@@ -22,7 +22,9 @@ import (
 //     untrusted. Writing it with innerHTML would turn a hostile `Server:` header
 //     into live markup. The panel writes text with textContent throughout.
 func TestOWASPAssets(t *testing.T) {
-	js := readDashboardAsset(t, "app.js")
+	// The script is served as one bundle assembled from assets/*.js, so the
+	// text to scan is the bundle, not a file on disk.
+	js := string(dashboardJS)
 	html := readDashboardAsset(t, "index.html")
 	block := owaspJSBlock(t, js)
 

@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -61,16 +60,30 @@ func NewRunner() *Runner {
 	}
 }
 
-// Run loads url in a headless browser and returns performance timings. The
-// context must be cancellable; Run respects ctx.Done().
-func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
-	u, err := url.Parse(urlStr)
+// normalizeURL parses a target URL and supplies the default scheme.
+//
+// A bare host ("example.com") is what an operator types, and there is no
+// browser load test without a scheme, so https is assumed — the same default
+// the scanner uses. Everything else is left alone: this function must not
+// rewrite a URL a target expects byte for byte.
+func normalizeURL(raw string) (string, error) {
+	u, err := url.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("invalid url: %w", err)
+		return "", fmt.Errorf("invalid url: %w", err)
 	}
 	if u.Scheme == "" {
 		u.Scheme = "https"
-		urlStr = u.String()
+		return u.String(), nil
+	}
+	return raw, nil
+}
+
+// Run loads url in a headless browser and returns performance timings. The
+// context must be cancellable; Run respects ctx.Done().
+func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
+	urlStr, err := normalizeURL(urlStr)
+	if err != nil {
+		return nil, err
 	}
 
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), r.opts...)
@@ -85,34 +98,9 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 
 	result := &RunResult{URL: urlStr}
 
-	// Listen runs on the CDP event goroutine, so the slice needs its own lock;
-	// snapshot() copies it before the caller sees it.
-	var jsMu sync.Mutex
-	var jsErrors []string
-	snapshot := func() []string {
-		jsMu.Lock()
-		defer jsMu.Unlock()
-		if len(jsErrors) == 0 {
-			return nil
-		}
-		return append([]string(nil), jsErrors...)
-	}
-	_ = chromedp.Listen(ctx, func(ev interface{}) {
-		switch ev := ev.(type) {
-		case *runtime.EventConsoleAPICalled:
-			if ev.Type == "error" {
-				jsMu.Lock()
-				for _, a := range ev.Args {
-					jsErrors = append(jsErrors, string(a.Value))
-				}
-				jsMu.Unlock()
-			}
-		case *runtime.EventExceptionThrown:
-			jsMu.Lock()
-			jsErrors = append(jsErrors, fmt.Sprintf("exception: %v", ev.ExceptionDetails.Text))
-			jsMu.Unlock()
-		}
-	})
+	var js jsErrorLog
+	_ = chromedp.Listen(ctx, js.handle)
+	snapshot := js.snapshot
 
 	// Navigate first (void action)
 	if err := chromedp.Do(ctx, chromedp.Navigate(urlStr)); err != nil {
@@ -165,19 +153,33 @@ func (r *Runner) Run(ctx context.Context, urlStr string) (*RunResult, error) {
 // in completion order. Use this for light browser load testing (e.g. 5-20
 // concurrent tabs); for larger loads, use the HTTP engine instead.
 func (r *Runner) RunConcurrent(ctx context.Context, url string, n int) ([]*RunResult, error) {
-	results := make([]*RunResult, n)
-	errCh := make(chan error, n)
+	if n < 0 {
+		return nil, fmt.Errorf("concurrent browser runs: n = %d, want >= 0", n)
+	}
+	if n == 0 {
+		return []*RunResult{}, nil
+	}
 
+	results := make([]*RunResult, n)
+	errs := make([]error, n)
+
+	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
+		wg.Add(1)
 		go func(i int) {
-			res, err := r.Run(ctx, url)
-			results[i] = res
-			errCh <- err
+			defer wg.Done()
+			results[i], errs[i] = r.Run(ctx, url)
 		}(i)
 	}
 
-	for i := 0; i < n; i++ {
-		if err := <-errCh; err != nil {
+	// Wait for every tab to finish before handing the slice back. The previous
+	// version returned on the first error, which let the remaining goroutines
+	// keep writing into the slice the caller already owned — a data race that
+	// only appeared when one tab failed while others were still loading.
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
 			return results, err
 		}
 	}

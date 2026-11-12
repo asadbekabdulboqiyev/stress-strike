@@ -305,3 +305,46 @@ func TestProcessPacketSkipsNonTCP(t *testing.T) {
 		t.Errorf("UDP frame counted as TCP: stats=%+v", p.stats)
 	}
 }
+
+// TestParseFileStatsArePerCapture is the regression test for a process-wide
+// metric leak: http_requests and errors came from package-level atomics that
+// incremented on every parse, so in a long-lived process (the dashboard) the
+// second capture reported the first one's requests as well. A one-request file
+// claimed two, then three, and so on.
+func TestParseFileStatsArePerCapture(t *testing.T) {
+	client := net.IP{10, 1, 2, 3}
+	server := net.IP{10, 9, 8, 7}
+	frames := httpExchangeFrames(client, server, 12345, 80,
+		"GET /hello HTTP/1.1\r\nHost: example.test\r\n\r\n")
+
+	first := filepath.Join(t.TempDir(), "first.pcap")
+	writePcap(t, first, frames)
+	second := filepath.Join(t.TempDir(), "second.pcap")
+	writePcap(t, second, frames)
+
+	// Two captures, two fresh parsers: each reports its own one request.
+	for i, path := range []string{first, second} {
+		cap, err := NewPCAPParser(nil).ParseFile(path)
+		if err != nil {
+			t.Fatalf("ParseFile(%s): %v", path, err)
+		}
+		if got := cap.Metadata["http_requests"]; got != "1" {
+			t.Errorf("capture %d: http_requests = %q, want 1 (the counts must not accumulate)", i+1, got)
+		}
+		if got := cap.Metadata["total_packets"]; got != "5" {
+			t.Errorf("capture %d: total_packets = %q, want 5", i+1, got)
+		}
+	}
+
+	// The same parser reused must also describe the second file on its own.
+	p := NewPCAPParser(nil)
+	for i := 0; i < 2; i++ {
+		cap, err := p.ParseFile(first)
+		if err != nil {
+			t.Fatalf("ParseFile round %d: %v", i+1, err)
+		}
+		if got := cap.Metadata["http_requests"]; got != "1" {
+			t.Errorf("round %d with a reused parser: http_requests = %q, want 1", i+1, got)
+		}
+	}
+}

@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -41,6 +40,10 @@ type PCAPParser struct {
 	asm     *tcpassembly.Assembler
 	statsMu sync.Mutex
 	stats   PCAPStats
+
+	// streams counts the per-flow HTTP parsing goroutines so ParseFile can wait
+	// for all of them before it publishes the stats it read them from.
+	streams sync.WaitGroup
 }
 
 type PCAPStats struct {
@@ -52,26 +55,34 @@ type PCAPStats struct {
 	Errors        int
 }
 
-// atomics for concurrent stats updates
-var (
-	pcapHTTPRequests atomic.Int64
-	pcapErrors       atomic.Int64
-)
-
 func NewPCAPParser(keys []*TLSKey) *PCAPParser {
-	p := &PCAPParser{
-		capture: &Capture{
-			Format:   FormatPCAP,
-			Sessions: make(map[string]*TLSSession),
-			Packets:  make([]*Packet, 0, 10000),
-			Metadata: make(map[string]string),
-		},
-		tlsKeys: keys,
+	p := &PCAPParser{tlsKeys: keys}
+	p.resetForCapture("")
+	return p
+}
+
+// resetForCapture returns the parser to the state it had when it was created,
+// so ParseFile can be called more than once.
+//
+// Without this, a reused parser silently merged captures: the second file's
+// packets were appended to the first file's, and its stats were added on top.
+// A caller that parses two files with one parser got one capture containing
+// both, described by numbers that belong to neither.
+func (p *PCAPParser) resetForCapture(source string) {
+	p.capture = &Capture{
+		Source:   source,
+		Format:   FormatPCAP,
+		Sessions: make(map[string]*TLSSession),
+		Packets:  make([]*Packet, 0, 10000),
+		Metadata: make(map[string]string),
 	}
+	p.statsMu.Lock()
+	p.stats = PCAPStats{}
+	p.statsMu.Unlock()
+
 	p.factory = &tcpStreamFactory{parser: p}
 	p.pool = tcpassembly.NewStreamPool(p.factory)
 	p.asm = tcpassembly.NewAssembler(p.pool)
-	return p
 }
 
 // captureFormat identifies the on-disk capture container format.
@@ -123,11 +134,17 @@ func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
 	}
 	defer f.Close()
 
-	p.capture.Source = path
+	p.resetForCapture(path)
 
 	// Detect the container format and build the matching pure-Go reader.
 	kind, err := sniffCaptureFormat(f)
 	if err != nil {
+		return nil, err
+	}
+
+	// gopacket allocates from sizes the capture file declares, so the
+	// declaration is checked before gopacket acts on it. See captureguard.go.
+	if err := validateCaptureDeclarations(f, kind); err != nil {
 		return nil, err
 	}
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
@@ -155,12 +172,20 @@ func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
 	p.readAllPackets(src)
 	p.asm.FlushAll()
 
+	// FlushAll closes the streams, but each one is drained by its own
+	// goroutine. Wait for them before reading the counters they contribute to.
+	p.streams.Wait()
+
+	// Every number here describes *this* capture. They used to come from
+	// process-global atomics that incremented on every parse, so the second
+	// capture a long-lived process read reported the first one's requests too;
+	// a one-request file could claim 57. The counters live on the parser now.
 	p.capture.Metadata = map[string]string{
 		"total_packets":  fmt.Sprintf("%d", p.stats.TotalPackets),
-		"http_requests":  fmt.Sprintf("%d", pcapHTTPRequests.Load()),
+		"http_requests":  fmt.Sprintf("%d", p.stats.HTTPRequests),
 		"http2_requests": fmt.Sprintf("%d", p.stats.HTTP2Requests),
 		"decrypted_tls":  fmt.Sprintf("%d", p.stats.DecryptedTLS),
-		"errors":         fmt.Sprintf("%d", pcapErrors.Load()),
+		"errors":         fmt.Sprintf("%d", p.stats.Errors),
 	}
 
 	return p.capture, nil
@@ -170,18 +195,45 @@ func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
 // gopacket.Packet and feeding TCP packets to the stream assembler.
 func (p *PCAPParser) readAllPackets(src pcapPacketSource) {
 	linkType := src.LinkType()
+
+	// A single corrupt frame must not abort the whole capture, so every error
+	// other than a clean EOF is counted and the loop continues.
+	//
+	// io.ErrUnexpectedEOF is an *error*, not an end: it means the file stopped
+	// in the middle of a record, so that frame was lost and the operator should
+	// see it in stats.Errors. Only io.EOF is the clean end.
+	//
+	// The counters below exist because "continue on error" has no progress
+	// guarantee: a source that returns the same error forever (a sticky gzip
+	// error, a negative declared length that never advances) would spin
+	// indefinitely. Three identical consecutive errors with no packet read in
+	// between is treated as a stuck reader and the loop stops.
+	const maxRepeatedErrors = 3
+	var lastErr string
+	repeated := 0
+
 	for {
 		data, ci, err := src.ReadPacketData()
 		if err == io.EOF {
 			return
 		}
 		if err != nil {
-			// A single corrupt frame must not abort the whole capture.
-			p.stats.Errors++
-			pcapErrors.Add(1)
+			p.addStats(func(s *PCAPStats) { s.Errors++ })
+
+			if msg := err.Error(); msg == lastErr {
+				repeated++
+			} else {
+				lastErr, repeated = msg, 1
+			}
+			if repeated >= maxRepeatedErrors {
+				return
+			}
 			continue
 		}
-		p.stats.TotalPackets++
+
+		lastErr = ""
+		repeated = 0
+		p.addStats(func(s *PCAPStats) { s.TotalPackets++ })
 		p.processPacketData(data, linkType, ci.Timestamp)
 	}
 }
@@ -197,6 +249,18 @@ func (p *PCAPParser) processPacketData(data []byte, linkType layers.LinkType, ts
 	p.processPacket(packet)
 }
 
+// addStats applies one mutation to the parser's counters under the lock.
+//
+// The counters are written from two places that run concurrently: the packet
+// loop on this goroutine, and one HTTP-stream goroutine per TCP flow. Reading
+// or writing them without the lock is a data race that -race catches on any
+// capture with more than one flow.
+func (p *PCAPParser) addStats(apply func(*PCAPStats)) {
+	p.statsMu.Lock()
+	apply(&p.stats)
+	p.statsMu.Unlock()
+}
+
 func (p *PCAPParser) processPacket(packet gopacket.Packet) {
 	netLayer := packet.NetworkLayer()
 	if netLayer == nil {
@@ -207,7 +271,7 @@ func (p *PCAPParser) processPacket(packet gopacket.Packet) {
 		return
 	}
 	tcp := tcpLayer.(*layers.TCP)
-	p.stats.TCPPackets++
+	p.addStats(func(s *PCAPStats) { s.TCPPackets++ })
 
 	p.asm.AssembleWithTimestamp(
 		netLayer.NetworkFlow(),
@@ -230,6 +294,7 @@ func (f *tcpStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream 
 		transport: transport,
 		reader:    reader,
 	}
+	f.parser.streams.Add(1)
 	go stream.process()
 	return &reader
 }
@@ -242,12 +307,19 @@ type tcpReplayStream struct {
 }
 
 func (s *tcpReplayStream) process() {
-	parseHTTPStream(&s.reader, func(pkt *Packet) bool {
+	defer s.parser.streams.Done()
+
+	stats := parseHTTPStream(&s.reader, func(pkt *Packet) bool {
 		pkt.Timestamp = time.Now()
 		pkt.SrcIP = net.ParseIP(s.net.Src().String())
 		pkt.DstIP = net.ParseIP(s.net.Dst().String())
 		s.parser.capture.AddPacket(pkt)
 		return true
+	})
+
+	s.parser.addStats(func(st *PCAPStats) {
+		st.HTTPRequests += stats.Requests
+		st.Errors += stats.Errors
 	})
 }
 
@@ -259,15 +331,20 @@ func (s *tcpReplayStream) process() {
 // allocate more than maxStreamBodyBytes per request. Keeping it free of the
 // parser and the gopacket flows makes that contract directly fuzzable — see
 // FuzzParseHTTPStream.
-func parseHTTPStream(src io.Reader, emit func(*Packet) bool) {
+//
+// It is free of shared state on purpose: what it saw is returned, not added to
+// a package-level counter, so two captures parsed by one process cannot report
+// each other's numbers.
+func parseHTTPStream(src io.Reader, emit func(*Packet) bool) streamParseStats {
+	var stats streamParseStats
 	r := bufio.NewReader(src)
 	for {
 		req, err := http.ReadRequest(r)
 		if err != nil {
 			if err != io.EOF {
-				pcapErrors.Add(1)
+				stats.Errors++
 			}
-			return
+			return stats
 		}
 		body, _ := io.ReadAll(io.LimitReader(req.Body, maxStreamBodyBytes))
 		if len(body) == int(maxStreamBodyBytes) {
@@ -289,11 +366,18 @@ func parseHTTPStream(src io.Reader, emit func(*Packet) bool) {
 			Body:      body,
 			IsRequest: true,
 		}
-		pcapHTTPRequests.Add(1)
+		stats.Requests++
 		if !emit(pkt) {
-			return
+			return stats
 		}
 	}
+}
+
+// streamParseStats is what one HTTP stream yielded: requests emitted and reads
+// that failed for a reason other than a clean EOF.
+type streamParseStats struct {
+	Requests int
+	Errors   int
 }
 
 // --- HAR Parser -------------------------------------------------------------

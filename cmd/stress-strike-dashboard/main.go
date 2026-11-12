@@ -42,6 +42,8 @@ func main() {
 	flag.CommandLine.SetOutput(io.Discard)
 
 	listen := flag.String("listen", "127.0.0.1:8888", "Dashboard listen address")
+	var allowedHosts flagStrings
+	flag.Var(&allowedHosts, "allowed-host", "Extra Host header name this dashboard answers to, on top of loopback names (repeatable; needed behind a reverse proxy that forwards its own Host)")
 	var (
 		authTokens  flagStrings
 		authAPIKeys flagStrings
@@ -100,6 +102,12 @@ Examples:
 	})
 
 	srv := dashboard.NewServer()
+	// DNS-rebinding defence: on a loopback bind the Host header must name
+	// loopback, so a page on evil.com (resolved to 127.0.0.1) cannot drive the
+	// control API. See internal/dashboard/hostgate.go.
+	if len(allowedHosts) > 0 {
+		srv.SetAllowedHosts(allowedHosts...)
+	}
 	srv.SetVersion(buildVersion)
 	bridge := dashboard.NewEngineBridge(srv)
 

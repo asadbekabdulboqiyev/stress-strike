@@ -194,6 +194,11 @@ type Server struct {
 	// owaspSem serializes security scans: one at a time, so a second click
 	// gets a 409 instead of a second set of probes racing the first.
 	owaspSem chan struct{}
+
+	// allowedHosts holds extra Host header names accepted on top of the
+	// loopback names. It is guarded by mu and only read by hostAllowed
+	// (see hostgate.go).
+	allowedHosts map[string]struct{}
 }
 
 func NewServer() *Server {
@@ -205,13 +210,14 @@ func NewServer() *Server {
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 		},
-		clients:  make(map[*websocket.Conn]bool),
-		wsSem:    make(chan struct{}, maxWSConnections),
-		owaspSem: make(chan struct{}, 1),
-		snapshot: &LiveSnapshot{StatusCodes: make(map[int]uint64)},
-		runState: &RunState{Status: "idle"},
-		history:  make([]HistoryEntry, 0),
-		version:  "dev",
+		clients:      make(map[*websocket.Conn]bool),
+		wsSem:        make(chan struct{}, maxWSConnections),
+		owaspSem:     make(chan struct{}, 1),
+		allowedHosts: make(map[string]struct{}),
+		snapshot:     &LiveSnapshot{StatusCodes: make(map[int]uint64)},
+		runState:     &RunState{Status: "idle"},
+		history:      make([]HistoryEntry, 0),
+		version:      "dev",
 		// The dashboard always launches the store with VeriGate protection
 		// ON: the whole point is to demo the WAF. Visitors can still flip it
 		// OFF from the store's own /admin control plane.
@@ -380,6 +386,18 @@ func (s *Server) AddHistoryEntry(entry HistoryEntry) {
 // --- HTTP Handlers ----------------------------------------------------------
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// The rebinding gate runs before anything else, including the operations
+	// endpoints: a browser tricked into addressing this dashboard as
+	// "evil.com:8888" must not reach any handler. It keys on the connection's
+	// local address, so it is a no-op for network-exposed binds where the auth
+	// middleware is the control. See hostgate.go.
+	if !s.hostAllowed(r) {
+		// 421 Misdirected Request: the request reached a server that is not
+		// configured for the name it asked for.
+		w.WriteHeader(http.StatusMisdirectedRequest)
+		return
+	}
+
 	securityHeaders(w, r)
 
 	// Operations endpoints are never behind auth: a locked-down dashboard must

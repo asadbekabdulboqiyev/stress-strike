@@ -91,7 +91,7 @@ func main() {
 
 	if *workerID == "" {
 		hostname, _ := os.Hostname()
-		*workerID = fmt.Sprintf("%s-%d", hostname, os.Getpid())
+		*workerID = defaultWorkerID(hostname, os.Getpid())
 	}
 
 	lis, err := net.Listen("tcp", *listenAddr)
@@ -158,27 +158,9 @@ func main() {
 	}()
 
 	// Operations endpoints (/healthz /readyz /metrics) for orchestrators.
-	var opsSrv *opsserver.Server
-	if *httpAddr != "" {
-		checker := health.NewChecker()
-		checker.Register("grpc-serving", func(context.Context) error {
-			if !serving.Load() {
-				return errors.New("gRPC server not serving yet")
-			}
-			return nil
-		})
-		ops := prom.NewMetrics()
-		opsSrv = opsserver.New(opsserver.Options{
-			Addr:      *httpAddr,
-			Readiness: checker,
-			Metrics:   ops.Handler(),
-		})
-		if err := opsSrv.Start(); err != nil {
-			log.Printf("WARNING: ops server on %s disabled: %v", *httpAddr, err)
-			opsSrv = nil
-		} else {
-			log.Printf("Worker ops server listening on %s (/healthz /readyz /metrics)", opsSrv.Addr())
-		}
+	opsSrv := startOpsServer(*httpAddr, &serving)
+	if opsSrv != nil {
+		log.Printf("Worker ops server listening on %s (/healthz /readyz /metrics)", opsSrv.Addr())
 	}
 	defer func() {
 		if opsSrv != nil {
@@ -223,6 +205,49 @@ func resolveAdvertise(explicit string, lis net.Listener) string {
 		}
 	}
 	return net.JoinHostPort(host, fmt.Sprintf("%d", tcp.Port))
+}
+
+// defaultWorkerID builds the ID used when -id is not given. Hostname and PID
+// are enough to tell workers apart in a fleet's registration table, and stable
+// across a restart of the same container only by accident — which is the point:
+// a restarted worker should not inherit a stale registration.
+func defaultWorkerID(hostname string, pid int) string {
+	if hostname == "" {
+		hostname = "worker"
+	}
+	return fmt.Sprintf("%s-%d", hostname, pid)
+}
+
+// startOpsServer brings up /healthz, /readyz and /metrics for the orchestrator.
+//
+// A failure to bind is a warning, not a fatal error: the worker's real job is
+// the gRPC data plane, and refusing to start because the metrics port is taken
+// would take a healthy worker out of the fleet. The returned server is nil in
+// that case, and the caller simply skips the shutdown.
+func startOpsServer(addr string, serving *atomic.Bool) *opsserver.Server {
+	if addr == "" {
+		return nil
+	}
+
+	checker := health.NewChecker()
+	checker.Register("grpc-serving", func(context.Context) error {
+		if serving == nil || !serving.Load() {
+			return errors.New("gRPC server not serving yet")
+		}
+		return nil
+	})
+
+	ops := prom.NewMetrics()
+	srv := opsserver.New(opsserver.Options{
+		Addr:      addr,
+		Readiness: checker,
+		Metrics:   ops.Handler(),
+	})
+	if err := srv.Start(); err != nil {
+		log.Printf("WARNING: ops server on %s disabled: %v", addr, err)
+		return nil
+	}
+	return srv
 }
 
 // Registration retry policy. The worker re-registers every regSteadyInterval

@@ -5,7 +5,7 @@
 #
 # Usage:
 #   ./scripts/install-local.sh                 # install into $(go env GOBIN)
-#   ./scripts/install-local.sh 0.14.11         # pin the version string
+#   ./scripts/install-local.sh 0.14.12         # pin the version string
 #   STRESS_STRIKE_INSTALL_DIR=~/.local/bin ./scripts/install-local.sh
 #
 # Why the signing step exists

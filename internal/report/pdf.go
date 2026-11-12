@@ -86,8 +86,14 @@ func severityTextColor(sev string) string {
 	return "#ffffff"
 }
 
+// gradeColor maps a grade to its band colour.
+//
+// The "+" is stripped for the lookup: C+ is the upper half of the C band, and
+// it must not fall through to the neutral default just because its letter is
+// two characters. Stripping it here is why the CLI used to strip it from the
+// report itself, silently turning a C+ into a C in the client-facing PDF.
 func gradeColor(grade string) string {
-	switch strings.ToUpper(grade) {
+	switch strings.ToUpper(strings.TrimSuffix(strings.TrimSpace(grade), "+")) {
 	case "A":
 		return "#28a745"
 	case "B":

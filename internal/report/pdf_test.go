@@ -479,3 +479,21 @@ func TestPentestSaveReportPDFAlias(t *testing.T) {
 		t.Error("pdf output missing EOF terminator marker")
 	}
 }
+
+// TestGradeColorHandlesAPlusBand: C+ is a real grade from the shared ladder,
+// and it must render in the C band's colour. The first version fell through to
+// the neutral default, and the CLI worked around it by deleting the "+" from
+// the report — so a client-facing PDF said "C" for a score of 75.
+func TestGradeColorHandlesAPlusBand(t *testing.T) {
+	if got, want := gradeColor("C+"), gradeColor("C"); got != want {
+		t.Errorf("gradeColor(C+) = %q, want the C band colour %q", got, want)
+	}
+	for _, g := range []string{"A", "B", "C", "D", "F"} {
+		if gradeColor(g) == gradeColor("?") {
+			t.Errorf("gradeColor(%q) fell through to the neutral default", g)
+		}
+	}
+	if got, want := gradeColor("c+"), gradeColor("C"); got != want {
+		t.Errorf("gradeColor is case-sensitive: %q != %q", got, want)
+	}
+}

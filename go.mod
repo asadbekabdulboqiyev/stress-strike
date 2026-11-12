@@ -1,6 +1,12 @@
 module github.com/asadbekabdulboqiyev/stress-strike
 
-go 1.26.0
+// Patch-pinned on purpose. A `go 1.26` or `go 1.26.0` directive lets any
+// 1.26.x toolchain build this module, including 1.26.10, which carries
+// GO-2026-6859 (net/http: MaxBytesReader header race reachable by a remote
+// peer). CI already pins the same version; pinning it here makes the local
+// build use it too, so `go build` on a developer machine cannot silently
+// produce a binary with a known reachable advisory.
+go 1.26.11
 
 require (
 	github.com/chromedp/cdproto v0.159.0

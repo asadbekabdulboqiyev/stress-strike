@@ -51,7 +51,7 @@ func New() (*Browser, error) {
 	// the allocated browser in the context it is given, and passing the timeout
 	// context made every call fail with "invalid context" — which is how this
 	// package silently became unusable.
-	timeoutCtx, cancelTimeout := context.WithTimeout(context.Background(), 15*time.Second)
+	timeoutCtx, cancelTimeout := context.WithTimeout(context.Background(), probeTimeout())
 	defer cancelTimeout()
 
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(timeoutCtx, opts...)
@@ -65,6 +65,14 @@ func New() (*Browser, error) {
 	}
 	return b, nil
 }
+
+// probeTimeout is how long New() waits for the browser to come up.
+//
+// It is a variable so a slow or loaded machine can extend it: browser launch on
+// a shared CI runner under the race detector has been observed to exceed the
+// default, and a first launch with a cold disk cache is slower still. The
+// default is what an interactive machine needs.
+var probeTimeout = func() time.Duration { return 30 * time.Second }
 
 // ctx creates a browser context (separate for each request).
 //

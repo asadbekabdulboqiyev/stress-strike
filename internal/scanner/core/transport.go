@@ -93,10 +93,59 @@ func ApplyHeaders(req *http.Request, profile fingerprint.Profile) {
 	}
 }
 
-// SameHost reports whether two URLs identify the same host, ignoring scheme,
-// port and path. It is the shared host-identity primitive used by the crawl and
+// SameHost reports whether two URLs identify the same host for scope
+// purposes. It is the shared host-identity primitive used by the crawl and
 // passive-check code paths so both agree on what "same host" means without
 // duplicating the comparison at every call site.
+//
+// The contract, made explicit because the previous implementation compared
+// Host (which carries the port) while the comment claimed it ignored it:
+//
+//   - host names compare case-insensitively;
+//   - two explicit different ports are different services and never match —
+//     this is what keeps a crawler on 127.0.0.1:8080 from wandering to
+//     127.0.0.1:9090;
+//   - an absent port matches an absent port, and also matches the scheme's
+//     default (80/443): https://example.com and https://example.com:443 are
+//     the same site, and a plain link must not be classified offsite because a
+//     server wrote the default port into it;
+//   - an absent port never matches a non-default explicit port;
+//   - scheme is not compared directly, so http://example.com and
+//     https://example.com are the same host and an http→https redirect stays
+//     in scope;
+//   - a nil URL or one with no host is never the same host as anything.
 func SameHost(a, b *url.URL) bool {
-	return strings.EqualFold(a.Host, b.Host)
+	if a == nil || b == nil {
+		return false
+	}
+	ha, hb := a.Hostname(), b.Hostname()
+	if ha == "" || hb == "" {
+		return false
+	}
+	if !strings.EqualFold(ha, hb) {
+		return false
+	}
+	return portsCompatible(a.Port(), b.Port())
+}
+
+// portsCompatible implements the port half of SameHost's contract.
+func portsCompatible(pa, pb string) bool {
+	switch {
+	case pa == "" && pb == "":
+		return true
+	case pa == "":
+		return isDefaultPort(pb)
+	case pb == "":
+		return isDefaultPort(pa)
+	default:
+		return pa == pb
+	}
+}
+
+// isDefaultPort reports whether p is a scheme default port. Scheme is not
+// consulted on purpose: a URL that omits its port is assumed to be its
+// scheme's default, and both defaults are accepted so an http↔https pair
+// compares equal.
+func isDefaultPort(p string) bool {
+	return p == "80" || p == "443"
 }

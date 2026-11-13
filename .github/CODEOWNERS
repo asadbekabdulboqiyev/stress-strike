@@ -1,37 +1,34 @@
 # CODEOWNERS
+#
+# This file maps repository paths to default reviewers/owners for pull requests.
+# GitHub uses it to request reviews automatically. It does not by itself enforce
+# merge policy or replace branch protection/review requirements.
 
-Bu fayl **har bir gaariga** tegishli maslahatchiga biriktirish qo'llanadi.
-
-```
-# Defaults
+# Default owner
 * @asadbekabdulboqiyev
 
-# Engine + attest (kriptografik qatlam)
+# Engine + attestation (cryptographic and integrity-critical paths)
 /internal/engine/    @asadbekabdulboqiyev
-/internal/attest/     @asadbekabdulboqiyev
-/internal/honesty/    @asadbekabdulboqiyev
+/internal/attest/    @asadbekabdulboqiyev
+/internal/honesty/   @asadbekabdulboqiyev
 
 # Scanner
-/internal/scanner/    @asadbekabdulboqiyev
+/internal/scanner/   @asadbekabdulboqiyev
 
 # Dashboard / control plane
-/internal/dashboard/  @asadbekabdulboqiyev
+/internal/dashboard/ @asadbekabdulboqiyev
 
 # Distributed mode
-/internal/dist/        @asadbekabdulboqiyev
+/internal/dist/      @asadbekabdulboqiyev
 
-# Security
-/internal/authz/       @asadbekabdulboqiyev
+# Security / authorization
+/internal/authz/     @asadbekabdulboqiyev
 
-# Ops / release
-/.github/              @asadbekabdulboqiyev
-/deploy/               @asadbekabdulboqiyev
-Dockerfile*           @asadbekabdulboqiyev
-.goreleaser.yaml      @asadbekabdulboqiyev
-docs/                 @asadbekabdulboqiyev
-```
+# Operations / release / docs
+/.github/            @asadbekabdulboqiyev
+/deploy/             @asadbekabdulboqiyev
+Dockerfile*          @asadbekabdulboqiyev
+.goreleaser.yaml     @asadbekabdulboqiyev
+docs/                @asadbekabdulboqiyev
 
-**Eslatma:** `CODEOWNERS` faqat review yetkazish uchun qo'llanadi; merge uchun yagona
-shifatli yechim emas. Maintainerlar o'z qatlamlarini avtomatik ravishga yo'naltiradi.
-Jamoani kengaytirish (bus factor 1 → 2) bo'yicha maqsadli harakatlar `ROADMAP.md` da
-yozilgan.
+# Note: Expanding maintainer coverage (bus factor 1 → 2+) is tracked in ROADMAP.md.

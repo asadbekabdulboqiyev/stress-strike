@@ -1,28 +1,24 @@
 # Contributing to Sift
 
-Salom! Sift ga xisqatingizni qadr qildik. Quyidagi qoidalarga rioya
-qiling:
+Thanks for your interest in contributing to Sift. Please follow these guidelines to keep contributions consistent, reviewable, and safe.
 
-## 1. Ishni boshlashdan oldin
+## 1. Before you start
 
-- **Issue oching.** Yangi funksiyalar, xatolar (bug) yoki takliflar uchun
-  avval GitHub issue oching. "No limit" usulda ishlaymiz: har bir issue
-  alohida commit sifatida ochiladi.
-- **Taklif qabul qilinishi kutiladi.** Kod yozishdan oldin maintainer tomonidan
-  muhokama qilinishi kerak (agar kattalashtirish bo'lsa).
+- **Open an issue first.** For new features, bug reports, or proposals, open a GitHub issue before starting significant work.
+- **Wait for alignment on large changes.** Significant features or architectural changes should be discussed with maintainers before implementation.
 
-## 2. Kod stilini
+## 2. Code style and commits
 
-- Go: `gofmt`, `go vet`, `golangci-lint` (agar mavjud bo'lsa).
-- Barcha yangi funksiyalar uchun `*_test.go` yozilishi majburiy.
-- Har bir commit alohida, qisqa va ma'noli bo'lsin:
-  `feat(scope): description` yoki `fix(scope): description`.
-- Commit xabarida `fayl:qator` ko'rsatilmasligi mumkin, lekin nima qilinganini
-  ochiq ko'rsating.
+- **Go formatting/linting:** run `gofmt`, `go vet`, and `golangci-lint` (if available in your environment).
+- **Tests are required for new functionality.** Add or update `*_test.go` coverage for behavior you introduce or change.
+- **Keep commits focused and meaningful.** Prefer small, scoped commits with clear messages, for example:
+  - `feat(scope): short description`
+  - `fix(scope): short description`
+- **Be explicit in commit messages.** Describe what changed and why (file/line references are optional).
 
-## 3. Tekshiruvlar (CI)
+## 3. Validation (CI expectations)
 
-Har PR uchun quyidagilar muvaffaqiyatli bo'lishi shart:
+Pull requests should pass the following checks:
 
 ```bash
 go build ./...
@@ -30,32 +26,31 @@ go vet ./...
 go test -count=1 ./...
 ```
 
-Coverage target: **80%+**. Yangi kod coverage'ni kamaytirmasligi kerak.
+Coverage target: **80%+** for the project over time. New changes should not reduce coverage for the areas they touch.
 
-## 4. Xavfsizlik (Security)
+## 4. Security
 
-- **Hech qachon** API kalitlarini, `.env` fayllarini yoki secretlarni commit
-  qilmang.
-- Xavfsizlik zaifliklarini topgan bo'lsangiz, difault branch'ga push qilmang.
-  `security@techcorp.example` manziliga yuboring (Responsible Disclosure).
-- Hamma state-changing endpointlar OIDC + RBAC orqali himoyalangan.
+- **Never commit secrets.** Do not commit API keys, tokens, credentials, `.env` files, or private key material.
+- **Report vulnerabilities responsibly.** Do not push exploit details or sensitive vulnerability reports to public branches/issues. Follow the repository's security disclosure process (see `SECURITY.md`).
+- **Respect authorization and safety controls.** State-changing and sensitive operations must follow existing auth/RBAC/authorization and audit controls.
 
-## 5. Hujjatlar (Docs)
+## 5. Documentation
 
-- Yangi funksiya qo'shganda `docs/` papkasiga ma'lumot qo'shing.
-- API o'zgarsa, `docs/` da yangilanish kerak.
-- RFC/standartlar (masalan VPMP) alohida faylda rostlanadi.
+- **Update docs with behavior changes.** If you add or change functionality, update relevant documentation in `docs/` and/or `README.md`.
+- **Keep API/CLI docs accurate.** If flags, commands, APIs, or outputs change, update the corresponding documentation.
+- **Document standards and formats clearly.** Protocol/spec-related changes (e.g. VPMP-related behavior) should be documented in the appropriate spec/document files.
 
-## 6. Release jarayoni
+## 6. Release process
 
-- Versiya semver (v0.14.5 → v0.15.0).
-- `CHANGELOG.md` yangilanadi.
-- `git tag` orqali release belgalanadi.
-- Build `./scripts/build-all.sh` orqali amalga oshiriladi.
+- **Versioning:** semantic versioning (for example, `v0.14.5` → `v0.15.0`).
+- **Changelog:** update `CHANGELOG.md` for user-visible changes.
+- **Tagging:** releases are tagged with `git tag`.
+- **Builds:** release builds are produced via `./scripts/build-all.sh` (and project release workflows where applicable).
 
-## 7. Mualliflar (Maintainers)
+## 7. Maintainers
 
-Joriy maintainerlar ro'yxati `MAINTAINERS.md` da.
+See `MAINTAINERS.md` for the current maintainer list.
 
-Boshqa savollar bo'lsa, issue oching yoki maintainerlarga murojaat qiling.
-Rahmat!
+## Questions
+
+If you have questions, open a GitHub issue or contact the maintainers. Thank you for contributing.

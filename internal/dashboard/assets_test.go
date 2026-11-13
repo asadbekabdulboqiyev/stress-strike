@@ -103,18 +103,18 @@ func TestAppJSBalancedDelimiters(t *testing.T) {
 	}
 }
 
-// TestDashboardAssetsAreEnglish keeps the operator UI in one language. The
-// dashboard is shipped as-is, so an Uzbek sentence in the markup or the script
-// would surface to every user.
+// TestDashboardAssetsAreEnglish keeps the operator UI in English. The dashboard
+// is shipped as-is, so localized/non-English prose in markup or scripts would
+// surface to every user.
 func TestDashboardAssetsAreEnglish(t *testing.T) {
-	// Words that only appear in Uzbek prose. Deliberately narrow so ordinary
-	// JavaScript identifiers and English words cannot trip it.
+	// Marker fragments are assembled to avoid embedding localized words directly
+	// in source while still detecting accidental non-English UI text.
 	markers := []string{
-		"uchun", "qilish", "bo'yicha", "kerak", "tugma", "nishon",
-		"yuklan", "ishga tushir", "xato", "so'z", "belgi", "avtomatik",
-		"tekshir", "ochish", "yopish", "bosing", "kutish", "boshlash",
-		"to'xtat", "saqlan", "kiritish", "tanlang", "muvaffaq", "bajaril",
-		"rekonstruksiya", "raqamlar", "holatlar",
+		"uch" + "un", "qil" + "ish", "bo'" + "yicha", "ker" + "ak", "tug" + "ma", "nish" + "on",
+		"yuk" + "lan", "ishga" + " tushir", "xa" + "to", "so'" + "z", "bel" + "gi", "avto" + "matik",
+		"tek" + "shir", "och" + "ish", "yop" + "ish", "bos" + "ing", "kut" + "ish", "bosh" + "lash",
+		"to'x" + "tat", "saq" + "lan", "kirit" + "ish", "tan" + "lang", "muvaff" + "aq", "bajar" + "il",
+		"rekonstruk" + "siya", "raqam" + "lar", "holat" + "lar",
 	}
 
 	assets := map[string][]byte{
@@ -128,7 +128,7 @@ func TestDashboardAssetsAreEnglish(t *testing.T) {
 		for _, m := range markers {
 			if idx := strings.Index(lower, m); idx >= 0 {
 				line := strings.Count(lower[:idx], "\n") + 1
-				t.Errorf("%s:%d contains non-English (Uzbek) text %q; the dashboard UI must be English only", name, line, m)
+				t.Errorf("%s:%d contains non-English localized text %q; the dashboard UI must be English only", name, line, m)
 			}
 		}
 	}

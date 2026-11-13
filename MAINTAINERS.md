@@ -1,26 +1,26 @@
 # Maintainers
 
-Joriy Sift maintainerlar ro'yxati.
+Current maintainers of the Sift project.
 
 ## Lead Maintainer
 
 - **Asadbek Abdulboqiyev** — `asadbek@techcorp.example`
-  GitHub: `@asadbekabdulboqiyev`
-  Vazifalar: arxitektura, release boshqaruvi, xavfsizlik, CV review.
+  - GitHub: `@asadbekabdulboqiyev`
+  - Responsibilities: architecture, release management, security, and code review.
 
-## Co-Maintainer (o'sish jarayonida)
+## Co-Maintainers
 
-- (hali yo'q) — ikkinchi maintainer topilishi kerak (bus factor 1 → 2).
-  Qayta o'tish uchun CONTRIBUTING.md bo'yicha PR yuboring.
+- (none yet) — the project aims to reduce bus factor (1 → 2+).
+  - If you are interested, follow the contribution process in `CONTRIBUTING.md` and open a discussion/PR.
 
-## How to become a maintainer
+## Becoming a maintainer
 
-1. 3+ ta muvaffaqiyatli PR (feat yoki fix) yuboring.
-2. Kod review'da faollik ko'rsang.
-3. Lead maintainer tomonidan taklif qilinsang, MAINTAINERS.md ga qo'shilasiz.
+1. Submit **3+ high-quality merged PRs** (features or fixes).
+2. Participate actively in code reviews and project discussions.
+3. Be nominated by the lead maintainer and added to `MAINTAINERS.md`.
 
 ## Contact
 
-- Issues: GitHub Issues
-- Security: security@techcorp.example
-- General: maintainers@techcorp.example
+- **Issues:** GitHub Issues
+- **Security:** `security@techcorp.example` (responsible disclosure)
+- **General:** `maintainers@techcorp.example`

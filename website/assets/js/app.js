@@ -6,7 +6,7 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- theme ---------- */
-  /* Sayt doim dark (VeriGate bilan teng premium, dual-mode rejim olib
+  /* Sayt Always dark theme (aligned with VeriGate premium styling)
      tashlandi). Toggle/override yo'q — `:root` da faqat dark token'lar. */
 
   /* ---------- mobile nav toggle ---------- */

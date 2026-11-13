@@ -1,95 +1,72 @@
-# ROADMAP — halol cheklovlar va tomona qo'ng'i
+# Roadmap — Known Limitations and Planned Improvements
 
-Bu ro'yxat **o'zbekilgan tekshirish natijalariga** asoslanadi. Harigaigaiga bosqich
-birida aniq, o'lchovlangan cheklovi bo'lgan holda qo'yiladi.
+This roadmap is based on current project review findings. Items are grouped by category and should be tracked with measurable outcomes.
 
-## Kategoriya 1 — Halol cheklovlar (hali bor)
+## Category 1 — Current limitations (honest constraints)
 
-### 1.1 Scanner — checklist emas, oracle emas
+### 1.1 Scanner is not a full oracle
+- **Current state:** `docs/OWASP-SCANNER.md` documents coverage boundaries clearly (e.g. JS-rendered SPA behavior, deep business logic, and some authenticated/authorization flows may be out of scope or heuristic).
+- **Planned improvements:** headless browser support (Chromium/CDP), SPA rendering/crawl support, deeper authenticated flows (login → crawl → scan), and improved business-logic rule coverage.
+- **Estimate:** ~3 weeks (1 senior + 1 part-time).
 
-- **Holat:** `docs/OWASP-SCANNER.md` da shaffofliklar ochiq yozilgan: JS-render
-  SPA / business-logic / chuqur authz ko'rinmaydi; confidence heuristic.
-- **Onbitta:** headless browser (Chromium/CDP) kirish; SPA render kutubxonalari;
-  authenticated depth (login -> crawl -> scan); business-logic rule paketi.
-- **Muddat:** ~3 hafta, 1 senior + 1 part-time.
+### 1.2 Bus factor = 1
+- **Current state:** project maintenance is concentrated on a single primary maintainer.
+- **Planned improvements:** grow maintainer/contributor base, improve contribution docs/processes, and keep ownership/review paths explicit (`MAINTAINERS.md`, `CODEOWNERS`, `CONTRIBUTING.md`).
+- **Estimate:** ~2 months (ongoing).
 
-### 1.2 Bus factor 1
+### 1.3 Benchmarks are mostly loopback/local
+- **Current state:** limited independent cross-tool/system benchmarking; published comparison matrix is incomplete.
+- **Planned improvements:** reproducible benchmark harness (e.g. comparisons with k6/wrk2 where appropriate), multi-platform runs (macOS/Linux/Windows), and independently verifiable results.
+- **Estimate:** ~4 weeks.
 
-- **Holat:** 88 commit; bitta asosiy muallif.
-- **Onbitta:** maintainer kengaytish (i18n, docs), open-source contributor kanal,
-  `MAINTAINERS.md`. Qo'shimcha: `CONTRIBUTING.md` ni kuchaytirish.
-- **Muddat:** ~2 oy.
+### 1.4 Distributed worker trust/attestation depth
+- **Current state:** distributed execution exists, but trust and attestation hardening can be improved further.
+- **Planned improvements:** stronger worker identity/attestation controls, signed telemetry/snapshots, key rotation, and stricter allowlist verification paths.
+- **Estimate:** ~3 weeks (1 senior).
 
-### 1.3 Benchmark — faqat loopback
+### 1.5 Dual-use / legal responsibility boundaries
+- **Current state:** authorization/audit controls exist, but legal/compliance responsibility ultimately remains with operators and organizations.
+- **Planned improvements:** compliance-oriented documentation/mapping, approval workflow guidance, and clearer operator responsibility boundaries.
+- **Estimate:** ~1 month (documentation/process work).
 
-- **Holat:** jamoaviy loopback; mustaqil tizimlar (k6 / wrk2) bilan solishtirish yo'q;
-  coverage foizi e'lon qilinmagan edi.
-- **Onbitta:** `scripts/bench-compare.sh` (k6/wrk2 integratsiyasi), macOS/Linux/Windows
-  matrix, mustaqil 3-tomon ovoz berish.
-- **Muddat:** ~4 hafta.
+## Category 2 — Engineering improvements (in code)
 
-### 1.4 Distributed — worker ishonchini tekshirish qilinmadi
+### 2.1 Scanner modularization/refactor
+- **Current state:** scanner subsystem is large and complex; coverage/maintainability can be improved by clearer module boundaries.
+- **Planned improvements:** split/refactor into focused modules (passive/intrusive/cve/owasp/auth/jwt/fuzz/dirbust/graph/websocket/crawl/portscan/sslscan/subdomain/guard/verify/nvd, etc.) while preserving CLI behavior and test parity.
+- **Estimate:** ~6–8 weeks (2 senior engineers). Prioritize incremental refactors with test coverage.
 
-- **Holat:** master telemetry'ni ishonadi; worker attestation yo'q.
-- **Onbitta:** worker ed25519 kalit bilan snapshotni imzolash + master'da allowlist
-  tekshirishi; key rotation.
-- **Muddat:** ~3 hafta, 1 senior.
+### 2.2 Dashboard OIDC/RBAC integration depth
+- **Current state:** dashboard auth controls exist; OIDC/RBAC integration can be deepened and standardized.
+- **Planned improvements:** stronger OIDC broker integration hooks, consistent RBAC policy enforcement, and clearer admin/operator role flows.
+- **Estimate:** ~2 weeks (1 senior + 1 part-time).
 
-### 1.5 Dual-use / huquqiy
-
-- **Holat:** authz qatlami bor, lekin auditor huquqiy javobgarlik o'zi qiladi.
-- **Onbitta:** compliance paketi (SOC 2 / ISO 27001 mapping), auditor approval workflow
-  (mavjud `internal/authz`), DPA/metadata blok.
-- **Muddat:** chet tilida, ~1 oy.
-
-## Kategoriya 2 — Mahalliy bo'l (kod qismi)
-
-### 2.1 Internal/scanner 14,244 LOC ni qaytadan yozish
-
-- **Holat:** eng katta paket; test coverage 71.7%.
-- **Onbitta:** `scanner` → `scanner/passive`, `scanner/intrusive`, `scanner/cve`,
-  `scanner/owasp`, `scanner/auth`, `scanner/jwt`, `scanner/fuzz`, `scanner/dirbust`,
-  `scanner/graph`, `scanner/websocket`, `scanner/crawl`, `scanner/portscan`,
-  `scanner/sslscan`, `scanner/subdomain`, `scanner/guard`, `scanner/verify`, `scanner/nvd`
-  bo'lib turishi; CLI parity modullari `cmd/Sift-scan` ga o'tkazilishi.
-- **Muddat:** ~6-8 hafta, 2 senior. Muhim: bu refaktoring **ortiqcha qo'ng'ilish** emas —
-  g'oyalik qism, lekin commit tartibi bilan bog'liq.
-
-### 2.2 Dashboard'dagi OIDC/RBAC yetishligi
-
-- **Holat:** bearer token default; mTLS + APIKey bor; `internal/oidc` + `internal/rbac`
-  mavjud.
-- **Onbitta:** dashboard AuthConfig'ga OIDC broker hook qo'shish; RBAC policy integratsiyasi.
-- **Muddat:** ~2 hafta, 1 senior + 1 part-time.
-
-### 2.3 HTTP/3 (QUIC)
-
-- **Holat:** HTTP/2 + utls (JA3) kerakli; HTTP/3 yo'q.
-- **Onbitta:** `quic-go` qo'shimchasi; UDP transport; load gen HTTP/3 qo'llab-quvvati.
-- **Muddat:** ~4 hafta, 2 senior.
+### 2.3 HTTP/3 (QUIC) support
+- **Current state:** HTTP/1.1/HTTP/2 paths exist; HTTP/3 support is limited/not complete.
+- **Planned improvements:** QUIC transport support for relevant load/probe paths and validation across environments.
+- **Estimate:** ~4 weeks (2 senior engineers).
 
 ### 2.4 Browser-based load testing
+- **Current state:** protocol-level load testing is strong; full browser-driven load testing is not the primary mode.
+- **Planned improvements:** CDP/Chromium-based browser execution path for JS-heavy app scenarios (targeted use cases).
+- **Estimate:** ~6 weeks (2 senior engineers).
 
-- **Holat:** k6 `k6-browser` va JMeter WebDriver ga nisbatan yetishmaslik.
-- **Onbitta:** CDP/Chromedp orqali real brauzer; JS SPA yuk testi.
-- **Muddat:** ~6 hafta, 2 senior.
+## Category 3 — Adoption and ecosystem
 
-## Kategoriya 3 — Mahalliy bo'l bo'lmagan, lekin ochiq
+- **VPMP standardization:** VPMP v1 exists in-project; broader external review/adoption and spec evolution may be needed.
+- **Release cadence:** maintain predictable minor/patch releases and keep release automation healthy.
+- **Independent security review:** pursue third-party security review/red-team assessment for additional assurance.
+- **Open-core boundaries:** keep core capabilities open while defining any future commercial/support tier clearly.
 
-- **VPMP v1 standartlashtirish:** RFC emas; ijtimoiy qabul qilinishi kerak.
-- **Release cadence:** oylik minor + patch; `release.yml` ni qoldirmaslik.
-- **Security review:** mustaqil uchinchi tomon audit (Red Team) + pen-test skriptlari.
-- **Enterprise tier:** `internal/...` da hali yo'q; open-core modelini saqlash kerak.
+## Suggested planning timeline (illustrative)
 
-## Rejalashtirish jadvali (so'rovnoma bo'yicha)
+| Window | Focus |
+|---|---|
+| Weeks 45–46 | Stabilize flaky tests, improve coverage baseline/docs (completed baseline recorded in `docs/COVERAGE.md`) |
+| Weeks 47–49 | Worker trust/attestation hardening (distributed mode) |
+| Weeks 50–52 | Dashboard OIDC/RBAC integration improvements |
+| Weeks 53–55 | Scanner depth improvements (headless/authenticated flows) |
+| Weeks 56–57 | HTTP/3 (QUIC) investigation/implementation |
+| Weeks 58–60 | Independent benchmark harness, VPMP spec refinement, maintainer growth |
 
-| Hafta | Ishlar |
-|---:|---|
-| 45-46 | Flaky test tuzatildi + coverage 58.7% + docs/COVERAGE.md; **commit** |
-| 47-49 | Worker attestation + distributed trust |
-| 50-52 | Dashboard OIDC/RBAC wiring |
-| 53-55 | Scanner headless browser + authenticated depth |
-| 56-57 | HTTP/3 |
-| 58-60 | Independent benchmark harness (k6/wrk2) + VPMP RFC draft + bus factor hiring |
-
-Muhim: **har bosqich oldiga o'lchovlanadi**. Hech bir o'z-o'ziga yaratma.
+> This is a planning guide, not a commitment. Each milestone should be scoped, measured, and adjusted based on results.

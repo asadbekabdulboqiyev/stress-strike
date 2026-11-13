@@ -1,358 +1,239 @@
-# Sift — To'liq O'rganish Qo'llanmasi (Study Guide)
+# Sift — Study Guide
 
-> Bu hujjat `Sift` loyihasini **tushunib olish** uchun tuzilgan.
-> Maqsad — butun kodni yodlash emas, balki **katta rasmni** va har bir
-> bo'limning vazifasini tushunib olish.
+> This document is a learning guide for understanding the Sift codebase.
+> The goal is not to memorize every line of code, but to understand the **big picture**, the purpose of each major component, and how data flows through the system.
 >
-> **Qanday o'qish kerak:** 1-daraja (asos) → 2-daraja (xarita) → 3-daraja
-> (oqimlar) → 4-daraja (chuqur, ixtiyoriy). Har bir darajani o'z so'zingiz
-> bilan tushuntira olsangiz — keyingisiga o'ting.
+> **How to use this guide:** Level 1 (fundamentals) → Level 2 (map) → Level 3 (flows) → Level 4 (deep dive). Move to the next level when you can explain the current level in your own words.
 
 ---
 
-## 0-daraja: Loyiha bir paragrafda
+## Level 0: Project in one paragraph
 
-**Sift** — Go tilida yozilgan, ikki maqsadli vosita:
+**Sift** is a Go-based toolkit with two primary goals:
 
-1. **Yuklama (load) testi** — ko'p virtual foydalanuvchi bir vaqtda HTTP/gRPC/WebSocket
-   so'rovlarini yuboradi va sayt/API qancha yuk ko'tarishini o'lchaydi.
-2. **Xavfsizlik (security) skaneri** — TLS/WAF/O'zboshimchalik (vulnerability) zaifliklarni
-   tekshiradi va pentest hisobotini chiqaradi.
+1. **Load testing** — simulate many virtual users sending concurrent HTTP/gRPC/WebSocket/TCP/UDP requests to measure performance, reliability, and scalability.
+2. **Security scanning and assessment** — run TLS/WAF/HTTP/security checks, scanners, and pentest workflows to identify issues and produce reports/evidence.
 
-Bundan tashqari: **traffic replay** (PCAP/HAR real trafikni qayta ijro etish),
-**distributed mode** (master/worker orqali ko'p mashinada yuklash),
-**real-vaqt dashboard**, **interactive wizard** bor.
+It also includes **traffic replay** (PCAP/HAR), **distributed mode** (master/worker), a **real-time dashboard**, and interactive CLI workflows.
 
-**Nima uchun Go?** — bir vaqtda ko'p so'rov yuborish uchun yuqori konkurentlik
-(goroutine), kompilyatsiya qilingan binary (tezkor), oddiy deploy kerak.
+**Why Go?** Strong concurrency primitives (goroutines/channels), efficient compiled binaries, and straightforward deployment.
 
 ---
 
-## 1-daraja: Asosiy tushunchalar (portfolioda suhbat uchun yetarli)
+## Level 1: Core concepts
 
-Agar buni o'z so'zing bilan ayta olsangiz — fundament tayyor:
+If you can explain these concepts clearly, you have the foundation:
 
-1. **Virtual user (VU)** — testda bitta "foydalanuvchi" simulyatsiyasi; har biri
-   o'z goroutine'ida so'rov yuboradi.
-2. **Load profile** — foydalanuvchilar soni vaqt o'tishi bilan qanday o'zgarishi
-   (doimiy / asta oshib boruvchi / spike / to'lqin).
-3. **RPS (Requests Per Second)** — bir soniyada yuborilgan so'rovlar soni
-   (asosiy "tezlik" ko'rsatkichi).
-4. **Latency (kutilish)** — so'rov yuborilgandan javob kelguncha vaqt.
-5. **Percentile (P50/P95/P99)** — hujjatlar foizini ifodalaydigan o'lchov:
-   P99 = so'rovlarning 99% shu qiymatdan tezroq.
-6. **SLA gate** — test oxirida "natija me'yordan o'tdimi?" degan tekshiruv
-   (CI/CD'da exit code 2 bilan fail qiladi).
-7. **Assertion** — javob tanasida kutilgan shartni tekshirish (masalan
-   `status == 200`).
-8. **Scenario** — testni tavsiflovchi sozlashlar to'plami (YAML fayl yoki flag).
+1. **Virtual User (VU)** — a simulated client; typically runs in its own concurrent execution context.
+2. **Load profile** — how load changes over time (steady, ramp-up, spike, wave, constant RPS, etc.).
+3. **RPS (Requests Per Second)** — request throughput.
+4. **Latency** — time from request start to response completion.
+5. **Percentiles (P50/P95/P99)** — latency distribution markers (e.g. P99 means 99% of requests were faster than that value).
+6. **SLA gate** — pass/fail criteria evaluated against test results (often used in CI).
+7. **Assertion** — validation rule applied to responses (status code, body/path checks, etc.).
+8. **Scenario** — the test definition/configuration (CLI flags and/or YAML/JSON config).
 
 ---
 
-## 2-daraja: Papka tuzilmasi — "xarita"
+## Level 2: Repository map
 
-Reponing asosiy qismlari:
+### High-level structure
 
-```
-Sift/
-├── api/                     # Qayta foydalanish mumkin bo'lgan yuqori darajadagi API
-├── cmd/                     # Barcha bajariladigan dasturlar (binary entry points)
-│   ├── Sift/       # Asosiy CLI (run, replay, scan, pentest, ...)
-│   ├── Sift-dashboard/
-│   ├── Sift-replay/
-│   ├── Sift-scan/
-│   ├── Sift-master/
-│   └── Sift-worker/
-├── examples/                # YAML scenario namunalari + demo server
-├── internal/                # Ichki paketlar (boshqa loyihalarga export qilinmaydi)
-│   ├── config/              # Scenario yuklash/validatsiya
-│   ├── engine/              # Asosiy yuklama mashinasi (yadro)
-│   ├── metrics/             # Natijalarni o'lchash (histogram, telemetry, timeline)
-│   ├── report/              # Hisobot chiqarish (terminal, JSON, HTML, PDF)
-│   ├── replay/              # PCAP/HAR trafikni qayta ijro etish
-│   ├── scanner/             # Xavfsizlik skaneri (TLS, WAF, CVE, OWASP, auth)
-│   ├── dashboard/           # Real-vaqt web dashboard server
-│   └── dist/                # Distributed (master/worker) gRPC protokoli
-├── scripts/                 # install.sh, build-all.sh, release.sh
-├── docs/                    # Hujjatlar (shu hujjat)
-├── Makefile                 # Build/test/lint/release buyruqlari
-├── Dockerfile
-└── go.mod                   # Modul: github.com/asadbekabdulboqiyev/sift
+```text
+sift/
+├── api/                     # Reusable high-level API
+├── cmd/                     # Executable entrypoints (binaries)
+│   ├── sift/                # Main CLI
+│   ├── sift-dashboard/      # Dashboard binary
+│   ├── sift-replay/         # Replay binary
+│   ├── sift-scan/           # Scan binary
+│   ├── sift-master/         # Distributed master/coordinator
+│   └── sift-worker/         # Distributed worker
+├── examples/                # Example scenarios, demo server/store
+├── internal/                # Internal packages (not public API)
+│   ├── config/              # Scenario loading/normalization/validation
+│   ├── engine/              # Load execution engine
+│   ├── metrics/             # Metrics collection, histograms, telemetry, timeline
+│   ├── report/              # Terminal/JSON/HTML/PDF reporting
+│   ├── replay/              # PCAP/HAR replay
+│   ├── scanner/             # Security scanning modules
+│   ├── dashboard/           # Web dashboard server and UI assets
+│   ├── dist/                # Distributed mode (gRPC, coordinator/worker)
+│   ├── authz/               # Authorization and audit controls
+│   ├── certificate/         # Certificate issuance/verification
+│   └── ...                  # Other supporting packages
+├── scripts/                 # Build/install/release/demo scripts
+├── docs/                    # Documentation
+├── deploy/                  # Docker/K8s/systemd deployment assets
+├── packaging/               # Packaging manifests (Homebrew/Scoop/Winget etc.)
+├── Makefile                 # Build/test/lint/release targets
+├── Dockerfile*              # Container build definitions
+└── go.mod                   # Go module definition
 ```
 
-### Har bir paket — bitta gap bilan
+> Note: Command directory names in the repo are lowercase (e.g. `cmd/sift`), while produced binaries may use canonical names and/or lowercase aliases depending on build/install scripts.
 
-| Paket | Vazifasi |
+### One-line purpose per major package
+
+| Package | Purpose |
 |---|---|
-| `cmd/Sift` | Asosiy CLI — flag'lar, subcomanda tanlash, buyruq chaqirish |
-| `internal/config` | YAML/JSON scenario ni yuklab, to'g'rilab (normalize), validatsiya qiladi |
-| `internal/engine` | Testni **haqiqatda** ijro etadi — userlar, profil, so'rov yuborish |
-| `internal/metrics` | Barcha o'lchovlarni yig'adi: histogram, percentile, telemetry, timeline |
-| `internal/report` | Natijalarni chiroyli hisobotga aylantiradi (terminal/JSON/HTML/PDF) |
-| `internal/replay` | Real PCAP/HAR trafikni o'qib, qayta yuklama qiladi |
-| `internal/scanner` | Xavfsizlik tekshiruvlari: TLS, WAF, HTTP server bilgilari, CVE, OWASP |
-| `internal/dashboard` | Brauzerda real-vaqt ko'rsatuvchi web server |
-| `internal/dist` | Master/worker ko'p-mashina ishlash protokoli (gRPC) |
-| `api` | Oddiy, qayta foydalanadigan `Run(ctx, cfg)` API |
+| `cmd/sift` | Main CLI entrypoint and command dispatch |
+| `internal/config` | Load and validate scenario/configuration inputs |
+| `internal/engine` | Execute load tests (workers, profiles, request dispatch) |
+| `internal/metrics` | Collect and aggregate runtime/test metrics |
+| `internal/report` | Render/export test and assessment results |
+| `internal/replay` | Replay captured traffic (PCAP/HAR) |
+| `internal/scanner` | Security scanning and assessment checks |
+| `internal/dashboard` | Real-time dashboard server/API/UI |
+| `internal/dist` | Distributed master/worker coordination |
+| `internal/authz` | Authorization, policy, and audit-related controls |
+| `internal/certificate` | Signed assessment certificate creation/verification |
+| `api` | Programmatic API for embedding/running Sift workflows |
 
 ---
 
-## 3-daraja: Asosiy oqimlar (asl ish qanday ketadi)
+## Level 3: Core execution flows
 
-Bu — loyihaning eng muhim qismi. Bir vaqtni o'tkazib, har bir oqimni yakka
-o'zingiz kuzatib boring.
+### Flow A: CLI startup and command dispatch
 
-### Oqim A: CLI ishga tushishi
-
-```
-go run ./cmd/Sift <buyruq>
-        │
-        ▼
-main.go main() ── os.Args[1] ga qarang
-        │  "version"/"help"  → chop et va chiq
-        │  "run"             → cmdRun()
-        │  "replay"          → cmdReplay()  → runSubCommand("Sift-replay")
-        │  "scan"            → cmdScan()
-        │  "dashboard"       → cmdDashboard()
-        │  "master"/"worker" → distributed
-        │  "pentest"         → cmdPentest()
-        │
-        └── hech narsa bo'lsa: TTY bo'lsa → interactivePicker(), aks holda cmdRun()
+```text
+sift <command>
+  └─ cmd/sift main()
+       ├─ version/help
+       ├─ run            -> load test execution
+       ├─ replay         -> replay workflow / subcommand/binary
+       ├─ scan/pentest   -> scanning/assessment workflows
+       ├─ dashboard      -> dashboard server
+       ├─ master/worker  -> distributed mode
+       └─ other commands -> authz/audit/certificate/admin/etc.
 ```
 
-**Muhim:** `run` asosiy buyruqdir. `replay/scan/dashboard/master/worker`
-alohida binary'larni (`cmd/` ostidagi) chaqiradi — `runSubCommand()` orqali.
+The main CLI parses flags/subcommands, prepares configuration/context, and dispatches to the appropriate command implementation.
 
-### Oqim B: `cmdRun` — load test oqimi
+### Flow B: Load test (`run`)
 
-```
+```text
 cmdRun()
-  ├── flag'lar e'lon qilindi (--url, --users, --duration, --profile, ...)
-  ├── Scenario yaratildi:
-  │     configPath berilsa → config.Load(path)   (YAML fayl)
-  │     --url berilsa      → quickScenario(...)  (flaglardan tez scenario)
-  ├── SLA/AQL? scenario.SLA ni o'qing
-  ├── engine.New(scenario)            → Engine obyekti
-  ├── eng.Run(ctx, RunOptions{...})   → <--- test SHU yerda ishlaydi
-  ├── natija report.Build(...) bilan Report ga aylantirildi
-  ├── terminal report chop etildi (display)
-  ├── SLA tekshirildi → exit code
-  └── JSON/TXT fayllar saqlandi
+  ├─ Parse flags / load scenario (YAML/JSON or quick scenario from flags)
+  ├─ Normalize and validate config
+  ├─ Initialize engine and metrics/reporting components
+  ├─ engine.Run(ctx, options)
+  ├─ Build report/results (terminal/JSON/HTML/PDF as configured)
+  ├─ Evaluate gates (SLA/regression/baseline) if configured
+  └─ Persist outputs and exit with appropriate status
 ```
 
-### Oqim C: `engine.Run` — yadro ishi (eng muhim oqim!)
+### Flow C: Engine execution (core)
 
-Bu ichida quyidagilar bo'ladi:
-
-```
-Engine.Run(ctx, opts)
-  ├── LoadProfile yaratildi (steady/ramp/spike/wave/constant-rps)
-  ├── pre-warm (so'ralgan bo'lsa): oldindan TCP ulanishlar ochildi
-  ├── har bir virtual user uchun goroutine ishga tushdi
-  │      └── har bir user o'z "step"larni (config.Step) bajaradi:
-  │            HTTP/GPRC/WebSocket/raw TCP so'rov yuboradi
-  ├── har bir so'rov natijasi o'lchandi → metrics.Telemetry
-  ├── progress tracker ishladi (----% live)
-  ├── capture (so'ralgan bo'lsa): muvaffaqiyatsiz javoblar saqlandi
-  ├── pooling (so'ralgan bo'lsa): payload pool'dan ma'lumot olinadi
-  ├── gate (so'ralgan bo'lsa): race-shot "bir vaqtda" sinov
-  └── yakunda natija qaytdi → report paketi
+```text
+Engine.Run(...)
+  ├─ Build load profile/scheduler (steady/ramp/spike/wave/constant-rps, etc.)
+  ├─ Start workers/virtual users (goroutines)
+  ├─ For each step/request:
+  │    ├─ Send request via protocol-specific client
+  │    ├─ Capture timing/status/errors
+  │    ├─ Apply assertions/extraction (if configured)
+  │    └─ Record metrics/telemetry/timeline samples
+  ├─ Handle cancellation, timeouts, and graceful shutdown
+  └─ Return aggregated results for reporting
 ```
 
-**So'rov yuborish** `internal/engine` da quyidagi "client" fayllari orqali:
-`client.go` (HTTP), `grpc_client.go`, `ws_client.go` (WebSocket),
-`raw_client.go` (TCP), `streaming.go`.
+Key implementation concerns in the engine include concurrency control, connection reuse, rate limiting, coordinated timing behavior (where enabled), and accurate measurement.
 
-### Oqim D: Natasha o'lchash → hisobot
+### Flow D: Metrics → report
 
-```
-engine     → metrics.Telemetry
-                 ├── Histogram (latency taqsimoti)
-                 ├── status code hisobi
-                 ├── xato (error) type hisobi
-                 └── timeline (har soniya namunasi)
-                 ▼
-report.Build(t, scenario)  → Report struct
-                 ├── report.Compare (baseline bilan solishtirish)
-                 ├── report.EvaluateSLA
-                 └── display (terminalda chiroyli panel)
+```text
+Engine events/results
+  └─ metrics/telemetry aggregation (histograms, counters, timelines)
+       └─ report.Build(...)
+            ├─ terminal summary/output
+            ├─ JSON/HTML/PDF artifacts (as configured)
+            └─ SLA/baseline comparison evaluation
 ```
 
 ---
 
-## 4-daraja: Paketlar bo'yicha chuqur (kerak bo'lganda)
+## Level 4: Deeper package notes
 
-### `internal/config` — scenario svetofori
+### `internal/config`
+- Defines scenario/config structures (targets, steps, profiles, assertions, SLA, variables, etc.).
+- Loads YAML/JSON and applies validation/normalization.
+- Enforces bounds and safe defaults where appropriate.
 
-Asosiy tiplar:
-- `Scenario` — loyihaning "pasporti": `Name`, `BaseURL`, `Profile`, `Steps`,
-  `Variables`, `SLA`, `PreWarm`.
-- `Profile` — yuklama shakli: `Type`, `Users`, `Duration`, `Warmup`, `RampUp`,
-  `Spike*`, `WavePeriod`, `RPS`, `TargetRPS`, `Gate`, `RateLimit`.
-- `Step` — bitta so'rov qadami: `Name`, `Method`, `URL`, `Body`, `Headers`,
-  `Assertions`, `Extract`.
-- `SLA` — me'yorlar: max P99, max error rate, min RPS.
-- `Assertion` — javob tanasi tekshiruvi.
-- `RateLimitConfig` — global tezlik cheklovi (token bucket).
-
-Vazifalar:
-- `Load(path)` — YAML/JSON o'qiydi
-- `LoadJSON(data)` — JSON ma'lumotdan
-- ichki `normalize*` — maydonlarga default qiymat beradi, `http://` prefix
-  qo'shadi, validatsiya qiladi.
-
-### `internal/engine` — yadro
-
-Asosiy tiplar:
-- `Engine` — asosiy ob'ekt; `New(scenario)` bilan yaratiladi, `Run(ctx, opts)`.
-- `LoadProfile` (interface) — `ConcurrencyAt(t)`, `MaxConcurrency()`, `Duration()`.
-  Implementatsiyalari: `steady`, `ramp`, `spike`, `wave`, `constant-rps`
-  (`profile.go`).
-- `RunOptions` — `Out`, `Quiet`, `Capture`, `Pool`, `Progress`.
-- `ProgressTracker` — live progress bar.
-
-Muhim qo'shimcha fayllar:
-- `client.go` — HTTP so'rov yuborish (connection pooling, keep-alive)
-- `grpc_client.go` — gRPC
-- `ws_client.go` — WebSocket
-- `raw_client.go` — raw TCP + `classifyNetError` (xato tasnifi)
-- `streaming.go` — oqimli (streaming) javoblar, katta hajmlar
-- `buffer_pool.go` — buffer qayta ishlatish (performance uchun)
-- `token_bucket.go` — RPS limitlash
-- `capture.go` — muvaffaqiyatsiz javoblarni ushlash
-- `assert.go` — assertion tekshirish
-- `vars.go` — scenario o'zgaruvchilar (variables)
-- `broadcast.go` — ko'p so'rov yuborish/gate
-- `progress.go` — progress bar
+### `internal/engine`
+- Core runtime for executing load profiles and request workflows.
+- Contains protocol clients and execution helpers (HTTP/gRPC/WebSocket/TCP/UDP paths as implemented).
+- Integrates with metrics, assertions, capture, rate limiting, and shutdown handling.
 
 ### `internal/metrics`
-
-- `Telemetry` — butun test natijasi yig'indisi (`StartSampling` real-vaqt).
-- `StepStats` — bitta step bo'yicha statistika.
-- `Histogram` — latency taqsimoti, `Percentile()` funksiyasi.
-- `Timeline` + `TimelineSample` — har soniyalik namunani ushlaydi.
+- Aggregates counters, histograms, latency percentiles, error/status distributions, and timelines.
+- Provides data structures consumed by reporting and dashboard views.
 
 ### `internal/report`
-
-- `Report` — standart natija strukturasi (JSON serializatsiya uchun).
-- `StepReport` — bitta qadam hisoboti.
-- `SLAResult` / `EvaluateSLA` — me'yor tekshiruvi.
-- `Compare(current, baseline)` — regressiya aniqlash.
-- `GenerateHTML` / `GenerateMarkdown` / `GeneratePDF` — pentest hisoboti.
-- `LoadReport` / `SaveReport` — faylga saqlash/yoqlash.
-- `pdf_writer.go` / `pdf.go` — PDF yaratish (reportlab analogi, Go'da).
-- `display.go` — terminalda chiroyli panel (ANSI ranglar bilan).
-- `compliance.go` — PCI-DSS / SOC2 / ISO27001 muvofiqlik baholash.
+- Converts aggregated results into human-readable and machine-readable outputs.
+- Supports console output and report artifacts (format support depends on feature/path).
+- Handles SLA evaluation and baseline/regression comparison where configured.
 
 ### `internal/replay`
+- Parses and replays captured traffic (e.g. PCAP/HAR) with pacing/concurrency/filtering options.
+- Useful for reproducing realistic traffic patterns in test environments.
 
-- `PCAPParser` — PCAP fayl o'qiydi, TCP seanslarni tashkil etadi.
-- `ReplayEngine` / `ReplayWorker` — real trafikni qayta yuboradi.
-- `ParseHAR` — HAR (HTTP Archive) fayl.
-- `Capture` — qayta ijro uchun paket/trafik to'plami.
-- `types.go` — saqlanadigan ma'lumot turlari.
-- **TLS xavfsizlik:** `MinVersion TLS1.2`, `--skip-tls-verify` da ogohlantirish.
-
-### `internal/scanner` — xavfsizlik
-
-- `NewScanner` ustki tuzilmasi + quyi modullar:
-  - `vuln_scanner.go` / `cve.go` — zaiflik/CVE
-  - `nvd.go` — NVD ma'lumotlar bazasi
-  - `owasp.go` — OWASP Top 10
-  - `crawler.go` — sayt sahifalarini yurib (crawl) chiqish
-  - `auth.go` — login orqali skanerlash (AuthSession)
-  - `verify.go` — topilgan zaiflikni tasdiqlash (verification)
-- Natija tiplari: `TLSInfo`, `WAFInfo`, `HTTPInfo`, `ScanResult`,
-  `CVEDetector`, `OWASPChecker`.
+### `internal/scanner`
+- Implements scanning/assessment modules (TLS, HTTP/WAF checks, crawling, fuzzing, JWT/GraphQL/WebSocket checks, etc., depending on command/module).
+- Applies scope/authorization/audit controls where required.
+- Produces findings and supporting evidence for reports.
 
 ### `internal/dashboard`
+- Serves the web UI and APIs for run control, live telemetry, scanners, history, and certificate workflows.
+- Bridges runtime state/results to browser clients (including real-time updates where implemented).
 
-- `Server` — HTTP server; `NewServer()`, `ServeHTTP`.
-- `EngineBridge` — engine natijalarini web'ga uzatadi.
-- API: `/api/snapshot`, `/api/run`, `/api/history`, WebSocket real-vaqt.
-- `index.html` — brauzer tomon (interfeys).
+### `internal/dist`
+- Implements distributed master/worker coordination over gRPC.
+- Handles worker registration, command/event flow, telemetry aggregation, and fleet execution controls.
 
-### `internal/dist` (distributed)
-
-- `proto/` — gRPC ta'rifi (`coordinator.proto` dan hosil qilingan `.pb.go`).
-- `MasterWorker` — `Coordinate` bidi-streaming gRPC.
-- Master yukni bo'lib tarqatadi, worker'lar bajaradi, natijani yig'adi.
-- Oqim: `WorkerCommand → WorkerEvent` (RunProgress, RunStarted, Report, ...).
+### `internal/certificate` and `internal/attest`
+- Issue and verify signed evidence/certificates (e.g. assessment certificates, VPMP/attestation-related flows where applicable).
+- Focus on integrity, verification, and reproducible evidence handling.
 
 ### `api`
-
-- `Config` / `Result` tiplari.
-- `Run(ctx, cfg)` — bitta funksiya orqali to'liq test; boshqa loyihalarda
-  Go library sifatida ishlatish uchun.
+- Provides a programmatic entrypoint for running Sift workflows from Go code (API surface depends on package exports).
 
 ---
 
-## Qaysi mavzularni mustaqil o'rganish kerak (Go asoslari)
+## Suggested Go topics to learn alongside this codebase
 
-Bu loyihani chuqur tushunish uchun ushbu Go/Golang tushunchalarini bilish
-zarur — ular kodda ko'p ishlatilgan:
-
-1. **Goroutine** — `go func(){...}()`; parallel ishlash asosi.
-2. **Channel** — goroutine'lar orasida ma'lumot almashish.
-3. **`sync`** — `Mutex`, `WaitGroup`, `sync.Once` (konkurent xavfsizlik).
-4. **Pointer / value receiver** — metodlarda `*T` vs `T`.
-5. **Interface** — `LoadProfile`, `ResponseCapture` kabi; polimorfizm.
-6. **Error handling** — `errors.Is`, `errors.As`, `fmt.Errorf` (%w wrap).
-7. **Context** — `context.Context`, `signal.NotifyContext` (bekor qilish).
-8. **`net/http`** — HTTP server & client.
-9. **JSON** — `encoding/json`, `Marshal/Unmarshal`, `omitempty`.
-10. **YAML** — `gopkg.in/yaml.v3` (scenario yuklash).
-11. **gRPC** — `google.golang.org/grpc`, `.proto` dan kod generatsiya.
-12. **WebSocket** — `gorilla/websocket`.
-13. **`flag`** — CLI argument parsing.
-14. **Histogram / percentile** — o'lchov taqsimoti hisobi.
-15. **CI/CD** — GitHub Actions (`.github/workflows/ci.yml`, `release.yml`).
-16. **Docker** — `Dockerfile`, multistage build.
-17. **Performance** — buffer pool, connection reuse (qayta ishlatish).
+1. Goroutines and channels (concurrency)
+2. `sync` primitives (`Mutex`, `WaitGroup`, atomics where used)
+3. Pointers, methods, and interfaces
+4. Error handling (`errors.Is/As`, wrapping)
+5. `context.Context` and cancellation/timeouts
+6. `net/http` (client/server behavior)
+7. JSON/YAML encoding/decoding
+8. gRPC/protobuf basics (for distributed mode)
+9. WebSockets and streaming protocols (where relevant)
+10. Testing (`testing`, table-driven tests, race detector)
+11. Performance profiling and resource management
+12. CLI design with `flag` and command routing
 
 ---
 
-## Muammoli joylar namunalari (suhbatda gapirish uchun)
+## Discussion prompts (interview / self-review)
 
-Bular loyihani chuqur bilganingizni ko'rsatadigan haqiqiy misollar:
-
-1. **"Connection pooling / keep-alive"** — `client.go` da TCP ulanishlarni
-   qayta ishlatish, bu orqali 66k+ RPS'ga erishish.
-2. **"Race condition (gate mode)"** — origin'dan kelgan xususiyat; bir vaqtda
-   ko'p so'rov yuborib, raqobat holatini (race) aniqlash.
-3. **"Histogram percentile"** — P99 ni hisoblash uchun `metrics/histogram.go`.
-4. **"PCAP replay"** — real trafikni qayta ijro qilish; TLS decrypt uchun
-   private key.
-5. **"Security compliance"** — PCI-DSS/SOC2/ISO27001 baholash —
-   `report/compliance.go`.
-6. **"Distributed"** — master/worker gRPC orqali ko'p mashinada ko'paytirish.
-7. **"Fail-fast"** — o'lik nishonlarda dastur tez (12s) xato beradi — `abi`
-   qadamida `probe`.
+1. How does `sift run` flow from CLI parsing to final report output?
+2. How does the engine model virtual users and apply load profiles?
+3. What metrics are collected, and how are percentiles calculated?
+4. How do SLA/regression gates affect exit behavior?
+5. How are replay, scanning, dashboard, and distributed modes separated in the codebase?
+6. Where are concurrency and synchronization used, and why?
+7. What safety controls exist for scanning/authorization/audit flows?
+8. How does the project produce verifiable evidence (attestations/certificates)?
 
 ---
 
-## Tekshiruv savollari (o'z-o'zini baholash)
+## Summary
 
-Har biriga o'z so'zing bilan javob bera olsangiz — tayyorsiz:
+- **Levels 1–2:** enough for a high-level understanding and portfolio/interview discussion.
+- **Level 3:** understand the main runtime flows and component interactions.
+- **Level 4:** dive into package internals as needed for contributions or debugging.
 
-1. `main()` nima qiladi? Qanday subcomanda'lar bor?
-2. `cmdRun` da Scenario qanday yaratiladi (fayl vs --url)?
-3. `engine.Run` ichida nima bo'ladi (oqim)?
-4. `LoadProfile` nima va qanday tiplar bor?
-5. `Telemetry` va `Histogram` nima uchun kerak?
-6. `report.Build` nimani qaytaradi va u qanday ishlatiladi?
-7. Replay, scanner, dashboard, dist — har birining maqsadi?
-8. Konkurentlik qayerda ishlatiladi? Qanday xavfsizlik choralari bor (mutex)?
-9. SLA gate qanday ishlaydi va exit code nima uchun?
-10. CI/CD'da qanday testlar ishlaydi?
-
----
-
-## Xulosa
-
-- **1-2-darajalar** — portfolio/suhbat uchun yetarli (bir necha kun).
-- **3-daraja** — asosiy oqimlarni kuzatish (bir hafta).
-- **4-daraja** — chuqur o'rganish (ixtiyoriy, oylab davom ettirish mumkin).
-
-**Esdan chiqmasin:** butun kodni yodlash kerak emas. **Katta rasmni** bilish
-va kerak bo'lganda fayllardan qidirish — bu haqiqiy dasturchining usuli.
+You do not need to memorize the entire codebase. Focus on the architecture, execution flows, and how to locate relevant code when solving a specific problem.

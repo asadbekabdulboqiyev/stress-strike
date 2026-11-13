@@ -480,9 +480,9 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
   .site-top, .cta, .facts { display: none; }
 }
 /* ==========================================================================
-   v2 — DESIGN POLISH (Dizayn Bo'limi)
+   v2 — DESIGN POLISH
    Conversion UX: hero hierarchy, social proof, button states, nav motion,
-   scroll reveal. Token'lar va kontrast qiymatlari o'zgartirilmadi.
+   scroll reveal. Token and contrast values were not changed.
    ========================================================================== */
 :root {
   --ease-out: cubic-bezier(.16, 1, .3, 1);

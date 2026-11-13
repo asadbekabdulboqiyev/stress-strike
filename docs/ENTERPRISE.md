@@ -1,94 +1,67 @@
-# Sift Enterprise
+# Sift Enterprise (Planning Draft)
 
-**Status:** Mapping only (no SOC 2 / ISO 27001 certification yet)  
+**Status:** Planning/mapping only (no SOC 2 / ISO 27001 certification claims)  
 **Version:** 1.0  
-**Date:** 2026-11-05  
-**Abstract:** Enterprise tier — open-core Sift ga qo'shimcha, commerciak
-tegishli funksiyalar: SLA, prioritet支持, role-based access control, audit log,
-SSO/OIDC, dedicated support, va harajat bilan bog'liq bo'lmagan open-core
-xususiyatlar orasidagi chegara.
+**Date:** 2026-11-05
 
----
+This document outlines a potential enterprise/support tier around the open-core Sift project. It does **not** claim certifications, guarantees, or commercial availability unless explicitly stated elsewhere.
 
-## 1. Open-core chegarasi
+## 1. Open-core boundary (illustrative)
 
-| Xususiyat | Open Core (Apache-2.0) | Enterprise (commercial) |
-|-----------|------------------------|-------------------------|
+| Capability | Open Core (Apache-2.0) | Potential Enterprise Tier |
+|---|---:|---:|
 | HTTP load testing | ✅ | ✅ |
-| Security scanner (TLS/WAF/HTTP/security) | ✅ | ✅ |
-| Distributed mode + worker attestation | ✅ | ✅ |
+| Security scanning (TLS/WAF/HTTP/security checks) | ✅ | ✅ |
+| Distributed mode + worker controls | ✅ | ✅ |
 | Dashboard (web UI) | ✅ | ✅ |
-| OIDC / RBAC auth | ✅ | ✅ |
-| HTTP/3 QUIC probing | ✅ | ✅ |
-| Browser-based load testing | ✅ | ✅ |
-| SLA garantiyasi | ❌ | ✅ |
-| Prioritet 24/7 yordam | ❌ | ✅ |
-| SOC 2 Type II / ISO 27001 sertifikat | ❌ | ❌ (reja) |
-| Dedicated account manager | ❌ | ✅ |
-| Custom SLA / SLIs | ❌ | ✅ |
-| On-premise deployment yordam | ❌ | ✅ |
-| Advanced audit log export | ❌ | ✅ |
-| Priority bug fixes | ❌ | ✅ |
+| OIDC / RBAC support (project capabilities) | ✅ | ✅ |
+| HTTP/3/QUIC-related capabilities (as implemented) | ✅ | ✅ |
+| Browser-based testing (as implemented) | ✅ | ✅ |
+| SLA commitments | ❌ | Possible (contractual) |
+| Priority support (24/7) | ❌ | Possible (contractual) |
+| SOC 2 Type II / ISO 27001 certification | ❌ | Not currently claimed |
+| Dedicated account management | ❌ | Possible (contractual) |
+| Custom deployment/support packages | ❌ | Possible (contractual) |
+| Advanced audit/export/compliance workflows | Partial/roadmap-dependent | Possible (contractual/roadmap) |
 
----
+## 2. Potential enterprise offerings (non-binding)
 
-## 2. Enterprise funksiyalari
+### 2.1 Support and SLA
+- Response-time targets by severity (contract-defined)
+- Prioritized bug triage/fixes (scope-defined)
+- Operational support guidance for self-hosted deployments
 
-### 2.1 SLA (Service Level Agreement)
+### 2.2 Compliance and governance (roadmap-dependent)
+- Audit log export and retention guidance
+- Security/compliance documentation support
+- Formal certifications would require separate audits and are **not** claimed by this document
 
-| Metrik | Target |
-|--------|--------|
-| Uptime | 99.9% (monthly) |
-| Support javob vaqti (P1) | < 1 hour |
-| Support javob vaqti (P2) | < 4 business hours |
-| Support javob vaqti (P3) | < 1 business day |
-| Bug fix (P1) | < 48 hours |
-| Bug fix (P2) | < 7 days |
+### 2.3 Deployment assistance
+- Docker/Helm/Kubernetes deployment guidance
+- On-prem/self-hosted rollout assistance
+- Architecture review for distributed deployments
 
-### 2.2 Qo'llab-quvvatlash (Support)
+## 3. Example pricing tiers (placeholder)
 
-- **Email:** support@techcorp.example
-- **Portal:** enterprise.techcorp.example/support
-- **SLA tracking:** har bir ticket uchun SLA timer ko'rsatiladi.
+> Pricing below is illustrative only and not a published offer.
 
-### 2.3 Audit & Compliance
+| Plan | Example Price | Users/Admins | Support |
+|---|---:|---:|---|
+| Startup | $499/mo | 5 admins | Business-hours / defined SLA |
+| Business | $1,499/mo | 25 admins | Priority support / defined SLA |
+| Enterprise | Custom | Custom | Custom SLA/support package |
 
-- Barcha state-changing operatsiyalar append-only audit log'ga yoziladi.
-- Enterprise muellarlarga audit log export (JSON/CSV/PDF) beriladi.
-- SOC 2 Type II va ISO 27001 sertifikati — rejalashtirilgan (hali yo'q).
+## 4. When an enterprise/support tier may be relevant
 
-### 2.4 Deployment
+- Organizations requiring contractual support/SLA commitments
+- Teams needing deployment assistance for production/self-hosted environments
+- Customers with governance/audit workflow requirements (subject to implemented capabilities)
 
-- On-premise: Docker image, Helm chart, binary.
-- Cloud: AWS Marketplace, Azure Marketplace (reja).
-
----
-
-## 3. Narx (Pricing)
-
-| Reja | Narx | Foydalanuvchi | SLA |
-|------|------|-------------|-----|
-| Startup | $499/oy | 5 admin | 99.5%, < 24h javob |
-| Business | $1,499/oy | 25 admin | 99.9%, < 4h javob |
-| Enterprise | Custom | Cheksiz | 99.99%, < 1h javob, dedicated AM |
-
----
-
-## 4. Qaysi holatlarda enterprise kerak?
-
-- **SLA kerak bo'lgan kompaniya** (e-tijorat, bank, gov).
-- **24/7 prioritet yordam kerak.**
-- **SOC 2 / ISO 27001 talab qiluvchi mijozlar.**
-- **Dedicated account manager kerak.**
-
-Open-core foydalanuvchilarga barcha texnik xususiyatlar bepul. Enterprise — faqat
-yordam, SLA va sertifikatlar uchun.
-
----
+The open-core project remains focused on providing core technical capabilities; any commercial tier would primarily cover support, services, and contractual commitments.
 
 ## 5. Open items
 
-- [ ] SOC 2 Type II audit boshqarish
-- [ ] ISO 27001 sertifikat olish
-- [ ] Enterprise billing/licensing tizimini qo'shish
-- [ ] Dedicated support portalni ishga tushirish
+- [ ] Define actual commercial packaging and support boundaries (if pursued)
+- [ ] Validate compliance roadmap separately (no certification claims until audited)
+- [ ] Establish billing/licensing/support processes (if commercialized)
+- [ ] Publish official support/contact channels for enterprise inquiries

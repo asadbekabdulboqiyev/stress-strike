@@ -1,106 +1,90 @@
-# Sift — Dual-Use & Legal
+# Sift — Dual-Use and Legal Notice
 
 **Status:** Draft  
 **Version:** 1.0  
-**Date:** 2026-11-05  
-**Abstract:** Sift — bu muallifona tekshirish (authorized assessment) va
-yuk sinovi (load testing) uchun mo'ljallangan dastur. U "dual-use": ham foydali
-texnik xavfsizlik tekshirishi uchun, ham (agar noto'g'ri ishlatilsa) hujum
-sabbab bo'lishi mumkin. Quyidagi hujjat foydalanish chegarasi, soritish (responsible
-disclosure), nostrat kuzatish (abuse monitoring) va ma'muriyat shartnomasini
-(DPA) belgilaydi.
+**Date:** 2026-11-05
+
+**Abstract:** Sift is designed for authorized security assessments and controlled load testing. Like many security and performance tools, it is dual-use: it can support legitimate testing and resilience work, but it can also be misused for unauthorized or harmful activity. This document outlines acceptable use boundaries, responsible disclosure, abuse monitoring considerations, and data-handling expectations.
 
 ---
 
-## 1. Foydalanish chegarasi (Acceptable Use Policy)
+## 1. Acceptable Use Policy
 
-### 1.1 Ruxsat etilgan foydalanish
+### 1.1 Permitted use
+- Load testing and security scanning against systems you **own** or have **explicit written authorization** to test.
+- Authorized penetration testing performed under a defined scope and applicable laws/policies.
+- Educational and research use in lab/test environments where all targets are authorized.
 
-- **O'z infrastrukturangizga** yoki **ruxsat berilgan** (yozma ruxsat bilan)
-  bazaga stress sinovi va xavfsizlik skanini ishlatish.
-- **Qanuni** va **ekspert** nazoratda bo'lgan authorized penetration testing.
-- O'quv va ilmiy maqsadlarda foydalanish (laboratoriya, test muhit).
+### 1.2 Prohibited use
+- Unauthorized attacks (including DDoS, brute-force, injection, or exploitation attempts against systems without permission).
+- Attempts to access, disrupt, or damage third-party systems or data without authorization.
+- Use for fraud, harassment, sabotage, or other unlawful purposes.
 
-### 1.2 Ta'qilolanadigan foydalanish
-
-Quyidagilar ta'qilolanadi:
-
-- Ruxsatsiz hujum (DDoS, brute-force, injection) uchun foydalanish.
-- Boshqa shaxsning yoki tashkilotning serverlariga ruxsatsiz kirishga urinish.
-- Filial yoki afosqaruv maqsadlarida xavfsizlik skanini ishlatish.
-- Qanun buzişiga yo'l qo'yuvchi niyat bilan foydalanish.
-
-**Vaqtincha ishda:** Barcha skaner va yuk sinov operatsiyalari audit log'ga
-yoziladi va coordinator tomonidan kuzatiladi.
+> Note: Security and load-testing operations may be logged and subject to authorization/audit controls depending on deployment configuration.
 
 ---
 
-## 2. Responsible Disclosure (Xavfsizlik xabari)
+## 2. Responsible Disclosure
 
-Sift da xavfsizlik zaiflik aniqlagan bo'lsangiz, quyida amalrang:
+If you discover a security vulnerability in Sift:
 
-1. **Afsoskarish (embargo):** Mavjud xatoni ochiq kokiga chiqarmang.
-2. **Yuborish:** `security@techcorp.example` manziliga xabar yuboring.
-3. **Hujjat:** Zaiflik turi, qayerda aniqlandi, qaytarish (reproduction) qadamlari,
-   ta'sir baholashi.
-4. **Javob:** 5 ish kuni ichida tasdiqlanadi, 30 ish kuni ichida hal qilinadi yoki
-   reja beriladi.
-5. **Aks etadi:** Hal qilindan so'ng, research uchun cradit beriladi (agar istasa).
+1. **Do not disclose publicly before coordination.**
+2. **Report privately:** send details to `security@techcorp.example`.
+3. **Include:** vulnerability type, affected component/location, reproduction steps, and impact assessment.
+4. **Response target:** acknowledgment within 5 business days; remediation plan or fix timeline typically within 30 business days (severity-dependent).
+5. **Credit:** researchers may be credited after remediation if desired.
 
-**Xavfsizlik xabarini ochiq kokiga chiqarishdan oldin 90 kundan kutish kerak.**
+Please allow a reasonable embargo period (commonly up to 90 days, adjusted based on risk and fix status) before public disclosure.
 
 ---
 
-## 3. Abuse Monitoring (Nostrat kuzatish)
+## 3. Abuse Monitoring and Safeguards
 
-Sift kuzatish vositalari:
+Sift includes or supports controls that can help reduce misuse risk in authorized environments:
 
-| vosita | maqsad | log'lanadi |
-|--------|--------|------------|
-| Coordinator attestation | worker'imonligini tekshirish | `internal/dist/coordinator/` |
-| Audit log | barcha state-changing operatsiyalar | append-only JSONL |
-| Rate limiter | dashboard bo'yicha kira-ochirish | `internal/dashboard/auth.go` |
-| Scope gate | faqat ruxsat berilgan hostlarni skanlash | `internal/scanner/guard.go` |
-| AuthorizedWorkers allowlist | faqat ruxsat berilgan workerlar | `internal/dist/coordinator/master.go` |
+| Control | Purpose | Example location/component |
+|---|---|---|
+| Authorization/scope controls | Restrict targets/actions to approved scope | `internal/authz`, scanner guard/scope checks |
+| Audit logging | Record security-relevant/state-changing operations | audit/logging components |
+| Dashboard/API auth controls | Limit access to control surfaces | dashboard/auth configuration |
+| Rate limiting / safeguards | Reduce accidental or abusive request patterns | dashboard/rate limiting, runtime controls |
+| Distributed worker controls | Restrict/verify worker participation (where configured) | distributed coordinator/worker components |
 
-Abuse aniqlangan holda:
-- Worker `failed` deb marklanadi, telemetry rad etiladi (fail-closed).
-- IP foydalanuvchi bloklanadi (dashboard rate limiter).
-- Xabar `security@techcorp.example` ga yuboriladi.
-
----
-
-## 4. DPA (Data Processing Agreement)
-
-Sift quyidagi ma'lumotlarni qayta ishlashi mumkin:
-
-| Ma'lumot turi | Manba | Saqlash muddati |
-|--------------|-------|-----------------|
-| Target URL / host | Foydalanuvchi kiritadi | 30 kun (log) |
-| Worker public key | Worker ro'yxatdan o'tganda | Doimo (allowlist) |
-| Telemetry (rps, errors, latency) | Worker'dan keladi | 90 kun |
-| Findings (vulnerabilities) | Skaner natijasi | 1 yil |
-| Audit log entries | Dashboard / CLI | 1 yil |
-
-### 4.1 Ma'muriyat shartlari
-
-- **Ma'lumotlar uchinchi tarafga yubormaydi** (agar foydalanuvchi ruxsat bermasa).
-- **Shifrlangan o'tkazish:** TLS orqali barcha o'tkazmalar.
-- **O'chirish:** Foydalanuvchi so'rovida ma'lumotlar 7 kun ichida o'chiriladi.
-- **Beruvchi:** TechCorp (asadbek@techcorp.example)
-
-### 4.2 Huquqi chegara
-
-Sift — bu "as-is" (hozirgidek) taqdim etiladi, hech qanday kafolat
-siz. Foydalanuvchi o'zi uchun javobgardan holda ishlaydi.
+If abuse is suspected in a deployment:
+- Revoke access/credentials and stop affected runs.
+- Preserve audit logs and relevant artifacts for investigation.
+- Report incidents through the appropriate security/contact channel.
 
 ---
 
-## 5. Kontaktlar
+## 4. Data Processing (DPA / Operational Notes)
 
-| Maqsad | Manzil |
-|--------|--------|
-| Umumiy savol | maintainers@techcorp.example |
-| Xavfsizlik xabari | security@techcorp.example |
-| Ma'muriyat / DPA | legal@techcorp.example |
-| Enterprise / sotuv | sales@techcorp.example |
+Depending on configuration and usage, Sift may process the following data:
+
+| Data type | Source | Typical retention (deployment-dependent) |
+|---|---|---|
+| Target URLs/hosts | User/operator input | Configurable / policy-dependent |
+| Worker identifiers/keys | Worker registration/configuration | Configurable / policy-dependent |
+| Telemetry (RPS, errors, latency, etc.) | Test execution | Configurable / policy-dependent |
+| Findings/vulnerability results | Scanner outputs | Configurable / policy-dependent |
+| Audit log entries | CLI/dashboard/control operations | Configurable / policy-dependent |
+
+### 4.1 Operator responsibilities
+- **Data sharing:** Do not send data to third parties unless authorized and permitted by policy/law.
+- **Transport security:** Use TLS and secure deployment practices for remote access.
+- **Deletion/retention:** Define and enforce retention/deletion policies appropriate to your environment.
+- **Legal compliance:** Ensure testing activities and data handling comply with applicable laws and contracts.
+
+### 4.2 Disclaimer
+Sift is provided **"as is"**, without warranties. Operators are responsible for obtaining authorization, defining scope, and using the software lawfully and safely.
+
+---
+
+## 5. Contacts
+
+| Purpose | Contact |
+|---|---|
+| General questions | `maintainers@techcorp.example` |
+| Security reports | `security@techcorp.example` |
+| Legal / DPA inquiries | `legal@techcorp.example` |
+| Enterprise / sales inquiries | `sales@techcorp.example` |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert STUDY-GUIDE.md to a clean PDF using reportlab.
+"""Convert STUDY-GUIDE.md to a clean PDF using ReportLab.
 
 Handles basic Markdown: headings, paragraphs, bullet/numbered lists,
 code blocks, tables, bold, inline code, blockquotes, hr, and escaping.
@@ -252,7 +252,7 @@ def build_doc():
     story.append(Spacer(1, 8*mm))
     story.append(Paragraph("Sift", styles["h1"]))
     story.append(Paragraph("To'liq O'rganish Qo'llanmasi (Study Guide)", styles["h2"]))
-    story.append(Paragraph("Go load-testing va security suite — arxitektura, oqimlar va mustaqil o'rganish rejasi", styles["p"]))
+    story.append(Paragraph("Go load testing and security suite — architecture, workflows, and learning guide", styles["p"]))
     story.append(Spacer(1, 4*mm))
 
     # TOC

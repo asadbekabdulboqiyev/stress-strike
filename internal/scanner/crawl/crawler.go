@@ -124,7 +124,7 @@ func crawlerRedirectGuard(req *http.Request, via []*http.Request) error {
 // on malformed input; parse errors are silently ignored.
 //
 // UseBrowser bo'lsa headless Chromium orqali JS-rendered sahifalardan
-// endpointlar topiladi (SPA/React/Vue/Angular uchun).
+// endpoints are discovered (for SPA/React/Vue/Angular apps).
 func (c *Crawler) Crawl() *CrawlResult {
 	if c.Options.UseBrowser {
 		return c.crawlBrowser()

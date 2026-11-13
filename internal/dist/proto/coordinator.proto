@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package stressstrike.dist;
+package sift.dist;
 
-option go_package = "stress-strike/internal/dist/proto;distproto";
+option go_package = "github.com/asadbekabdulboqiyev/sift/internal/dist/proto;distproto";
 
 // Master -> Worker commands
 message WorkerCommand {

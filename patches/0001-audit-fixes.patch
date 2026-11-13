@@ -24,7 +24,7 @@ diff --git a/scripts/deploy-docker.sh b/scripts/deploy-docker.sh
 +# BUG: this lived under dist/, which `make release` and `make clean` both
 +# `rm -rf`, destroying the compose file for an already-running fleet.
 +# Keep generated state out of the build output tree.
-+GENERATED_DIR="${STRESS_STRIKE_GENERATED_DIR:-${REPO_ROOT}/.generated}"
++GENERATED_DIR="${SIFT_GENERATED_DIR:-${REPO_ROOT}/.generated}"
 +COMPOSE_FILE="${GENERATED_DIR}/docker-compose.generated.yml"
 
 diff --git a/Makefile b/Makefile
@@ -64,9 +64,9 @@ diff --git a/Makefile b/Makefile
 +goreleaser-snapshot: ## Build every artifact locally without publishing
 +	goreleaser release --snapshot --clean --skip=publish,sign
 
-diff --git a/cmd/stress-strike/main.go b/cmd/stress-strike/main.go
---- a/cmd/stress-strike/main.go
-+++ b/cmd/stress-strike/main.go
+diff --git a/cmd/Sift/main.go b/cmd/Sift/main.go
+--- a/cmd/Sift/main.go
++++ b/cmd/Sift/main.go
 @@
 -//	go build -ldflags "-X main.version=0.14.2"
 +//	go build -ldflags "-X main.version=$(cat VERSION)"

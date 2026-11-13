@@ -1,7 +1,7 @@
-# Makefile for stress-strike — build, test, lint, release helpers.
+# Makefile for Sift — build, test, lint, release helpers.
 #
 # Usage:
-#   make build       Build all stress-strike binaries into ./bin
+#   make build       Build all Sift binaries into ./bin
 #   make test        Run tests with the race detector
 #   make lint        go vet + gofmt check
 #   make verifier    Verify the browser verifier (tests + drift guard + Go<=>JS parity)
@@ -54,7 +54,7 @@ verifier-page: ## Regenerate docs/VERIFIER.html from the tested verifier module
 	node web/verifier/build-html.mjs
 
 .PHONY: demo-verified
-demo-verified: ## Run the LIVE stress-strike demo (seal -> verify -> one-byte tamper -> restore)
+demo-verified: ## Run the LIVE Sift demo (seal -> verify -> one-byte tamper -> restore)
 	bash scripts/demo-verified.sh
 
 GOSEC ?= gosec
@@ -83,9 +83,9 @@ release: ## Cross-compile for all platforms into ./dist
 
 .PHONY: docker
 docker: ## Build Docker image
-	docker build --build-arg VERSION=$(VERSION) -t stress-strike:$(VERSION) .
-	docker tag stress-strike:$(VERSION) stress-strike:latest
-	@echo "docker image built: stress-strike:$(VERSION)"
+	docker build --build-arg VERSION=$(VERSION) -t Sift:$(VERSION) .
+	docker tag Sift:$(VERSION) Sift:latest
+	@echo "docker image built: Sift:$(VERSION)"
 
 .PHONY: worker-linux
 worker-linux: ## Cross-compile Linux worker packages (amd64 + arm64) into ./dist
@@ -93,13 +93,13 @@ worker-linux: ## Cross-compile Linux worker packages (amd64 + arm64) into ./dist
 
 .PHONY: docker-worker
 docker-worker: ## Build the distributed worker Docker image
-	docker build -f Dockerfile.worker --build-arg VERSION=$(VERSION) -t stress-strike-worker:$(VERSION) .
-	@echo "docker worker image built: stress-strike-worker:$(VERSION)"
+	docker build -f Dockerfile.worker --build-arg VERSION=$(VERSION) -t Sift-worker:$(VERSION) .
+	@echo "docker worker image built: Sift-worker:$(VERSION)"
 
 .PHONY: docker-master
 docker-master: ## Build the master/coordinator Docker image
-	docker build -f Dockerfile.master --build-arg VERSION=$(VERSION) -t stress-strike-master:$(VERSION) .
-	@echo "docker master image built: stress-strike-master:$(VERSION)"
+	docker build -f Dockerfile.master --build-arg VERSION=$(VERSION) -t Sift-master:$(VERSION) .
+	@echo "docker master image built: Sift-master:$(VERSION)"
 
 .PHONY: deploy
 deploy: ## Friendly launcher: Docker fleet (local) or VPS fleet (SSH)
@@ -137,10 +137,10 @@ install: ## Build, install and macOS-sign every binary into PATH
 
 .PHONY: sign
 sign: ## Repair macOS code signatures in place (fixes "zsh: killed" / rc=137)
-	@dest="$${STRESS_STRIKE_INSTALL_DIR:-$$(go env GOBIN)}"; \
+	@dest="$${SIFT_INSTALL_DIR:-$$(go env GOBIN)}"; \
 	[ -n "$$dest" ] || dest="$$(go env GOPATH)/bin"; \
 	if [ "$$(uname -s)" != "Darwin" ]; then echo "not macOS — nothing to sign"; exit 0; fi; \
-	for b in stress-strike stress-strike-dashboard stress-strike-scan stress-strike-master stress-strike-replay stress-strike-worker; do \
+	for b in Sift Sift-dashboard Sift-scan Sift-master Sift-replay Sift-worker; do \
 	  [ -f "$$dest/$$b" ] || continue; \
 	  xattr -d com.apple.provenance "$$dest/$$b" 2>/dev/null || true; \
 	  codesign --force --sign - --timestamp=none "$$dest/$$b" >/dev/null 2>&1 || true; \
@@ -150,13 +150,13 @@ sign: ## Repair macOS code signatures in place (fixes "zsh: killed" / rc=137)
 
 .PHONY: version
 version: ## Print the current version
-	@echo "stress-strike v$(VERSION)"
+	@echo "Sift v$(VERSION)"
 
 .PHONY: run
 run: build ## Build and run the demo server
 	$(GO) run ./examples/demo_server.go &
 	@sleep 1
-	$(BIN_DIR)/stress-strike run --url http://localhost:8080 --users 10 --duration 5
+	$(BIN_DIR)/Sift run --url http://localhost:8080 --users 10 --duration 5
 
 .PHONY: demo-store
 demo-store: ## Run the VoltStore e-commerce demo (VeriGate OFF)

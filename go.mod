@@ -9,7 +9,7 @@ module github.com/asadbekabdulboqiyev/sift
 go 1.26.11
 
 require (
-	github.com/asadbekabdulboqiyev/stress-strike v0.14.11
+	github.com/asadbekabdulboqiyev/sift v0.14.11
 	github.com/chromedp/cdproto v0.159.0
 	github.com/chromedp/chromedp v0.23.0
 	github.com/google/gopacket v1.1.19

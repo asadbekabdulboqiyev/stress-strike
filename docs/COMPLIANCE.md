@@ -4,7 +4,7 @@
 This document outlines minimal, factual considerations. It does not constitute legal advice.
 
 ## HIPAA
-- stress-strike is a test tool; do not run against production PHI-containing systems without explicit authorization
+- Sift is a test tool; do not run against production PHI-containing systems without explicit authorization
 - No PHI is collected by default; logs redact/avoid PII
 - Authorization gate + immutable audit trail support access accountability
 
@@ -19,5 +19,5 @@ This document outlines minimal, factual considerations. It does not constitute l
 - Users control config/retention of local artifacts
 
 ## Data boundaries
-- CLI stores: reports/, ~/.stress-strike/audit.jsonl, policy files
+- CLI stores: reports/, ~/.Sift/audit.jsonl, policy files
 - Control-plane (Postgres): only metadata (tenants/users/roles/keys/events) — no request bodies with PII

@@ -80,7 +80,7 @@ func TestWebSocket(ctx context.Context, url string, req core.Requester) *WebSock
 	}
 
 	// Send a harmless probe message and see if the server echoes/responds.
-	probe := []byte("__stress_strike_probe__")
+	probe := []byte("__sift_probe__")
 	if err := conn.WriteMessage(websocket.TextMessage, probe); err == nil {
 		res.Messages = 1
 		if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {

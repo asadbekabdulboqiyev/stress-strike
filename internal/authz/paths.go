@@ -9,11 +9,11 @@ import (
 // ConfigHome is the directory holding Sift's local state: the
 // authorization policy and the audit trail.
 //
-// STRESS_STRIKE_HOME overrides it (isolated runs, tests); otherwise it is
+// SIFT_HOME overrides it (isolated runs, tests); otherwise it is
 // ~/.Sift, falling back to a relative directory when the host has no
 // home directory at all.
 func ConfigHome() string {
-	if d := strings.TrimSpace(os.Getenv("STRESS_STRIKE_HOME")); d != "" {
+	if d := strings.TrimSpace(os.Getenv("SIFT_HOME")); d != "" {
 		return d
 	}
 	if d, err := os.UserHomeDir(); err == nil && d != "" {
@@ -23,7 +23,7 @@ func ConfigHome() string {
 }
 
 // DefaultPolicyPath is where the authorization policy lives unless
-// STRESS_STRIKE_POLICY points somewhere else.
+// SIFT_POLICY points somewhere else.
 //
 // Every entry point — run, scan, pentest and the dashboard's OWASP endpoint —
 // resolves it through here, so they cannot disagree about which policy is in
@@ -31,7 +31,7 @@ func ConfigHome() string {
 // policy; passing an empty string would happen to do the same only because
 // opening "" fails with ENOENT, which is a fragile way to be safe.
 func DefaultPolicyPath() string {
-	if p := os.Getenv("STRESS_STRIKE_POLICY"); p != "" {
+	if p := os.Getenv("SIFT_POLICY"); p != "" {
 		return p
 	}
 	return filepath.Join(ConfigHome(), "authz.json")
@@ -41,7 +41,7 @@ func DefaultPolicyPath() string {
 // to. One file, so `Sift audit` shows web-triggered scans alongside
 // CLI ones.
 func DefaultAuditPath() string {
-	if p := os.Getenv("STRESS_STRIKE_AUDIT_LOG"); p != "" {
+	if p := os.Getenv("SIFT_AUDIT_LOG"); p != "" {
 		return p
 	}
 	return filepath.Join(ConfigHome(), "audit.jsonl")

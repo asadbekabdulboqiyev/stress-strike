@@ -3,7 +3,7 @@
 # skip_on_error, conditional branching (type: if) and stop_on_status.
 #
 # Run it against a compatible API:
-#   stress-strike run --config examples/branching-flow.yaml
+#   Sift run --config examples/branching-flow.yaml
 #
 # Semantics recap:
 #   - think_time:     seconds to pause AFTER a step (fractions allowed, 0.1 = 100ms)

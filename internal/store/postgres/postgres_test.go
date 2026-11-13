@@ -14,11 +14,11 @@ import (
 
 // defaultTestDSN targets the local PostgreSQL 16 instance that listens on the
 // unix socket in /tmp (user asadbek, database postgres). Override with
-// STRESS_STRIKE_TEST_PG_DSN.
+// SIFT_TEST_PG_DSN.
 const defaultTestDSN = "postgres:///postgres?host=/tmp"
 
 func testDSN() string {
-	if dsn := os.Getenv("STRESS_STRIKE_TEST_PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("SIFT_TEST_PG_DSN"); dsn != "" {
 		return dsn
 	}
 	return defaultTestDSN
@@ -303,7 +303,7 @@ func TestAuditWriteListAndLimit(t *testing.T) {
 			Resource:  "tenant:" + tn.ID,
 			Details:   "step " + action,
 			RemoteIP:  "203.0.113.7",
-			UserAgent: "stress-strike/test",
+			UserAgent: "Sift/test",
 			CreatedAt: base.Add(time.Duration(i) * time.Second),
 		})
 		if err != nil {
@@ -322,7 +322,7 @@ func TestAuditWriteListAndLimit(t *testing.T) {
 	if all[0].Action != "delete" || all[2].Action != "login" {
 		t.Fatalf("order = %s,%s,%s, want delete,create,login", all[0].Action, all[1].Action, all[2].Action)
 	}
-	if all[0].RemoteIP != "203.0.113.7" || all[0].UserAgent != "stress-strike/test" {
+	if all[0].RemoteIP != "203.0.113.7" || all[0].UserAgent != "Sift/test" {
 		t.Fatalf("actor metadata not persisted: %+v", all[0])
 	}
 

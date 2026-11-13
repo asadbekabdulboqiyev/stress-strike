@@ -4,9 +4,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "stress-strike.master.serviceName" . }}
+  name: {{ include "Sift.master.serviceName" . }}
   labels:
-    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    {{- include "Sift.commonLabels" . | nindent 4 }}
     app.kubernetes.io/component: master
 spec:
   type: {{ .Values.service.type }}
@@ -16,7 +16,7 @@ spec:
       targetPort: grpc
       protocol: TCP
   selector:
-    {{- include "stress-strike.master.selectorLabels" . | nindent 4 }}
+    {{- include "Sift.master.selectorLabels" . | nindent 4 }}
 ---
 {{- if .Values.master.metrics.service.enabled }}
 # ── Master metrics Service (Prometheus scrape target) ────────────────────────
@@ -25,9 +25,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "stress-strike.master.serviceName" . }}-metrics
+  name: {{ include "Sift.master.serviceName" . }}-metrics
   labels:
-    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    {{- include "Sift.commonLabels" . | nindent 4 }}
     app.kubernetes.io/component: master-metrics
   {{- with .Values.master.metrics.service.annotations }}
   annotations:
@@ -41,7 +41,7 @@ spec:
       targetPort: http-metrics
       protocol: TCP
   selector:
-    {{- include "stress-strike.master.selectorLabels" . | nindent 4 }}
+    {{- include "Sift.master.selectorLabels" . | nindent 4 }}
 {{- end }}
 ---
 {{- if .Values.worker.metrics.service.enabled }}
@@ -49,9 +49,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "stress-strike.fullname" . }}-worker-metrics
+  name: {{ include "Sift.fullname" . }}-worker-metrics
   labels:
-    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    {{- include "Sift.commonLabels" . | nindent 4 }}
     app.kubernetes.io/component: worker-metrics
   {{- with .Values.worker.metrics.service.annotations }}
   annotations:
@@ -65,5 +65,5 @@ spec:
       targetPort: http-metrics
       protocol: TCP
   selector:
-    {{- include "stress-strike.worker.selectorLabels" . | nindent 4 }}
+    {{- include "Sift.worker.selectorLabels" . | nindent 4 }}
 {{- end }}

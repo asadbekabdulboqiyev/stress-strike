@@ -8,7 +8,7 @@
 # Go toolchain (and on macOS/Linux you usually already have this machine
 # covered). This script:
 #
-#   1. builds stress-strike + the bundled demo site (only on first run)
+#   1. builds Sift + the bundled demo site (only on first run)
 #   2. starts the demo site on http://127.0.0.1:8080
 #   3. starts the live web dashboard on http://localhost:8888
 #   4. opens your browser so you can press Start
@@ -64,16 +64,16 @@ fi
 # --- 1. build (first run only, or when sources changed) ----------------------
 
 NEED_RUN=false
-for cmd in bin/stress-strike bin/demo-server; do
+for cmd in bin/Sift bin/demo-server; do
   [[ -x "$cmd" ]] || NEED_RUN=true
 done
 
 if $NEED_RUN; then
   step "first run detected — building (takes a few seconds)..."
   mkdir -p bin
-  go build -trimpath -buildvcs=false -o bin/stress-strike ./cmd/stress-strike
+  go build -trimpath -buildvcs=false -o bin/Sift ./cmd/sift
   go build -trimpath -buildvcs=false -o bin/demo-server ./examples/demo_server.go
-  ok "built bin/stress-strike and bin/demo-server"
+  ok "built bin/Sift and bin/demo-server"
 fi
 
 # --- 2. pick the target -------------------------------------------------------
@@ -114,7 +114,7 @@ fi
 
 say ""
 say "${BANNER}"
-say "  stress-strike — live web dashboard"
+say "  Sift — live web dashboard"
 say "      stop anytime:  Ctrl+C"
 say "${BANNER}"
 say ""
@@ -141,7 +141,7 @@ step "press Start on the page — results stream live, nothing leaves your machi
 step "waiting on the dashboard (Ctrl+C when done)"
 say ""
 
-exec ./bin/stress-strike run \
+exec ./bin/Sift run \
   --url "${TARGET}" \
   --users "${USERS}" \
   --duration "${DURATION}" \

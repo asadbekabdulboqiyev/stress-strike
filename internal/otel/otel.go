@@ -37,10 +37,10 @@ type Config struct {
 }
 
 // ConfigFromEnv builds a Config from the standard OTEL_* environment variables
-// plus the Sift specific STRESS_STRIKE_OTEL_ENABLED switch.
+// plus the Sift specific SIFT_OTEL_ENABLED switch.
 func ConfigFromEnv() Config {
 	cfg := Config{
-		Enabled:     envBool("STRESS_STRIKE_OTEL_ENABLED", false),
+		Enabled:     envBool("SIFT_OTEL_ENABLED", false),
 		Endpoint:    firstNonEmpty(os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"), os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
 		ServiceName: firstNonEmpty(os.Getenv("OTEL_SERVICE_NAME"), "Sift"),
 		SampleRatio: 1,

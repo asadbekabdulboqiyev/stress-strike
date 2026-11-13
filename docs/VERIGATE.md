@@ -1,13 +1,13 @@
 # VeriGate — WAF-style Protection Gate
 
 VeriGate is a reusable, embeddable request-protection layer built into
-stress-strike's `internal/verigate` package. It gives any HTTP service a
+Sift's `internal/verigate` package. It gives any HTTP service a
 production-grade defense stack that browsers and API clients can pass through
 without friction — and that bots and hammering tools cannot.
 
 It ships with **VoltStore** (`examples/demo_store`), a full real-world
 e-commerce demo built specifically to be attacked. Flip VeriGate on, throw
-stress-strike at the store, and watch the difference; flip it off and the
+Sift at the store, and watch the difference; flip it off and the
 store takes the full storm.
 
 ## The three layers
@@ -97,7 +97,7 @@ curl -s http://127.0.0.1:8090/admin/stats | \
   jq '{difficulty, adaptive, rate_rps, steps_up, steps_down, schedule_tail}'
 ```
 
-Spot it by hand: drive traffic at the store with `stress-strike` (or a `curl`
+Spot it by hand: drive traffic at the store with `Sift` (or a `curl`
 loop) while watching `difficulty` climb, then stop and watch it settle back to
 the baseline once the rate falls below `-adaptive-low-rps`.
 
@@ -110,7 +110,7 @@ the difficulty), and `ScheduleCap` (1024 — how many changes are retained).
 ## The SLA verify gate
 
 "VeriGate" has a second meaning in this project: the **SLA verify gate** in
-stress-strike (`--expect-error-rate`, `--expect-min-rps`, `--expect-p99`).
+Sift (`--expect-error-rate`, `--expect-min-rps`, `--expect-p99`).
 It turns a load test into a CI gate that exits non-zero when an SLO is
 violated. `scripts/demo-store-sla.sh` combines both meanings into one
 proof:
@@ -118,13 +118,13 @@ proof:
 ```
 PHASE 1 — VeriGate ON   → hammer 500 users at the store
   VeriGate throttles ~99.9% of requests
-  → error rate 99.9% > 5% → SLA FAIL (stress-strike exits 2)
+  → error rate 99.9% > 5% → SLA FAIL (Sift exits 2)
 
   toggle VeriGate OFF via POST /admin/protect
 
 PHASE 2 — VeriGate OFF  → same attack, same store
   store absorbs ~16k req/s
-  → error rate < 5%      → SLA PASS (stress-strike exits 0)
+  → error rate < 5%      → SLA PASS (Sift exits 0)
 
 VERDICT: VeriGate WORKS — protection flips the CI gate.
 ```
@@ -167,7 +167,7 @@ make demo-store-protect    # protection ON  — protected target
 2. Open `http://127.0.0.1:8090` — browse, sign in as `alice@volt.store`,
    add to cart, check out.
 3. In another terminal: `make demo-sla` or hit it with
-   `stress-strike run --url http://127.0.0.1:8090/ --users 500 --duration 10`.
+   `Sift run --url http://127.0.0.1:8090/ --users 500 --duration 10`.
 4. Watch `/admin` — requests, rate-limited, challenges served/solved,
    blocked requests and blocked IPs tick up live.
 5. Toggle protection off on the same panel; run the identical attack again
@@ -176,7 +176,7 @@ make demo-store-protect    # protection ON  — protected target
 ## Embedding VeriGate in your own service
 
 ```go
-import "github.com/asadbekabdulboqiyev/stress-strike/internal/verigate"
+import "github.com/asadbekabdulboqiyev/sift/internal/verigate"
 
 gate, err := verigate.New(verigate.Options{
     Enabled:       flag.Bool("protect", false, ...), // CLI toggle

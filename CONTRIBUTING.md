@@ -1,6 +1,6 @@
-# Contributing to stress-strike
+# Contributing to Sift
 
-Salom! stress-strike ga xisqatingizni qadr qildik. Quyidagi qoidalarga rioya
+Salom! Sift ga xisqatingizni qadr qildik. Quyidagi qoidalarga rioya
 qiling:
 
 ## 1. Ishni boshlashdan oldin

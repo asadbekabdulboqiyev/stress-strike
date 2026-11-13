@@ -60,7 +60,7 @@ PY
 )
 
 say "verify-html-parity: building the Go CLI and a demo target"
-go build -o "$work/stress-strike" ./cmd/stress-strike || { say "FAIL: could not build the CLI"; exit 1; }
+go build -o "$work/Sift" ./cmd/Sift || { say "FAIL: could not build the CLI"; exit 1; }
 go build -o "$work/demo_server" ./examples/demo_server.go || { say "FAIL: could not build the demo server"; exit 1; }
 
 say "verify-html-parity: starting the demo target on 127.0.0.1:$port"
@@ -79,11 +79,11 @@ if [[ "$ready" != 1 ]]; then
 fi
 
 say "verify-html-parity: signing a real bundle with the CLI"
-"$work/stress-strike" keygen --out "$work/k.key" >"$work/keygen.log" 2>&1 || { say "FAIL: keygen"; exit 1; }
+"$work/Sift" keygen --out "$work/k.key" >"$work/keygen.log" 2>&1 || { say "FAIL: keygen"; exit 1; }
 
 # The run may exit non-zero on an SLA failure; the bundle is sealed regardless,
 # so capture the code instead of aborting.
-"$work/stress-strike" run \
+"$work/Sift" run \
   --url "http://127.0.0.1:$port/health" \
   --rps 400 --users 8 --duration 4 \
   --coordinated-omission \
@@ -195,9 +195,9 @@ fi
 last_rc=0
 run_go() {
   if [[ -n "${3:-}" ]]; then
-    "$work/stress-strike" verify --bundle "$2" --samples "$3" --json >"$1" 2>/dev/null
+    "$work/Sift" verify --bundle "$2" --samples "$3" --json >"$1" 2>/dev/null
   else
-    "$work/stress-strike" verify --bundle "$2" --json >"$1" 2>/dev/null
+    "$work/Sift" verify --bundle "$2" --json >"$1" 2>/dev/null
   fi
   last_rc=$?
   return 0

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# stress-strike demo — "your load-test report is now a receipt".
+# Sift demo — "your load-test report is now a receipt".
 #
 # What this proves, mechanically and checkably:
 #   1. A vpmp/v1 measurement bundle VERIFIES (signature + Merkle root + claims
@@ -11,12 +11,12 @@
 #
 # Two modes, chosen automatically:
 #   LIVE      — the real CLI, end to end:
-#                 stress-strike keygen --out <key>
-#                 stress-strike run --url <t> --rps 300 --users 30 --duration 10 \
+#                 Sift keygen --out <key>
+#                 Sift run --url <t> --rps 300 --users 30 --duration 10 \
 #                                    --coordinated-omission --allow-private \
 #                                    --emit-bundle <b> --bundle-key <key>
-#                 stress-strike verify --bundle <b> --samples <b.samples.jsonl>
-#               The binary is taken from STRESS_STRIKE_BIN, ./stress-strike, or
+#                 Sift verify --bundle <b> --samples <b.samples.jsonl>
+#               The binary is taken from SIFT_BIN, ./Sift, or
 #               PATH; failing all of those, this script builds it from the
 #               checkout, so a fresh clone with Go installed runs LIVE.
 #   REFERENCE — only when no binary can be found *and* none can be built. Then
@@ -28,7 +28,7 @@
 # Idempotent: every run uses a fresh temp dir and removes it on exit.
 #
 # Env overrides:
-#   STRESS_STRIKE_BIN   path to the binary to probe
+#   SIFT_BIN   path to the binary to probe
 #   DEMO_URL            target URL                (default http://127.0.0.1:8090/)
 #   DEMO_DURATION       seconds, "10s" also works (default 10s)
 #   DEMO_RPS            LIVE pacing cap, rps       (default 300)
@@ -56,7 +56,7 @@ warn() { printf '%s\n' "${YEL}NOTE${R}  $*"; }
 note() { printf '%s\n' "${DIM}$*${R}"; }
 
 banner() {
-  say "${B}stress-strike — verifiable measurement demo${R}"
+  say "${B}Sift — verifiable measurement demo${R}"
   say "${DIM}format vpmp/v1 · Ed25519 seal · Merkle-locked samples · offline verify${R}"
 }
 
@@ -66,7 +66,7 @@ DURATION="${DEMO_DURATION:-10s}"
 COUNT="${DEMO_COUNT:-1500}"
 # Live-mode knobs. The load is a steady profile with a fixed --rps cap on
 # purpose: that is the one schedule shape whose coordinated-omission correction
-# this tool will claim (see coCorrectionGate in cmd/stress-strike/cmd_run.go),
+# this tool will claim (see coCorrectionGate in cmd/Sift/cmd_run.go),
 # so the demo shows a corrected tail with its 95% interval rather than a
 # withheld claim.
 RPS="${DEMO_RPS:-300}"
@@ -111,23 +111,23 @@ PY
 
 # ──────────────────────────── CLI capability probe ───────────────────────────
 # find_bin — the binary to drive. A candidate is accepted only if it exposes the
-# stress-strike surface: a stale ./stress-strike left over from an older build
+# Sift surface: a stale ./Sift left over from an older build
 # predates `keygen`/`--emit-bundle`, and accepting one silently downgraded this
 # demo to synthetic data once already. If nothing usable is found, build from
 # this checkout (so a fresh clone with Go installed runs LIVE); failing that,
 # return 1 and let the caller fall back to the reference implementation.
 find_bin() {
   local cand root
-  for cand in "${STRESS_STRIKE_BIN:-}" "./stress-strike" "$(command -v stress-strike 2>/dev/null || true)"; do
+  for cand in "${SIFT_BIN:-}" "./Sift" "$(command -v Sift 2>/dev/null || true)"; do
     if [ -n "${cand}" ] && [ -x "${cand}" ] && "$cand" run --help 2>&1 | grep -q -- '--emit-bundle'; then
       printf '%s' "${cand}"
       return 0
     fi
   done
   root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-  if [ -f "${root}/cmd/stress-strike/main.go" ] && command -v go >/dev/null 2>&1; then
-    if (cd "${root}" && go build -o "${WORK}/stress-strike" ./cmd/stress-strike) >/dev/null 2>&1; then
-      printf '%s' "${WORK}/stress-strike"
+  if [ -f "${root}/cmd/Sift/main.go" ] && command -v go >/dev/null 2>&1; then
+    if (cd "${root}" && go build -o "${WORK}/Sift" ./cmd/Sift) >/dev/null 2>&1; then
+      printf '%s' "${WORK}/Sift"
       return 0
     fi
   fi
@@ -163,7 +163,7 @@ probe_emit_bundle() {
 write_reference() {
   cat > "${REF}" <<'PYEOF'
 #!/usr/bin/env python3
-"""Reference implementation of vpmp/v1 (stress-strike). Stdlib only."""
+"""Reference implementation of vpmp/v1 (Sift). Stdlib only."""
 import base64, datetime, hashlib, json, math, os, random, sys, time
 
 # ------------------------------- Ed25519 -------------------------------------
@@ -480,7 +480,7 @@ def cmd_emit(out, samples_path, count, duration_s, target, seed):
         "bundle_id": "vb-" + hashlib.sha256(
             b64d(key["public_key_b64"]) + str(base_ns).encode()).hexdigest()[:12],
         "created_at": iso(base_ns),
-        "tool": {"name": "stress-strike", "binary": "stress-strike",
+        "tool": {"name": "Sift", "binary": "Sift",
                  "version": "0.14.14", "protocol": "vpmp/v1"},
         "signer": {"alg": "Ed25519", "key_id": key["key_id"],
                    "public_key_b64": key["public_key_b64"]},
@@ -659,7 +659,7 @@ BIN=""
 if BIN="$(find_bin)"; then
   note "binary: ${BIN}"
 else
-  note "binary: not found (set STRESS_STRIKE_BIN to point at one)"
+  note "binary: not found (set SIFT_BIN to point at one)"
 fi
 
 MODE="reference"
@@ -672,13 +672,13 @@ if [ "${MODE}" = "live" ]; then
   say "LIVE — this build exposes keygen / verify / --emit-bundle."
   say "       Running the real end-to-end contract against ${URL}"
 else
-  warn "REFERENCE mode — no stress-strike binary was found or could be built."
+  warn "REFERENCE mode — no Sift binary was found or could be built."
   say  "       Missing surface is at least one of:"
-  probe_sub keygen            || say "         · stress-strike keygen --out <key>        [unavailable]"
-  probe_sub verify            || say "         · stress-strike verify --bundle …        [unavailable]"
-  probe_emit_bundle           || say "         · stress-strike run --emit-bundle <b>    [unavailable]"
-  say  "       The real thing ships in this repo (cmd/stress-strike): set"
-  say  "       STRESS_STRIKE_BIN to a built binary, or install Go so this script"
+  probe_sub keygen            || say "         · Sift keygen --out <key>        [unavailable]"
+  probe_sub verify            || say "         · Sift verify --bundle …        [unavailable]"
+  probe_emit_bundle           || say "         · Sift run --emit-bundle <b>    [unavailable]"
+  say  "       The real thing ships in this repo (cmd/Sift): set"
+  say  "       SIFT_BIN to a built binary, or install Go so this script"
   say  "       can build one itself."
   say  "       So: NO load is generated here. Instead a spec-conformant vpmp/v1"
   say  "       bundle is emitted by the embedded reference implementation, and the"

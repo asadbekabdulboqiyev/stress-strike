@@ -4,8 +4,8 @@ name: Docker
 # configured).
 #
 # Fixes two bugs in the previous CI docker job:
-#   1. The image name was hardcoded to `<DOCKER_USERNAME>/stress-strike`, with a
-#      fallback of `stress-strike/stress-strike` — a repository that does not
+#   1. The image name was hardcoded to `<DOCKER_USERNAME>/Sift`, with a
+#      fallback of `Sift/Sift` — a repository that does not
 #      exist, so the push failed.
 #   2. build-args passed VERSION=${{ github.ref_name }}, which on a push to
 #      main is the literal string "main" and got baked into OCI labels and
@@ -40,11 +40,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: stress-strike
+          - image: Sift
             dockerfile: Dockerfile
-          - image: stress-strike-master
+          - image: Sift-master
             dockerfile: Dockerfile.master
-          - image: stress-strike-worker
+          - image: Sift-worker
             dockerfile: Dockerfile.worker
     steps:
       - uses: actions/checkout@v4

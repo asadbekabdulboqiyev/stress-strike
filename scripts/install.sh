@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# install.sh — one-command installer for stress-strike.
+# install.sh — one-command installer for Sift.
 #
-#   curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/main/scripts/install.sh
+#   curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/main/scripts/install.sh
 #   less install.sh          # read it before running it — it has no secrets and needs root
 #   ./install.sh             # latest release, checksum-verified
 #   ./install.sh v0.14.14    # pin a version
@@ -22,8 +22,8 @@
 
 set -euo pipefail
 
-REPO="asadbekabdulboqiyev/stress-strike"
-BINARIES=(stress-strike stress-strike-dashboard stress-strike-master stress-strike-worker stress-strike-replay stress-strike-scan)
+REPO="asadbekabdulboqiyev/sift"
+BINARIES=(Sift Sift-dashboard Sift-master Sift-worker Sift-replay Sift-scan)
 
 MODE="release"
 VERSION=""
@@ -51,7 +51,7 @@ checksum_tool() {
 }
 
 install_dir() {
-  if [ -n "${STRESS_STRIKE_INSTALL_DIR:-}" ]; then echo "$STRESS_STRIKE_INSTALL_DIR"; return; fi
+  if [ -n "${SIFT_INSTALL_DIR:-}" ]; then echo "$SIFT_INSTALL_DIR"; return; fi
   if [ -w "/usr/local/bin" ]; then echo "/usr/local/bin"; return; fi
   echo "${HOME}/.local/bin"
 }
@@ -61,7 +61,7 @@ if [ "$MODE" = "go" ]; then
   command -v go >/dev/null 2>&1 || { err "Go 1.26+ is required for --go: https://go.dev/dl/"; exit 1; }
   step "installing via the Go module proxy"
   for b in "${BINARIES[@]}"; do
-    [ "$b" = "stress-strike" ] && pkg=cmd/stress-strike || pkg="cmd/${b}"
+    [ "$b" = "Sift" ] && pkg=cmd/Sift || pkg="cmd/${b}"
     go install "github.com/${REPO}/${pkg}@${VERSION:-latest}"
     ok "$b"
   done
@@ -79,7 +79,7 @@ if [ -z "$VERSION" ]; then
             | sed -n 's/.*"tag_name": *"\(v[0-9][^"]*\)".*/\1/p' | head -1 | tr -d v)"
   [ -n "$VERSION" ] || { err "could not resolve the latest release"; exit 1; }
 fi
-say "==> stress-strike v${VERSION}"
+say "==> Sift v${VERSION}"
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$os" in
@@ -95,7 +95,7 @@ case "$(uname -m)" in
 esac
 [ "$os" = "windows" ] && [ "$arch" = "amd64" ] && { step "note: Windows arm64 binaries are published too"; }
 
-archive="stress-strike_${VERSION}_${os}_${arch}"
+archive="Sift_${VERSION}_${os}_${arch}"
 ext=tar.gz
 [ "$os" = "windows" ] && ext=zip
 base="https://github.com/${REPO}/releases/download/v${VERSION}"
@@ -158,7 +158,7 @@ if [ ! -d "$PREFIX" ]; then
   mkdir -p "$PREFIX" || { err "cannot create ${PREFIX}"; exit 1; }
 fi
 if [ ! -w "$PREFIX" ]; then
-  err "${PREFIX} is not writable — rerun with sudo, or set STRESS_STRIKE_INSTALL_DIR"
+  err "${PREFIX} is not writable — rerun with sudo, or set SIFT_INSTALL_DIR"
   exit 1
 fi
 
@@ -195,14 +195,14 @@ if [ "$os" = "darwin" ] && command -v codesign >/dev/null 2>&1; then
 fi
 
 say
-ok "stress-strike v${VERSION} installed"
+ok "Sift v${VERSION} installed"
 say
 if [[ ":$PATH:" != *":${PREFIX}:"* ]]; then
   say "  add the install directory to your PATH:"
   say "    export PATH=\"\${PATH}:${PREFIX}\""
   say
 fi
-say "  verify it:   stress-strike version"
-say "  first run:   stress-strike run --url https://example.com --users 10 --duration 10"
+say "  verify it:   Sift version"
+say "  first run:   Sift run --url https://example.com --users 10 --duration 10"
 say
-say "  Uninstall:   rm ${PREFIX}/stress-strike*"
+say "  Uninstall:   rm ${PREFIX}/Sift*"

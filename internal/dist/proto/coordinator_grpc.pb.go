@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MasterWorker_Coordinate_FullMethodName      = "/stressstrike.dist.MasterWorker/Coordinate"
-	MasterWorker_Ping_FullMethodName            = "/stressstrike.dist.MasterWorker/Ping"
-	MasterWorker_GetCapabilities_FullMethodName = "/stressstrike.dist.MasterWorker/GetCapabilities"
-	MasterWorker_Register_FullMethodName        = "/stressstrike.dist.MasterWorker/Register"
+	MasterWorker_Coordinate_FullMethodName      = "/sift.dist.MasterWorker/Coordinate"
+	MasterWorker_Ping_FullMethodName            = "/sift.dist.MasterWorker/Ping"
+	MasterWorker_GetCapabilities_FullMethodName = "/sift.dist.MasterWorker/GetCapabilities"
+	MasterWorker_Register_FullMethodName        = "/sift.dist.MasterWorker/Register"
 )
 
 // MasterWorkerClient is the client API for MasterWorker service.
@@ -212,7 +212,7 @@ func _MasterWorker_Register_Handler(srv interface{}, ctx context.Context, dec fu
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MasterWorker_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "stressstrike.dist.MasterWorker",
+	ServiceName: "sift.dist.MasterWorker",
 	HandlerType: (*MasterWorkerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

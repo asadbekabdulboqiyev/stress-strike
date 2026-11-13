@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#06060a">
 <meta name="color-scheme" content="dark">
-<title>stress-strike Dashboard</title>
+<title>Sift Dashboard</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
   <aside class="sidebar" id="sidebar" aria-label="Dashboard sections">
     <div class="sb-brand">
       <span class="sb-mark" aria-hidden="true">SS</span>
-      <span class="sb-brand-text">stress-strike</span>
+      <span class="sb-brand-text">Sift</span>
     </div>
     <nav class="sb-nav">
       <button class="sb-link active" type="button" data-view="viewOverview">
@@ -37,7 +37,7 @@
     </nav>
     <div class="sb-foot">
       <span class="sb-foot-note">v<span id="sbVersion">—</span></span>
-      <a class="sb-foot-link" href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a class="sb-foot-link" href="https://github.com/asadbekabdulboqiyev/sift" target="_blank" rel="noopener noreferrer">GitHub</a>
     </div>
   </aside>
 
@@ -45,7 +45,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <div class="logo" id="brandLogo" title="Click five times to reveal the admin area">stress-strike <span>dashboard</span></div>
+      <div class="logo" id="brandLogo" title="Click five times to reveal the admin area">Sift <span>dashboard</span></div>
       <span class="badge badge-idle" id="statusBadge" role="status" aria-live="polite">idle</span>
     </div>
     <div class="header-right">
@@ -407,7 +407,7 @@
       <div class="field pentest-field pentest-field--ticket">
         <label class="field-label" for="pentestTicket">Authorization ticket</label>
         <input id="pentestTicket" type="text" placeholder="e.g. SEC-1042" spellcheck="false" autocomplete="off">
-        <p class="field-hint">Required. Approve the target first: <code>stress-strike authorize add --pattern &lt;host&gt; --approver &lt;name&gt; --ticket &lt;id&gt;</code></p>
+        <p class="field-hint">Required. Approve the target first: <code>Sift authorize add --pattern &lt;host&gt; --approver &lt;name&gt; --ticket &lt;id&gt;</code></p>
       </div>
       <label class="pentest-check"><input type="checkbox" id="pentestPassive"> Passive checks (read-only)</label>
       <label class="pentest-check"><input type="checkbox" id="pentestIntrusive"> Intrusive probes</label>
@@ -795,7 +795,7 @@
             <input id="certFile" type="file" accept=".json,application/json" hidden>
             <div class="cert-field">
               <label class="field-label" for="certIssuer">Issuer</label>
-              <input id="certIssuer" type="text" placeholder="stress-strike assessment" value="stress-strike assessment">
+              <input id="certIssuer" type="text" placeholder="Sift assessment" value="Sift assessment">
             </div>
             <div class="cert-field">
               <label class="field-label" for="certExperiment">Experiment / run reference</label>
@@ -888,7 +888,7 @@
           <div class="field field-sm">
             <label class="field-label" for="adminCode">Admin code</label>
             <input id="adminCode" type="text" name="adminCode" placeholder="" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="adminCodeHelp">
-            <p class="field-hint" id="adminCodeHelp">The admin code is read from the <code>STRESS_STRIKE_ADMIN_CODE</code> environment variable. Generate it with: <code>stress-strike admin code</code>.</p>
+            <p class="field-hint" id="adminCodeHelp">The admin code is read from the <code>SIFT_ADMIN_CODE</code> environment variable. Generate it with: <code>Sift admin code</code>.</p>
           </div>
           <div class="field field-sm">
             <label class="field-label" for="adminMinutes">Minutes</label>
@@ -908,8 +908,8 @@
           <li>Every authorization gate on this host allows work while the window is open — no ticket needed.</li>
           <li>The window expires automatically (15 minutes by default, 24 hours maximum).</li>
           <li>Cloud instance metadata (169.254.169.254 and friends) stays denied, always.</li>
-          <li>Every unlock and lock is written to the same audit trail as scans: <code>stress-strike audit show</code>.</li>
-          <li>Turn it off the moment the work is done: this button, or <code>stress-strike admin lock</code>.</li>
+          <li>Every unlock and lock is written to the same audit trail as scans: <code>Sift audit show</code>.</li>
+          <li>Turn it off the moment the work is done: this button, or <code>Sift admin lock</code>.</li>
         </ul>
       </div>
     </div>
@@ -947,7 +947,7 @@
   </main>
 
   <div class="footer">
-    stress-strike &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/stress-strike" target="_blank" rel="noopener noreferrer">GitHub</a>
+    Sift &middot; real-time WebSocket monitoring &middot; <a href="https://github.com/asadbekabdulboqiyev/sift" target="_blank" rel="noopener noreferrer">GitHub</a>
     <span class="footer-hint"><kbd>S</kbd> start &middot; <kbd>E</kbd> stop &middot; <kbd>Esc</kbd> cancel confirm</span>
     <span class="ops-links hidden" id="opsLinks" aria-label="Public operations endpoints">
       <a href="/healthz" target="_blank" rel="noopener">healthz</a>
@@ -972,7 +972,7 @@
       <button class="btn btn-ghost" id="btnLockRetry" type="button" title="Re-attempt the connection (use this once the server accepts your session)">Try again</button>
       <button class="btn btn-ghost" id="btnLockRefresh" type="button" title="Reload the page">Reload</button>
     </div>
-    <p class="lock-note">No credentials are stored or requested here &mdash; authenticate at the server level (e.g. <code>stress-strike dashboard --auth-token &hellip;</code>) or in a reverse proxy.</p>
+    <p class="lock-note">No credentials are stored or requested here &mdash; authenticate at the server level (e.g. <code>Sift dashboard --auth-token &hellip;</code>) or in a reverse proxy.</p>
   </div>
 </div>
 

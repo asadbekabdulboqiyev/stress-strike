@@ -65,7 +65,7 @@ func buildCLI() {
 		bin := filepath.Join(dir, "Sift")
 		if runtime.GOOS == "windows" {
 			// `go build -o` appends the extension on Windows, so the artifact
-			// lands at "stress-strike.exe" while cliBin would point at the
+			// lands at "Sift.exe" while cliBin would point at the
 			// extensionless path — exec then reports "file not found in %PATH%"
 			// and every black-box CLI test fails, all from this one line.
 			bin += ".exe"

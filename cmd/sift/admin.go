@@ -128,7 +128,7 @@ func adminRotate() {
 
 func adminUnlock(args []string) {
 	fs := flag.NewFlagSet("admin unlock", flag.ContinueOnError)
-	code := fs.String("code", "", "admin code (default: prompt, or STRESS_STRIKE_ADMIN_CODE)")
+	code := fs.String("code", "", "admin code (default: prompt, or SIFT_ADMIN_CODE)")
 	minutes := fs.Int("minutes", 15, "how long the bypass stays open (1–1440)")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
@@ -138,7 +138,7 @@ func adminUnlock(args []string) {
 	s := adminStore()
 	c := strings.TrimSpace(*code)
 	if c == "" {
-		c = strings.TrimSpace(os.Getenv("STRESS_STRIKE_ADMIN_CODE"))
+		c = strings.TrimSpace(os.Getenv("SIFT_ADMIN_CODE"))
 	}
 	if c == "" {
 		fmt.Print("Admin code: ")

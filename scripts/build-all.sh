@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 #
-# build-all.sh — Build stress-strike binaries.
+# build-all.sh — Build Sift binaries.
 #
 # Default: build all binaries for the current platform.
 # Set RELEASE=1 to cross-compile for all platforms and create archives.
 #
 # Output (local mode):
 #   bin/
-#     stress-strike
-#     stress-strike-scan
-#     stress-strike-master
-#     stress-strike-replay       (pure-Go, no CGO/libpcap required)
-#     stress-strike-worker
-#     stress-strike-dashboard
+#     Sift
+#     Sift-scan
+#     Sift-master
+#     Sift-replay       (pure-Go, no CGO/libpcap required)
+#     Sift-worker
+#     Sift-dashboard
 #
 # Output (RELEASE=1):
 #   dist/
-#     stress-strike-v{version}-{os}-{arch}.tar.gz   (unix)
-#     stress-strike-v{version}-windows-amd64.zip    (windows)
+#     Sift-v{version}-{os}-{arch}.tar.gz   (unix)
+#     Sift-v{version}-windows-amd64.zip    (windows)
 #     sha256sums.txt
 #
 # Requirements:
@@ -38,7 +38,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 VERSION="${1:-${VERSION:-0.14.0}}"
-LDFLAGS="-s -w -X main.version=${VERSION}"
+LDFLAGS="-s -w -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION}"
 
 if ! command -v go >/dev/null 2>&1; then
   echo "error: 'go' not found in PATH" >&2
@@ -66,7 +66,7 @@ if [ "${RELEASE:-0}" = "1" ]; then
     fi
   }
 
-  echo "==> stress-strike release build v${VERSION}"
+  echo "==> Sift release build v${VERSION}"
   echo "==> output directory: ${DIST_DIR}"
   echo
 
@@ -82,8 +82,8 @@ if [ "${RELEASE:-0}" = "1" ]; then
       suffix=".exe"
     fi
 
-    name="stress-strike-v${VERSION}-${os}-${arch}"
-    build_tmp="${DIST_DIR}/pkg/stress-strike${suffix}"
+    name="Sift-v${VERSION}-${os}-${arch}"
+    build_tmp="${DIST_DIR}/pkg/Sift${suffix}"
 
     echo "==> building ${os}/${arch}"
     (
@@ -91,13 +91,13 @@ if [ "${RELEASE:-0}" = "1" ]; then
       CGO_ENABLED=0 \
         GOOS="${os}" \
         GOARCH="${arch}" \
-        go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${build_tmp}" ./cmd/stress-strike
+        go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${build_tmp}" ./cmd/sift
     )
 
     if [ "${os}" = "windows" ]; then
-      (cd "${DIST_DIR}/pkg" && zip -q "../${name}.zip" "stress-strike${suffix}")
+      (cd "${DIST_DIR}/pkg" && zip -q "../${name}.zip" "Sift${suffix}")
     else
-      tar -czf "${DIST_DIR}/${name}.tar.gz" -C "${DIST_DIR}/pkg" "stress-strike"
+      tar -czf "${DIST_DIR}/${name}.tar.gz" -C "${DIST_DIR}/pkg" "Sift"
     fi
     rm -f "${build_tmp}"
   done
@@ -120,12 +120,12 @@ fi
 BIN_DIR="${REPO_ROOT}/bin"
 
 BINARIES=(
-  "stress-strike:./cmd/stress-strike"
-  "stress-strike-scan:./cmd/stress-strike-scan"
-  "stress-strike-master:./cmd/stress-strike-master"
-  "stress-strike-replay:./cmd/stress-strike-replay"
-  "stress-strike-worker:./cmd/stress-strike-worker"
-  "stress-strike-dashboard:./cmd/stress-strike-dashboard"
+  "Sift:./cmd/sift"
+  "Sift-scan:./cmd/sift-scan"
+  "Sift-master:./cmd/sift-master"
+  "Sift-replay:./cmd/sift-replay"
+  "Sift-worker:./cmd/sift-worker"
+  "Sift-dashboard:./cmd/sift-dashboard"
 )
 
 mkdir -p "${BIN_DIR}"

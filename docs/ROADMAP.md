@@ -51,7 +51,7 @@ birida aniq, o'lchovlangan cheklovi bo'lgan holda qo'yiladi.
   `scanner/owasp`, `scanner/auth`, `scanner/jwt`, `scanner/fuzz`, `scanner/dirbust`,
   `scanner/graph`, `scanner/websocket`, `scanner/crawl`, `scanner/portscan`,
   `scanner/sslscan`, `scanner/subdomain`, `scanner/guard`, `scanner/verify`, `scanner/nvd`
-  bo'lib turishi; CLI parity modullari `cmd/stress-strike-scan` ga o'tkazilishi.
+  bo'lib turishi; CLI parity modullari `cmd/Sift-scan` ga o'tkazilishi.
 - **Muddat:** ~6-8 hafta, 2 senior. Muhim: bu refaktoring **ortiqcha qo'ng'ilish** emas —
   g'oyalik qism, lekin commit tartibi bilan bog'liq.
 

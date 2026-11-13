@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "stress-strike.fullname" . }}-worker
+  name: {{ include "Sift.fullname" . }}-worker
   labels:
-    {{- include "stress-strike.commonLabels" . | nindent 4 }}
+    {{- include "Sift.commonLabels" . | nindent 4 }}
     app.kubernetes.io/component: worker
 spec:
   replicas: {{ .Values.worker.replicaCount }}
   selector:
     matchLabels:
-      {{- include "stress-strike.worker.selectorLabels" . | nindent 6 }}
+      {{- include "Sift.worker.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "stress-strike.commonLabels" . | nindent 8 }}
+        {{- include "Sift.commonLabels" . | nindent 8 }}
         app.kubernetes.io/component: worker
       {{- with .Values.podAnnotations }}
       annotations:
@@ -37,14 +37,14 @@ spec:
         - name: worker
           image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
-          command: ["stress-strike", "worker"]
+          command: ["Sift", "worker"]
           args:
             - "-listen"
             - "0.0.0.0:{{ .Values.worker.grpcPort }}"
             - "-http-addr"
             - "0.0.0.0:{{ .Values.worker.httpPort }}"
             - "-master"
-            - {{ .Values.worker.masterAddress | default (printf "%s:%v" (include "stress-strike.master.serviceName" .) .Values.master.grpcPort) | quote }}
+            - {{ .Values.worker.masterAddress | default (printf "%s:%v" (include "Sift.master.serviceName" .) .Values.master.grpcPort) | quote }}
             # The master dials the worker back, so it must advertise a routable
             # address — the pod IP, injected via the downward API below.
             - "-advertise"
@@ -61,7 +61,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            {{- include "stress-strike.tokenEnv" . | nindent 12 }}
+            {{- include "Sift.tokenEnv" . | nindent 12 }}
           ports:
             - name: grpc
               containerPort: {{ .Values.worker.grpcPort }}

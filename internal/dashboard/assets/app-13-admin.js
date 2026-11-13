@@ -95,7 +95,7 @@ function wireAdmin() {
     var codeInput = document.getElementById('adminCode');
     var code = ((codeInput || {}).value || '').trim();
     if (!code) {
-      adminSetStatus('Enter the admin code shown by `stress-strike admin code`.', 'bad');
+      adminSetStatus('Enter the admin code shown by `Sift admin code`.', 'bad');
       adminWarning('Admin bypass is OFF. Authorization is enforced.');
       return;
     }

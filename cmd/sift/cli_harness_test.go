@@ -129,10 +129,10 @@ func readCapture(t *testing.T, path string) string {
 }
 
 // scanCLIHome points the CLI's authorization state (policy + audit log) at a
-// throwaway directory, so a test never touches ~/.stress-strike.
+// throwaway directory, so a test never touches ~/.Sift.
 func scanCLIHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 	return home
 }

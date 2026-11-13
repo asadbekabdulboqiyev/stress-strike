@@ -1,9 +1,9 @@
-# VoltStore — e-commerce demo target for stress-strike
+# VoltStore — e-commerce demo target for Sift
 
 VoltStore is a complete, production-shaped e-commerce storefront that exists
 for one reason: to be **attacked**. It is the reference demo for the
 [VeriGate](docs/VERIGATE.md) protection system — flip protection on and hit
-it with stress-strike; flip it off and watch it take the full storm.
+it with Sift; flip it off and watch it take the full storm.
 
 ## Run
 
@@ -46,7 +46,7 @@ go run . -addr 127.0.0.1:8090 -protect -rate-limit 100 -burst 300 -block-after 6
 ../../scripts/demo-store-sla.sh
 ```
 
-Runs the same stress-strike SLA gate twice: with VeriGate ON the attack
+Runs the same Sift SLA gate twice: with VeriGate ON the attack
 produces ~99.9% errors (exit 2); toggled OFF the store absorbs ~16k req/s
 (exit 0). One command proves the protection flips a CI gate.
 

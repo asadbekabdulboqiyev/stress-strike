@@ -204,10 +204,10 @@ func TestGateStrictPolicyBlocksPublic(t *testing.T) {
 
 // TestGateDefaultPathsHonorEnvironment pins the bug where an empty --policy
 // meant the saved approval file was never read. With no explicit paths, the
-// gate must use $STRESS_STRIKE_HOME.
+// gate must use $SIFT_HOME.
 func TestGateDefaultPathsHonorEnvironment(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", dir)
+	t.Setenv("SIFT_HOME", dir)
 
 	if got, want := defaultPolicyPath(), filepath.Join(dir, "authz.json"); got != want {
 		t.Fatalf("defaultPolicyPath = %q, want %q", got, want)

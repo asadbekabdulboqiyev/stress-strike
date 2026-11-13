@@ -235,14 +235,14 @@ func TestCLIMalformedPolicyExitsOne(t *testing.T) {
 }
 
 func TestCLIEnvAllowAndBadEnvRule(t *testing.T) {
-	// A valid STRESS_STRIKE_ALLOW rule is folded into the policy.
-	res := runScan(t, []string{"STRESS_STRIKE_ALLOW=127.0.0.1"}, "-target", "127.0.0.1", "-port", "1", "-tls", "-dry-run")
+	// A valid SIFT_ALLOW rule is folded into the policy.
+	res := runScan(t, []string{"SIFT_ALLOW=127.0.0.1"}, "-target", "127.0.0.1", "-port", "1", "-tls", "-dry-run")
 	if res.code != 0 {
 		t.Fatalf("exit = %d (stderr %q)", res.code, res.stderr)
 	}
 
 	// An empty pattern in the env spec is a fatal configuration error.
-	res = runScan(t, []string{"STRESS_STRIKE_ALLOW=127.0.0.1, "}, "-target", "127.0.0.1", "-port", "1", "-tls")
+	res = runScan(t, []string{"SIFT_ALLOW=127.0.0.1, "}, "-target", "127.0.0.1", "-port", "1", "-tls")
 	_ = res // trailing empty entries are skipped, so this must still succeed
 	if res.code != 0 {
 		t.Fatalf("blank env entries should be skipped, exit = %d (stderr %q)", res.code, res.stderr)
@@ -359,7 +359,7 @@ func TestCLIHelpExitCode(t *testing.T) {
 }
 
 func TestDefaultPolicyPathHonoursEnv(t *testing.T) {
-	t.Setenv("STRESS_STRIKE_POLICY", "/tmp/explicit-policy.json")
+	t.Setenv("SIFT_POLICY", "/tmp/explicit-policy.json")
 	if got := defaultPolicyPath(); got != "/tmp/explicit-policy.json" {
 		t.Errorf("defaultPolicyPath = %q", got)
 	}

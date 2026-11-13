@@ -1111,7 +1111,7 @@ func enforceScanAuthz(targetURL string, opts scanGateOptions) {
 	if err != nil {
 		fatal(err)
 	}
-	if env := os.Getenv("STRESS_STRIKE_ALLOW"); env != "" {
+	if env := os.Getenv("SIFT_ALLOW"); env != "" {
 		if err := pol.AddEnvRules(env); err != nil {
 			fatal(err)
 		}
@@ -1193,7 +1193,7 @@ func recordScanAuthz(e authz.Entry, auditPath string) {
 	}
 }
 
-// defaultPolicyPath is the policy location, honouring STRESS_STRIKE_POLICY.
+// defaultPolicyPath is the policy location, honouring SIFT_POLICY.
 func defaultPolicyPath() string {
 	return authz.DefaultPolicyPath()
 }

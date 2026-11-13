@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # bench-compare.sh — independent load-test comparison harness.
 #
-# Runs stress-strike, k6, wrk2, Gatling, and Locust against the same local
+# Runs Sift, k6, wrk2, Gatling, and Locust against the same local
 # demo target and prints a compact req/s + error-rate table so the operator
-# can see how stress-strike compares to established tools.
+# can see how Sift compares to established tools.
 #
 # Usage:
 #   ./scripts/bench-compare.sh          # default 100s run at 500 users
@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 
 export GOFLAGS=-buildvcs=false
 
-BIN="bin/stress-strike"
+BIN="bin/Sift"
 DEMO_ADDR="${DEMO_ADDR:-127.0.0.1:8899}"
 BENCH_SECONDS="${BENCH_SECONDS:-100}"
 BENCH_USERS="${BENCH_USERS:-500}"
@@ -35,11 +35,11 @@ trap 'rm -rf "$REPORT_DIR" "$DEMO_LOG"' EXIT
 log() { printf '[bench-compare] %s\n' "$*"; }
 
 # ---------------------------------------------------------------------------
-# Build stress-strike + demo server
+# Build Sift + demo server
 # ---------------------------------------------------------------------------
-log "building stress-strike binary ..."
+log "building Sift binary ..."
 if [ ! -x "$BIN" ]; then
-  ./scripts/build-all.sh 0.14.0 >/dev/null 2>&1 || go build -o "$BIN" ./cmd/stress-strike
+  ./scripts/build-all.sh 0.14.0 >/dev/null 2>&1 || go build -o "$BIN" ./cmd/Sift
 fi
 
 # Build demo server if needed.
@@ -96,11 +96,11 @@ run_and_record() {
 }
 
 # ---------------------------------------------------------------------------
-# stress-strike
+# Sift
 # ---------------------------------------------------------------------------
 if [ -x "$BIN" ]; then
-  log "running stress-strike ($BENCH_USERS users, ${BENCH_SECONDS}s) ..."
-  run_and_record stress-strike "$BIN" run \
+  log "running Sift ($BENCH_USERS users, ${BENCH_SECONDS}s) ..."
+  run_and_record Sift "$BIN" run \
     --url "$BENCH_URL" \
     --users "$BENCH_USERS" \
     --duration "${BENCH_SECONDS}s" \

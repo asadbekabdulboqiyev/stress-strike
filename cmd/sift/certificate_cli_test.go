@@ -29,7 +29,7 @@ func TestCertificateCLIMissingFileFails(t *testing.T) {
 
 func TestCertificateCLIIssueThenVerifyRoundTrip(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 	dir := t.TempDir()
 
 	report := []byte(`{

@@ -1,9 +1,9 @@
 {
   "dashboard": {
     "id": null,
-    "uid": "stress-strike-min",
+    "uid": "Sift-min",
     "title": "Stress-Strike Minimal",
-    "tags": ["stress-strike"],
+    "tags": ["Sift"],
     "timezone": "browser",
     "schemaVersion": 36,
     "version": 1,

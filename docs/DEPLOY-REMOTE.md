@@ -1,6 +1,6 @@
 # Deploying to real Linux hosts (VPS fleet)
 
-This guide covers putting stress-strike's load generators on actual Linux
+This guide covers putting Sift's load generators on actual Linux
 boxes — the state where an off-host, multi-server demo becomes possible. Two
 supported paths:
 
@@ -55,20 +55,20 @@ available for scripting.
 ### Build the packages once (optional — deploy-fleet does it automatically)
 ```bash
 ./scripts/build-worker-linux.sh 0.14.14
-# -> dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz
+# -> dist/linux-worker/Sift-worker-v0.14.0-linux-amd64.tar.gz
 ```
 
 ### Deploy one host (manual)
 ```bash
-scp dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz \
+scp dist/linux-worker/Sift-worker-v0.14.0-linux-amd64.tar.gz \
     deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
-ssh root@HOST 'cd /tmp && bash bootstrap-worker.sh stress-strike-worker-v0.14.0-linux-amd64.tar.gz \
+ssh root@HOST 'cd /tmp && bash bootstrap-worker.sh Sift-worker-v0.14.0-linux-amd64.tar.gz \
     SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret'
 ```
 Environment knobs of the bootstrap: `SS_ID`, `SS_LISTEN` (default
 `0.0.0.0:50061`), `SS_ADVERTISE`, `SS_MASTER`, `SS_TOKEN`, `SS_MAX_USERS`,
-`SS_MAX_RUNS`. The bootstrap installs an unprivileged `stress-strike` user,
-writes `/etc/stress-strike/worker.env`, and enables a hardened systemd unit.
+`SS_MAX_RUNS`. The bootstrap installs an unprivileged `Sift` user,
+writes `/etc/Sift/worker.env`, and enables a hardened systemd unit.
 
 ### Deploy a fleet at once
 ```bash
@@ -106,7 +106,7 @@ falls back to TCP reachability. Exit status 0 = whole fleet up.
 ### Smoke test (before loading real targets)
 ```bash
 # on the control box, with an HTTPS target (TLDs enforce TLS these days)
-stress-strike-master -listen 0.0.0.0:50051 \
+Sift-master -listen 0.0.0.0:50051 \
   -wait-workers 1 -wait-timeout 30 \
   -url https://example.com -users 8 -duration 6 \
   -token secret -tls-fingerprint chrome
@@ -124,11 +124,11 @@ docker compose -f deploy/docker-compose.yml build
 docker compose -f deploy/docker-compose.yml up -d
 ```
 The master starts one run automatically against
-`${STRESS_STRIKE_URL:-http://example.com}` with 2 workers. Override the URL,
+`${SIFT_URL:-http://example.com}` with 2 workers. Override the URL,
 token, and extra master args via environment:
 ```bash
-STRESS_STRIKE_URL=https://target.example.com STRESS_STRIKE_TOKEN=secret \
-STRESS_STRIKE_ARGS="-tls-fingerprint firefox -duration 120" \
+SIFT_URL=https://target.example.com SIFT_TOKEN=secret \
+SIFT_ARGS="-tls-fingerprint firefox -duration 120" \
 docker compose -f deploy/docker-compose.yml up
 ```
 Tune `users`/`duration` inside `deploy/docker-compose.yml`. For very high
@@ -142,11 +142,11 @@ source, so it always reflects the current checkout.
 
 ## Verification checklist
 
-- [ ] `systemctl status stress-strike-worker` shows `active (running)`
+- [ ] `systemctl status Sift-worker` shows `active (running)`
 - [ ] `ss -lntp | grep 50061` (worker) listens
 - [ ] Master connects (static `-workers` list) or registers (auto-discovery,
       log line `worker registered: ... (1 total)`)
 - [ ] A 6s smoke run against `https://example.com` returns 0 errors
 - [ ] With `-tls-fingerprint chrome` the same run stays at 0 errors
 - [ ] `-token` mismatch is rejected (try a wrong token deliberately)
-- [ ] `journalctl -u stress-strike-worker -e` has no TLS/fingerprint panics
+- [ ] `journalctl -u Sift-worker -e` has no TLS/fingerprint panics

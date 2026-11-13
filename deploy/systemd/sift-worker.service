@@ -1,14 +1,14 @@
 [Unit]
-Description=stress-strike distributed load worker
-Documentation=https://github.com/asadbekabdulboqiyev/stress-strike
+Description=Sift distributed load worker
+Documentation=https://github.com/asadbekabdulboqiyev/sift
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-# Copy worker.env.example to /etc/stress-strike/worker.env and edit it.
-EnvironmentFile=-/etc/stress-strike/worker.env
-ExecStart=/usr/local/bin/stress-strike-worker $WORKER_ARGS
+# Copy worker.env.example to /etc/Sift/worker.env and edit it.
+EnvironmentFile=-/etc/Sift/worker.env
+ExecStart=/usr/local/bin/Sift-worker $WORKER_ARGS
 Restart=on-failure
 RestartSec=3
 
@@ -17,16 +17,16 @@ LimitNOFILE=1048576
 LimitNPROC=65535
 
 # Run unprivileged. Create these users/group first:
-#   sudo groupadd --system stress-strike
-#   sudo useradd  --system --gid stress-strike --no-create-home stress-strike
-User=stress-strike
-Group=stress-strike
+#   sudo groupadd --system Sift
+#   sudo useradd  --system --gid Sift --no-create-home Sift
+User=Sift
+Group=Sift
 
 # Basic hardening — the worker only needs outbound network + ephemeral ports.
 NoNewPrivileges=true
 ProtectSystem=strict
-# Worker writes reports under /var/lib/stress-strike; allow writes there only.
-ReadWritePaths=/var/lib/stress-strike
+# Worker writes reports under /var/lib/Sift; allow writes there only.
+ReadWritePaths=/var/lib/Sift
 ProtectHome=true
 PrivateTmp=true
 ProtectKernelTunables=true

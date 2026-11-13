@@ -40,7 +40,7 @@ func adminStatusViaHandler(t *testing.T, method, path string, body string) *http
 
 func TestAdminStatusGetOK(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	w := adminStatusViaHandler(t, http.MethodGet, "/api/admin/status", "")
 	if w.Code != http.StatusOK {
@@ -63,7 +63,7 @@ func TestAdminStatusGetOK(t *testing.T) {
 
 func TestAdminStatusMethodNotAllowed(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	w := adminStatusViaHandler(t, http.MethodPost, "/api/admin/status", "")
 	if w.Code != http.StatusMethodNotAllowed {
@@ -73,7 +73,7 @@ func TestAdminStatusMethodNotAllowed(t *testing.T) {
 
 func TestAdminUnlockRequiresCode(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	w := adminStatusViaHandler(t, http.MethodPost, "/api/admin/unlock", `{"code":"","minutes":15}`)
 	if w.Code != http.StatusBadRequest {
@@ -86,7 +86,7 @@ func TestAdminUnlockRequiresCode(t *testing.T) {
 
 func TestAdminUnlockRejectsWrongCode(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	w := adminStatusViaHandler(t, http.MethodPost, "/api/admin/unlock", `{"code":"WRONGCODE1","minutes":15}`)
 	if w.Code != http.StatusForbidden {
@@ -97,7 +97,7 @@ func TestAdminUnlockRejectsWrongCode(t *testing.T) {
 func TestAdminUnlockOpensWindowForCorrectCode(t *testing.T) {
 	resetAdminThrottleForTest()()
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 	store, err := adminlock.Open(adminlock.DefaultPath())
 	if err != nil {
 		t.Fatalf("open admin store: %v", err)
@@ -139,7 +139,7 @@ func TestAdminUnlockOpensWindowForCorrectCode(t *testing.T) {
 
 func TestAdminUnlockClampsMinutes(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	store, err := adminlock.Open(adminlock.DefaultPath())
 	if err != nil {
 		t.Fatalf("open admin store: %v", err)
@@ -182,7 +182,7 @@ func TestAdminUnlockClampsMinutes(t *testing.T) {
 
 func TestAdminLockClosesWindow(t *testing.T) {
 	resetAdminThrottleForTest()()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	store, err := adminlock.Open(adminlock.DefaultPath())
 	if err != nil {
 		t.Fatalf("open admin store: %v", err)

@@ -1,9 +1,9 @@
 # SLA gate demo: the run FAILS (exit code 2) when thresholds are violated.
 #
-# Use this as a CI/CD performance gate: deploy pipelines call stress-strike
+# Use this as a CI/CD performance gate: deploy pipelines call Sift
 # and only proceed when the service meets its SLOs.
 #
-# Run: ./bin/stress-strike --config examples/sla_gate.yaml
+# Run: ./bin/Sift --config examples/sla_gate.yaml
 name: api-slo-check
 base_url: http://localhost:8080
 load_profile:

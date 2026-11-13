@@ -4,7 +4,7 @@ package main
 // `audit` subcommands in cmd_authz.go.
 //
 // These read/write policy and audit files, so they run against a throwaway
-// STRESS_STRIKE_HOME and never touch ~/.stress-strike.
+// SIFT_HOME and never touch ~/.Sift.
 
 import (
 	"os"

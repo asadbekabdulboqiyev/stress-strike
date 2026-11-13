@@ -359,7 +359,7 @@ function certHandleFile(file) {
       return;
     }
     if (obj.target) {
-      var issuer = document.getElementById('certIssuer') ? document.getElementById('certIssuer').value : 'stress-strike assessment';
+      var issuer = document.getElementById('certIssuer') ? document.getElementById('certIssuer').value : 'Sift assessment';
       var experimentRef = document.getElementById('certExperiment') ? document.getElementById('certExperiment').value : '';
       certIssueApi(raw, issuer, experimentRef);
       return;

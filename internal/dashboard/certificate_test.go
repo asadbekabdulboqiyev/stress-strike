@@ -15,7 +15,7 @@ import (
 // resetCertStoreForTest gives the test its own home and an empty certificate
 // store.
 //
-// The home matters. Without it the store points at $STRESS_STRIKE_HOME, or at
+// The home matters. Without it the store points at $SIFT_HOME, or at
 // ~/.Sift when that is unset — so running the test suite on a
 // developer machine appended a couple of hundred throwaway certificates for
 // "https://example.com" to the real certificate history, and on a CI runner,
@@ -27,7 +27,7 @@ import (
 func resetCertStoreForTest(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 
 	certStoreMu.Lock()
 	defer certStoreMu.Unlock()
@@ -121,7 +121,7 @@ func TestCertificateIssueReportWithoutTargetRejected(t *testing.T) {
 
 func TestCertificateIssueProducesSignedCertificate(t *testing.T) {
 	resetCertStoreForTest(t)
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
@@ -167,7 +167,7 @@ func TestCertificateDownloadUnknownIDNotFound(t *testing.T) {
 
 func TestCertificateDownloadFormats(t *testing.T) {
 	resetCertStoreForTest(t)
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
 		t.Fatalf("issue = %d: %s", w.Code, w.Body.String())
@@ -240,7 +240,7 @@ func TestCertificateVerifyRejectsInvalidCertificate(t *testing.T) {
 
 func TestCertificateVerifyAcceptsIssuedCertificate(t *testing.T) {
 	resetCertStoreForTest(t)
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
 		t.Fatalf("issue = %d: %s", w.Code, w.Body.String())
@@ -285,7 +285,7 @@ func TestCertificateVerifyAcceptsIssuedCertificate(t *testing.T) {
 
 func TestCertificateVerifyRejectsTamperedBody(t *testing.T) {
 	resetCertStoreForTest(t)
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	w := issueCertificateRequest(t, pentestReportJSON())
 	if w.Code != http.StatusOK {
 		t.Fatalf("issue = %d: %s", w.Code, w.Body.String())
@@ -320,7 +320,7 @@ func TestCertificateVerifyRejectsTamperedBody(t *testing.T) {
 
 func TestCertificateHistory(t *testing.T) {
 	resetCertStoreForTest(t)
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	if w := issueCertificateRequest(t, pentestReportJSON()); w.Code != http.StatusOK {
 		t.Fatalf("issue = %d: %s", w.Code, w.Body.String())
 	}

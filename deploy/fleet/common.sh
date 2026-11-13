@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# common.sh — small interactive helpers shared by the stress-strike deploy
+# common.sh — small interactive helpers shared by the Sift deploy
 # scripts. Safe for ordinary users: every question has a default, every step
 # is optional, and errors tell you what exactly to install.
 

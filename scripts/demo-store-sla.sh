@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # demo-store-sla.sh — VeriGate SLA verify gate demo.
 #
-# Proves the protection system works by running the SAME stress-strike SLA
+# Proves the protection system works by running the SAME Sift SLA
 # gate twice against the VoltStore demo:
 #
 #   1. VeriGate ON  -> the attack is throttled -> errors > 5% -> SLA FAIL
@@ -34,17 +34,17 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-# Locate the stress-strike binary: prefer a fresh local build, fall back to PATH.
-BIN="bin/stress-strike"
+# Locate the Sift binary: prefer a fresh local build, fall back to PATH.
+BIN="bin/Sift"
 if [ ! -x "$BIN" ]; then
-  BIN="$(command -v stress-strike || true)"
+  BIN="$(command -v Sift || true)"
 fi
 if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
-  echo "[sla] building ./bin/stress-strike ..."
+  echo "[sla] building ./bin/Sift ..."
   ./scripts/build-all.sh 0.14.0 >/dev/null
-  BIN="bin/stress-strike"
+  BIN="bin/Sift"
 fi
-echo "[sla] using stress-strike: $BIN"
+echo "[sla] using Sift: $BIN"
 
 # ---- build + boot the protected store ----------------------------------------
 echo "[sla] building ./bin/demo-store ..."
@@ -90,7 +90,7 @@ set +e
 "${ATTACK[@]}"
 RC1=$?
 set -e
-echo "  -> stress-strike exit code: $RC1 (expected 2 = SLA FAIL)"
+echo "  -> Sift exit code: $RC1 (expected 2 = SLA FAIL)"
 STATE="$(curl -fsS "$BASE/admin/stats")"
 echo "  -> VeriGate counters:"
 echo "$STATE" | python3 -c "import json,sys; d=json.load(sys.stdin); print('     passed=%d limited=%d challenges=%d blocked=%d blocked_ips=%d' % (d['passed'], d['rate_limited'], d['challenges_served'], d['requests_blocked'], d['blocked_ips']))"
@@ -113,7 +113,7 @@ set +e
 "${ATTACK[@]}"
 RC2=$?
 set -e
-echo "  -> stress-strike exit code: $RC2 (expected 0 = SLA PASS)"
+echo "  -> Sift exit code: $RC2 (expected 0 = SLA PASS)"
 
 # ---- verdict -----------------------------------------------------------------
 echo

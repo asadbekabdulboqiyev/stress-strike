@@ -1,13 +1,13 @@
 # Distributed Load Testing
 
-stress-strike can spread a single scenario across many machines so the
+Sift can spread a single scenario across many machines so the
 generated load is not limited by one host's CPU, sockets or network link. One
 **master** coordinates a fleet of **workers**; each worker runs a slice of the
 virtual users and streams live telemetry back.
 
 ```
             +-------------------+          +-------------------+
-            |  stress-strike-   |  gRPC    |  stress-strike-   |
+            |  Sift-   |  gRPC    |  Sift-   |
             |  worker (Linux 1) |<-------->|  worker (Linux 2) |
             +-------------------+          +-------------------+
                        ^                             ^
@@ -15,7 +15,7 @@ virtual users and streams live telemetry back.
                        +-------------+---------------+
                                      |
                           +----------------------+
-                          |  stress-strike-      |
+                          |  Sift-      |
                           |  master (control)    |
                           +----------------------+
 ```
@@ -37,26 +37,26 @@ virtual users and streams live telemetry back.
 
 ```bash
 ./scripts/build-worker-linux.sh 0.14.14
-# -> dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz
-#    dist/linux-worker/stress-strike-worker-v0.14.0-linux-arm64.tar.gz
+# -> dist/linux-worker/Sift-worker-v0.14.0-linux-amd64.tar.gz
+#    dist/linux-worker/Sift-worker-v0.14.0-linux-arm64.tar.gz
 ```
 
-Each archive contains `stress-strike-worker`, `stress-strike-master`, the
+Each archive contains `Sift-worker`, `Sift-master`, the
 systemd unit and `worker.env.example`.
 
 ### 2. Install on each load host
 
 ```bash
-tar -xzf stress-strike-worker-v0.14.0-linux-amd64.tar.gz
-sudo install -m 0755 stress-strike-worker-v0.14.0-linux-amd64/stress-strike-worker /usr/local/bin/
-sudo install -m 0644 stress-strike-worker-v0.14.0-linux-amd64/stress-strike-worker.service /etc/systemd/system/
-sudo mkdir -p /etc/stress-strike
-sudo cp stress-strike-worker-v0.14.0-linux-amd64/worker.env.example /etc/stress-strike/worker.env
-sudo editor /etc/stress-strike/worker.env      # set WORKER_ARGS
-sudo groupadd --system stress-strike
-sudo useradd  --system --gid stress-strike --no-create-home stress-strike
+tar -xzf Sift-worker-v0.14.0-linux-amd64.tar.gz
+sudo install -m 0755 Sift-worker-v0.14.0-linux-amd64/Sift-worker /usr/local/bin/
+sudo install -m 0644 Sift-worker-v0.14.0-linux-amd64/Sift-worker.service /etc/systemd/system/
+sudo mkdir -p /etc/Sift
+sudo cp Sift-worker-v0.14.0-linux-amd64/worker.env.example /etc/Sift/worker.env
+sudo editor /etc/Sift/worker.env      # set WORKER_ARGS
+sudo groupadd --system Sift
+sudo useradd  --system --gid Sift --no-create-home Sift
 sudo systemctl daemon-reload
-sudo systemctl enable --now stress-strike-worker
+sudo systemctl enable --now Sift-worker
 ```
 
 ### 3. Run a distributed test
@@ -64,7 +64,7 @@ sudo systemctl enable --now stress-strike-worker
 **Static fleet** (the master is told the worker addresses):
 
 ```bash
-stress-strike-master \
+Sift-master \
   -listen :50051 \
   -workers "10.0.0.11:50061,10.0.0.12:50061,10.0.0.13:50061" \
   -url https://target.example.com \
@@ -75,11 +75,11 @@ stress-strike-master \
 
 ```bash
 # control host
-stress-strike-master -listen :50051 -wait-workers 3 \
+Sift-master -listen :50051 -wait-workers 3 \
   -url https://target.example.com -users 30000 -duration 120
 
 # each worker: add -master <control-host>:50051 (see worker.env)
-stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
+Sift-worker -listen 0.0.0.0:50061 -id w1 \
   -master control.example.com:50051 -advertise 10.0.0.11:50061
 ```
 
@@ -159,9 +159,9 @@ The coordinator does not blindly trust a worker that announces itself.
   (`MasterConfig.AuthorizedWorkers` / `SetWorkerKey`) or by setting
   `MasterConfig.RequireWorkerAttestation`. A fleet that pinned *any* identity
   never accepts unsigned telemetry from anybody. CLI:
-  `stress-strike-master --authorized-keys w1=<hex>,w2=<hex>` (implies
-  attestation) and `stress-strike-worker --attest-key worker.pem` (a keypair
-  from `stress-strike keygen --out worker.pem`).
+  `Sift-master --authorized-keys w1=<hex>,w2=<hex>` (implies
+  attestation) and `Sift-worker --attest-key worker.pem` (a keypair
+  from `Sift keygen --out worker.pem`).
 - **Failure mode** — an unpinned worker, an unknown worker id, a mismatched key
   or a bad/tampered signature is treated as unauthenticated: the connection is
   closed, its already-aggregated snapshot is forgotten, the worker is listed as
@@ -190,7 +190,7 @@ reachability checks. Exit status is 0 only when every probe succeeds — hook it
 into cron/nagios/healthchecks.io for fleet-level alerting:
 
 ```bash
-*/5 * * * * /opt/stress-strike/scripts/fleet-status.sh --workers srv1:10.0.0.11:50061,srv2:10.0.0.12:50061 >/dev/null || echo "fleet DEGRADED"
+*/5 * * * * /opt/Sift/scripts/fleet-status.sh --workers srv1:10.0.0.11:50061,srv2:10.0.0.12:50061 >/dev/null || echo "fleet DEGRADED"
 ```
 
 ## Scaling to 100+ workers
@@ -216,7 +216,7 @@ evenly (the master's splitter divides `users`, `spike_users`, `rps` and
 ### Per-host OS tuning (put this on every load box)
 
 ```bash
-# /etc/sysctl.d/99-stress-strike.conf
+# /etc/sysctl.d/99-Sift.conf
 net.core.somaxconn = 65535          # accept queue for the target conns
 net.ipv4.ip_local_port_range = 1024 65535   # ephemeral source ports
 net.ipv4.tcp_tw_reuse = 1           # recycle TIME_WAIT quickly
@@ -280,7 +280,7 @@ to 100 boxes:
 2. **Calibrate one worker locally.** Run a short steady probe and read RPS +
    p95 from the report:
    ```bash
-   stress-strike-master -workers "w1:50061" -url https://api.example.com/msg \
+   Sift-master -workers "w1:50061" -url https://api.example.com/msg \
      -users 2000 -duration 60 -profile steady
    ```
    Record RPS and check p95 stays under your SLA (e.g. 300 ms). Ramp `-users`
@@ -327,10 +327,10 @@ master):
 ```bash
 # per host: generate a cert (one shared CA for the fleet is easiest)
 # master
-stress-strike-master -listen 0.0.0.0:50051 -tls-cert master.crt -tls-key master.key \
+Sift-master -listen 0.0.0.0:50051 -tls-cert master.crt -tls-key master.key \
     -tls-ca fleet-ca.crt -wait-workers 100 ...
 # each worker
-stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
+Sift-worker -listen 0.0.0.0:50061 -id w1 \
     -master master:50051 -tls-cert w1.crt -tls-key w1.key \
     -tls-ca fleet-ca.crt ...
 ```
@@ -348,7 +348,7 @@ stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
 
 ## CLI reference
 
-### `stress-strike-master`
+### `Sift-master`
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -368,7 +368,7 @@ stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
 | `-tls-ca` | | CA bundle for verifying workers the master dials |
 | `-tls-skip-verify` | `false` | Skip peer verification when dialing workers (self-signed demos) |
 
-### `stress-strike-worker`
+### `Sift-worker`
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -386,13 +386,13 @@ stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
 ## Docker
 
 ```bash
-docker build -f Dockerfile.worker -t stress-strike-worker:0.14.14 .
+docker build -f Dockerfile.worker -t Sift-worker:0.14.14 .
 docker network create strike
 docker run -d --name master --network strike -p 50051:50051 \
-  stress-strike-master...            # or run the master on a host
+  Sift-master...            # or run the master on a host
 docker run -d --name worker-1 --network strike \
   --ulimit nofile=1048576:1048576 \
-  stress-strike-worker:0.14.14 \
+  Sift-worker:0.14.14 \
   -listen 0.0.0.0:50061 -advertise worker-1:50061 \
   -master master:50051 -id worker-1
 ```
@@ -402,7 +402,7 @@ docker run -d --name worker-1 --network strike \
 High concurrency needs OS limits raised, not just worker flags:
 
 ```bash
-# /etc/sysctl.d/99-stress-strike.conf
+# /etc/sysctl.d/99-Sift.conf
 net.ipv4.ip_local_port_range = 1024 65535
 net.ipv4.tcp_tw_reuse = 1
 fs.file-max = 2000000

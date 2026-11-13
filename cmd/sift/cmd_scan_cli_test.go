@@ -37,7 +37,7 @@ const (
 // the subprocess.
 func scanCLIEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 }
 
 // runCLIStdin is runCLI with stdin fed from a string, for the `jwt` stdin path.

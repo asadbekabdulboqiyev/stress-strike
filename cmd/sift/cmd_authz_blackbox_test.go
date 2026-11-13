@@ -18,7 +18,7 @@ import (
 func TestCLIAuthorizeUsageErrors(t *testing.T) {
 	// Keep the default policy path inside the test sandbox: one of the calls
 	// below falls back to it.
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 
 	res := runCLI(t, "authorize")
 	if res.code != 2 {

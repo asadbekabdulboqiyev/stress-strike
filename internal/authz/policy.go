@@ -395,7 +395,7 @@ func LoadPolicyOrDefault(path string) (Policy, error) {
 	return p, nil
 }
 
-// AddEnvRules appends rules from a comma-separated STRESS_STRIKE_ALLOW-style
+// AddEnvRules appends rules from a comma-separated SIFT_ALLOW-style
 // value. Each entry is a pattern, optionally "pattern@RFC3339" for an expiry.
 func (p *Policy) AddEnvRules(spec string) error {
 	for _, item := range strings.Split(spec, ",") {
@@ -403,7 +403,7 @@ func (p *Policy) AddEnvRules(spec string) error {
 		if item == "" {
 			continue
 		}
-		r := Rule{Pattern: item, Approver: "environment", Reason: "STRESS_STRIKE_ALLOW"}
+		r := Rule{Pattern: item, Approver: "environment", Reason: "SIFT_ALLOW"}
 		if i := strings.LastIndex(item, "@"); i > 0 {
 			if ts, err := time.Parse(time.RFC3339, item[i+1:]); err == nil {
 				r.Pattern = item[:i]

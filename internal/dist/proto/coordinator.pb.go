@@ -2575,17 +2575,17 @@ var File_internal_dist_proto_coordinator_proto protoreflect.FileDescriptor
 
 const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"%internal/dist/proto/coordinator.proto\x12\x11stressstrike.dist\"\x9c\x02\n" +
-	"\rWorkerCommand\x12:\n" +
-	"\tstart_run\x18\x01 \x01(\v2\x1b.stressstrike.dist.StartRunH\x00R\bstartRun\x127\n" +
-	"\bstop_run\x18\x02 \x01(\v2\x1a.stressstrike.dist.StopRunH\x00R\astopRun\x12=\n" +
+	"%internal/dist/proto/coordinator.proto\x12\tsift.dist\"\xfc\x01\n" +
+	"\rWorkerCommand\x122\n" +
+	"\tstart_run\x18\x01 \x01(\v2\x13.sift.dist.StartRunH\x00R\bstartRun\x12/\n" +
+	"\bstop_run\x18\x02 \x01(\v2\x12.sift.dist.StopRunH\x00R\astopRun\x125\n" +
 	"\n" +
-	"get_status\x18\x03 \x01(\v2\x1c.stressstrike.dist.GetStatusH\x00R\tgetStatus\x12L\n" +
-	"\x0fmigrate_session\x18\x04 \x01(\v2!.stressstrike.dist.MigrateSessionH\x00R\x0emigrateSessionB\t\n" +
-	"\apayload\"\xc3\x01\n" +
+	"get_status\x18\x03 \x01(\v2\x14.sift.dist.GetStatusH\x00R\tgetStatus\x12D\n" +
+	"\x0fmigrate_session\x18\x04 \x01(\v2\x19.sift.dist.MigrateSessionH\x00R\x0emigrateSessionB\t\n" +
+	"\apayload\"\xbb\x01\n" +
 	"\bStartRun\x12\x15\n" +
-	"\x06run_id\x18\x01 \x01(\tR\x05runId\x127\n" +
-	"\bscenario\x18\x02 \x01(\v2\x1b.stressstrike.dist.ScenarioR\bscenario\x12!\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12/\n" +
+	"\bscenario\x18\x02 \x01(\v2\x13.sift.dist.ScenarioR\bscenario\x12!\n" +
 	"\fworker_index\x18\x03 \x01(\x05R\vworkerIndex\x12#\n" +
 	"\rtotal_workers\x18\x04 \x01(\x05R\ftotalWorkers\x12\x1f\n" +
 	"\vmaster_addr\x18\x05 \x01(\tR\n" +
@@ -2598,55 +2598,55 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12#\n" +
 	"\rtarget_worker\x18\x02 \x01(\tR\ftargetWorker\x12!\n" +
-	"\fsession_data\x18\x03 \x01(\fR\vsessionData\"\xbf\x03\n" +
-	"\vWorkerEvent\x12@\n" +
-	"\vrun_started\x18\x01 \x01(\v2\x1d.stressstrike.dist.RunStartedH\x00R\n" +
-	"runStarted\x12C\n" +
-	"\frun_progress\x18\x02 \x01(\v2\x1e.stressstrike.dist.RunProgressH\x00R\vrunProgress\x12F\n" +
-	"\rrun_completed\x18\x03 \x01(\v2\x1f.stressstrike.dist.RunCompletedH\x00R\frunCompleted\x12=\n" +
+	"\fsession_data\x18\x03 \x01(\fR\vsessionData\"\x8f\x03\n" +
+	"\vWorkerEvent\x128\n" +
+	"\vrun_started\x18\x01 \x01(\v2\x15.sift.dist.RunStartedH\x00R\n" +
+	"runStarted\x12;\n" +
+	"\frun_progress\x18\x02 \x01(\v2\x16.sift.dist.RunProgressH\x00R\vrunProgress\x12>\n" +
+	"\rrun_completed\x18\x03 \x01(\v2\x17.sift.dist.RunCompletedH\x00R\frunCompleted\x125\n" +
 	"\n" +
-	"run_failed\x18\x04 \x01(\v2\x1c.stressstrike.dist.RunFailedH\x00R\trunFailed\x12F\n" +
-	"\rstatus_report\x18\x05 \x01(\v2\x1f.stressstrike.dist.StatusReportH\x00R\fstatusReport\x12O\n" +
-	"\x10session_migrated\x18\x06 \x01(\v2\".stressstrike.dist.SessionMigratedH\x00R\x0fsessionMigratedB\t\n" +
+	"run_failed\x18\x04 \x01(\v2\x14.sift.dist.RunFailedH\x00R\trunFailed\x12>\n" +
+	"\rstatus_report\x18\x05 \x01(\v2\x17.sift.dist.StatusReportH\x00R\fstatusReport\x12G\n" +
+	"\x10session_migrated\x18\x06 \x01(\v2\x1a.sift.dist.SessionMigratedH\x00R\x0fsessionMigratedB\t\n" +
 	"\apayload\"A\n" +
 	"\n" +
 	"RunStarted\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"\xc1\x01\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"\xb9\x01\n" +
 	"\vRunProgress\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12B\n" +
-	"\ttelemetry\x18\x03 \x01(\v2$.stressstrike.dist.TelemetrySnapshotR\ttelemetry\x12\x1b\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12:\n" +
+	"\ttelemetry\x18\x03 \x01(\v2\x1c.sift.dist.TelemetrySnapshotR\ttelemetry\x12\x1b\n" +
 	"\tworker_id\x18\x04 \x01(\tR\bworkerId\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\"\xb1\x01\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"\xa9\x01\n" +
 	"\fRunCompleted\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x121\n" +
-	"\x06report\x18\x03 \x01(\v2\x19.stressstrike.dist.ReportR\x06report\x12\x1b\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12)\n" +
+	"\x06report\x18\x03 \x01(\v2\x11.sift.dist.ReportR\x06report\x12\x1b\n" +
 	"\tworker_id\x18\x04 \x01(\tR\bworkerId\x12\x1c\n" +
 	"\tsignature\x18\x05 \x01(\fR\tsignature\"V\n" +
 	"\tRunFailed\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xbe\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xb6\x01\n" +
 	"\fStatusReport\x12\x1b\n" +
 	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12\x18\n" +
 	"\ahealthy\x18\x02 \x01(\bR\ahealthy\x12\x1f\n" +
 	"\vactive_runs\x18\x03 \x01(\x03R\n" +
-	"activeRuns\x128\n" +
-	"\x06system\x18\x04 \x01(\v2 .stressstrike.dist.SystemMetricsR\x06system\x12\x1c\n" +
+	"activeRuns\x120\n" +
+	"\x06system\x18\x04 \x01(\v2\x18.sift.dist.SystemMetricsR\x06system\x12\x1c\n" +
 	"\tsignature\x18\x05 \x01(\fR\tsignature\"J\n" +
 	"\x0fSessionMigrated\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"\xd4\x02\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"\xb4\x02\n" +
 	"\bScenario\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
-	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x128\n" +
-	"\aprofile\x18\x03 \x01(\v2\x1e.stressstrike.dist.LoadProfileR\aprofile\x12-\n" +
-	"\x05steps\x18\x04 \x03(\v2\x17.stressstrike.dist.StepR\x05steps\x12H\n" +
-	"\tvariables\x18\x05 \x03(\v2*.stressstrike.dist.Scenario.VariablesEntryR\tvariables\x12(\n" +
-	"\x03sla\x18\x06 \x01(\v2\x16.stressstrike.dist.SLAR\x03sla\x1a<\n" +
+	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x120\n" +
+	"\aprofile\x18\x03 \x01(\v2\x16.sift.dist.LoadProfileR\aprofile\x12%\n" +
+	"\x05steps\x18\x04 \x03(\v2\x0f.sift.dist.StepR\x05steps\x12@\n" +
+	"\tvariables\x18\x05 \x03(\v2\".sift.dist.Scenario.VariablesEntryR\tvariables\x12 \n" +
+	"\x03sla\x18\x06 \x01(\v2\x0e.sift.dist.SLAR\x03sla\x1a<\n" +
 	"\x0eVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x83\x03\n" +
@@ -2669,17 +2669,17 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"keep_alive\x18\v \x01(\bR\tkeepAlive\x12\x1d\n" +
 	"\n" +
 	"target_rps\x18\f \x01(\x05R\ttargetRps\x12'\n" +
-	"\x0ftls_fingerprint\x18\r \x01(\tR\x0etlsFingerprint\"\xf7\x03\n" +
+	"\x0ftls_fingerprint\x18\r \x01(\tR\x0etlsFingerprint\"\xdf\x03\n" +
 	"\x04Step\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x16\n" +
 	"\x06method\x18\x03 \x01(\tR\x06method\x12\x10\n" +
-	"\x03url\x18\x04 \x01(\tR\x03url\x12>\n" +
-	"\aheaders\x18\x05 \x03(\v2$.stressstrike.dist.Step.HeadersEntryR\aheaders\x12\x12\n" +
-	"\x04body\x18\x06 \x01(\tR\x04body\x124\n" +
-	"\aextract\x18\a \x03(\v2\x1a.stressstrike.dist.ExtractR\aextract\x12<\n" +
+	"\x03url\x18\x04 \x01(\tR\x03url\x126\n" +
+	"\aheaders\x18\x05 \x03(\v2\x1c.sift.dist.Step.HeadersEntryR\aheaders\x12\x12\n" +
+	"\x04body\x18\x06 \x01(\tR\x04body\x12,\n" +
+	"\aextract\x18\a \x03(\v2\x12.sift.dist.ExtractR\aextract\x124\n" +
 	"\n" +
-	"assertions\x18\b \x03(\v2\x1c.stressstrike.dist.AssertionR\n" +
+	"assertions\x18\b \x03(\v2\x14.sift.dist.AssertionR\n" +
 	"assertions\x12\x18\n" +
 	"\atimeout\x18\t \x01(\x05R\atimeout\x12\x1d\n" +
 	"\n" +
@@ -2705,7 +2705,7 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\n" +
 	"max_avg_ms\x18\x02 \x01(\x01R\bmaxAvgMs\x12+\n" +
 	"\x12max_error_rate_pct\x18\x03 \x01(\x01R\x0fmaxErrorRatePct\x12\x17\n" +
-	"\amin_rps\x18\x04 \x01(\x01R\x06minRps\"\xf8\x04\n" +
+	"\amin_rps\x18\x04 \x01(\x01R\x06minRps\"\xd8\x04\n" +
 	"\x11TelemetrySnapshot\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1d\n" +
 	"\n" +
@@ -2713,13 +2713,13 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\x0etotal_requests\x18\x03 \x01(\x03R\rtotalRequests\x12!\n" +
 	"\ftotal_errors\x18\x04 \x01(\x03R\vtotalErrors\x12\x10\n" +
 	"\x03rps\x18\x05 \x01(\x01R\x03rps\x12!\n" +
-	"\factive_users\x18\x06 \x01(\x03R\vactiveUsers\x12X\n" +
-	"\fstatus_codes\x18\a \x03(\v25.stressstrike.dist.TelemetrySnapshot.StatusCodesEntryR\vstatusCodes\x12U\n" +
-	"\verror_types\x18\b \x03(\v24.stressstrike.dist.TelemetrySnapshot.ErrorTypesEntryR\n" +
-	"errorTypes\x12?\n" +
-	"\alatency\x18\t \x01(\v2%.stressstrike.dist.LatencyPercentilesR\alatency\x126\n" +
+	"\factive_users\x18\x06 \x01(\x03R\vactiveUsers\x12P\n" +
+	"\fstatus_codes\x18\a \x03(\v2-.sift.dist.TelemetrySnapshot.StatusCodesEntryR\vstatusCodes\x12M\n" +
+	"\verror_types\x18\b \x03(\v2,.sift.dist.TelemetrySnapshot.ErrorTypesEntryR\n" +
+	"errorTypes\x127\n" +
+	"\alatency\x18\t \x01(\v2\x1d.sift.dist.LatencyPercentilesR\alatency\x12.\n" +
 	"\x05steps\x18\n" +
-	" \x03(\v2 .stressstrike.dist.StepTelemetryR\x05steps\x1a>\n" +
+	" \x03(\v2\x18.sift.dist.StepTelemetryR\x05steps\x1a>\n" +
 	"\x10StatusCodesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1a=\n" +
@@ -2732,14 +2732,14 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\x06p99_ms\x18\x03 \x01(\x03R\x05p99Ms\x12\x15\n" +
 	"\x06avg_ms\x18\x04 \x01(\x03R\x05avgMs\x12\x15\n" +
 	"\x06min_ms\x18\x05 \x01(\x03R\x05minMs\x12\x15\n" +
-	"\x06max_ms\x18\x06 \x01(\x03R\x05maxMs\"\xc0\x03\n" +
+	"\x06max_ms\x18\x06 \x01(\x03R\x05maxMs\"\xa8\x03\n" +
 	"\rStepTelemetry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\brequests\x18\x02 \x01(\x03R\brequests\x12\x16\n" +
-	"\x06errors\x18\x03 \x01(\x03R\x06errors\x12?\n" +
-	"\alatency\x18\x04 \x01(\v2%.stressstrike.dist.LatencyPercentilesR\alatency\x12T\n" +
-	"\fstatus_codes\x18\x05 \x03(\v21.stressstrike.dist.StepTelemetry.StatusCodesEntryR\vstatusCodes\x12Q\n" +
-	"\verror_types\x18\x06 \x03(\v20.stressstrike.dist.StepTelemetry.ErrorTypesEntryR\n" +
+	"\x06errors\x18\x03 \x01(\x03R\x06errors\x127\n" +
+	"\alatency\x18\x04 \x01(\v2\x1d.sift.dist.LatencyPercentilesR\alatency\x12L\n" +
+	"\fstatus_codes\x18\x05 \x03(\v2).sift.dist.StepTelemetry.StatusCodesEntryR\vstatusCodes\x12I\n" +
+	"\verror_types\x18\x06 \x03(\v2(.sift.dist.StepTelemetry.ErrorTypesEntryR\n" +
 	"errorTypes\x1a>\n" +
 	"\x10StatusCodesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
@@ -2754,7 +2754,7 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\n" +
 	"goroutines\x18\x03 \x01(\x03R\n" +
 	"goroutines\x12\x19\n" +
-	"\bopen_fds\x18\x04 \x01(\x03R\aopenFds\"\xc0\x06\n" +
+	"\bopen_fds\x18\x04 \x01(\x03R\aopenFds\"\x90\x06\n" +
 	"\x06Report\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
 	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x12!\n" +
@@ -2769,26 +2769,26 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\ftotal_errors\x18\t \x01(\x03R\vtotalErrors\x12$\n" +
 	"\x0eerror_rate_pct\x18\n" +
 	" \x01(\x01R\ferrorRatePct\x12\x10\n" +
-	"\x03rps\x18\v \x01(\x01R\x03rps\x12M\n" +
-	"\fstatus_codes\x18\f \x03(\v2*.stressstrike.dist.Report.StatusCodesEntryR\vstatusCodes\x12=\n" +
-	"\x06errors\x18\r \x03(\v2%.stressstrike.dist.Report.ErrorsEntryR\x06errors\x127\n" +
-	"\aoverall\x18\x0e \x01(\v2\x1d.stressstrike.dist.StepReportR\aoverall\x123\n" +
-	"\x05steps\x18\x0f \x03(\v2\x1d.stressstrike.dist.StepReportR\x05steps\x12.\n" +
-	"\x03sla\x18\x10 \x03(\v2\x1c.stressstrike.dist.SLAResultR\x03sla\x12=\n" +
-	"\btimeline\x18\x11 \x03(\v2!.stressstrike.dist.TimelineSampleR\btimeline\x1a>\n" +
+	"\x03rps\x18\v \x01(\x01R\x03rps\x12E\n" +
+	"\fstatus_codes\x18\f \x03(\v2\".sift.dist.Report.StatusCodesEntryR\vstatusCodes\x125\n" +
+	"\x06errors\x18\r \x03(\v2\x1d.sift.dist.Report.ErrorsEntryR\x06errors\x12/\n" +
+	"\aoverall\x18\x0e \x01(\v2\x15.sift.dist.StepReportR\aoverall\x12+\n" +
+	"\x05steps\x18\x0f \x03(\v2\x15.sift.dist.StepReportR\x05steps\x12&\n" +
+	"\x03sla\x18\x10 \x03(\v2\x14.sift.dist.SLAResultR\x03sla\x125\n" +
+	"\btimeline\x18\x11 \x03(\v2\x19.sift.dist.TimelineSampleR\btimeline\x1a>\n" +
 	"\x10StatusCodesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1a9\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x80\x04\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xf0\x03\n" +
 	"\n" +
 	"StepReport\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\brequests\x18\x02 \x01(\x03R\brequests\x12\x16\n" +
-	"\x06errors\x18\x03 \x01(\x03R\x06errors\x12Q\n" +
-	"\fstatus_codes\x18\x04 \x03(\v2..stressstrike.dist.StepReport.StatusCodesEntryR\vstatusCodes\x12N\n" +
-	"\verror_types\x18\x05 \x03(\v2-.stressstrike.dist.StepReport.ErrorTypesEntryR\n" +
+	"\x06errors\x18\x03 \x01(\x03R\x06errors\x12I\n" +
+	"\fstatus_codes\x18\x04 \x03(\v2&.sift.dist.StepReport.StatusCodesEntryR\vstatusCodes\x12F\n" +
+	"\verror_types\x18\x05 \x03(\v2%.sift.dist.StepReport.ErrorTypesEntryR\n" +
 	"errorTypes\x12\x15\n" +
 	"\x06min_ms\x18\x06 \x01(\x03R\x05minMs\x12\x15\n" +
 	"\x06avg_ms\x18\a \x01(\x03R\x05avgMs\x12\x15\n" +
@@ -2825,20 +2825,20 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"\tmax_users\x18\x02 \x01(\x05R\bmaxUsers\x12(\n" +
 	"\x10max_duration_sec\x18\x03 \x01(\x05R\x0emaxDurationSec\x12!\n" +
 	"\fsupports_tls\x18\x04 \x01(\bR\vsupportsTls\x12+\n" +
-	"\x11supports_sessions\x18\x05 \x01(\bR\x10supportsSessions\"\x95\x01\n" +
+	"\x11supports_sessions\x18\x05 \x01(\bR\x10supportsSessions\"\x8d\x01\n" +
 	"\x0fRegisterRequest\x12\x1b\n" +
 	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12\x18\n" +
-	"\aaddress\x18\x02 \x01(\tR\aaddress\x12K\n" +
-	"\fcapabilities\x18\x03 \x01(\v2'.stressstrike.dist.CapabilitiesResponseR\fcapabilities\"H\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\x12C\n" +
+	"\fcapabilities\x18\x03 \x01(\v2\x1f.sift.dist.CapabilitiesResponseR\fcapabilities\"H\n" +
 	"\x10RegisterResponse\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xe4\x02\n" +
-	"\fMasterWorker\x12R\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xa4\x02\n" +
+	"\fMasterWorker\x12B\n" +
 	"\n" +
-	"Coordinate\x12 .stressstrike.dist.WorkerCommand\x1a\x1e.stressstrike.dist.WorkerEvent(\x010\x01\x12G\n" +
-	"\x04Ping\x12\x1e.stressstrike.dist.PingRequest\x1a\x1f.stressstrike.dist.PingResponse\x12b\n" +
-	"\x0fGetCapabilities\x12&.stressstrike.dist.CapabilitiesRequest\x1a'.stressstrike.dist.CapabilitiesResponse\x12S\n" +
-	"\bRegister\x12\".stressstrike.dist.RegisterRequest\x1a#.stressstrike.dist.RegisterResponseB-Z+Sift/internal/dist/proto;distprotob\x06proto3"
+	"Coordinate\x12\x18.sift.dist.WorkerCommand\x1a\x16.sift.dist.WorkerEvent(\x010\x01\x127\n" +
+	"\x04Ping\x12\x16.sift.dist.PingRequest\x1a\x17.sift.dist.PingResponse\x12R\n" +
+	"\x0fGetCapabilities\x12\x1e.sift.dist.CapabilitiesRequest\x1a\x1f.sift.dist.CapabilitiesResponse\x12C\n" +
+	"\bRegister\x12\x1a.sift.dist.RegisterRequest\x1a\x1b.sift.dist.RegisterResponseBCZAgithub.com/asadbekabdulboqiyev/sift/internal/dist/proto;distprotob\x06proto3"
 
 var (
 	file_internal_dist_proto_coordinator_proto_rawDescOnce sync.Once
@@ -2854,95 +2854,95 @@ func file_internal_dist_proto_coordinator_proto_rawDescGZIP() []byte {
 
 var file_internal_dist_proto_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_internal_dist_proto_coordinator_proto_goTypes = []any{
-	(*WorkerCommand)(nil),        // 0: stressstrike.dist.WorkerCommand
-	(*StartRun)(nil),             // 1: stressstrike.dist.StartRun
-	(*StopRun)(nil),              // 2: stressstrike.dist.StopRun
-	(*GetStatus)(nil),            // 3: stressstrike.dist.GetStatus
-	(*MigrateSession)(nil),       // 4: stressstrike.dist.MigrateSession
-	(*WorkerEvent)(nil),          // 5: stressstrike.dist.WorkerEvent
-	(*RunStarted)(nil),           // 6: stressstrike.dist.RunStarted
-	(*RunProgress)(nil),          // 7: stressstrike.dist.RunProgress
-	(*RunCompleted)(nil),         // 8: stressstrike.dist.RunCompleted
-	(*RunFailed)(nil),            // 9: stressstrike.dist.RunFailed
-	(*StatusReport)(nil),         // 10: stressstrike.dist.StatusReport
-	(*SessionMigrated)(nil),      // 11: stressstrike.dist.SessionMigrated
-	(*Scenario)(nil),             // 12: stressstrike.dist.Scenario
-	(*LoadProfile)(nil),          // 13: stressstrike.dist.LoadProfile
-	(*Step)(nil),                 // 14: stressstrike.dist.Step
-	(*Extract)(nil),              // 15: stressstrike.dist.Extract
-	(*Assertion)(nil),            // 16: stressstrike.dist.Assertion
-	(*SLA)(nil),                  // 17: stressstrike.dist.SLA
-	(*TelemetrySnapshot)(nil),    // 18: stressstrike.dist.TelemetrySnapshot
-	(*LatencyPercentiles)(nil),   // 19: stressstrike.dist.LatencyPercentiles
-	(*StepTelemetry)(nil),        // 20: stressstrike.dist.StepTelemetry
-	(*SystemMetrics)(nil),        // 21: stressstrike.dist.SystemMetrics
-	(*Report)(nil),               // 22: stressstrike.dist.Report
-	(*StepReport)(nil),           // 23: stressstrike.dist.StepReport
-	(*SLAResult)(nil),            // 24: stressstrike.dist.SLAResult
-	(*TimelineSample)(nil),       // 25: stressstrike.dist.TimelineSample
-	(*PingRequest)(nil),          // 26: stressstrike.dist.PingRequest
-	(*PingResponse)(nil),         // 27: stressstrike.dist.PingResponse
-	(*CapabilitiesRequest)(nil),  // 28: stressstrike.dist.CapabilitiesRequest
-	(*CapabilitiesResponse)(nil), // 29: stressstrike.dist.CapabilitiesResponse
-	(*RegisterRequest)(nil),      // 30: stressstrike.dist.RegisterRequest
-	(*RegisterResponse)(nil),     // 31: stressstrike.dist.RegisterResponse
-	nil,                          // 32: stressstrike.dist.Scenario.VariablesEntry
-	nil,                          // 33: stressstrike.dist.Step.HeadersEntry
-	nil,                          // 34: stressstrike.dist.TelemetrySnapshot.StatusCodesEntry
-	nil,                          // 35: stressstrike.dist.TelemetrySnapshot.ErrorTypesEntry
-	nil,                          // 36: stressstrike.dist.StepTelemetry.StatusCodesEntry
-	nil,                          // 37: stressstrike.dist.StepTelemetry.ErrorTypesEntry
-	nil,                          // 38: stressstrike.dist.Report.StatusCodesEntry
-	nil,                          // 39: stressstrike.dist.Report.ErrorsEntry
-	nil,                          // 40: stressstrike.dist.StepReport.StatusCodesEntry
-	nil,                          // 41: stressstrike.dist.StepReport.ErrorTypesEntry
+	(*WorkerCommand)(nil),        // 0: sift.dist.WorkerCommand
+	(*StartRun)(nil),             // 1: sift.dist.StartRun
+	(*StopRun)(nil),              // 2: sift.dist.StopRun
+	(*GetStatus)(nil),            // 3: sift.dist.GetStatus
+	(*MigrateSession)(nil),       // 4: sift.dist.MigrateSession
+	(*WorkerEvent)(nil),          // 5: sift.dist.WorkerEvent
+	(*RunStarted)(nil),           // 6: sift.dist.RunStarted
+	(*RunProgress)(nil),          // 7: sift.dist.RunProgress
+	(*RunCompleted)(nil),         // 8: sift.dist.RunCompleted
+	(*RunFailed)(nil),            // 9: sift.dist.RunFailed
+	(*StatusReport)(nil),         // 10: sift.dist.StatusReport
+	(*SessionMigrated)(nil),      // 11: sift.dist.SessionMigrated
+	(*Scenario)(nil),             // 12: sift.dist.Scenario
+	(*LoadProfile)(nil),          // 13: sift.dist.LoadProfile
+	(*Step)(nil),                 // 14: sift.dist.Step
+	(*Extract)(nil),              // 15: sift.dist.Extract
+	(*Assertion)(nil),            // 16: sift.dist.Assertion
+	(*SLA)(nil),                  // 17: sift.dist.SLA
+	(*TelemetrySnapshot)(nil),    // 18: sift.dist.TelemetrySnapshot
+	(*LatencyPercentiles)(nil),   // 19: sift.dist.LatencyPercentiles
+	(*StepTelemetry)(nil),        // 20: sift.dist.StepTelemetry
+	(*SystemMetrics)(nil),        // 21: sift.dist.SystemMetrics
+	(*Report)(nil),               // 22: sift.dist.Report
+	(*StepReport)(nil),           // 23: sift.dist.StepReport
+	(*SLAResult)(nil),            // 24: sift.dist.SLAResult
+	(*TimelineSample)(nil),       // 25: sift.dist.TimelineSample
+	(*PingRequest)(nil),          // 26: sift.dist.PingRequest
+	(*PingResponse)(nil),         // 27: sift.dist.PingResponse
+	(*CapabilitiesRequest)(nil),  // 28: sift.dist.CapabilitiesRequest
+	(*CapabilitiesResponse)(nil), // 29: sift.dist.CapabilitiesResponse
+	(*RegisterRequest)(nil),      // 30: sift.dist.RegisterRequest
+	(*RegisterResponse)(nil),     // 31: sift.dist.RegisterResponse
+	nil,                          // 32: sift.dist.Scenario.VariablesEntry
+	nil,                          // 33: sift.dist.Step.HeadersEntry
+	nil,                          // 34: sift.dist.TelemetrySnapshot.StatusCodesEntry
+	nil,                          // 35: sift.dist.TelemetrySnapshot.ErrorTypesEntry
+	nil,                          // 36: sift.dist.StepTelemetry.StatusCodesEntry
+	nil,                          // 37: sift.dist.StepTelemetry.ErrorTypesEntry
+	nil,                          // 38: sift.dist.Report.StatusCodesEntry
+	nil,                          // 39: sift.dist.Report.ErrorsEntry
+	nil,                          // 40: sift.dist.StepReport.StatusCodesEntry
+	nil,                          // 41: sift.dist.StepReport.ErrorTypesEntry
 }
 var file_internal_dist_proto_coordinator_proto_depIdxs = []int32{
-	1,  // 0: stressstrike.dist.WorkerCommand.start_run:type_name -> stressstrike.dist.StartRun
-	2,  // 1: stressstrike.dist.WorkerCommand.stop_run:type_name -> stressstrike.dist.StopRun
-	3,  // 2: stressstrike.dist.WorkerCommand.get_status:type_name -> stressstrike.dist.GetStatus
-	4,  // 3: stressstrike.dist.WorkerCommand.migrate_session:type_name -> stressstrike.dist.MigrateSession
-	12, // 4: stressstrike.dist.StartRun.scenario:type_name -> stressstrike.dist.Scenario
-	6,  // 5: stressstrike.dist.WorkerEvent.run_started:type_name -> stressstrike.dist.RunStarted
-	7,  // 6: stressstrike.dist.WorkerEvent.run_progress:type_name -> stressstrike.dist.RunProgress
-	8,  // 7: stressstrike.dist.WorkerEvent.run_completed:type_name -> stressstrike.dist.RunCompleted
-	9,  // 8: stressstrike.dist.WorkerEvent.run_failed:type_name -> stressstrike.dist.RunFailed
-	10, // 9: stressstrike.dist.WorkerEvent.status_report:type_name -> stressstrike.dist.StatusReport
-	11, // 10: stressstrike.dist.WorkerEvent.session_migrated:type_name -> stressstrike.dist.SessionMigrated
-	18, // 11: stressstrike.dist.RunProgress.telemetry:type_name -> stressstrike.dist.TelemetrySnapshot
-	22, // 12: stressstrike.dist.RunCompleted.report:type_name -> stressstrike.dist.Report
-	21, // 13: stressstrike.dist.StatusReport.system:type_name -> stressstrike.dist.SystemMetrics
-	13, // 14: stressstrike.dist.Scenario.profile:type_name -> stressstrike.dist.LoadProfile
-	14, // 15: stressstrike.dist.Scenario.steps:type_name -> stressstrike.dist.Step
-	32, // 16: stressstrike.dist.Scenario.variables:type_name -> stressstrike.dist.Scenario.VariablesEntry
-	17, // 17: stressstrike.dist.Scenario.sla:type_name -> stressstrike.dist.SLA
-	33, // 18: stressstrike.dist.Step.headers:type_name -> stressstrike.dist.Step.HeadersEntry
-	15, // 19: stressstrike.dist.Step.extract:type_name -> stressstrike.dist.Extract
-	16, // 20: stressstrike.dist.Step.assertions:type_name -> stressstrike.dist.Assertion
-	34, // 21: stressstrike.dist.TelemetrySnapshot.status_codes:type_name -> stressstrike.dist.TelemetrySnapshot.StatusCodesEntry
-	35, // 22: stressstrike.dist.TelemetrySnapshot.error_types:type_name -> stressstrike.dist.TelemetrySnapshot.ErrorTypesEntry
-	19, // 23: stressstrike.dist.TelemetrySnapshot.latency:type_name -> stressstrike.dist.LatencyPercentiles
-	20, // 24: stressstrike.dist.TelemetrySnapshot.steps:type_name -> stressstrike.dist.StepTelemetry
-	19, // 25: stressstrike.dist.StepTelemetry.latency:type_name -> stressstrike.dist.LatencyPercentiles
-	36, // 26: stressstrike.dist.StepTelemetry.status_codes:type_name -> stressstrike.dist.StepTelemetry.StatusCodesEntry
-	37, // 27: stressstrike.dist.StepTelemetry.error_types:type_name -> stressstrike.dist.StepTelemetry.ErrorTypesEntry
-	38, // 28: stressstrike.dist.Report.status_codes:type_name -> stressstrike.dist.Report.StatusCodesEntry
-	39, // 29: stressstrike.dist.Report.errors:type_name -> stressstrike.dist.Report.ErrorsEntry
-	23, // 30: stressstrike.dist.Report.overall:type_name -> stressstrike.dist.StepReport
-	23, // 31: stressstrike.dist.Report.steps:type_name -> stressstrike.dist.StepReport
-	24, // 32: stressstrike.dist.Report.sla:type_name -> stressstrike.dist.SLAResult
-	25, // 33: stressstrike.dist.Report.timeline:type_name -> stressstrike.dist.TimelineSample
-	40, // 34: stressstrike.dist.StepReport.status_codes:type_name -> stressstrike.dist.StepReport.StatusCodesEntry
-	41, // 35: stressstrike.dist.StepReport.error_types:type_name -> stressstrike.dist.StepReport.ErrorTypesEntry
-	29, // 36: stressstrike.dist.RegisterRequest.capabilities:type_name -> stressstrike.dist.CapabilitiesResponse
-	0,  // 37: stressstrike.dist.MasterWorker.Coordinate:input_type -> stressstrike.dist.WorkerCommand
-	26, // 38: stressstrike.dist.MasterWorker.Ping:input_type -> stressstrike.dist.PingRequest
-	28, // 39: stressstrike.dist.MasterWorker.GetCapabilities:input_type -> stressstrike.dist.CapabilitiesRequest
-	30, // 40: stressstrike.dist.MasterWorker.Register:input_type -> stressstrike.dist.RegisterRequest
-	5,  // 41: stressstrike.dist.MasterWorker.Coordinate:output_type -> stressstrike.dist.WorkerEvent
-	27, // 42: stressstrike.dist.MasterWorker.Ping:output_type -> stressstrike.dist.PingResponse
-	29, // 43: stressstrike.dist.MasterWorker.GetCapabilities:output_type -> stressstrike.dist.CapabilitiesResponse
-	31, // 44: stressstrike.dist.MasterWorker.Register:output_type -> stressstrike.dist.RegisterResponse
+	1,  // 0: sift.dist.WorkerCommand.start_run:type_name -> sift.dist.StartRun
+	2,  // 1: sift.dist.WorkerCommand.stop_run:type_name -> sift.dist.StopRun
+	3,  // 2: sift.dist.WorkerCommand.get_status:type_name -> sift.dist.GetStatus
+	4,  // 3: sift.dist.WorkerCommand.migrate_session:type_name -> sift.dist.MigrateSession
+	12, // 4: sift.dist.StartRun.scenario:type_name -> sift.dist.Scenario
+	6,  // 5: sift.dist.WorkerEvent.run_started:type_name -> sift.dist.RunStarted
+	7,  // 6: sift.dist.WorkerEvent.run_progress:type_name -> sift.dist.RunProgress
+	8,  // 7: sift.dist.WorkerEvent.run_completed:type_name -> sift.dist.RunCompleted
+	9,  // 8: sift.dist.WorkerEvent.run_failed:type_name -> sift.dist.RunFailed
+	10, // 9: sift.dist.WorkerEvent.status_report:type_name -> sift.dist.StatusReport
+	11, // 10: sift.dist.WorkerEvent.session_migrated:type_name -> sift.dist.SessionMigrated
+	18, // 11: sift.dist.RunProgress.telemetry:type_name -> sift.dist.TelemetrySnapshot
+	22, // 12: sift.dist.RunCompleted.report:type_name -> sift.dist.Report
+	21, // 13: sift.dist.StatusReport.system:type_name -> sift.dist.SystemMetrics
+	13, // 14: sift.dist.Scenario.profile:type_name -> sift.dist.LoadProfile
+	14, // 15: sift.dist.Scenario.steps:type_name -> sift.dist.Step
+	32, // 16: sift.dist.Scenario.variables:type_name -> sift.dist.Scenario.VariablesEntry
+	17, // 17: sift.dist.Scenario.sla:type_name -> sift.dist.SLA
+	33, // 18: sift.dist.Step.headers:type_name -> sift.dist.Step.HeadersEntry
+	15, // 19: sift.dist.Step.extract:type_name -> sift.dist.Extract
+	16, // 20: sift.dist.Step.assertions:type_name -> sift.dist.Assertion
+	34, // 21: sift.dist.TelemetrySnapshot.status_codes:type_name -> sift.dist.TelemetrySnapshot.StatusCodesEntry
+	35, // 22: sift.dist.TelemetrySnapshot.error_types:type_name -> sift.dist.TelemetrySnapshot.ErrorTypesEntry
+	19, // 23: sift.dist.TelemetrySnapshot.latency:type_name -> sift.dist.LatencyPercentiles
+	20, // 24: sift.dist.TelemetrySnapshot.steps:type_name -> sift.dist.StepTelemetry
+	19, // 25: sift.dist.StepTelemetry.latency:type_name -> sift.dist.LatencyPercentiles
+	36, // 26: sift.dist.StepTelemetry.status_codes:type_name -> sift.dist.StepTelemetry.StatusCodesEntry
+	37, // 27: sift.dist.StepTelemetry.error_types:type_name -> sift.dist.StepTelemetry.ErrorTypesEntry
+	38, // 28: sift.dist.Report.status_codes:type_name -> sift.dist.Report.StatusCodesEntry
+	39, // 29: sift.dist.Report.errors:type_name -> sift.dist.Report.ErrorsEntry
+	23, // 30: sift.dist.Report.overall:type_name -> sift.dist.StepReport
+	23, // 31: sift.dist.Report.steps:type_name -> sift.dist.StepReport
+	24, // 32: sift.dist.Report.sla:type_name -> sift.dist.SLAResult
+	25, // 33: sift.dist.Report.timeline:type_name -> sift.dist.TimelineSample
+	40, // 34: sift.dist.StepReport.status_codes:type_name -> sift.dist.StepReport.StatusCodesEntry
+	41, // 35: sift.dist.StepReport.error_types:type_name -> sift.dist.StepReport.ErrorTypesEntry
+	29, // 36: sift.dist.RegisterRequest.capabilities:type_name -> sift.dist.CapabilitiesResponse
+	0,  // 37: sift.dist.MasterWorker.Coordinate:input_type -> sift.dist.WorkerCommand
+	26, // 38: sift.dist.MasterWorker.Ping:input_type -> sift.dist.PingRequest
+	28, // 39: sift.dist.MasterWorker.GetCapabilities:input_type -> sift.dist.CapabilitiesRequest
+	30, // 40: sift.dist.MasterWorker.Register:input_type -> sift.dist.RegisterRequest
+	5,  // 41: sift.dist.MasterWorker.Coordinate:output_type -> sift.dist.WorkerEvent
+	27, // 42: sift.dist.MasterWorker.Ping:output_type -> sift.dist.PingResponse
+	29, // 43: sift.dist.MasterWorker.GetCapabilities:output_type -> sift.dist.CapabilitiesResponse
+	31, // 44: sift.dist.MasterWorker.Register:output_type -> sift.dist.RegisterResponse
 	41, // [41:45] is the sub-list for method output_type
 	37, // [37:41] is the sub-list for method input_type
 	37, // [37:37] is the sub-list for extension type_name

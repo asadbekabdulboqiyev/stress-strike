@@ -395,7 +395,7 @@ func owaspGate(op authz.Operation, target, ticket string) (owaspGateOutcome, err
 	if err != nil {
 		return owaspGateOutcome{}, err
 	}
-	if env := os.Getenv("STRESS_STRIKE_ALLOW"); env != "" {
+	if env := os.Getenv("SIFT_ALLOW"); env != "" {
 		if err := pol.AddEnvRules(env); err != nil {
 			return owaspGateOutcome{}, err
 		}

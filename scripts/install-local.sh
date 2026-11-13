@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# install-local.sh — build every stress-strike binary, install it into a
+# install-local.sh — build every Sift binary, install it into a
 # directory on PATH, and repair the macOS code signature.
 #
 # Usage:
 #   ./scripts/install-local.sh                 # install into $(go env GOBIN)
 #   ./scripts/install-local.sh 0.14.14         # pin the version string
-#   STRESS_STRIKE_INSTALL_DIR=~/.local/bin ./scripts/install-local.sh
+#   SIFT_INSTALL_DIR=~/.local/bin ./scripts/install-local.sh
 #
 # Why the signing step exists
 # ---------------------------
@@ -15,7 +15,7 @@
 # into place with `cp` keeps the signature bytes but the new file is a
 # different inode carrying com.apple.provenance, and validation can reject it:
 #
-#   zsh: killed     stress-strike          # SIGKILL, exit code 137
+#   zsh: killed     Sift          # SIGKILL, exit code 137
 #   termination: { namespace: CODESIGNING,
 #                  indicator: Taskgated Invalid Signature }
 #
@@ -43,16 +43,16 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 
 BINARIES=(
-  "stress-strike:./cmd/stress-strike"
-  "stress-strike-dashboard:./cmd/stress-strike-dashboard"
-  "stress-strike-scan:./cmd/stress-strike-scan"
-  "stress-strike-master:./cmd/stress-strike-master"
-  "stress-strike-replay:./cmd/stress-strike-replay"
-  "stress-strike-worker:./cmd/stress-strike-worker"
+  "Sift:./cmd/Sift"
+  "Sift-dashboard:./cmd/Sift-dashboard"
+  "Sift-scan:./cmd/Sift-scan"
+  "Sift-master:./cmd/Sift-master"
+  "Sift-replay:./cmd/Sift-replay"
+  "Sift-worker:./cmd/Sift-worker"
 )
 
 dest_dir() {
-  if [ -n "${STRESS_STRIKE_INSTALL_DIR:-}" ]; then echo "$STRESS_STRIKE_INSTALL_DIR"; return; fi
+  if [ -n "${SIFT_INSTALL_DIR:-}" ]; then echo "$SIFT_INSTALL_DIR"; return; fi
   local gobin
   gobin="$(go env GOBIN)"
   if [ -z "$gobin" ]; then gobin="$(go env GOPATH)/bin"; fi
@@ -62,7 +62,7 @@ dest_dir() {
 DEST="$(dest_dir)"
 mkdir -p "$DEST" || { echo "error: cannot create $DEST" >&2; exit 1; }
 if [ ! -w "$DEST" ]; then
-  echo "error: $DEST is not writable (set STRESS_STRIKE_INSTALL_DIR)" >&2
+  echo "error: $DEST is not writable (set SIFT_INSTALL_DIR)" >&2
   exit 1
 fi
 
@@ -78,7 +78,7 @@ err()  { printf '  \033[31m[error]\033[0m %s\n' "$*" >&2; }
 IS_DARWIN=0
 [ "$(uname -s)" = "Darwin" ] && IS_DARWIN=1
 
-say "==> stress-strike v${VERSION}"
+say "==> Sift v${VERSION}"
 say "==> install dir: ${DEST}"
 say
 
@@ -87,7 +87,7 @@ for entry in "${BINARIES[@]}"; do
   name="${entry%%:*}"
   pkg="${entry#*:}"
   CGO_ENABLED=0 go build -trimpath -buildvcs=false \
-    -ldflags="-s -w -X main.version=${VERSION}" \
+    -ldflags="-s -w -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION}" \
     -o "${TMP}/${name}" "${pkg}"
   ok "built ${name}"
 done
@@ -138,12 +138,12 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
-ok "stress-strike v${VERSION} installed into ${DEST}"
+ok "Sift v${VERSION} installed into ${DEST}"
 say
 if [[ ":$PATH:" != *":${DEST}:"* ]]; then
   say "  ${DEST} is not on PATH; add it:"
   say "    export PATH=\"\${PATH}:${DEST}\""
   say
 fi
-say "  run:     stress-strike"
-say "  web:     stress-strike dashboard   → http://127.0.0.1:8888"
+say "  run:     Sift"
+say "  web:     Sift dashboard   → http://127.0.0.1:8888"

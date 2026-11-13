@@ -1,4 +1,4 @@
-# Default values for the stress-strike chart.
+# Default values for the Sift chart.
 #
 # Ports: `grpcPort` is the control plane (worker registration / commands);
 # `httpPort` serves GET /healthz (liveness), GET /readyz (readiness — 200 only
@@ -15,7 +15,7 @@ fullnameOverride: ""
 imagePullSecrets: []
 #  - name: ghcr-pull
 
-# Annotations added to every stress-strike pod (e.g. prometheus.io/scrape).
+# Annotations added to every Sift pod (e.g. prometheus.io/scrape).
 podAnnotations: {}
 
 # Reference an existing ServiceAccount. The chart never creates one, so this is
@@ -35,7 +35,7 @@ auth:
 master:
   replicaCount: 1
   image:
-    repository: ghcr.io/asadbekabdulboqiyev/stress-strike
+    repository: ghcr.io/asadbekabdulboqiyev/sift
     tag: "0.14.14"
     pullPolicy: IfNotPresent
   grpcPort: 50051
@@ -96,7 +96,7 @@ master:
 worker:
   replicaCount: 3
   image:
-    repository: ghcr.io/asadbekabdulboqiyev/stress-strike
+    repository: ghcr.io/asadbekabdulboqiyev/sift
     tag: "0.14.14"
     pullPolicy: IfNotPresent
   grpcPort: 50061

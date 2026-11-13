@@ -20,10 +20,10 @@ fi
 VERSION="$1"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
-BIN_NAME="stress-strike"
-PACKAGE_PREFIX="stress-strike-${VERSION}"
+BIN_NAME="Sift"
+PACKAGE_PREFIX="Sift-${VERSION}"
 
-LDFLAGS="-s -w -X main.version=${VERSION#v}"
+LDFLAGS="-s -w -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION#v}"
 
 PLATFORMS=(
   "linux/amd64"
@@ -59,7 +59,7 @@ for platform in "${PLATFORMS[@]}"; do
     cd "${REPO_ROOT}"
     CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
       go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" \
-      -o "${out_bin}" ./cmd/stress-strike
+      -o "${out_bin}" ./cmd/sift
   )
 done
 
@@ -105,7 +105,7 @@ if command -v gh >/dev/null 2>&1; then
     shopt -s nullglob
     assets=(*.tar.gz *.zip checksums.txt)
     gh release create "${VERSION}" \
-      --title "stress-strike ${VERSION}" \
+      --title "Sift ${VERSION}" \
       --generate-notes \
       "${assets[@]}"
   )
@@ -117,7 +117,7 @@ else
   echo "       git tag ${VERSION} && git push origin ${VERSION}"
   echo
   echo "  2. Create a release at:"
-  echo "       https://github.com/<owner>/stress-strike/releases/new?tag=${VERSION}"
+  echo "       https://github.com/<owner>/Sift/releases/new?tag=${VERSION}"
   echo
   echo "  3. Upload these assets:"
   for f in "${DIST_DIR}"/${PACKAGE_PREFIX}-*.{tar.gz,zip} "${CHECKSUM_FILE}"; do

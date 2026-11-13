@@ -96,7 +96,7 @@ func evaluateAuthz(op authz.Operation, targets []string, g gateOptions) (authzOu
 	if g.allowPrivate {
 		pol.AllowPrivate = true
 	}
-	if env := os.Getenv("STRESS_STRIKE_ALLOW"); env != "" {
+	if env := os.Getenv("SIFT_ALLOW"); env != "" {
 		if err := pol.AddEnvRules(env); err != nil {
 			return authzOutcome{}, err
 		}

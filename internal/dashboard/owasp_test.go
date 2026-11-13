@@ -17,10 +17,10 @@ import (
 // write into their real ~/.Sift audit log.
 func owaspTestServer(t *testing.T) *Server {
 	t.Helper()
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
-	t.Setenv("STRESS_STRIKE_POLICY", "")
-	t.Setenv("STRESS_STRIKE_ALLOW", "")
-	t.Setenv("STRESS_STRIKE_AUDIT_LOG", "")
+	t.Setenv("SIFT_HOME", t.TempDir())
+	t.Setenv("SIFT_POLICY", "")
+	t.Setenv("SIFT_ALLOW", "")
+	t.Setenv("SIFT_AUDIT_LOG", "")
 	return NewServer()
 }
 
@@ -478,7 +478,7 @@ func TestOWASPScanDeniedRecordsAudit(t *testing.T) {
 
 	// The refusal must be on the trail — a denied scan that leaves no record is
 	// an invisible scan.
-	logPath := filepath.Join(os.Getenv("STRESS_STRIKE_HOME"), "audit.jsonl")
+	logPath := filepath.Join(os.Getenv("SIFT_HOME"), "audit.jsonl")
 	raw, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("audit log not written: %v", err)
@@ -731,9 +731,9 @@ func TestOWASPScanResolvesCLIPolicyPath(t *testing.T) {
 	// an approval, and the dashboard never reads it. Strict mode is written as
 	// its numeric value because authz.Mode is an int with no custom unmarshaler.
 	dir := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", dir)
-	t.Setenv("STRESS_STRIKE_ALLOW", "")
-	t.Setenv("STRESS_STRIKE_AUDIT_LOG", "")
+	t.Setenv("SIFT_HOME", dir)
+	t.Setenv("SIFT_ALLOW", "")
+	t.Setenv("SIFT_AUDIT_LOG", "")
 
 	if err := os.WriteFile(filepath.Join(dir, "authz.json"), []byte(`{"mode":1}`), 0o600); err != nil {
 		t.Fatalf("write policy: %v", err)

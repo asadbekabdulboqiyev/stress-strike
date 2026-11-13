@@ -1,6 +1,6 @@
 # Security Guide
 
-This document describes the security posture of **stress-strike**, a Go load
+This document describes the security posture of **Sift**, a Go load
 testing / network simulator. It covers the threat model, the controls already
 in place, findings from the security audit, and recommendations for safe use.
 
@@ -11,7 +11,7 @@ in place, findings from the security audit, and recommendations for safe use.
 
 ## 1. Project description & security objective
 
-`stress-strike` generates high volumes of concurrent HTTP requests against a
+`Sift` generates high volumes of concurrent HTTP requests against a
 target server to measure breaking points, latency distribution, and error
 behavior. It is controlled entirely by an operator through CLI flags or a
 YAML/JSON scenario file, and runs on the operator's own machine.
@@ -45,7 +45,7 @@ trusted **by design** (there is no multi-tenant or remote input surface).
 | 3 | **Path traversal** | A scenario `name` with `../`, `/`, NUL, etc. could escape the report directory or overwrite arbitrary files. | `internal/report/report.go` |
 | 4 | **Secret leakage** | Tokens, passwords, headers, and request bodies may exist in scenario files; they must never appear in reports. The opt-in debug capture (`--capture N`, ≤100 entries, bodies ≤2KB) stores *response* data only — request headers/bodies (credentials) are never captured; the capture file is private (`0600`) and disabled by default. | `internal/report/report.go`, `internal/engine/engine.go`, `internal/engine/capture.go` |
 | 5 | **Transport downgrade / MITM** | Redirect to a plaintext or different host, or disabling certificate verification, would weaken TLS protection. | `internal/engine/client.go` |
-| 6 | **Denial of service (target side)** | The tool is, by definition, a load generator. Misuse against third-party systems is illegal (DDoS) and is mitigated by operator warnings, not technical controls. | `cmd/stress-strike/main.go` |
+| 6 | **Denial of service (target side)** | The tool is, by definition, a load generator. Misuse against third-party systems is illegal (DDoS) and is mitigated by operator warnings, not technical controls. | `cmd/Sift/main.go` |
 | 7 | **Malicious config parsing** | `yaml.v3` alias/entity expansion ("billion laughs", alias bombs) on untrusted scenario files. | `internal/config/scenario.go` |
 
 ---
@@ -86,9 +86,9 @@ Verified against the codebase during the audit:
   (`internal/report/report.go`, `internal/metrics/metrics.go`)
 - **Operator guardrails:** a legal (DDoS) warning is printed on every run, and a
   warning is shown when the open-file limit (`ulimit -n`) is too low for the
-  planned concurrency. (`cmd/stress-strike/main.go`)
+  planned concurrency. (`cmd/Sift/main.go`)
 - **Graceful shutdown:** `SIGINT`/`SIGTERM` drain in-flight requests; a second
-  signal exits immediately. (`cmd/stress-strike/main.go`)
+  signal exits immediately. (`cmd/Sift/main.go`)
 
 ---
 
@@ -127,7 +127,7 @@ Findings from the review, ordered by risk.
 
 ### 4.3 Accepted residual risks (documented, not "fixed" by design)
 
-- **[Info] Private/local targets intentionally allowed.** `stress-strike` is
+- **[Info] Private/local targets intentionally allowed.** `Sift` is
   built to test the operator's own servers, including `http://localhost`,
   `127.0.0.1`, and other private addresses (the included demo server listens on
   `127.0.0.1:8080`). Blocking private IP by default would break the primary use
@@ -203,7 +203,7 @@ This is an internal tool. If you find a security issue in this repository,
 report it to the project maintainers **before** publishing details. Include:
 
 - a description of the issue and its impact;
-- the affected component and version (`./bin/stress-strike --version`);
+- the affected component and version (`./bin/Sift --version`);
 - a minimal reproduction (scenario file or command line) if possible.
 
 Do not include real credentials in the report.

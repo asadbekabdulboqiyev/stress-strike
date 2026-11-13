@@ -1,7 +1,7 @@
-# stress-strike — Invention Disclosure: Verifiable Performance Measurement
+# Sift — Invention Disclosure: Verifiable Performance Measurement
 
 **Format identifier:** `vpmp/v1`
-**Product name:** stress-strike
+**Product name:** Sift
 **Status of this document:** invention disclosure + protocol specification
 **Scope note:** this document states honestly what the MVP proves and what it
 does not. Sections marked **[MVP]** are in scope today; **[ROADMAP]** are
@@ -57,8 +57,8 @@ addresses fabrication by external corroboration.
 
 ## 3. Invention summary
 
-stress-strike introduces a **measurement protocol** (`vpmp/v1`) with three pillars.
-The pillars are named identically across all stress-strike documents.
+Sift introduces a **measurement protocol** (`vpmp/v1`) with three pillars.
+The pillars are named identically across all Sift documents.
 
 | # | Pillar | Mechanism | Addresses |
 |---|---|---|---|
@@ -82,11 +82,11 @@ re-derived by a party that trusts neither the tool vendors nor the operator.
   arrival count (and, in v2, per-epoch nonces).
 
 Two producers ship with the implementation, and they emit the **identical**
-format: the **CLI** (`stress-strike run --emit-bundle`) and the **web dashboard**
-(`stress-strike dashboard`), which seals a `vpmp/v1` bundle for every run it
+format: the **CLI** (`Sift run --emit-bundle`) and the **web dashboard**
+(`Sift dashboard`), which seals a `vpmp/v1` bundle for every run it
 completes and exposes it for download. The dashboard's bundle is accepted by the
 CLI verifier unchanged — verified end-to-end (a dashboard run reported *N*
-requests; the bundle contained *N* records; `stress-strike verify` returned exit
+requests; the bundle contained *N* records; `Sift verify` returned exit
 `0`, and a one-byte sidecar edit returned exit `1`). Both reuse the same Ed25519
 key file (`0600`) and the same Merkle construction, so a signature is a
 signature wherever it was produced.
@@ -143,7 +143,7 @@ Performed by the verifier, offline, with no network access (§6).
   "format": "vpmp/v1",
   "bundle_id": "vb-1f7c9a3d5e21",
   "created_at": "2026-10-13T10:15:04Z",
-  "tool": { "name": "stress-strike", "binary": "stress-strike", "version": "0.14.14", "protocol": "vpmp/v1" },
+  "tool": { "name": "Sift", "binary": "Sift", "version": "0.14.14", "protocol": "vpmp/v1" },
   "signer": {
     "alg": "Ed25519",
     "key_id": "<hex SHA-256 of public key>",

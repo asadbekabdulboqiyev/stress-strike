@@ -555,7 +555,7 @@ func GeneratePDF(report *PentestReport) []byte {
 	d.heading("Disclaimer")
 	d.para(pdfDisclaimerText, fontReg, 8.3, pdfColMuted, 0)
 	d.y -= 20
-	d.centerText("STRESS-STRIKE Penetration Testing Framework", fontBold, 8, pdfColMuted)
+	d.centerText("SIFT Penetration Testing Framework", fontBold, 8, pdfColMuted)
 
 	return d.build(pdfClean(report.Title))
 }
@@ -569,7 +569,7 @@ func (d *pdfDoc) build(docTitle string) []byte {
 	}
 	npages := len(d.pages)
 
-	footLeft := "CONFIDENTIAL - STRESS-STRIKE Penetration Testing Framework"
+	footLeft := "CONFIDENTIAL - SIFT Penetration Testing Framework"
 	for i := range d.pages {
 		var fb bytes.Buffer
 		pdfEmitHLine(&fb, 48, pdfColBorder, 0.6)
@@ -601,7 +601,7 @@ func (d *pdfDoc) build(docTitle string) []byte {
 	writeObj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
 	writeObj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
 	writeObj(5, "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>")
-	writeObj(6, fmt.Sprintf("<< /Title (%s) /Producer (STRESS-STRIKE Penetration Testing Framework) >>",
+	writeObj(6, fmt.Sprintf("<< /Title (%s) /Producer (SIFT Penetration Testing Framework) >>",
 		pdfEscapeStr(docTitle)))
 
 	for i, stream := range d.pages {

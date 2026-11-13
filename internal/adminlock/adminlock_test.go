@@ -254,7 +254,7 @@ func TestStatusExpiredWindowIsInactive(t *testing.T) {
 }
 
 func TestActiveWithoutStateFile(t *testing.T) {
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
+	t.Setenv("SIFT_HOME", t.TempDir())
 	if Active() {
 		t.Error("Active() must be false when no state file exists")
 	}
@@ -265,7 +265,7 @@ func TestActiveWithoutStateFile(t *testing.T) {
 
 func TestActiveWithUnlockedState(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 	s := newStore(t, home, "admin.json")
 	code, err := s.Code()
 	if err != nil {

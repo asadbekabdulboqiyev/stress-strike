@@ -14,7 +14,7 @@
    RENDER
    ========================================================================== */
 function logRenderError(e) {
-  try { console.error('[stress-strike] render error:', e); } catch (_) {}
+  try { console.error('[Sift] render error:', e); } catch (_) {}
 }
 function render() {
   var s = S.snapshot || {};

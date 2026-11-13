@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy-fleet.sh — put stress-strike workers onto real Linux hosts over SSH.
+# deploy-fleet.sh — put Sift workers onto real Linux hosts over SSH.
 # Friendly by default: run it with NO arguments and answer a few questions.
 # Advanced flags stay available for scripts/automation.
 #
@@ -8,7 +8,7 @@
 #   ./scripts/deploy-fleet.sh                            # interactive wizard
 #   ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- user@host...
 #   ./scripts/deploy-fleet.sh --static --token secret -- user@host...
-#   ./scripts/deploy-fleet.sh --tarball dist/.../stress-strike-worker-v0.14.0-linux-amd64.tar.gz -- user@host
+#   ./scripts/deploy-fleet.sh --tarball dist/.../Sift-worker-v0.14.0-linux-amd64.tar.gz -- user@host
 #   ./scripts/deploy-fleet.sh -y --master M:50051 -- host1 host2
 #   ./scripts/deploy-fleet.sh --master M:50051 --hosts h1,h2,h3   # comma-separated
 #   ./scripts/deploy-fleet.sh --master M:50051 --parallel 12 -- host1..host100
@@ -75,7 +75,7 @@ require_cmd scp  "install openssh (scp ships with it)"
 require_cmd tar  "tar is built into macOS and Linux"
 
 # --- collect hosts -----------------------------------------------------------
-banner "stress-strike fleet deploy (v${VERSION})"
+banner "Sift fleet deploy (v${VERSION})"
 [[ ${#HOSTS[@]} -gt 0 ]] || { echo "Paste your SSH hosts one per line ('user@host', comma-separated ok), empty line = done."; }
 while [[ ${#HOSTS[@]} -eq 0 ]]; do
   if ! read -erp "  SSH host [user@host]: " h; then
@@ -190,7 +190,7 @@ log_info "${HOST}: arch=${ARCH}"
 
 TB="${TARBALL_PATH:-}"
 if [[ -z "$TB" ]]; then
-  TB="${REPO_ROOT}/dist/linux-worker/stress-strike-worker-v${VERSION}-linux-${ARCH}.tar.gz"
+  TB="${REPO_ROOT}/dist/linux-worker/Sift-worker-v${VERSION}-linux-${ARCH}.tar.gz"
 fi
 if [[ ! -f "$TB" ]]; then
   fail "worker package not found: ${TB} (run ${REPO_ROOT}/scripts/build-worker-linux.sh ${VERSION})"
@@ -252,13 +252,13 @@ banner "fleet ready — ${#WORKER_ADDRS[@]} worker(s)"
 if [[ $STATIC -eq 1 ]]; then
   echo "static mode — run the master on your control box:"
   echo
-  echo "  stress-strike-master -workers \"$(IFS=,; echo "${WORKER_ADDRS[*]}")\" \\"
+  echo "  Sift-master -workers \"$(IFS=,; echo "${WORKER_ADDRS[*]}")\" \\"
   echo "    -url https://target.example.com -users 500 -duration 120 \\"
   [[ -z "$TOKEN" ]] || echo "    -token ${TOKEN}"
 else
   echo "auto-discovery — start the master (it waits for these workers):"
   echo
-  echo "  stress-strike-master -listen 0.0.0.0:50051 \\"
+  echo "  Sift-master -listen 0.0.0.0:50051 \\"
   echo "    -wait-workers ${#WORKER_ADDRS[@]} -wait-timeout 30 \\"
   echo "    -url https://target.example.com -users 500 -duration 120 \\"
   [[ -z "$TOKEN" ]] || echo "    -token ${TOKEN} \\"
@@ -266,7 +266,7 @@ else
 fi
 echo
 echo "smoke test right after the master is up:"
-echo "  stress-strike-master -wait-workers ${#WORKER_ADDRS[@]} -wait-timeout 30 \\"
+echo "  Sift-master -wait-workers ${#WORKER_ADDRS[@]} -wait-timeout 30 \\"
 echo "    -url https://example.com -users 8 -duration 6 \\"
 [[ -z "$TOKEN" ]] || echo "    -token ${TOKEN} \\"
 echo "    -tls-fingerprint chrome   # expect 0 errors"

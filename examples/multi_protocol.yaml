@@ -5,7 +5,7 @@
 #   - tcp     : pooled persistent connection (e.g. Redis-style exchange)
 #   - udp     : request-response datagram probe with RTT measurement
 #
-# Run: ./bin/stress-strike --config examples/multi_protocol.yaml
+# Run: ./bin/Sift --config examples/multi_protocol.yaml
 name: multi-protocol-power
 base_url: http://localhost:8080
 load_profile:
@@ -27,7 +27,7 @@ steps:
     url: grpc://localhost:50051
     grpc_method: /demo.DemoService/GetStatus
     headers:
-      x-client: stress-strike
+      x-client: Sift
     body: '{"id": "{{id}}"}'
 
   - name: tcp_redis_ping

@@ -140,8 +140,8 @@ func TestPackagingManifestsPointAtTheCurrentVersion(t *testing.T) {
 	tag := "v" + ver
 
 	files := []string{
-		filepath.Join(root, "packaging", "winget", "stress-strike.yaml"),
-		filepath.Join(root, "packaging", "winget", "stress-strike.installer.yaml"),
+		filepath.Join(root, "packaging", "winget", "Sift.yaml"),
+		filepath.Join(root, "packaging", "winget", "Sift.installer.yaml"),
 	}
 	for _, path := range files {
 		raw, err := os.ReadFile(path)

@@ -2,7 +2,7 @@
 
 ## Helm chart
 ```
-helm upgrade --install ss ./deploy/charts/stress-strike
+helm upgrade --install ss ./deploy/charts/Sift
 ```
 
 ## CRDs

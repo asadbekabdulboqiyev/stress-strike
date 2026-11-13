@@ -1,4 +1,4 @@
-# stress-strike — Investor & Competition Pitch
+# Sift — Investor & Competition Pitch
 
 > **Verifiable load-test results.** Turn a performance claim into evidence a
 > third party can check.
@@ -11,12 +11,12 @@
 
 ## Slide 1 — Title
 
-**stress-strike**
+**Sift**
 *Verifiable performance measurement for the people who have to trust the numbers.*
 
-Format identifier: `vpmp/v1` · Built on the `stress-strike` load-testing engine.
+Format identifier: `vpmp/v1` · Built on the `Sift` load-testing engine.
 
-One line: **Today, a load-test report is a promise. stress-strike makes it a
+One line: **Today, a load-test report is a promise. Sift makes it a
 receipt.**
 
 ---
@@ -46,9 +46,9 @@ Three consequences, all observed in practice:
 
 ## Slide 3 — Solution
 
-**stress-strike emits a measurement bundle that anyone can verify offline.**
+**Sift emits a measurement bundle that anyone can verify offline.**
 
-Three pillars (named identically in all stress-strike docs):
+Three pillars (named identically in all Sift docs):
 
 1. **Attested Measurement (VPMP v1)** — an Ed25519-signed manifest, with the
    raw per-request sample stream locked behind a Merkle root. Change one byte →
@@ -129,7 +129,7 @@ is the number to challenge in Q&A.
 Real, shipping products. Comparison is on *verifiability*, not on throughput or
 feature count — where several competitors are strong.
 
-| Capability | **stress-strike** | k6 Cloud (Grafana) | BlazeMeter (Perforce) | LoadRunner Cloud (OpenText) | Grafana Cloud k6 |
+| Capability | **Sift** | k6 Cloud (Grafana) | BlazeMeter (Perforce) | LoadRunner Cloud (OpenText) | Grafana Cloud k6 |
 |---|---|---|---|---|---|
 | Distributed load generation | Yes (master/worker fleet) | Yes (cloud) | Yes (cloud) | Yes (cloud) | Yes (cloud) |
 | Scripting / protocol breadth | Good | Excellent | Excellent | Excellent (deep enterprise protocols) | Excellent |
@@ -197,7 +197,7 @@ shape as certificate authorities and timestamping services.
    "the regulator asked for evidence" is a buying trigger, not a nice-to-have.
 4. **Distribution through existing channels.** Grafana/JMeter/Locust users are
    not the enemy: `verify` should be consumable *from* any pipeline, so
-   stress-strike can be adopted as the evidence layer beside an incumbent generator.
+   Sift can be adopted as the evidence layer beside an incumbent generator.
 5. **Standards & community.** Publish the spec, submit the format for review, and
    push for interop so that "vpmp/v1 verified" becomes a known phrase in RFPs.
 
@@ -205,7 +205,7 @@ shape as certificate authorities and timestamping services.
 
 ## Slide 10 — Traction / MVP status (honest)
 
-**Working today** (in the `stress-strike` engine, v0.14.3):
+**Working today** (in the `Sift` engine, v0.14.3):
 
 - Distributed master/worker load generation; live telemetry aggregation.
 - **Pillar 2 partially live:** coordinated-omission correction exists in the
@@ -289,7 +289,7 @@ v1.1 with 5 design partners).*
 ## Appendix A — Objection handling
 
 - **"I can already see the numbers in Grafana."** You can see *a party's*
-  numbers. stress-strike gives you numbers you can re-derive from raw data you can
+  numbers. Sift gives you numbers you can re-derive from raw data you can
   verify. Different problem.
 - **"The generator is open source — why pay?"** The protocol and verifier being
   open is the *point*; the paid product is the workflow, retention, support, and

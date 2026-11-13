@@ -186,7 +186,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        archive: [stress-strike, stress-strike-master, stress-strike-worker]
+        archive: [Sift, Sift-master, Sift-worker]
     steps:
       - name: Resolve asset names
         id: names

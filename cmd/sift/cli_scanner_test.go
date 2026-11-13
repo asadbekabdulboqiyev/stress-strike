@@ -289,7 +289,7 @@ func TestInprocOutputJSONFile(t *testing.T) {
 	if entries, err := os.ReadDir(home); err != nil {
 		t.Fatalf("read home: %v", err)
 	} else if len(entries) == 0 {
-		t.Error("no audit log was written to STRESS_STRIKE_HOME")
+		t.Error("no audit log was written to SIFT_HOME")
 	}
 }
 

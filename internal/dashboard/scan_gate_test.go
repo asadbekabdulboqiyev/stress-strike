@@ -95,11 +95,11 @@ func TestRbacAllowed(t *testing.T) {
 
 // --- Scan gate functions ----------------------------------------------------
 
-// setTestHome sets STRESS_STRIKE_HOME to a temp dir for test isolation.
+// setTestHome sets SIFT_HOME to a temp dir for test isolation.
 func setTestHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("STRESS_STRIKE_HOME", home)
+	t.Setenv("SIFT_HOME", home)
 	return home
 }
 

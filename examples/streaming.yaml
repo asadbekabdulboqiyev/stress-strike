@@ -6,7 +6,7 @@
 # The exchange counts as a single step with one measured latency.
 #
 # Run it against a compatible gRPC service:
-#   stress-strike run --config examples/streaming.yaml
+#   Sift run --config examples/streaming.yaml
 #
 # The target must implement the IngestEvents client-streaming RPC
 # (unary response). grpc:// is plaintext; grpcs:// enables TLS.

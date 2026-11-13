@@ -1,8 +1,8 @@
-# stress-strike — CI/CD, Docker, Release va Distribution Audit
+# Sift — CI/CD, Docker, Release va Distribution Audit
 
 **Auditor:** TechCorp DevOps Muhandis
 **Sana:** 2026-10-01
-**Tizim:** Go 1.26, AGPL-3.0, 6 ta binary, modul `github.com/asadbekabdulboqiyev/stress-strike`
+**Tizim:** Go 1.26, AGPL-3.0, 6 ta binary, modul `github.com/asadbekabdulboqiyev/sift`
 **Tekshirilgan:** `.github/workflows/*`, `Makefile`, `scripts/*` (10 ta), `Dockerfile*` (3 ta),
 `deploy/*` (5 ta), `start.sh`, `.dockerignore`, `.gitignore`, `dist/`, `go.mod`/`go.sum`, `VERSION`
 
@@ -22,7 +22,7 @@
 | Race detector | bor (`-race`), 3 ta OS'da | 8/10 |
 | Coverage | `coverage.out` artifact sifatida — lekin **ishlatilmaydi**: codecov yo'q, gate yo'q, `-coverpkg` yo'q | 3/10 |
 | Build matrix | 3 ta: darwin/arm64, linux/amd64, windows/amd64. **Yo'q:** linux/arm64, darwin/amd64, windows/arm64 | 4/10 |
-| 6 binary build | **faqat `./cmd/stress-strike`** build qilinadi — 5 tasi yo'q | 2/10 |
+| 6 binary build | **faqat `./cmd/Sift`** build qilinadi — 5 tasi yo'q | 2/10 |
 | GoReleaser | **YO'Q** | 1/10 |
 | SBOM (SPDX/CycloneDX) | **YO'Q** | 1/10 |
 | cosign / imzolash | **YO'Q** | 1/10 |
@@ -50,7 +50,7 @@
 | SIGTERM / graceful | Go kodda `signal.Notify` bor (7 ta joy) — lekin Dockerfile'da `STOPSIGNAL` ko'rsatilmagan | 7/10 |
 | `.dockerignore` | bor, lekin **`LICENSE` ni exclude qilgan** → AGPL-3.0 §4 buziladi | 3/10 |
 | `*.env` pattern | `.dockerignore`'da `*.env` `worker.env.example`'ni ham yeydi | 5/10 |
-| Docker image push | `<secrets.DOCKER_USERNAME>/stress-strike`, fallback `stress-strike/stress-strike` — **bu repo yo'q**, push ishlamaydi | 2/10 |
+| Docker image push | `<secrets.DOCKER_USERNAME>/Sift`, fallback `Sift/Sift` — **bu repo yo'q**, push ishlamaydi | 2/10 |
 | `VERSION` build-arg | `VERSION=${{ github.ref_name }}` — main'da bu `main` literali, image label'ga yoziladi | 3/10 |
 | master/worker image CI | **CI'da umuman build qilinmaydi** (faqat `Dockerfile`) | 2/10 |
 | Resource limits (compose) | faqat `ulimits.nofile`; CPU/memory limit yo'q | 4/10 |
@@ -63,11 +63,11 @@
 | `scripts/release.sh` | bor, lekin **`rm -rf dist`** — worker paketlari va generated compose'ni yo'qotadi | 2/10 |
 | `scripts/build-all.sh` | bor; `RELEASE=1` rejimi 1 binary, 5 platforma | 5/10 |
 | `scripts/build-worker-linux.sh` | bor, linux/amd64+arm64, systemd unit bilan | 7/10 |
-| Versiya **kodda** | `cmd/stress-strike`, `-master`, `-worker`, `internal/dist/coordinator` → `0.14.3` | 8/10 |
+| Versiya **kodda** | `cmd/Sift`, `-master`, `-worker`, `internal/dist/coordinator` → `0.14.3` | 8/10 |
 | Versiya **README** | `v0.14.2` (4 marta) — **mos emas** | 3/10 |
 | Versiya `Dockerfile` | `ARG VERSION=0.11.0` — **2 minor eskirgan** | 2/10 |
 | Versiya `Dockerfile.master/worker` | `ARG VERSION=0.14.0` — eskirgan | 3/10 |
-| Versiya `cmd/stress-strike/main.go:14` | izohda `0.14.2` | 3/10 |
+| Versiya `cmd/Sift/main.go:14` | izohda `0.14.2` | 3/10 |
 | Versiya `build-all.sh` / `build-worker-linux.sh` / `deploy-fleet.sh` / `bench.sh` / `bootstrap-worker.sh` | default `0.14.0` | 3/10 |
 | `VERSION` fayl | **YO'Q** | 1/10 |
 | `.goreleaser.yaml` | **YO'Q** | 1/10 |
@@ -119,14 +119,14 @@ boshqarib bo'lmaydi. v0.11.0 worker paketlari shu sababdan "eskirgan" holatda qo
 (`patches/0001-audit-fixes.patch`).
 
 **K-02. Release 6 dan 1 binary**
-`release.yml`, `release.sh`, `build-all.sh` — hammasi faqat `./cmd/stress-strike`.
+`release.yml`, `release.sh`, `build-all.sh` — hammasi faqat `./cmd/Sift`.
 **Oqibat:** distributed feature (master/worker), replay, scan, dashboard — release'dan
 **faqat manba orqali** (`go install`) olinadi, arxiv yuklab olib ishlatib bo'lmaydi.
 Bu AGPL-3.0 bo'yicha ham muammo: foydalanuvchi binary'ni yuklab olsa ham qo'shimcha
 komponentlar yo'q. **Yechim:** `.goreleaser.yaml` (6 build × 6 platforma = 36 artefakt).
 
 **K-03. Docker push noto'g'ri registry**
-`registry=${DOCKER_USERNAME}` → `<username>/stress-strike`; fallback `stress-strike/stress-strike`.
+`registry=${DOCKER_USERNAME}` → `<username>/Sift`; fallback `Sift/Sift`.
 Docker Hub'da bunday repo yo'q → push xatosi.
 **Oqibat:** hech qanday image published bo'lmaydi.
 **Yechim:** `.github/workflows/docker.yml` — GHCR (`ghcr.io/${{ github.repository_owner }}`)
@@ -156,7 +156,7 @@ Docker orqali tarqatish — litsenziyasiz tarqatish.
 
 **K-07. `-X main.version` faqat 3 binary'da ishlaydi**
 `dashboard`, `scan`, `replay` da `var version` **yo'q** → `-X` jim qoladi.
-**Oqibat:** `stress-strike-scan version` noto'g'ri/natija bermaydi.
+**Oqibat:** `Sift-scan version` noto'g'ri/natija bermaydi.
 **Yechim:** `internal/version` paketi yaratildi (6 binary bir manba), `.goreleaser.yaml`
 shu paketga yozadi; 3 ta legacy `main.version` ham saqlanadi (migratsiya davrida).
 
@@ -195,7 +195,7 @@ bilan tekshiradi, cosign bo'lsa imzoni tekshiradi.
 ### P2 — rejalashtirish
 
 **K-13. `systemd` `ProtectSystem=strict` + `ReadWritePaths` yo'q** — worker report yozsa,
-xato beradi. `ReadWritePaths=/var/lib/stress-strike` qo'shish kerak. (2/10)
+xato beradi. `ReadWritePaths=/var/lib/Sift` qo'shish kerak. (2/10)
 
 **K-14. compose'da `-token ""` doimiy o'tkaziladi** — master'ga bo'sh token aniq
 beriladi; auth o'chgan holat. `-token` faqat `SS_TOKEN` bo'lganda berilishi kerak. (2/10)
@@ -221,7 +221,7 @@ Aniq pattern'ga o'tkazildi. (5/10)
 
 **K-21. "flaky build" — bu shunday emas, boshqa sessiya tahrir qilmoqda bo'lgandi**
 
-Audit paytida `GOOS=linux go build ./cmd/stress-strike` bir marta
+Audit paytida `GOOS=linux go build ./cmd/Sift` bir marta
 `lat.Percentile undefined (type **metrics.Histogram ...)` bilan fail bo'ldi.
 Men buni "Go 1.26 build-cache gliçhi" deb yozdim — **bu noto'g'ri**, va
 tuzatildi. Sabab: parallel sessiya o'sha paytda `histogram.go` da
@@ -230,13 +230,13 @@ tuzatildi. Sabab: parallel sessiya o'sha paytda `histogram.go` da
 build'im ikkala tahrir orasidagi oynada tushdi.
 
 **Dalil:** `git status` da o'sha sessiyaning o'zgartirishlari ko'rinadi
-(`cmd/stress-strike/dash_mode.go`, `internal/metrics/histogram.go`,
+(`cmd/Sift/dash_mode.go`, `internal/metrics/histogram.go`,
 `internal/engine/engine.go`, `internal/report/display.go`,
 `internal/dashboard/bridge.go`, `internal/demostore/demostore.go`,
 `internal/metrics/benchmark_test.go` + yangi `internal/engine/vars_bench_test.go`).
 Hozirgi holatda to'liq build **o'tadi** (7/7 urinish).
 
-**Sabab bo'yicha xulosa:** stress-strike'da flaky build **yo'q** — bu mening
+**Sabab bo'yicha xulosa:** Sift'da flaky build **yo'q** — bu mening
 noto'g'ri xulosam edi. Parallel tahrirlar paytida validatsiya qilish
 kutilmasligi kerak. (Audit qilingan paytdagi o'zgarishlar mening emas.)
 
@@ -260,9 +260,9 @@ kutilmasligi kerak. (Audit qilingan paytdagi o'zgarishlar mening emas.)
 | `scripts/install.sh` | versiya pin, checksums.txt, cosign verify, `--go` rejimi |
 | `VERSION` | `0.14.3` — bitta manba |
 | `internal/version/version.go` | 6 binary uchun umumiy versiya + `debug.ReadBuildInfo()` fallback |
-| `packaging/homebrew/stress-strike.rb` | Homebrew formula (GoReleaser avtomatik yangilaydi) |
-| `packaging/scoop/stress-strike.json` | Scoop manifest + `autoupdate` |
-| `packaging/winget/stress-strike.yaml` + `.installer.yaml` | winget manifest (x64 + arm64) |
+| `packaging/homebrew/Sift.rb` | Homebrew formula (GoReleaser avtomatik yangilaydi) |
+| `packaging/scoop/Sift.json` | Scoop manifest + `autoupdate` |
+| `packaging/winget/Sift.yaml` + `.installer.yaml` | winget manifest (x64 + arm64) |
 | `patches/0001-audit-fixes.patch` | K-01, K-04, Makefile tozalash, `main.go` izohi |
 
 **Eski fayllar:** `.audit-backup/` da saqlandi.
@@ -321,7 +321,7 @@ go.sum                        → 66 qator
 gofmt -l internal/version/    → (toza)
 YAML parse (ci/release/codeql/security/docker/
   dependabot/golangci/goreleaser) → 8/8 OK
-Darwin build --version        → stress-strike v0.14.3
+Darwin build --version        → Sift v0.14.3
 6 binary (linux/amd64, -s -w -trimpath) → 70.2 MB jami
 git ls-files dist/            → 0 (dist to'g'ri ignore qilingan)
 docker daemon                 → O'LMAYDI (image hajmi o'lchov qilinmagan)

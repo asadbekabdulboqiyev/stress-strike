@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# bootstrap-worker.sh — install + enable a stress-strike worker on ONE fresh
+# bootstrap-worker.sh — install + enable a Sift worker on ONE fresh
 # Linux host (Ubuntu/Debian). Idempotent: safe to re-run.
 #
 # Run THIS script ON THE SERVER (as root or via sudo). The companion
 # scripts/deploy-fleet.sh runs it over SSH for a whole fleet at once.
 #
 # Usage (as root):
-#   ./bootstrap-worker.sh stress-strike-worker-v0.14.0-linux-amd64.tar.gz [HOST_ID]
+#   ./bootstrap-worker.sh Sift-worker-v0.14.0-linux-amd64.tar.gz [HOST_ID]
 #
 # Configuration comes from the environment (defaults in brackets):
 #   SS_ID          worker id                [auto]
@@ -18,8 +18,8 @@
 #   SS_MAX_USERS   max virtual users        [200000]
 #   SS_MAX_RUNS    max concurrent runs      [4]
 #
-# It adds an unprivileged `stress-strike` system user, installs the binary to
-# /usr/local/bin, writes /etc/stress-strike/worker.env and starts the systemd
+# It adds an unprivileged `Sift` system user, installs the binary to
+# /usr/local/bin, writes /etc/Sift/worker.env and starts the systemd
 # unit. Firewall note: the worker's gRPC port (default 50061) must be reachable
 # from the master; adjust ufw/cloud security groups accordingly.
 
@@ -29,8 +29,8 @@ set -euo pipefail
 # to this file), otherwise fall back to the repo copy or plain echo.
 if [[ -f "$(dirname "$0")/common.sh" ]]; then
   source "$(dirname "$0")/common.sh"
-elif [[ -f /opt/stress-strike/common.sh ]]; then
-  source /opt/stress-strike/common.sh
+elif [[ -f /opt/Sift/common.sh ]]; then
+  source /opt/Sift/common.sh
 else
   log_step() { echo "==> $*"; }
   log_ok()   { echo "    OK: $*"; }
@@ -58,23 +58,23 @@ fi
 log_step "bootstrapping worker on $(hostname)"
 
 # 1. System user (idempotent)
-if ! id -u stress-strike >/dev/null 2>&1; then
-  groupadd --system stress-strike
-  useradd --system --gid stress-strike --no-create-home --shell /usr/sbin/nologin stress-strike
-  log_ok "created system user/group: stress-strike"
+if ! id -u Sift >/dev/null 2>&1; then
+  groupadd --system Sift
+  useradd --system --gid Sift --no-create-home --shell /usr/sbin/nologin Sift
+  log_ok "created system user/group: Sift"
 fi
 
 # 2. Binary
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 tar -xzf "$TARBALL" -C "$WORK_DIR"
-BIN_SRC="$(find "$WORK_DIR" -name stress-strike-worker -type f | head -n1)"
-install -m 0755 "$BIN_SRC" /usr/local/bin/stress-strike-worker
-log_ok "installed /usr/local/bin/stress-strike-worker"
+BIN_SRC="$(find "$WORK_DIR" -name Sift-worker -type f | head -n1)"
+install -m 0755 "$BIN_SRC" /usr/local/bin/Sift-worker
+log_ok "installed /usr/local/bin/Sift-worker"
 
 # 3. worker.env — SS_ID wins, then the HOST_ID argument, then hostname default.
 SS_ID="${SS_ID:-${HOST_ID:-worker-$(hostname -s)}}"
-mkdir -p /etc/stress-strike
+mkdir -p /etc/Sift
 ARGS="-listen ${SS_LISTEN} -id ${SS_ID} -max-users ${SS_MAX_USERS} -max-runs ${SS_MAX_RUNS}"
 if [[ -n "$SS_ADVERTISE" && "$SS_ADVERTISE" != "$SS_LISTEN" ]]; then
   ARGS="${ARGS} -advertise ${SS_ADVERTISE}"
@@ -83,21 +83,21 @@ if [[ -n "$SS_MASTER" ]]; then
   ARGS="${ARGS} -master ${SS_MASTER}"
 fi
 
-cat > /etc/stress-strike/worker.env <<EOF
+cat > /etc/Sift/worker.env <<EOF
 WORKER_ARGS=${ARGS}
 EOF
 if [[ -n "$SS_TOKEN" ]]; then
-  echo "TOKEN=${SS_TOKEN}" >> /etc/stress-strike/worker.env
+  echo "TOKEN=${SS_TOKEN}" >> /etc/Sift/worker.env
 fi
-chmod 600 /etc/stress-strike/worker.env
-chown root:stress-strike /etc/stress-strike/worker.env
-log_ok "wrote /etc/stress-strike/worker.env"
+chmod 600 /etc/Sift/worker.env
+chown root:Sift /etc/Sift/worker.env
+log_ok "wrote /etc/Sift/worker.env"
 
 # 4. systemd unit (installed next to the binary by the packaging scripts, or
 #    fall back to the repo copy if present)
-UNIT=/etc/systemd/system/stress-strike-worker.service
+UNIT=/etc/systemd/system/Sift-worker.service
 if [[ ! -f "$UNIT" ]]; then
-  LOCAL_UNIT="$(find "$WORK_DIR" -name stress-strike-worker.service -type f | head -n1)"
+  LOCAL_UNIT="$(find "$WORK_DIR" -name Sift-worker.service -type f | head -n1)"
   if [[ -n "$LOCAL_UNIT" ]]; then
     install -m 0644 "$LOCAL_UNIT" "$UNIT"
   else
@@ -111,17 +111,17 @@ systemctl daemon-reload
 # above) and skip the restart when the worker is already running — re-running
 # the bootstrap then just refreshes the env file and config. Force a restart
 # with SS_FORCE=1.
-if systemctl is-active --quiet stress-strike-worker.service 2>/dev/null && [[ "${SS_FORCE:-0}" != "1" ]]; then
-  log_ok "stress-strike-worker.service already active — leaving it running (SS_FORCE=1 to restart)"
+if systemctl is-active --quiet Sift-worker.service 2>/dev/null && [[ "${SS_FORCE:-0}" != "1" ]]; then
+  log_ok "Sift-worker.service already active — leaving it running (SS_FORCE=1 to restart)"
 else
-  systemctl enable --now stress-strike-worker.service
-  systemctl restart stress-strike-worker.service
-  log_ok "enabled + started stress-strike-worker.service"
+  systemctl enable --now Sift-worker.service
+  systemctl restart Sift-worker.service
+  log_ok "enabled + started Sift-worker.service"
 fi
 
 echo
 echo; log_ok "done. worker status:"
-systemctl --no-pager --lines=5 status stress-strike-worker.service || true
+systemctl --no-pager --lines=5 status Sift-worker.service || true
 echo
 echo "advertised as: ${SS_ADVERTISE}"
 [[ -n "$SS_MASTER" ]] && echo "self-registers with master: ${SS_MASTER}"

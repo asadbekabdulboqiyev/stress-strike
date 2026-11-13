@@ -1,4 +1,4 @@
-# GoReleaser config for stress-strike.
+# GoReleaser config for Sift.
 #
 # Replaces scripts/release.sh + .github/workflows/release.yml with one
 # deterministic source of truth. Every binary, every platform, checksums,
@@ -8,7 +8,7 @@
 
 version: 2
 
-project_name: stress-strike
+project_name: Sift
 
 # Every binary is pure Go: internal/replay reads PCAP through gopacket/pcapgo,
 # not gopacket/pcap, so no CGO and no libpcap anywhere in the release matrix.
@@ -29,87 +29,87 @@ before:
 # more, so the flag was a no-op that only made the config look busier than it
 # was.
 builds:
-  - id: stress-strike
-    main: ./cmd/stress-strike
-    binary: stress-strike
+  - id: Sift
+    main: ./cmd/sift
+    binary: Sift
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
-  - id: stress-strike-dashboard
-    main: ./cmd/stress-strike-dashboard
-    binary: stress-strike-dashboard
+  - id: Sift-dashboard
+    main: ./cmd/sift-dashboard
+    binary: Sift-dashboard
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
-  - id: stress-strike-master
-    main: ./cmd/stress-strike-master
-    binary: stress-strike-master
+  - id: Sift-master
+    main: ./cmd/sift-master
+    binary: Sift-master
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/dist/coordinator.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
-  - id: stress-strike-worker
-    main: ./cmd/stress-strike-worker
-    binary: stress-strike-worker
+  - id: Sift-worker
+    main: ./cmd/sift-worker
+    binary: Sift-worker
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/dist/coordinator.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
-  - id: stress-strike-replay
-    main: ./cmd/stress-strike-replay
-    binary: stress-strike-replay
+  - id: Sift-replay
+    main: ./cmd/sift-replay
+    binary: Sift-replay
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
-  - id: stress-strike-scan
-    main: ./cmd/stress-strike-scan
-    binary: stress-strike-scan
+  - id: Sift-scan
+    main: ./cmd/sift-scan
+    binary: Sift-scan
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version={{ .Version }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Date={{ .CommitDate }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Version={{ .Version }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/asadbekabdulboqiyev/sift/internal/version.Date={{ .CommitDate }}
 
 # ── Archives: one per binary per platform ───────────────────────────────────
-# LICENSE and NOTICE are mandatory in every archive: stress-strike is
+# LICENSE and NOTICE are mandatory in every archive: Sift is
 # Apache-2.0, and §4 requires recipients of a binary to receive the license
 # text and the attribution notices with it.
 archives:
-  - id: stress-strike
-    builds: [stress-strike]
+  - id: Sift
+    builds: [Sift]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -121,8 +121,8 @@ archives:
       - README.md
       - src: SECURITY.md
 
-  - id: stress-strike-dashboard
-    builds: [stress-strike-dashboard]
+  - id: Sift-dashboard
+    builds: [Sift-dashboard]
     name_template: "{{ .ProjectName }}-dashboard_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -132,8 +132,8 @@ archives:
       - LICENSE
       - NOTICE
 
-  - id: stress-strike-master
-    builds: [stress-strike-master]
+  - id: Sift-master
+    builds: [Sift-master]
     name_template: "{{ .ProjectName }}-master_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -147,8 +147,8 @@ archives:
   # The worker package carries the systemd unit + env template so a fresh
   # host can be bootstrapped from the tarball alone (matches
   # scripts/build-worker-linux.sh).
-  - id: stress-strike-worker
-    builds: [stress-strike-worker]
+  - id: Sift-worker
+    builds: [Sift-worker]
     name_template: "{{ .ProjectName }}-worker_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -157,14 +157,14 @@ archives:
     files:
       - LICENSE
       - NOTICE
-      - src: deploy/systemd/stress-strike-worker.service
-        dst: stress-strike-worker.service
+      - src: deploy/systemd/Sift-worker.service
+        dst: Sift-worker.service
       - src: deploy/systemd/worker.env.example
         dst: worker.env.example
       - src: docs/DISTRIBUTED.md
 
-  - id: stress-strike-replay
-    builds: [stress-strike-replay]
+  - id: Sift-replay
+    builds: [Sift-replay]
     name_template: "{{ .ProjectName }}-replay_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -174,8 +174,8 @@ archives:
       - LICENSE
       - NOTICE
 
-  - id: stress-strike-scan
-    builds: [stress-strike-scan]
+  - id: Sift-scan
+    builds: [Sift-scan]
     name_template: "{{ .ProjectName }}-scan_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -228,23 +228,23 @@ signs:
 # ── Deb/RPM for the systemd story (license + NOTICE must ship too) ──────────
 nfpms:
   - id: packages
-    builds: [stress-strike]
-    package_name: stress-strike
+    builds: [Sift]
+    package_name: Sift
     formats: [deb, rpm]
-    maintainer: stress-strike maintainers <maintainers@stress-strike.invalid>
+    maintainer: Sift maintainers <maintainers@Sift.invalid>
     description: Distributed load testing and network simulator written in Go
     license: Apache-2.0
-    vendor: stress-strike
-    homepage: https://github.com/asadbekabdulboqiyev/stress-strike
+    vendor: Sift
+    homepage: https://github.com/asadbekabdulboqiyev/sift
 
     bindir: /usr/local/bin
     contents:
       - src: LICENSE
-        dst: /usr/share/doc/stress-strike/LICENSE
+        dst: /usr/share/doc/Sift/LICENSE
       - src: NOTICE
-        dst: /usr/share/doc/stress-strike/NOTICE
+        dst: /usr/share/doc/Sift/NOTICE
       - src: README.md
-        dst: /usr/share/doc/stress-strike/README.md
+        dst: /usr/share/doc/Sift/README.md
 
 # ── Homebrew formula + Scoop manifest, auto-updated on release ─────────────
 release:
@@ -255,9 +255,9 @@ release:
     ```
     sha256sum -c checksums.txt --ignore-missing
     cosign verify-blob \
-      --certificate stress-strike_<version>_linux_amd64.tar.gz.pem \
-      --signature     stress-strike_<version>_linux_amd64.tar.gz.sig \
-      stress-strike_<version>_linux_amd64.tar.gz
+      --certificate Sift_<version>_linux_amd64.tar.gz.pem \
+      --signature     Sift_<version>_linux_amd64.tar.gz.sig \
+      Sift_<version>_linux_amd64.tar.gz
     ```
 
     SPDX and CycloneDX SBOMs ship next to every archive.

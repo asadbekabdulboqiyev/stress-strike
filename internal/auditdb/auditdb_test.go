@@ -34,7 +34,7 @@ func TestToEventMapsAllowedEntry(t *testing.T) {
 	entry := sampleEntry()
 
 	// Act
-	got := adapter.ToEvent(entry, "t-acme", "u-42", "203.0.113.9", "stress-strike/0.14.5")
+	got := adapter.ToEvent(entry, "t-acme", "u-42", "203.0.113.9", "Sift/0.14.5")
 
 	// Assert
 	if got.TenantID != "t-acme" {
@@ -55,8 +55,8 @@ func TestToEventMapsAllowedEntry(t *testing.T) {
 	if got.RemoteIP != "203.0.113.9" {
 		t.Fatalf("RemoteIP = %q, want %q", got.RemoteIP, "203.0.113.9")
 	}
-	if got.UserAgent != "stress-strike/0.14.5" {
-		t.Fatalf("UserAgent = %q, want %q", got.UserAgent, "stress-strike/0.14.5")
+	if got.UserAgent != "Sift/0.14.5" {
+		t.Fatalf("UserAgent = %q, want %q", got.UserAgent, "Sift/0.14.5")
 	}
 	if got.ID != "" {
 		t.Fatalf("ID = %q, want empty (assigned by the store)", got.ID)

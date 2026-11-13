@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>stress-strike - Load tests that prove themselves</title>
-<meta name="description" content="stress-strike turns a performance claim into checkable evidence: the plan is fixed before the run, every request becomes a sealed sample, and anyone can recompute the numbers offline.">
+<title>Sift - Load tests that prove themselves</title>
+<meta name="description" content="Sift turns a performance claim into checkable evidence: the plan is fixed before the run, every request becomes a sealed sample, and anyone can recompute the numbers offline.">
 <!-- A blank inline icon keeps the page self-contained and avoids a stray favicon request. -->
 <link rel="icon" href="data:,">
 <!-- Flip the no-js switch before first paint, so reveal animations only ever
      apply when scripting is available. Without it, everything renders static. -->
 <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 <!--
-  stress-strike explainer - single file, no external assets, works from file:// offline.
+  Sift explainer - single file, no external assets, works from file:// offline.
   Terminology, field names and limits follow docs/INVENTION.md (vpmp/v1), the
   frozen normative specification, and scripts/demo-verified.sh, the runnable demo.
   Palette roles:
@@ -562,7 +562,7 @@ footer{
 
 <nav class="rail" aria-label="Section navigation">
   <div class="rail-in">
-    <span class="brand"><span class="dot" aria-hidden="true"></span>stress-strike</span>
+    <span class="brand"><span class="dot" aria-hidden="true"></span>Sift</span>
     <ul class="rail-links">
       <li><a href="#problem">01 Problem</a></li>
       <li><a href="#idea">02 The idea</a></li>
@@ -584,13 +584,13 @@ footer{
     <div class="wrap">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow"><span class="num">stress-strike</span> <span>evidence layer for performance testing</span></p>
+          <p class="eyebrow"><span class="num">Sift</span> <span>evidence layer for performance testing</span></p>
           <h1>Load tests that prove themselves.</h1>
           <p class="tagline">Numbers nobody can quietly rewrite.</p>
           <p class="hero-lede">
             A load-test report today is a claim you have to take on faith. The same person
             runs the test <em>and</em> writes the result - and the result is a text file
-            anyone can edit. stress-strike changes the shape of the artifact: the measurement
+            anyone can edit. Sift changes the shape of the artifact: the measurement
             plan is fixed <strong>before</strong> the run, every request becomes a sealed
             sample, and the summary numbers are forced to equal what the raw stream actually
             says. A customer, a procurement officer, an auditor or a CI pipeline can
@@ -605,10 +605,10 @@ footer{
         </div>
 
         <!-- The artifact the whole document is about -->
-        <aside class="cert" data-reveal aria-label="Example stress-strike measurement bundle">
+        <aside class="cert" data-reveal aria-label="Example Sift measurement bundle">
           <div class="cert-head">
             <div>
-              <p class="cert-kind">stress-strike bundle</p>
+              <p class="cert-kind">Sift bundle</p>
               <p class="cert-id">vb-1f7c9a3d5e21</p>
             </div>
             <span class="chip chip-pass"><span aria-hidden="true">&#10003;</span> Pass</span>
@@ -717,8 +717,8 @@ footer{
             </p>
           </div>
           <div class="pane good">
-            <p class="pane-head"><span>stress-strike - sealed</span><span aria-hidden="true">&#10003;</span></p>
-            <pre tabindex="0" role="region" aria-label="stress-strike manifest example, sealed record">{
+            <p class="pane-head"><span>Sift - sealed</span><span aria-hidden="true">&#10003;</span></p>
+            <pre tabindex="0" role="region" aria-label="Sift manifest example, sealed record">{
   "format": "vpmp/v1",
   "claims": { "p99_ns": 41000000,
               "rps_milli": 150000 },
@@ -734,7 +734,7 @@ footer{
           </div>
         </div>
         <figcaption>
-          <b>Figure 1.</b> The gap stress-strike closes. Both sides can quote a p99. Only one side
+          <b>Figure 1.</b> The gap Sift closes. Both sides can quote a p99. Only one side
           can prove it.
         </figcaption>
       </figure>
@@ -749,7 +749,7 @@ footer{
       <p class="eyebrow"><span class="num">02</span> <span>The idea</span></p>
       <h2 class="title" id="idea-h">Commit to the plan, then reveal the evidence.</h2>
       <p class="lede narrow" data-reveal>
-        stress-strike does not ask you to trust a better dashboard. It changes the shape of the
+        Sift does not ask you to trust a better dashboard. It changes the shape of the
         artifact. A result becomes three things at once: a plan fixed in advance, a
         fingerprint that covers every single request, and a seal that only the operator
         could have produced.
@@ -1174,7 +1174,7 @@ footer{
       <p class="eyebrow"><span class="num">03</span> <span>Why it matters</span></p>
       <h2 class="title" id="business-h">Disputes become arithmetic.</h2>
       <p class="lede narrow" data-reveal>
-        Performance numbers are already used as commercial promises. stress-strike makes them
+        Performance numbers are already used as commercial promises. Sift makes them
         checkable, which changes what both sides can say in a room.
       </p>
 
@@ -1192,7 +1192,7 @@ footer{
           <span class="idx">PROCUREMENT</span>
           <h3>A checkable line in the RFP</h3>
           <p>
-            A buyer can require a stress-strike bundle as an acceptance artifact, with the exact
+            A buyer can require a Sift bundle as an acceptance artifact, with the exact
             verification command written into the contract. A vendor who can prove the numbers
             has an advantage over one who asks to be believed.
           </p>
@@ -1273,7 +1273,7 @@ footer{
         </table>
       </div>
 
-      <h3 class="sub" style="margin-top:3rem" data-reveal>What a stress-strike bundle does prove</h3>
+      <h3 class="sub" style="margin-top:3rem" data-reveal>What a Sift bundle does prove</h3>
       <ul class="limits prove" data-reveal>
         <li><span><strong>Integrity and tamper-evidence.</strong> Change the manifest and check 3 fails; change a sample and check 5 fails; change both coherently and you need the private key.</span></li>
         <li><span><strong>Attribution.</strong> The bundle was signed by the holder of the key whose fingerprint is <code>key_id</code>, embedded in the bundle.</span></li>
@@ -1303,7 +1303,7 @@ footer{
       <p class="eyebrow"><span class="num">04</span> <span>The three pillars</span></p>
       <h2 class="title" id="pillars-h">Sealing is only worth anything if the numbers are honest.</h2>
       <p class="lede narrow" data-reveal>
-        Cryptographic proof of a rigged measurement is proof of nothing. stress-strike stands on
+        Cryptographic proof of a rigged measurement is proof of nothing. Sift stands on
         three pillars: what was measured, how the latency was counted, and whether the claim
         survives being attacked.
       </p>
@@ -1349,7 +1349,7 @@ footer{
           <div class="staged in-card" style="margin-top:1rem">
             <div class="stage plain">
               <p class="tag">In plain words</p>
-              <p>If the server freezes for two seconds, a closed-loop tool simply stops sending - and therefore stops measuring - exactly when things are worst. The reported percentiles get better as the system gets worse. stress-strike adds the missed schedule skew back, request by request, and signs it.</p>
+              <p>If the server freezes for two seconds, a closed-loop tool simply stops sending - and therefore stops measuring - exactly when things are worst. The reported percentiles get better as the system gets worse. Sift adds the missed schedule skew back, request by request, and signs it.</p>
             </div>
             <div class="stage tech">
               <p class="tag">Under the hood</p>
@@ -1423,20 +1423,20 @@ footer{
             <span class="fname" aria-hidden="true">veribench - the honest bundle</span>
           </div>
 <pre class="term-body" tabindex="0" role="region" aria-label="Terminal session: create the key, run the test and emit the bundle, then verify successfully"><span class="t-cmt"># 1. keygen - create the Ed25519 keypair (the private seal)</span>
-<span class="t-prompt">$</span> <span class="t-key">stress-strike keygen</span> <span class="t-flag">--out</span> <span class="t-dim">veribench.key</span>
+<span class="t-prompt">$</span> <span class="t-key">Sift keygen</span> <span class="t-flag">--out</span> <span class="t-dim">veribench.key</span>
   <span class="t-dim">key_id (public fingerprint)</span>  <span class="t-num">9f2c41d7...7b0e</span>
   <span class="t-dim">private key written mode 0600 - it never leaves this host</span>
 
 <span class="t-cmt"># 2. run - the plan is sealed, then one sample per request is streamed</span>
 <span class="t-cmt">#    (the real flag takes a full origin; its scheme is left out here on purpose)</span>
-<span class="t-prompt">$</span> <span class="t-key">stress-strike run</span> <span class="t-flag">--url</span> <span class="t-dim">127.0.0.1:8090</span> <span class="t-flag">--duration</span> <span class="t-dim">10s</span> <span class="t-flag">--emit-bundle</span> <span class="t-dim">veribench-bundle.json</span>
+<span class="t-prompt">$</span> <span class="t-key">Sift run</span> <span class="t-flag">--url</span> <span class="t-dim">127.0.0.1:8090</span> <span class="t-flag">--duration</span> <span class="t-dim">10s</span> <span class="t-flag">--emit-bundle</span> <span class="t-dim">veribench-bundle.json</span>
   <span class="t-dim">scenario_hash</span>  <span class="t-ok">4d2f8c1a...a91c</span>  <span class="t-dim">(sealed before the first request)</span>
   <span class="t-dim">samples</span>        <span class="t-num">1500</span> <span class="t-dim">lines, streamed and never rewritten</span>
   <span class="t-dim">claims</span>         <span class="t-num">p99 41.0 ms [39.2-44.1]</span> <span class="t-dim">&middot;</span> <span class="t-num">150.000 rps</span> <span class="t-dim">&middot; errors 0.2%</span>
   <span class="t-dim">wrote</span>          <span class="t-dim">veribench-bundle.json + veribench-bundle.samples.jsonl</span>
 
 <span class="t-cmt"># 3. verify - offline, no account, no vendor server in the loop</span>
-<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+<span class="t-prompt">$</span> <span class="t-key">Sift verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
 veribench verify (vpmp/v1)
   <span class="t-ok">[PASS]</span> <span class="t-dim">format identifier is vpmp/v1</span>
   <span class="t-ok">[PASS]</span> <span class="t-dim">key_id binds to the embedded public key</span>
@@ -1468,7 +1468,7 @@ veribench verify (vpmp/v1)
 <span class="t-prompt">$</span> <span class="t-key">cmp</span> <span class="t-dim">-l veribench-bundle.json.bak veribench-bundle.json | wc -l</span>
 <span class="t-num">1</span>   <span class="t-cmt"># exactly one byte differs; the samples file is untouched</span>
 
-<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+<span class="t-prompt">$</span> <span class="t-key">Sift verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
 veribench verify (vpmp/v1)
   <span class="t-ok">[PASS]</span> <span class="t-dim">format identifier is vpmp/v1</span>
   <span class="t-ok">[PASS]</span> <span class="t-dim">key_id binds to the embedded public key</span>
@@ -1481,7 +1481,7 @@ veribench verify (vpmp/v1)
 
 <span class="t-cmt"># restore the one byte, and the verdict comes back</span>
 <span class="t-prompt">$</span> <span class="t-key">cp</span> <span class="t-dim">veribench-bundle.json.bak veribench-bundle.json</span>
-<span class="t-prompt">$</span> <span class="t-key">stress-strike verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
+<span class="t-prompt">$</span> <span class="t-key">Sift verify</span> <span class="t-flag">--bundle</span> <span class="t-dim">veribench-bundle.json</span> <span class="t-flag">--samples</span> <span class="t-dim">veribench-bundle.samples.jsonl</span>
 <span class="t-dim">VERDICT:</span> <span class="t-ok">PASS</span> <span class="t-dim">(exit 0)</span>
 
 <span class="t-ok">RESULT</span>
@@ -1604,7 +1604,7 @@ veribench verify (vpmp/v1)
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <p class="eyebrow" style="margin-bottom:1rem"><span class="num">stress-strike</span> <span>in one line</span></p>
+        <p class="eyebrow" style="margin-bottom:1rem"><span class="num">Sift</span> <span>in one line</span></p>
         <p class="lede" style="max-width:38ch">
           A load test that fixes its plan before the run, signs every sample, and lets anyone
           check the seal offline.
@@ -1632,7 +1632,7 @@ veribench verify (vpmp/v1)
 </footer>
 
 <script>
-/* stress-strike explainer - progressive enhancement only. No external deps.
+/* Sift explainer - progressive enhancement only. No external deps.
    Everything here is additive: without it the document is fully readable. */
 (function () {
   'use strict';

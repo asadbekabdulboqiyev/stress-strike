@@ -1,6 +1,6 @@
 # OWASP Top 10 Scanner (2021)
 
-This document describes stress-strike's OWASP Top 10 (2021) web-vulnerability
+This document describes Sift's OWASP Top 10 (2021) web-vulnerability
 scanning capability: what it checks, how each check is proven, what is safe by
 default, and what is deliberately refused. It is grounded in the code in
 `internal/scanner/` and in the OWASP Web Security Testing Guide (WSTG).
@@ -189,7 +189,7 @@ operator naming that approval:
 
 ```sh
 # The approver records the authorization (approver's action, not the operator's).
-stress-strike authorize add \
+Sift authorize add \
   --pattern shop.example.com \
   --approver ciso@corp.example \
   --ticket SEC-4421 \
@@ -197,7 +197,7 @@ stress-strike authorize add \
   --reason "pre-release soak, window agreed with the platform team"
 
 # The operator runs against it, naming the ticket.
-stress-strike pentest --target https://shop.example.com --authorized SEC-4421
+Sift pentest --target https://shop.example.com --authorized SEC-4421
 ```
 
 - `--authorized <ticket>` must name an entry that is **active** (not expired) and
@@ -213,7 +213,7 @@ stress-strike pentest --target https://shop.example.com --authorized SEC-4421
 
 A policy refusal exits with **code 3** — distinct from `1` (the run failed) and
 `2` (bad usage) — so CI can branch on it
-(`cmd/stress-strike/cmd_authz.go`, `authzDeniedExitCode`). The refusal is
+(`cmd/Sift/cmd_authz.go`, `authzDeniedExitCode`). The refusal is
 printed with the target and the reason, plus the exact `authorize add` command
 that would grant access.
 
@@ -221,8 +221,8 @@ that would grant access.
 
 Every allow and deny is appended to a hash-chained, append-only log
 (`internal/authz/audit.go`). The path is configurable with `--audit-log`
-(default `~/.stress-strike/audit.jsonl`). Any edit breaks the chain, which is
-what `stress-strike audit verify` detects (it exits `1` on tampering). A webhook
+(default `~/.Sift/audit.jsonl`). Any edit breaks the chain, which is
+what `Sift audit verify` detects (it exits `1` on tampering). A webhook
 can be notified of each decision with `--notify-webhook`.
 
 ### Scope allowlist is fail-closed
@@ -244,7 +244,7 @@ can be notified of each decision with `--notify-webhook`.
   the response read is capped (`internal/scanner/probe.go`, `DefaultProbeLimit`,
   2 MiB) so a check can never be steered into downloading a large file.
 - **Identifiable User-Agent.** Every probe sends
-  `stress-strike-scanner/1.0 (+https://github.com/asadbekabdulboqiyev/stress-strike; authorized-assessment)`
+  `Sift-scanner/1.0 (+https://github.com/asadbekabdulboqiyev/sift; authorized-assessment)`
   (`internal/scanner/probe.go`, `ScannerUserAgent`) so the target's operator can
   find the traffic in their logs. Redirects are **not** followed, because several
   checks need the raw `3xx` and its `Location` header.
@@ -257,7 +257,7 @@ The following probes never run unless **both** `--intrusive` and
 `--enable <probe>` are present:
 
 ```sh
-stress-strike scan --target shop.example.com --owasp \
+Sift scan --target shop.example.com --owasp \
   --intrusive --enable write-methods,time-sqli,boolean-sqli,path-traversal,ssrf,crlf
 ```
 
@@ -383,7 +383,7 @@ document specifies and the report aims for. Today the false-positive verifier in
 badges `[VERIFIED]`, `[PROBABLE]`, `[UNVERIFIED]`. The mapping is
 `confirmed`↔`[VERIFIED]`, `high`↔`probable`↔`[PROBABLE]`,
 `heuristic`↔`possible`↔`[UNVERIFIED]`, and `informational` carries no badge.
-Also note that `cmd/stress-strike/cmd_pentest.go` (`pentestDeepScan`) computes a
+Also note that `cmd/Sift/cmd_pentest.go` (`pentestDeepScan`) computes a
 real per-finding confidence but then writes `Confidence: string(scanner.ConfPossible)`
 for every emitted finding — so the badge in the pentest report may not reflect
 the verifier's verdict. **Verify against the code** before relying on a badge.
@@ -392,15 +392,15 @@ the verifier's verdict. **Verify against the code** before relying on a badge.
 
 ## 6. Usage
 
-The flags below are wired and covered by tests. `stress-strike scan` is a thin
-subcommand that re-execs the standalone `stress-strike-scan` binary with the
-same arguments (`cmd/stress-strike/cmd_sub.go`), so both spellings run the same
+The flags below are wired and covered by tests. `Sift scan` is a thin
+subcommand that re-execs the standalone `Sift-scan` binary with the
+same arguments (`cmd/Sift/cmd_sub.go`), so both spellings run the same
 program. Verify against the code before scripting against it.
 
 ### Interface
 
 ```text
-stress-strike scan --target <host> \
+Sift scan --target <host> \
   [--port 443] [--all|--tls|--http|--waf|--security] [--owasp] \
   [--path /,/login] [--rate 10] [--budget 2000] [--timeout 10] \
   [--allow <pattern>] [--allow-all] \
@@ -408,7 +408,7 @@ stress-strike scan --target <host> \
   [--dry-run] [--authorized <ticket>] [--policy <file>] [--audit-log <file>] \
   [--output-json <file>] [--verbose]
 
-stress-strike pentest --target https://example.com \
+Sift pentest --target https://example.com \
   [--passive] [--intrusive] [--enable <probe>] \
   [--rate 10] [--budget 2000] \
   [--allow <pattern>] [--allow-all] [--dry-run] \
@@ -421,7 +421,7 @@ Read-only checks only; nothing intrusive is attempted; the scope is named
 explicitly:
 
 ```sh
-stress-strike scan --target shop.example.com --owasp \
+Sift scan --target shop.example.com --owasp \
   --path /,/login,/account \
   --rate 10 --budget 2000 --timeout 10 \
   --allow shop.example.com \
@@ -437,7 +437,7 @@ refuses to send anything and exits `3`.
 Intrusive probes require authorization *and* the explicit probe name:
 
 ```sh
-stress-strike scan --target staging.example.com --owasp \
+Sift scan --target staging.example.com --owasp \
   --allow staging.example.com \
   --intrusive --enable path-traversal,ssrf \
   --rate 5 --budget 500 \
@@ -447,7 +447,7 @@ stress-strike scan --target staging.example.com --owasp \
 A dry run first, to see exactly what would be sent:
 
 ```sh
-stress-strike scan --target staging.example.com --owasp \
+Sift scan --target staging.example.com --owasp \
   --intrusive --enable time-sqli --dry-run \
   --allow staging.example.com --authorized SEC-4421
 ```
@@ -455,7 +455,7 @@ stress-strike scan --target staging.example.com --owasp \
 ### From the web dashboard
 
 The same checker is reachable from the browser. Start the dashboard
-(`stress-strike dashboard`), scroll to **OWASP Top 10 Security Scan**, enter a
+(`Sift dashboard`), scroll to **OWASP Top 10 Security Scan**, enter a
 target URL, and press **Run scan**; the panel POSTs to `/api/owasp/scan`
 (`internal/dashboard/owasp.go`).
 
@@ -466,10 +466,10 @@ The browser path is not a weaker one:
   `scope` field.
 - **Intrusive probes are still off by default.** Turning them on makes the
   request an offensive operation (`OpPentest`), so it needs a ticket granted by
-  `stress-strike authorize add` — including when you ask for a single family
+  `Sift authorize add` — including when you ask for a single family
   through `enable`. Asking for a family *is* asking for an intrusive scan.
 - **Every decision, allow or deny, is appended to the same audit log the CLI
-  writes** (`authz.DefaultAuditPath()`), so `stress-strike audit` shows
+  writes** (`authz.DefaultAuditPath()`), so `Sift audit` shows
   browser-triggered scans beside shell ones. If that write fails for an allowed
   scan, the scan is refused — a scan that cannot be recorded does not run.
 - **One scan at a time.** A second click while one is in flight gets `409`.
@@ -501,7 +501,7 @@ come from the target server, so the panel writes every one of them with
   false-positive rationale.
 - **HTML/PDF** (from `pentest --format html|pdf|professional`) is for people: a
   findings list grouped by severity, plus the OWASP category matrix
-  (`cmd/stress-strike/cmd_pentest.go`, `owaspFullCategories`).
+  (`cmd/Sift/cmd_pentest.go`, `owaspFullCategories`).
 - The terminal output uses the confidence badge
   (`[VERIFIED]` / `[PROBABLE]` / `[UNVERIFIED]`).
 
@@ -519,9 +519,9 @@ Only a `confirmed` finding should be acted on without manual reproduction.
 
 Only scan systems you own or have **written permission** to test. Unauthorized
 scanning is, at minimum, a breach of the target's terms and, in many
-jurisdictions, a criminal offence — regardless of intent. stress-strike makes
+jurisdictions, a criminal offence — regardless of intent. Sift makes
 this a workflow rather than a promise: every offensive run goes through the
-`stress-strike authorize` approval described in section 3 before a packet is
+`Sift authorize` approval described in section 3 before a packet is
 sent, every decision is recorded in the tamper-evident audit log, and a refusal
 is returned as exit code `3`. The tool is a checklist runner that helps you find
 some classes of problem faster; the responsibility for the finding, the

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bench.sh — real-world throughput benchmark for stress-strike.
+# bench.sh — real-world throughput benchmark for Sift.
 #
 # Boots the local demo server, builds the CLI, then drives it with a few
 # concurrency levels and prints a compact req/s table. Use it to verify the
@@ -17,7 +17,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-BIN=bin/stress-strike
+BIN=bin/Sift
 export GOFLAGS=-buildvcs=false
 
 if [ ! -x "$BIN" ]; then

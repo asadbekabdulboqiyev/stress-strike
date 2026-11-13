@@ -424,7 +424,7 @@ func TestNVDApiKeyHeaderAndUserAgent(t *testing.T) {
 		if hd.Get("apiKey") == "sk-test-secret-123" {
 			sawKey = true
 		}
-		if hd.Get("User-Agent") == "stress-strike/1.0" {
+		if hd.Get("User-Agent") == "Sift/1.0" {
 			sawUA = true
 		}
 	}
@@ -432,6 +432,6 @@ func TestNVDApiKeyHeaderAndUserAgent(t *testing.T) {
 		t.Error("apiKey header not sent when ApiKey set")
 	}
 	if !sawUA {
-		t.Error(`User-Agent header is not "stress-strike/1.0"`)
+		t.Error(`User-Agent header is not "Sift/1.0"`)
 	}
 }

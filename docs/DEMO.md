@@ -1,4 +1,4 @@
-# stress-strike — 2-Minute Demo Script
+# Sift — 2-Minute Demo Script
 
 **Goal of the demo:** in 120 seconds, show that a load-test result can be
 *checked* — and that tampering with it is detected, with a machine-readable exit
@@ -12,7 +12,7 @@ trust and evidence you can verify."*
 ## 0. Pre-flight (do this 5 minutes before you present)
 
 ```bash
-cd /path/to/stress-strike
+cd /path/to/Sift
 bash -n scripts/demo-verified.sh     # syntax gate
 chmod +x scripts/demo-verified.sh    # if needed
 NO_COLOR=1 ./scripts/demo-verified.sh   # dry run: must exit 0
@@ -44,8 +44,8 @@ the top.
 | Time | What you press | What you say | What appears on screen |
 |---|---|---|---|
 | 0:00 | `clear` | "Every website claim you've ever been sold looks like this." | blank terminal |
-| 0:05 | Type (don't run): `stress-strike run --url … --duration 10s` | "A load test. 52,000 requests per second, p99 of 41 milliseconds. Impressive. **How would you check it?**" | the command sits there, unexecuted |
-| 0:20 | `Ctrl-C` to clear the line | "You can't. You're trusting whoever produced the number. stress-strike changes that — three ideas, thirty seconds each." | — |
+| 0:05 | Type (don't run): `Sift run --url … --duration 10s` | "A load test. 52,000 requests per second, p99 of 41 milliseconds. Impressive. **How would you check it?**" | the command sits there, unexecuted |
+| 0:20 | `Ctrl-C` to clear the line | "You can't. You're trusting whoever produced the number. Sift changes that — three ideas, thirty seconds each." | — |
 | 0:25 | Show `docs/EXPLAINER.md` §2 headings, or just say it | "One: a **digital seal**. Two: the raw data locked behind one fingerprint. Three: an **outside witness** that catches a fake test." | — |
 | 0:40 | `./scripts/demo-verified.sh` | "One command. Watch the verdicts." | banner + `1/5 Mode` + `2/5 keygen` |
 | 0:55 | *(let it run)* | "It creates a signing key, runs the test, and emits **two files**: a signed cover sheet and one line of raw evidence per request." | `3/5 run` + bundle/samples sizes and sha256 |
@@ -67,10 +67,10 @@ self-narrating and takes 2 seconds.
 ./scripts/demo-verified.sh
 
 # The three-command product surface it drives (the frozen contract):
-stress-strike keygen --out /tmp/veribench.key
-stress-strike run    --url http://127.0.0.1:8090/ --duration 10s \
+Sift keygen --out /tmp/veribench.key
+Sift run    --url http://127.0.0.1:8090/ --duration 10s \
                      --emit-bundle /tmp/veribench-bundle.json
-stress-strike verify --bundle  /tmp/veribench-bundle.json \
+Sift verify --bundle  /tmp/veribench-bundle.json \
                      --samples /tmp/veribench-bundle.samples.jsonl
 ```
 
@@ -80,7 +80,7 @@ Useful variations:
 DEMO_COUNT=400 ./scripts/demo-verified.sh          # more samples
 NO_COLOR=1 ./scripts/demo-verified.sh              # plain output (piped logs)
 VERIBENCH_KEEP=1 ./scripts/demo-verified.sh        # keep the temp bundle to inspect
-STRESS_STRIKE_BIN=/usr/local/bin/stress-strike ./scripts/demo-verified.sh
+SIFT_BIN=/usr/local/bin/Sift ./scripts/demo-verified.sh
 ```
 
 ---
@@ -88,9 +88,9 @@ STRESS_STRIKE_BIN=/usr/local/bin/stress-strike ./scripts/demo-verified.sh
 ## 3. Expected output (real transcript, `NO_COLOR=1`, LIVE mode)
 
 ```
-stress-strike — verifiable measurement demo
+Sift — verifiable measurement demo
 format vpmp/v1 · Ed25519 seal · Merkle-locked samples · offline verify
-binary: /tmp/veribench-demo.xxx/stress-strike
+binary: /tmp/veribench-demo.xxx/Sift
 
 ── 1/5  Mode ──
 LIVE — this build exposes keygen / verify / --emit-bundle.
@@ -105,9 +105,9 @@ key_id (public fingerprint): 63989b7e96cf7e9e…
 
 ── 3/5  run — produce the measurement bundle ──
 authorization: ok (class=loopback)
-WARNING: stress-strike is a load testing tool. Only run it against systems you own or
+WARNING: Sift is a load testing tool. Only run it against systems you own or
 have explicit written permission to test. Unauthorized load floods are illegal (DDoS).
-stress-strike v0.14.3 | target: http://127.0.0.1:8090/health | profile: steady | duration: 10s
+Sift v0.14.3 | target: http://127.0.0.1:8090/health | profile: steady | duration: 10s
 
 Verifiable evidence written:
   …/veribench-bundle.json
@@ -116,7 +116,7 @@ Verifiable evidence written:
   coordinator:   63989b7e96cf7e9e…
   p99:           1.077ms (coordinated-omission corrected, 95% CI [0.838ms, 1.586ms])
   verify it yourself (exit 0 = valid, 1 = tampered):
-    stress-strike verify --bundle …/veribench-bundle.json --samples …/veribench-bundle.samples.jsonl
+    Sift verify --bundle …/veribench-bundle.json --samples …/veribench-bundle.samples.jsonl
 
 ── 4/5  verify — the honest bundle must PASS ──
 verify …/veribench-bundle.json
@@ -162,13 +162,13 @@ The `…` elisions above are the transcript's own convention: paths, the worker 
 On a build without Go available, `── 1/5 Mode ──` reads:
 
 ```
-NOTE  REFERENCE mode — no stress-strike binary was found or could be built.
+NOTE  REFERENCE mode — no Sift binary was found or could be built.
        Missing surface is at least one of:
-         · stress-strike keygen --out <key>        [unavailable]
-         · stress-strike verify --bundle …        [unavailable]
-         · stress-strike run --emit-bundle <b>    [unavailable]
-       The real thing ships in this repo (cmd/stress-strike): set
-       STRESS_STRIKE_BIN to a built binary, or install Go so this script
+         · Sift keygen --out <key>        [unavailable]
+         · Sift verify --bundle …        [unavailable]
+         · Sift run --emit-bundle <b>    [unavailable]
+       The real thing ships in this repo (cmd/Sift): set
+       SIFT_BIN to a built binary, or install Go so this script
        can build it itself.
        So: NO load is generated here. Instead a spec-conformant vpmp/v1
        bundle is emitted by the embedded reference implementation, and the
@@ -237,8 +237,8 @@ bash scripts/verify-html-parity.sh
 | `python3 is required in REFERENCE mode` | Install `python3` (3.8+). |
 | `perl is required to flip the demo byte` | Install `perl`; the flip is deliberately one byte via `perl`. |
 | No colour in the output | Terminal is not a TTY, or `NO_COLOR` is set. Expected when piping to a file. |
-| `binary: not found` | Harmless — the demo falls back to reference mode. Set `STRESS_STRIKE_BIN` to probe a specific build. |
-| `run: --emit-bundle is required` | A partially-integrated build detected `emit-bundle` in help but rejects it; set `STRESS_STRIKE_BIN` to a build without it, or finish the integration. |
+| `binary: not found` | Harmless — the demo falls back to reference mode. Set `SIFT_BIN` to probe a specific build. |
+| `run: --emit-bundle is required` | A partially-integrated build detected `emit-bundle` in help but rejects it; set `SIFT_BIN` to a build without it, or finish the integration. |
 | Run takes noticeably longer | `DEMO_COUNT` is large; the bootstrap CI does 1000 resamples. Use `DEMO_COUNT=400` for a snappier demo. |
 
 ---

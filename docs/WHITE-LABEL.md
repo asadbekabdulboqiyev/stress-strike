@@ -1,7 +1,7 @@
 # White-labeling Guide
 
 ## Branding
-- Rename binary: `go build -o yourname ./cmd/stress-strike`
+- Rename binary: `go build -o yourname ./cmd/Sift`
 - Update README/docs references as needed
 - Configurable report headers via scenario/config if desired
 

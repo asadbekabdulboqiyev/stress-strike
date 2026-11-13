@@ -203,7 +203,7 @@ jobs:
       fail-fast: false
       matrix:
         # The previous matrix had 3 entries and compiled only
-        # ./cmd/stress-strike — 1 of 6 binaries, missing linux/arm64,
+        # ./cmd/Sift — 1 of 6 binaries, missing linux/arm64,
         # darwin/amd64 and windows/arm64.
         os: [linux, darwin, windows]
         arch: [amd64, arm64]
@@ -236,14 +236,14 @@ jobs:
             CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
               go build -trimpath \
                 -ldflags="-s -w -X main.version=${version} \
-                          -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${version}" \
+                          -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${version}" \
                 -o "$out" "./cmd/${name}"
             echo "  built ${name} (${{ matrix.os }}/${{ matrix.arch }}) $(du -h "$out" | cut -f1)"
           done
 
       - name: Run the built CLI (linux/amd64 only)
         if: matrix.os == 'linux' && matrix.arch == 'amd64'
-        run: ./out/stress-strike --version && ./out/stress-strike --help > /dev/null
+        run: ./out/Sift --version && ./out/Sift --help > /dev/null
 
       - uses: actions/upload-artifact@v4
         with:
@@ -343,11 +343,11 @@ jobs:
       matrix:
         include:
           - dockerfile: Dockerfile
-            image: stress-strike
+            image: Sift
           - dockerfile: Dockerfile.master
-            image: stress-strike-master
+            image: Sift-master
           - dockerfile: Dockerfile.worker
-            image: stress-strike-worker
+            image: Sift-worker
     steps:
       - uses: actions/checkout@v4
 
@@ -368,8 +368,8 @@ jobs:
             REVISION=${{ github.sha }}
 
   # ── verifiable evidence: prove the product claim end to end ────────────────
-  # stress-strike's entire promise is that a third party can verify a load-test
-  # result offline: `stress-strike verify` exits 0 for a genuine bundle and 1
+  # Sift's entire promise is that a third party can verify a load-test
+  # result offline: `Sift verify` exits 0 for a genuine bundle and 1
   # for one whose evidence was altered after signing. This job exercises that
   # against a real target and asserts BOTH directions — the positive gate would
   # catch a verifier that rejects good evidence, the negative gate the far worse
@@ -393,7 +393,7 @@ jobs:
           cache: true
 
       - name: Build the CLI
-        run: go build -o /tmp/ss ./cmd/stress-strike
+        run: go build -o /tmp/ss ./cmd/Sift
 
       - name: Generate a coordinator key
         run: /tmp/ss keygen --out /tmp/coord.key

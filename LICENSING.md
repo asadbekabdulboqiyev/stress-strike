@@ -1,6 +1,6 @@
 # Licensing
 
-stress-strike is **open core**. The project has two tiers:
+Sift is **open core**. The project has two tiers:
 
 | Tier | License | What it covers |
 |---|---|---|
@@ -38,7 +38,7 @@ To discuss a commercial license, contact the maintainer (see [`README.md`](READM
 
 ## 3. Relicensing note (prior releases)
 
-Earlier releases of stress-strike were published under
+Earlier releases of Sift were published under
 **AGPL-3.0**. A license already granted cannot be revoked: **anyone who received
 a copy of an AGPL-3.0 release keeps the rights AGPL-3.0 granted them, for that
 version, forever.** Relicensing applies going forward only — to this release and
@@ -76,6 +76,6 @@ relicense the core.
 
 ## 6. Trademarks
 
-"stress-strike" and the project logo are not covered by the Apache-2.0 grant.
+"Sift" and the project logo are not covered by the Apache-2.0 grant.
 Forks may use the source under Apache-2.0, but must not present themselves as
 the official project or imply endorsement by the maintainer.

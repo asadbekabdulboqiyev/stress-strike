@@ -8,7 +8,7 @@ coverage.out
 coverage.html
 *.test
 *.exe
-/stress-strike
+/Sift
 
 # VCS & CI
 .git/
@@ -29,7 +29,7 @@ coverage.html
 *.tmp
 
 # Docs & meta (not needed to compile)
-# LICENSE and NOTICE are deliberately NOT excluded: stress-strike is Apache-2.0
+# LICENSE and NOTICE are deliberately NOT excluded: Sift is Apache-2.0
 # and the Dockerfiles COPY them into the image, because §4 requires the license
 # text and attributions to travel with the binary. Excluding them broke that COPY.
 SECURITY.md

@@ -1,7 +1,7 @@
 package dashboard
 
 // Certificate storage: issued certificates are persisted as JSON lines in
-// $STRESS_STRIKE_HOME/certificates.jsonl so they survive restarts and can be
+// $SIFT_HOME/certificates.jsonl so they survive restarts and can be
 // downloaded / verified later. Each line is one full Certificate JSON.
 //
 // Hash chain integrity: every certificate stores the SHA-256 of the previous

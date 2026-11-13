@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# fleet-status.sh — check the health of a stress-strike worker fleet from the
+# fleet-status.sh — check the health of a Sift worker fleet from the
 # control box.
 #
 # The control plane has no master-side "list my workers" RPC yet, so this

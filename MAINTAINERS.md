@@ -1,6 +1,6 @@
 # Maintainers
 
-Joriy stress-strike maintainerlar ro'yxati.
+Joriy Sift maintainerlar ro'yxati.
 
 ## Lead Maintainer
 

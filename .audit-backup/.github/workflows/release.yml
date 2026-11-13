@@ -49,16 +49,16 @@ jobs:
             arch="${platform#*/}"
             suffix=""
             if [ "${os}" = "windows" ]; then suffix=".exe"; fi
-            name="stress-strike-v${version}-${os}-${arch}"
+            name="Sift-v${version}-${os}-${arch}"
             CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
               go build -trimpath -buildvcs=false \
-              -o "dist/pkg/stress-strike${suffix}" ./cmd/stress-strike
+              -o "dist/pkg/Sift${suffix}" ./cmd/Sift
             if [ "${os}" = "windows" ]; then
-              (cd dist/pkg && zip -q "../${name}.zip" "stress-strike${suffix}")
+              (cd dist/pkg && zip -q "../${name}.zip" "Sift${suffix}")
             else
-              tar -czf "dist/${name}.tar.gz" -C dist/pkg "stress-strike"
+              tar -czf "dist/${name}.tar.gz" -C dist/pkg "Sift"
             fi
-            rm -f "dist/pkg/stress-strike${suffix}"
+            rm -f "dist/pkg/Sift${suffix}"
           done
           (
             cd dist

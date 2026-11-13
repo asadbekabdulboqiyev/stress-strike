@@ -1,7 +1,7 @@
 # POWER FEATURES — step control flow, branching, burst & gRPC streaming
 
 Advanced scenario features added by the backend team ("Qudratli Funksiyalar").
-All features work through the existing `stress-strike run --config file.yaml`
+All features work through the existing `Sift run --config file.yaml`
 path and the same normalized scenario model; no protocol client changes were
 required.
 
@@ -141,7 +141,7 @@ duration: 3        # default; override with --duration / duration:
 - Default window: **3 seconds**.
 
 ```sh
-stress-strike run --url https://api.example.com --profile burst --users 500
+Sift run --url https://api.example.com --profile burst --users 500
 ```
 
 The transform happens in `config.Profile.Normalize`: `burst` degrades to
@@ -164,7 +164,7 @@ load_profile:
 ```
 
 ```sh
-stress-strike run --url https://api.example.com --users 100 --no-http2
+Sift run --url https://api.example.com --users 100 --no-http2
 ```
 
 - `Http2` is stored as `*bool` on the profile: absent → enabled (Go's transport

@@ -7,7 +7,7 @@ package dashboard
 // in the browser and one produced in a shell are the same document, sealed the
 // same way, and verify identically.
 //
-// Certificates are persisted in $STRESS_STRIKE_HOME/certificates.jsonl and form
+// Certificates are persisted in $SIFT_HOME/certificates.jsonl and form
 // a hash chain: each certificate stores the SHA-256 of the previous one, so
 // removal or re-ordering is detectable during verification.
 

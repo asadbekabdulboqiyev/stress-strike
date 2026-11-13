@@ -346,37 +346,37 @@
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike-dashboard/main.go",
+      "file": "cmd/Sift-dashboard/main.go",
       "code": "selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run",
       "count": 1
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike-master/main.go",
+      "file": "cmd/Sift-master/main.go",
       "code": "formatCount(uint64(max64(agg.TotalErrors, 0))),",
       "count": 1
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike-master/main.go",
+      "file": "cmd/Sift-master/main.go",
       "code": "formatCount(uint64(max64(agg.TotalRequests, 0))),",
       "count": 1
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike/dash_mode.go",
+      "file": "cmd/Sift/dash_mode.go",
       "code": "selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run",
       "count": 1
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike/limit_unix.go",
+      "file": "cmd/Sift/limit_unix.go",
       "code": "need := uint64(profile.Users * 4)",
       "count": 1
     },
     {
       "rule": "G115",
-      "file": "cmd/stress-strike/limit_unix.go",
+      "file": "cmd/Sift/limit_unix.go",
       "code": "need = uint64(profile.SpikeUsers * 4)",
       "count": 1
     },
@@ -820,7 +820,7 @@
     },
     {
       "rule": "G118",
-      "file": "cmd/stress-strike-dashboard/main.go",
+      "file": "cmd/Sift-dashboard/main.go",
       "code": "runCtx, cancel := context.WithCancel(context.Background())",
       "count": 1
     },
@@ -838,19 +838,19 @@
     },
     {
       "rule": "G301",
-      "file": "cmd/stress-strike-master/main.go",
+      "file": "cmd/Sift-master/main.go",
       "code": "if err := os.MkdirAll(dir, 0755); err != nil {",
       "count": 1
     },
     {
       "rule": "G301",
-      "file": "cmd/stress-strike-replay/main.go",
+      "file": "cmd/Sift-replay/main.go",
       "code": "if err := os.MkdirAll(*reportDir, 0755); err != nil {",
       "count": 2
     },
     {
       "rule": "G301",
-      "file": "cmd/stress-strike/cmd_pentest.go",
+      "file": "cmd/Sift/cmd_pentest.go",
       "code": "if err := os.MkdirAll(output, 0o755); err != nil {",
       "count": 1
     },
@@ -886,13 +886,13 @@
     },
     {
       "rule": "G702",
-      "file": "cmd/stress-strike/cmd_sub.go",
+      "file": "cmd/Sift/cmd_sub.go",
       "code": "cmd := exec.Command(\"go\", goArgs...)",
       "count": 1
     },
     {
       "rule": "G702",
-      "file": "cmd/stress-strike/cmd_sub.go",
+      "file": "cmd/Sift/cmd_sub.go",
       "code": "cmd := exec.Command(bin, args...)",
       "count": 1
     }

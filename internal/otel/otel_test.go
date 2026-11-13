@@ -123,7 +123,7 @@ func TestStartRequiresEndpoint(t *testing.T) {
 }
 
 func TestConfigFromEnv(t *testing.T) {
-	t.Setenv("STRESS_STRIKE_OTEL_ENABLED", "true")
+	t.Setenv("SIFT_OTEL_ENABLED", "true")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example:4318/v1/traces")
 	t.Setenv("OTEL_SERVICE_NAME", "my-svc")
 	t.Setenv("OTEL_TRACES_SAMPLER_ARG", "0.25")

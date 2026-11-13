@@ -21,14 +21,14 @@ RUN go mod download
 COPY . .
 
 # Build the 5 pure-Go binaries (no CGO needed).
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike           ./cmd/stress-strike && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-dashboard ./cmd/stress-strike-dashboard && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-master    ./cmd/stress-strike-master && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-worker    ./cmd/stress-strike-worker && \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-scan      ./cmd/stress-strike-scan
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift           ./cmd/Sift && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift-dashboard ./cmd/Sift-dashboard && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift-master    ./cmd/Sift-master && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift-worker    ./cmd/Sift-worker && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift-scan      ./cmd/Sift-scan
 
 # Build replay with CGO (needs libpcap for gopacket/pcap).
-RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/stress-strike-replay ./cmd/stress-strike-replay
+RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/Sift-replay ./cmd/Sift-replay
 
 ###############################################################################
 # Stage 2 — runtime: minimal Alpine image with all binaries.
@@ -37,11 +37,11 @@ FROM alpine:3.21
 
 ARG VERSION=0.11.0
 
-LABEL org.opencontainers.image.title="stress-strike" \
+LABEL org.opencontainers.image.title="Sift" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.vendor="stress-strike"
+      org.opencontainers.image.vendor="Sift"
 
 # CA certs for HTTPS targets; libpcap for replay at runtime; non-root user.
 RUN apk add --no-cache ca-certificates libpcap \
@@ -52,12 +52,12 @@ WORKDIR /app
 RUN mkdir -p /app/reports && chown stress:stress /app/reports
 
 # Copy all 6 binaries into the runtime image.
-COPY --from=builder /out/stress-strike           /usr/local/bin/stress-strike
-COPY --from=builder /out/stress-strike-dashboard /usr/local/bin/stress-strike-dashboard
-COPY --from=builder /out/stress-strike-master    /usr/local/bin/stress-strike-master
-COPY --from=builder /out/stress-strike-worker    /usr/local/bin/stress-strike-worker
-COPY --from=builder /out/stress-strike-replay    /usr/local/bin/stress-strike-replay
-COPY --from=builder /out/stress-strike-scan      /usr/local/bin/stress-strike-scan
+COPY --from=builder /out/Sift           /usr/local/bin/Sift
+COPY --from=builder /out/Sift-dashboard /usr/local/bin/Sift-dashboard
+COPY --from=builder /out/Sift-master    /usr/local/bin/Sift-master
+COPY --from=builder /out/Sift-worker    /usr/local/bin/Sift-worker
+COPY --from=builder /out/Sift-replay    /usr/local/bin/Sift-replay
+COPY --from=builder /out/Sift-scan      /usr/local/bin/Sift-scan
 
 USER stress
 
@@ -66,4 +66,4 @@ EXPOSE 8888 50051 50052
 
 VOLUME ["/app/reports"]
 
-ENTRYPOINT ["stress-strike"]
+ENTRYPOINT ["Sift"]

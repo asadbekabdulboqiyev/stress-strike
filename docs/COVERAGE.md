@@ -1,6 +1,6 @@
 # Coverage — tekshirilgan baza
 
-`stress-strike` uchun test qonidasi. Maqsad: har commitda **oqitiladigan** ham
+`Sift` uchun test qonidasi. Maqsad: har commitda **oqitiladigan** ham
 **o'rganiladigan** (covered) foizni nazorat qilish.
 
 ## Olish holatdagi baseline (2026-11-05)

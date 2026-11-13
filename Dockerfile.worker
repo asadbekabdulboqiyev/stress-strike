@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1
 #
-# stress-strike distributed worker. Distroless static + nonroot.
+# Sift distributed worker. Distroless static + nonroot.
 #
 # Build:
-#   docker build -f Dockerfile.worker -t ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 .
+#   docker build -f Dockerfile.worker -t ghcr.io/asadbekabdulboqiyev/sift-worker:0.14.3 .
 #
 # Run (static fleet):
 #   docker run --rm -p 50061:50061 \
 #     --ulimit nofile=1048576:1048576 \
-#     ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 \
+#     ghcr.io/asadbekabdulboqiyev/sift-worker:0.14.3 \
 #     -listen 0.0.0.0:50061 -id docker-1 -max-users 200000
 #
 # Run (auto-discovery, reachable as docker-1:50061 on a shared network):
 #   docker run --rm --network strike -p 50061:50061 \
 #     --ulimit nofile=1048576:1048576 \
-#     ghcr.io/asadbekabdulboqiyev/stress-strike-worker:0.14.3 \
+#     ghcr.io/asadbekabdulboqiyev/sift-worker:0.14.3 \
 #     -listen 0.0.0.0:50061 -advertise docker-1:50061 \
 #     -master master:50051 -id docker-1 -token "$TOKEN"
 #
@@ -38,12 +38,12 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
     go build -trimpath \
       -ldflags="-s -w \
-        -X main.version=${VERSION} \
-        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
-        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
-      -o /out/stress-strike-worker ./cmd/stress-strike-worker
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=${REVISION}" \
+      -o /out/Sift-worker ./cmd/sift-worker
 
-RUN /out/stress-strike-worker --version
+RUN /out/Sift-worker --version
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
@@ -53,10 +53,10 @@ ARG REVISION=""
 # CA bundle is required: the worker generates HTTPS load.
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=builder /out/stress-strike-worker /usr/local/bin/stress-strike-worker
+COPY --from=builder /out/Sift-worker /usr/local/bin/Sift-worker
 
 # Apache-2.0 §4.
-COPY LICENSE NOTICE /usr/share/doc/stress-strike/
+COPY LICENSE NOTICE /usr/share/doc/Sift/
 
 USER 65532:65532
 
@@ -70,14 +70,14 @@ STOPSIGNAL SIGTERM
 #
 # The `healthcheck` subcommand GETs --addr and exits 0 on 2xx, 1 on a failed
 # request, 2 on bad usage:
-#   stress-strike-worker healthcheck --addr http://127.0.0.1:9091/healthz
+#   Sift-worker healthcheck --addr http://127.0.0.1:9091/healthz
 #
 # The HTTP health/metrics server binds `-http-addr` (default 0.0.0.0:9091) and
 # serves /healthz, /readyz (200 only once registered/ready) and /metrics.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD ["/usr/local/bin/stress-strike-worker", "healthcheck", "--addr", "http://127.0.0.1:9091/healthz"]
+  CMD ["/usr/local/bin/Sift-worker", "healthcheck", "--addr", "http://127.0.0.1:9091/healthz"]
 
-ENTRYPOINT ["/usr/local/bin/stress-strike-worker"]
+ENTRYPOINT ["/usr/local/bin/Sift-worker"]
 # HTTP health/metrics default to 0.0.0.0:9091 (the healthcheck above assumes it).
 # Pass `-http-addr 0.0.0.0:<port>` at run time to move it.
 CMD ["-listen", "0.0.0.0:50061"]

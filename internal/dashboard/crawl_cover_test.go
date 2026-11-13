@@ -91,10 +91,10 @@ func TestCrawlValidateFlags(t *testing.T) {
 }
 
 func TestCrawlGateAndAudit(t *testing.T) {
-	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())
-	t.Setenv("STRESS_STRIKE_POLICY", "")
-	t.Setenv("STRESS_STRIKE_ALLOW", "")
-	t.Setenv("STRESS_STRIKE_AUDIT_LOG", "")
+	t.Setenv("SIFT_HOME", t.TempDir())
+	t.Setenv("SIFT_POLICY", "")
+	t.Setenv("SIFT_ALLOW", "")
+	t.Setenv("SIFT_AUDIT_LOG", "")
 
 	// OpScan: a public target is allowed without a ticket.
 	out, err := crawlGate("https://93.184.216.34/")
@@ -116,7 +116,7 @@ func TestCrawlGateAndAudit(t *testing.T) {
 	if err := crawlAudit(authz.Entry{Action: authz.OpScan.String(), Targets: []string{"https://93.184.216.34/"}, Allowed: true}); err != nil {
 		t.Fatalf("crawlAudit: %v", err)
 	}
-	if n, err := authz.Verify(filepath.Join(os.Getenv("STRESS_STRIKE_HOME"), "audit.jsonl")); err != nil || n != 1 {
+	if n, err := authz.Verify(filepath.Join(os.Getenv("SIFT_HOME"), "audit.jsonl")); err != nil || n != 1 {
 		t.Errorf("audit verify: n=%d err=%v", n, err)
 	}
 }
@@ -198,7 +198,7 @@ func TestCrawlScanDeniedRecordsAudit(t *testing.T) {
 		t.Errorf("deny = %+v", deny)
 	}
 
-	entries, err := authz.ReadAll(filepath.Join(os.Getenv("STRESS_STRIKE_HOME"), "audit.jsonl"))
+	entries, err := authz.ReadAll(filepath.Join(os.Getenv("SIFT_HOME"), "audit.jsonl"))
 	if err != nil {
 		t.Fatalf("read audit: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestCrawlScanAuditUnavailableDeniesSafely(t *testing.T) {
 	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("STRESS_STRIKE_AUDIT_LOG", filepath.Join(blocker, "audit.jsonl"))
+	t.Setenv("SIFT_AUDIT_LOG", filepath.Join(blocker, "audit.jsonl"))
 
 	rec := crawlPost(t, s, `{"target":"http://169.254.169.254/"}`)
 	if rec.Code != http.StatusForbidden {
@@ -230,7 +230,7 @@ func TestCrawlScanAllowedButAuditBrokenFailsClosed(t *testing.T) {
 	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("STRESS_STRIKE_AUDIT_LOG", filepath.Join(blocker, "audit.jsonl"))
+	t.Setenv("SIFT_AUDIT_LOG", filepath.Join(blocker, "audit.jsonl"))
 
 	rec := crawlPost(t, s, `{"target":"https://93.184.216.34/","dryRun":true}`)
 	if rec.Code != http.StatusInternalServerError {
@@ -243,7 +243,7 @@ func TestCrawlScanAllowedButAuditBrokenFailsClosed(t *testing.T) {
 
 func TestCrawlScanPolicyError(t *testing.T) {
 	s := owaspTestServer(t)
-	if err := os.WriteFile(filepath.Join(os.Getenv("STRESS_STRIKE_HOME"), "authz.json"),
+	if err := os.WriteFile(filepath.Join(os.Getenv("SIFT_HOME"), "authz.json"),
 		[]byte(`{"mode":`), 0o600); err != nil {
 		t.Fatal(err)
 	}

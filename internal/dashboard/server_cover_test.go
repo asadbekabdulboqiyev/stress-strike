@@ -757,7 +757,7 @@ func TestGetDashboardDataDirCreatesTree(t *testing.T) {
 		t.Fatalf("getDashboardDataDir: %v", err)
 	}
 	if !strings.HasSuffix(dir, filepath.Join("Sift", "dashboard")) {
-		t.Errorf("dir = %q, want it to end with stress-strike/dashboard", dir)
+		t.Errorf("dir = %q, want it to end with Sift/dashboard", dir)
 	}
 	st, err := os.Stat(dir)
 	if err != nil || !st.IsDir() {

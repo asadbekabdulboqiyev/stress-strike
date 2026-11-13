@@ -2,7 +2,7 @@
 
 **Status:** RFC (Request for Comments)  
 **Version:** 1.0  
-**Author:** TechCorp / stress-strike project  
+**Author:** TechCorp / Sift project  
 **Date:** 2026-11-05  
 **Abstract:** VPMP (Verified Payload Measurement Protocol) is a lightweight, encrypted,
 attested protocol for distributed load testing and security scanning. It lets a
@@ -130,7 +130,7 @@ the worker's registered public key. Verification failure → worker marked
 
 ## 8. References
 
-- [stress-strike repository](https://github.com/asadbekabdulboqiyev/stress-strike)
+- [Sift repository](https://github.com/asadbekabdulboqiyev/sift)
 - [coordinator.proto](internal/dist/proto/coordinator.proto)
 - [attest.go](internal/dist/coordinator/attest.go)
 - [DISTRIBUTED.md](docs/DISTRIBUTED.md)

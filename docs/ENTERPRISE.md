@@ -3,7 +3,7 @@
 **Status:** Mapping only (no SOC 2 / ISO 27001 certification yet)  
 **Version:** 1.0  
 **Date:** 2026-11-05  
-**Abstract:** Enterprise tier — open-core stress-strike ga qo'shimcha, commerciak
+**Abstract:** Enterprise tier — open-core Sift ga qo'shimcha, commerciak
 tegishli funksiyalar: SLA, prioritet支持, role-based access control, audit log,
 SSO/OIDC, dedicated support, va harajat bilan bog'liq bo'lmagan open-core
 xususiyatlar orasidagi chegara.

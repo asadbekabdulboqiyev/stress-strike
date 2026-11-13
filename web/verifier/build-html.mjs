@@ -55,7 +55,7 @@ function build() {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>stress-strike — verify load-test evidence offline</title>
+<title>Sift — verify load-test evidence offline</title>
 <meta name="description" content="An offline, dependency-free verifier for vpmp/v1 load-test evidence bundles. Drop the bundle and its raw request log; the page recomputes the fingerprint, checks the signatures and re-derives the statistics in your browser.">
 <style>
 ${css.trim()}
@@ -67,7 +67,7 @@ ${css.trim()}
   <div class="tag">vpmp/v1 · runs entirely in this page · nothing is uploaded</div>
   <h1>Verify load-test evidence</h1>
   <p class="lead">
-    A stress-strike bundle is a signed claim about a load test: which requests were measured, how long
+    A Sift bundle is a signed claim about a load test: which requests were measured, how long
     they took, and what the summary numbers are. This page re-derives all of that from the files
     themselves. If a single byte of the records, the statistics or the signatures has changed since
     the run, the check fails — and it says exactly which check failed.

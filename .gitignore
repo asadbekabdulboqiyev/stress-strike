@@ -1,17 +1,17 @@
 bin/
 reports/
 # Test/demo reports and artifacts — never commit generated scan results.
-cmd/stress-strike/reports/
+cmd/sift/reports/
 # Build output only! Root-anchored so source under internal/dist/ (the
 # distributed control plane) is NOT ignored — a bare `dist/` pattern would
 # swallow internal/dist/ and hide the whole subsystem from version control.
 /dist/
-/stress-strike
-/stress-strike-master
-/stress-strike-worker
-/stress-strike-dashboard
-/stress-strike-replay
-/stress-strike-scan
+/Sift
+/Sift-master
+/Sift-worker
+/Sift-dashboard
+/Sift-replay
+/Sift-scan
 # `go build ./examples/demo_store/...` from the repo root drops a binary here.
 /demo_store
 /demo-store

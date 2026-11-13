@@ -241,8 +241,8 @@ def build_doc():
         OUT, pagesize=A4,
         leftMargin=18*mm, rightMargin=18*mm,
         topMargin=16*mm, bottomMargin=16*mm,
-        title="stress-strike — Study Guide",
-        author="stress-strike",
+        title="Sift — Study Guide",
+        author="Sift",
     )
 
     from reportlab.platypus import PageBreak
@@ -250,7 +250,7 @@ def build_doc():
 
     # Cover
     story.append(Spacer(1, 8*mm))
-    story.append(Paragraph("stress-strike", styles["h1"]))
+    story.append(Paragraph("Sift", styles["h1"]))
     story.append(Paragraph("To'liq O'rganish Qo'llanmasi (Study Guide)", styles["h2"]))
     story.append(Paragraph("Go load-testing va security suite — arxitektura, oqimlar va mustaqil o'rganish rejasi", styles["p"]))
     story.append(Spacer(1, 4*mm))
@@ -285,7 +285,7 @@ def build_doc():
         canvas.saveState()
         canvas.setFont("Helvetica", 7.5)
         canvas.setFillColor(GREY)
-        canvas.drawString(18*mm, 10*mm, "stress-strike — Study Guide")
+        canvas.drawString(18*mm, 10*mm, "Sift — Study Guide")
         canvas.drawRightString(A4[0]-18*mm, 10*mm, "Page %d" % d.page)
         canvas.restoreState()
 

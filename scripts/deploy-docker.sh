@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy-docker.sh — run a stress-strike fleet (master + N workers) with
+# deploy-docker.sh — run a Sift fleet (master + N workers) with
 # Docker, interactively. Ordinary-user friendly: answer a few questions,
 # everything else is automatic.
 #
@@ -57,7 +57,7 @@ if [[ "$CMD" == "logs" ]]; then
 fi
 
 # --- wizard ----------------------------------------------------------------------
-banner "stress-strike Docker fleet"
+banner "Sift Docker fleet"
 if [[ "$CMD" != "generate" ]]; then
   log_step "checking docker..."
   docker info >/dev/null 2>&1 || { log_err "docker daemon not running. Start Docker Desktop first."; exit 1; }
@@ -105,7 +105,7 @@ services:
       context: ${REPO_ROOT}
       dockerfile: Dockerfile.master
     command:
-      - /usr/local/bin/stress-strike-master
+      - /usr/local/bin/Sift-master
       - -listen
       - 0.0.0.0:50051
       - -url
@@ -139,7 +139,7 @@ EOF
       context: ${REPO_ROOT}
       dockerfile: Dockerfile.worker
     command:
-      - /usr/local/bin/stress-strike-worker
+      - /usr/local/bin/Sift-worker
       - -listen
       - 0.0.0.0:50061
       - -id

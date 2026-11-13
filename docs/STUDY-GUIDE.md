@@ -1,6 +1,6 @@
-# stress-strike — To'liq O'rganish Qo'llanmasi (Study Guide)
+# Sift — To'liq O'rganish Qo'llanmasi (Study Guide)
 
-> Bu hujjat `stress-strike` loyihasini **tushunib olish** uchun tuzilgan.
+> Bu hujjat `Sift` loyihasini **tushunib olish** uchun tuzilgan.
 > Maqsad — butun kodni yodlash emas, balki **katta rasmni** va har bir
 > bo'limning vazifasini tushunib olish.
 >
@@ -12,7 +12,7 @@
 
 ## 0-daraja: Loyiha bir paragrafda
 
-**stress-strike** — Go tilida yozilgan, ikki maqsadli vosita:
+**Sift** — Go tilida yozilgan, ikki maqsadli vosita:
 
 1. **Yuklama (load) testi** — ko'p virtual foydalanuvchi bir vaqtda HTTP/gRPC/WebSocket
    so'rovlarini yuboradi va sayt/API qancha yuk ko'tarishini o'lchaydi.
@@ -54,15 +54,15 @@ Agar buni o'z so'zing bilan ayta olsangiz — fundament tayyor:
 Reponing asosiy qismlari:
 
 ```
-stress-strike/
+Sift/
 ├── api/                     # Qayta foydalanish mumkin bo'lgan yuqori darajadagi API
 ├── cmd/                     # Barcha bajariladigan dasturlar (binary entry points)
-│   ├── stress-strike/       # Asosiy CLI (run, replay, scan, pentest, ...)
-│   ├── stress-strike-dashboard/
-│   ├── stress-strike-replay/
-│   ├── stress-strike-scan/
-│   ├── stress-strike-master/
-│   └── stress-strike-worker/
+│   ├── Sift/       # Asosiy CLI (run, replay, scan, pentest, ...)
+│   ├── Sift-dashboard/
+│   ├── Sift-replay/
+│   ├── Sift-scan/
+│   ├── Sift-master/
+│   └── Sift-worker/
 ├── examples/                # YAML scenario namunalari + demo server
 ├── internal/                # Ichki paketlar (boshqa loyihalarga export qilinmaydi)
 │   ├── config/              # Scenario yuklash/validatsiya
@@ -77,14 +77,14 @@ stress-strike/
 ├── docs/                    # Hujjatlar (shu hujjat)
 ├── Makefile                 # Build/test/lint/release buyruqlari
 ├── Dockerfile
-└── go.mod                   # Modul: github.com/asadbekabdulboqiyev/stress-strike
+└── go.mod                   # Modul: github.com/asadbekabdulboqiyev/sift
 ```
 
 ### Har bir paket — bitta gap bilan
 
 | Paket | Vazifasi |
 |---|---|
-| `cmd/stress-strike` | Asosiy CLI — flag'lar, subcomanda tanlash, buyruq chaqirish |
+| `cmd/Sift` | Asosiy CLI — flag'lar, subcomanda tanlash, buyruq chaqirish |
 | `internal/config` | YAML/JSON scenario ni yuklab, to'g'rilab (normalize), validatsiya qiladi |
 | `internal/engine` | Testni **haqiqatda** ijro etadi — userlar, profil, so'rov yuborish |
 | `internal/metrics` | Barcha o'lchovlarni yig'adi: histogram, percentile, telemetry, timeline |
@@ -105,13 +105,13 @@ o'zingiz kuzatib boring.
 ### Oqim A: CLI ishga tushishi
 
 ```
-go run ./cmd/stress-strike <buyruq>
+go run ./cmd/Sift <buyruq>
         │
         ▼
 main.go main() ── os.Args[1] ga qarang
         │  "version"/"help"  → chop et va chiq
         │  "run"             → cmdRun()
-        │  "replay"          → cmdReplay()  → runSubCommand("stress-strike-replay")
+        │  "replay"          → cmdReplay()  → runSubCommand("Sift-replay")
         │  "scan"            → cmdScan()
         │  "dashboard"       → cmdDashboard()
         │  "master"/"worker" → distributed

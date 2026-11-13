@@ -57,7 +57,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/asadbekabdulboqiyev/stress-strike
+        - github.com/asadbekabdulboqiyev/sift
 
 issues:
   max-issues-per-linter: 0

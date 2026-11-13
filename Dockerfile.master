@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 #
-# stress-strike master/coordinator. Distroless static + nonroot.
+# Sift master/coordinator. Distroless static + nonroot.
 #
 # Build:
-#   docker build -f Dockerfile.master -t ghcr.io/asadbekabdulboqiyev/stress-strike-master:0.14.3 .
+#   docker build -f Dockerfile.master -t ghcr.io/asadbekabdulboqiyev/sift-master:0.14.3 .
 #
 # Run (auto-discovery fleet; workers self-register):
 #   docker run --rm --network strike -p 50051:50051 \
 #     -e SS_TOKEN="$TOKEN" \
-#     ghcr.io/asadbekabdulboqiyev/stress-strike-master:0.14.3
+#     ghcr.io/asadbekabdulboqiyev/sift-master:0.14.3
 
 FROM golang:1.26 AS builder
 
@@ -27,12 +27,12 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
     go build -trimpath \
       -ldflags="-s -w \
-        -X main.version=${VERSION} \
-        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
-        -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
-      -o /out/stress-strike-master ./cmd/stress-strike-master
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+        -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=${REVISION}" \
+      -o /out/Sift-master ./cmd/sift-master
 
-RUN /out/stress-strike-master --version
+RUN /out/Sift-master --version
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
@@ -42,10 +42,10 @@ ARG REVISION=""
 # CA bundle is required: the master dials HTTPS targets over TLS.
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=builder /out/stress-strike-master /usr/local/bin/stress-strike-master
+COPY --from=builder /out/Sift-master /usr/local/bin/Sift-master
 
 # Apache-2.0 §4.
-COPY LICENSE NOTICE /usr/share/doc/stress-strike/
+COPY LICENSE NOTICE /usr/share/doc/Sift/
 
 # :nonroot is already uid 65532; spelling it out keeps `docker inspect` honest.
 USER 65532:65532
@@ -62,14 +62,14 @@ STOPSIGNAL SIGTERM
 #
 # The `healthcheck` subcommand GETs --addr and exits 0 on 2xx, 1 on a failed
 # request, 2 on bad usage:
-#   stress-strike-master healthcheck --addr http://127.0.0.1:9090/healthz
+#   Sift-master healthcheck --addr http://127.0.0.1:9090/healthz
 #
 # The HTTP health/metrics server binds the address in `-http-addr`
 # (default 0.0.0.0:9090) and serves /healthz, /readyz and /metrics.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD ["/usr/local/bin/stress-strike-master", "healthcheck", "--addr", "http://127.0.0.1:9090/healthz"]
+  CMD ["/usr/local/bin/Sift-master", "healthcheck", "--addr", "http://127.0.0.1:9090/healthz"]
 
-ENTRYPOINT ["/usr/local/bin/stress-strike-master"]
+ENTRYPOINT ["/usr/local/bin/Sift-master"]
 # HTTP health/metrics default to 0.0.0.0:9090 (the healthcheck above assumes it).
 # Pass `-http-addr 0.0.0.0:<port>` at run time to move it.
 CMD ["-listen", "0.0.0.0:50051"]

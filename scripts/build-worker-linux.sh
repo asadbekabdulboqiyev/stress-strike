@@ -4,9 +4,9 @@
 # plane for real Linux load-generator hosts (amd64 + arm64).
 #
 # Every Linux worker package contains:
-#   stress-strike-worker   load generator (run this on the load hosts)
-#   stress-strike-master   coordinator (optional; run one on a control host)
-#   stress-strike-worker.service   ready-to-install systemd unit
+#   Sift-worker   load generator (run this on the load hosts)
+#   Sift-master   coordinator (optional; run one on a control host)
+#   Sift-worker.service   ready-to-install systemd unit
 #   worker.env.example     template for the systemd EnvironmentFile
 #   DISTRIBUTED.md         quick deployment guide
 #
@@ -14,7 +14,7 @@
 #   ./scripts/build-worker-linux.sh [VERSION]
 #
 # Output:
-#   dist/linux-worker/stress-strike-worker-v{VERSION}-linux-{arch}.tar.gz
+#   dist/linux-worker/Sift-worker-v{VERSION}-linux-{arch}.tar.gz
 #   dist/linux-worker/sha256sums.txt
 #
 # Environment overrides:
@@ -27,7 +27,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${1:-${VERSION:-0.14.0}}"
 DIST_ROOT="${DIST_DIR:-${REPO_ROOT}/dist}"
 OUT_DIR="${DIST_ROOT}/linux-worker"
-LDFLAGS="-s -w -X main.version=${VERSION}"
+LDFLAGS="-s -w -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION}"
 
 if ! command -v go >/dev/null 2>&1; then
   echo "error: 'go' not found in PATH" >&2
@@ -49,7 +49,7 @@ echo
 for platform in "${PLATFORMS[@]}"; do
   os="${platform%/*}"
   arch="${platform#*/}"
-  pkg="stress-strike-worker-v${VERSION}-${os}-${arch}"
+  pkg="Sift-worker-v${VERSION}-${os}-${arch}"
   pkg_dir="${OUT_DIR}/${pkg}"
   mkdir -p "${pkg_dir}"
 
@@ -58,13 +58,13 @@ for platform in "${PLATFORMS[@]}"; do
     cd "${REPO_ROOT}"
     CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
       go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" \
-      -o "${pkg_dir}/stress-strike-worker" ./cmd/stress-strike-worker
+      -o "${pkg_dir}/Sift-worker" ./cmd/Sift-worker
     CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
       go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" \
-      -o "${pkg_dir}/stress-strike-master" ./cmd/stress-strike-master
+      -o "${pkg_dir}/Sift-master" ./cmd/Sift-master
   )
 
-  cp "${REPO_ROOT}/deploy/systemd/stress-strike-worker.service" "${pkg_dir}/"
+  cp "${REPO_ROOT}/deploy/systemd/Sift-worker.service" "${pkg_dir}/"
   cp "${REPO_ROOT}/deploy/systemd/worker.env.example" "${pkg_dir}/"
   cp "${REPO_ROOT}/docs/DISTRIBUTED.md" "${pkg_dir}/"
 

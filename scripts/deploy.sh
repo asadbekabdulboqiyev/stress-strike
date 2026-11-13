@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy.sh — one entry point for running stress-strike fleets. Picks the
+# deploy.sh — one entry point for running Sift fleets. Picks the
 # simplest path that works on your machine and walks you through it.
 #
 #   ./scripts/deploy.sh            # menu (or picks Docker automatically)
@@ -32,7 +32,7 @@ if [[ -n "$WANT" ]]; then
   exit 2
 fi
 
-banner "stress-strike deploy"
+banner "Sift deploy"
 echo "Two ways to run a real (multi-node) load test:"
 echo
 echo "  1) Docker  — easiest. Runs master + workers in containers on this"

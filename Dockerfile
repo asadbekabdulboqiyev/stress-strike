@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
 ###############################################################################
-# stress-strike — all-in-one image (run CLI + dashboard from one container).
+# Sift — all-in-one image (run CLI + dashboard from one container).
 #
 # Build:
-#   docker build -t ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 .
+#   docker build -t ghcr.io/asadbekabdulboqiyev/sift:0.14.3 .
 #
 # Run (web dashboard):
-#   docker run --rm -p 127.0.0.1:8888:8888 ghcr.io/asadbekabdulboqiyev/stress-strike:0.14.3 \
+#   docker run --rm -p 127.0.0.1:8888:8888 ghcr.io/asadbekabdulboqiyev/sift:0.14.3 \
 #     run --url https://example.com --users 100 --duration 60 \
 #          --mode dashboard --listen 0.0.0.0:8888 \
 #          --dashboard-auth-token "$(openssl rand -hex 24)"
@@ -54,20 +54,20 @@ RUN set -eux; \
         CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}" \
         go build -trimpath \
           -ldflags="-s -w \
-            -X main.version=${VERSION} \
-            -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Version=${VERSION} \
-            -X github.com/asadbekabdulboqiyev/stress-strike/internal/version.Commit=${REVISION}" \
+            -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+            -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION} \
+            -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=${REVISION}" \
           -o "/out/${name}" "$dir"; \
     done
 
 # Verify the binary we are about to ship is not a dev build.
-RUN /out/stress-strike --version
+RUN /out/Sift --version
 
 # ── Stage 2: runtime ────────────────────────────────────────────────────────
 # alpine:3.24 (3.24.2) is clean at HIGH/CRITICAL under the CI Trivy gate.
 # The previous pin (alpine:3.21 = 3.21.8) carried CVE-2026-84782 in
 # libcrypto3/libssl3 (openssl 3.3.7-r1, fixed in 3.3.7-r2), which the
-# `Trivy gate (stress-strike)` job correctly failed on. `apk upgrade` is kept
+# `Trivy gate (Sift)` job correctly failed on. `apk upgrade` is kept
 # so the runtime layer always takes the newest patched packages for the
 # pinned minor even before the tag itself is refreshed.
 FROM alpine:3.24
@@ -75,13 +75,13 @@ FROM alpine:3.24
 ARG VERSION=dev
 ARG REVISION=""
 
-LABEL org.opencontainers.image.title="stress-strike" \
+LABEL org.opencontainers.image.title="Sift" \
       org.opencontainers.image.description="Distributed load testing & network simulator written in Go" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.vendor="stress-strike" \
-      org.opencontainers.image.source="https://github.com/asadbekabdulboqiyev/stress-strike"
+      org.opencontainers.image.vendor="Sift" \
+      org.opencontainers.image.source="https://github.com/asadbekabdulboqiyev/sift"
 
 # ca-certificates only: libpcap is no longer a runtime dependency.
 # Patch the base packages before adding ours, so a stale CVE in the pinned
@@ -95,15 +95,15 @@ WORKDIR /app
 # Reports go to a volume, owned by the unprivileged user.
 RUN mkdir -p /app/reports && chown -R stress:stress /app
 
-COPY --from=builder /out/stress-strike           /usr/local/bin/stress-strike
-COPY --from=builder /out/stress-strike-dashboard /usr/local/bin/stress-strike-dashboard
-COPY --from=builder /out/stress-strike-master    /usr/local/bin/stress-strike-master
-COPY --from=builder /out/stress-strike-worker    /usr/local/bin/stress-strike-worker
-COPY --from=builder /out/stress-strike-replay    /usr/local/bin/stress-strike-replay
-COPY --from=builder /out/stress-strike-scan      /usr/local/bin/stress-strike-scan
+COPY --from=builder /out/Sift           /usr/local/bin/Sift
+COPY --from=builder /out/Sift-dashboard /usr/local/bin/Sift-dashboard
+COPY --from=builder /out/Sift-master    /usr/local/bin/Sift-master
+COPY --from=builder /out/Sift-worker    /usr/local/bin/Sift-worker
+COPY --from=builder /out/Sift-replay    /usr/local/bin/Sift-replay
+COPY --from=builder /out/Sift-scan      /usr/local/bin/Sift-scan
 
 # Apache-2.0 §4.
-COPY LICENSE NOTICE /usr/share/doc/stress-strike/
+COPY LICENSE NOTICE /usr/share/doc/Sift/
 
 USER 10001:10001
 
@@ -122,11 +122,11 @@ STOPSIGNAL SIGTERM
 # serves GET /healthz (200 while the process is up) and GET /readyz.
 #
 # CAVEAT: HEALTHCHECK applies to every invocation of this image, including
-# plain CLI runs (e.g. `stress-strike run --url ... --users 10`) where the
+# plain CLI runs (e.g. `Sift run --url ... --users 10`) where the
 # dashboard port is never opened. Those will report "unhealthy"; orchestrators
 # that run the image as a one-shot CLI job should disable the probe
 # (`docker run --no-healthcheck`) or point it at the relevant mode.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD ["/bin/sh", "-c", "wget -qO- http://127.0.0.1:8888/healthz || exit 1"]
 
-ENTRYPOINT ["stress-strike"]
+ENTRYPOINT ["Sift"]

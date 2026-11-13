@@ -1004,14 +1004,7 @@ func interactiveDashboard(r *bufio.Reader) {
 	last := loadLastRun()
 	url := strings.TrimSpace(last.URL)
 	if url == "" {
-		fmt.Println()
-		fmt.Println("Load test configuration (WEB mode):")
-		fmt.Println()
-		url = strings.TrimSpace(readLine(r, "Target URL (e.g. https://api.example.com)"))
-	}
-	if url == "" {
-		fmt.Println("error: target URL is required.")
-		exitProcess(1)
+		url = "http://localhost:8080/health"
 	}
 	users := last.VUsers
 	if users == 0 {
@@ -1028,8 +1021,6 @@ func interactiveDashboard(r *bufio.Reader) {
 	if err != nil {
 		fatal(err)
 	}
-
-	saveLastRun(lastRun{Name: "interactive", URL: url, VUsers: users, Duration: duration})
 
 	openBrowser("http://" + listen)
 	fmt.Printf("\nWeb Server dashboard: http://%s — already open in your browser. Press Start to run.\n\n", listen)

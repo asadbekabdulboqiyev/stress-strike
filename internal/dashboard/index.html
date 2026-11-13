@@ -64,6 +64,11 @@
 
   <main class="main" id="main">
   <section class="view" id="viewOverview" aria-label="Overview">
+    <div class="page-head page-head--compact">
+      <p class="page-kicker">Load testing</p>
+      <h1 class="page-title">Overview</h1>
+      <p class="page-sub">Configure a run, watch live metrics, and review results in real time.</p>
+    </div>
 
   <!-- First-run onboarding / empty state -->
   <section class="onboarding hidden" id="onboarding" aria-labelledby="obTitle">
@@ -322,6 +327,25 @@
   </section><!-- /viewOverview -->
 
   <section class="view hidden" id="viewSecurity" aria-label="Security scanners">
+    <div class="page-head">
+      <p class="page-kicker">Security testing</p>
+      <h1 class="page-title">Security scanners</h1>
+      <p class="page-sub">Run OWASP checks, pentest, crawling, fuzzing and focused scanners from one place. Each tool enforces scope/authorization gates where applicable.</p>
+    </div>
+
+    <nav class="sec-nav" aria-label="Security tools">
+      <a class="sec-chip" href="#owaspSection">OWASP</a>
+      <a class="sec-chip" href="#pentestSection">Pentest</a>
+      <a class="sec-chip" href="#crawlSection">Crawler</a>
+      <a class="sec-chip" href="#fuzzSection">Fuzzer</a>
+      <a class="sec-chip" href="#subdomainSection">Subdomains</a>
+      <a class="sec-chip" href="#portscanSection">Port scan</a>
+      <a class="sec-chip" href="#dirbustSection">Dir bust</a>
+      <a class="sec-chip" href="#sslscanSection">SSL/TLS</a>
+      <a class="sec-chip" href="#jwtSection">JWT</a>
+      <a class="sec-chip" href="#graphqlSection">GraphQL</a>
+      <a class="sec-chip" href="#websocketSection">WebSocket</a>
+    </nav>
 
   <!-- OWASP Top 10 Security Scan -->
   <section class="panel panel--last owasp-panel" id="owaspSection" aria-labelledby="owaspTitle">
@@ -916,6 +940,11 @@
   </section>
 
   <section class="view hidden" id="viewHistory" aria-label="History">
+    <div class="page-head">
+      <p class="page-kicker">Runs &amp; fleet</p>
+      <h1 class="page-title">History</h1>
+      <p class="page-sub">Review completed runs and connected worker nodes. Use this view to compare outcomes and inspect recent activity.</p>
+    </div>
 
   <!-- Workers Table -->
   <div class="workers-section hidden" id="workersSection">

@@ -78,6 +78,26 @@ function wireNav() {
     });
   }
 
+  // Security quick-nav: switch view then scroll to the selected scanner panel.
+  var secLinks = document.querySelectorAll('.sec-chip[href^="#"]');
+  for (var j = 0; j < secLinks.length; j++) {
+    secLinks[j].addEventListener('click', function(ev) {
+      var href = this.getAttribute('href') || '';
+      if (href.charAt(0) !== '#') return;
+      var target = document.querySelector(href);
+      if (!target) return;
+      ev.preventDefault();
+      showView('viewSecurity');
+      window.setTimeout(function() {
+        try {
+          target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        } catch (e) {
+          target.scrollIntoView();
+        }
+      }, 40);
+    });
+  }
+
   // Alt+1..4 / Alt+A. Alt avoids fighting the existing S/E run shortcuts and
   // normal typing inside the URL and token fields.
   document.addEventListener('keydown', function(ev) {

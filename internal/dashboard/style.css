@@ -2728,6 +2728,221 @@ kbd {
   margin-right: 8px;
 }
 
+/* ----- PAGE HEADS & SECURITY NAV (UI/UX refresh) ----- */
+.page-head {
+  margin: 0 0 18px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, var(--bg-1), rgba(12,12,20,0.6));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.page-head--compact {
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.page-kicker {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--green);
+  font-family: var(--font-mono);
+}
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  font-weight: 800;
+}
+.page-head--compact .page-title {
+  font-size: 20px;
+}
+.page-sub {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+
+.sec-nav {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  margin: 0 0 18px;
+  background: rgba(12, 12, 20, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.sec-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-hover);
+  background: var(--bg-2);
+  color: var(--text-1);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  transition: all var(--transition);
+}
+.sec-chip:hover {
+  color: var(--text-0);
+  border-color: var(--green);
+  background: var(--green-dim);
+  transform: translateY(-1px);
+}
+.sec-chip:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* Better anchor scrolling for long security view */
+#viewSecurity .panel[id] {
+  scroll-margin-top: 84px;
+}
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* Scanner/form layout polish */
+.owasp-form, .pentest-form, .crawl-form, .fuzz-form, .subdomain-form,
+.portscan-form, .dirbust-form, .sslscan-form, .jwt-form, .graphql-form, .websocket-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+}
+.owasp-form .field, .pentest-form .field, .crawl-form .field, .fuzz-form .field,
+.subdomain-form .field, .portscan-form .field, .dirbust-form .field, .sslscan-form .field,
+.jwt-form .field, .graphql-form .field, .websocket-form .field {
+  min-width: 0;
+  width: 100%;
+}
+.owasp-field--paths, .pentest-field--paths, .fuzz-field--paths, .dirbust-field--paths {
+  grid-column: span 2;
+}
+@media (max-width: 900px) {
+  .owasp-field--paths, .pentest-field--paths, .fuzz-field--paths, .dirbust-field--paths {
+    grid-column: span 1;
+  }
+}
+.owasp-check, .pentest-check, .crawl-check, .fuzz-check {
+  align-self: center;
+  padding: 10px 12px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.owasp-run, .pentest-run, .crawl-run, .fuzz-run, .subdomain-run, .portscan-run, .dirbust-run,
+.sslscan-run, .jwt-run, .graphql-run, .websocket-run {
+  justify-self: start;
+  min-width: 160px;
+  margin-top: 0;
+}
+.jwt-form .jwt-field {
+  grid-column: 1 / -1;
+}
+
+/* Consistent notes/meta spacing */
+.pentest-note, .crawl-note, .fuzz-note, .subdomain-note, .portscan-note, .dirbust-note,
+.sslscan-note, .jwt-note, .graphql-note, .websocket-note {
+  margin-bottom: 14px;
+}
+.pentest-status, .crawl-status, .fuzz-status, .subdomain-status, .portscan-status, .dirbust-status,
+.sslscan-status, .jwt-status, .graphql-status, .websocket-status {
+  margin: 10px 0 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid transparent;
+  min-height: 18px;
+}
+.pentest-status:empty, .crawl-status:empty, .fuzz-status:empty, .subdomain-status:empty,
+.portscan-status:empty, .dirbust-status:empty, .sslscan-status:empty, .jwt-status:empty,
+.graphql-status:empty, .websocket-status:empty {
+  display: none;
+}
+
+/* Tables and result readability */
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  background: var(--bg-1);
+}
+.table-wrap table {
+  min-width: 100%;
+}
+.table-wrap th, .table-wrap td {
+  padding: 10px 12px;
+  vertical-align: top;
+}
+.empty-note {
+  text-align: center;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  padding: 18px 12px;
+}
+
+/* Certificate tab polish */
+.cert-tabs {
+  gap: 8px;
+  padding: 6px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.cert-tab {
+  border-bottom: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+}
+.cert-tab.active {
+  border-bottom-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0,232,123,0.25);
+}
+.cert-grid {
+  align-items: start;
+}
+.cert-drop {
+  min-height: 220px;
+}
+.cert-actions .btn, .cert-latest-actions .btn {
+  white-space: nowrap;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  .page-head { padding: 14px 16px; }
+  .page-title { font-size: 20px; }
+  .sec-nav { top: 0; border-radius: var(--radius); }
+  .sec-chip { flex: 1 1 auto; justify-content: center; }
+  .owasp-run, .pentest-run, .crawl-run, .fuzz-run, .subdomain-run, .portscan-run, .dirbust-run,
+  .sslscan-run, .jwt-run, .graphql-run, .websocket-run {
+    width: 100%;
+    justify-content: center;
+  }
+  .header { gap: 10px; }
+  .header-right { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+}
+
 /* ==========================================================================
    CERTIFICATE PAGE v2 — Issue / Verify / History tabs
    ========================================================================== */

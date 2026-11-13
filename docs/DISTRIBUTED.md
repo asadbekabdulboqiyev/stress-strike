@@ -36,7 +36,7 @@ virtual users and streams live telemetry back.
 ### 1. Build the Linux worker packages
 
 ```bash
-./scripts/build-worker-linux.sh 0.14.13
+./scripts/build-worker-linux.sh 0.14.14
 # -> dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz
 #    dist/linux-worker/stress-strike-worker-v0.14.0-linux-arm64.tar.gz
 ```
@@ -386,13 +386,13 @@ stress-strike-worker -listen 0.0.0.0:50061 -id w1 \
 ## Docker
 
 ```bash
-docker build -f Dockerfile.worker -t stress-strike-worker:0.14.13 .
+docker build -f Dockerfile.worker -t stress-strike-worker:0.14.14 .
 docker network create strike
 docker run -d --name master --network strike -p 50051:50051 \
   stress-strike-master...            # or run the master on a host
 docker run -d --name worker-1 --network strike \
   --ulimit nofile=1048576:1048576 \
-  stress-strike-worker:0.14.13 \
+  stress-strike-worker:0.14.14 \
   -listen 0.0.0.0:50061 -advertise worker-1:50061 \
   -master master:50051 -id worker-1
 ```

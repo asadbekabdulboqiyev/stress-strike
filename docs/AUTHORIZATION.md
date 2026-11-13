@@ -184,7 +184,7 @@ rule, reason, tool version, and argv:
   "class": "metadata",
   "allowed": false,
   "reason": "refusing to send traffic to cloud instance metadata (169.254.169.254) — this is the credential-theft path",
-  "version": "0.14.13",
+  "version": "0.14.14",
   "prev_hash": "",
   "hash": "ec7c093327623715ba7e9d91bbca257c97fc3020db24a859525c6cc0d8a6b105"
 }

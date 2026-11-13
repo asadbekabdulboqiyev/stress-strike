@@ -54,7 +54,7 @@ available for scripting.
 
 ### Build the packages once (optional — deploy-fleet does it automatically)
 ```bash
-./scripts/build-worker-linux.sh 0.14.13
+./scripts/build-worker-linux.sh 0.14.14
 # -> dist/linux-worker/stress-strike-worker-v0.14.0-linux-amd64.tar.gz
 ```
 
@@ -135,7 +135,7 @@ Tune `users`/`duration` inside `deploy/docker-compose.yml`. For very high
 connection counts use `network_mode: host` on the workers (bridge NAT
 throttles ephemeral sockets).
 
-Note: both Dockerfiles tag `0.14.13` by default. The compose setup builds from
+Note: both Dockerfiles tag `0.14.14` by default. The compose setup builds from
 source, so it always reflects the current checkout.
 
 ---

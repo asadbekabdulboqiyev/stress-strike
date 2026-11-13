@@ -1,11 +1,11 @@
 ManifestType: installer
 InstallerType: zip
 MinimumOSVersion: 10.0.17763.0
-ReleaseNotes: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.13
-ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.13
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.14
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.14
 Installers:
   - Architecture: arm64
-    InstallerUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/download/v0.14.13/Sift_0.14.13_windows_arm64.zip
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/download/v0.14.14/Sift_0.14.14_windows_arm64.zip
     InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
 FileExtensions:
   - ss

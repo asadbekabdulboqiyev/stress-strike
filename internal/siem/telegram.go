@@ -79,7 +79,10 @@ func SendTelegram(cfg TelegramConfig, alert TelegramAlert) error {
 	}
 	defer resp.Body.Close()
 
-	resBody, err := io.ReadAll(resp.Body)
+	// A hostile or broken endpoint must not be able to grow this process's
+	// heap by answering with a multi-gigabyte body: Telegram replies are a few
+	// hundred bytes, so 1 MiB is already generous.
+	resBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return fmt.Errorf("telegram: read response: %w", err)
 	}

@@ -102,7 +102,9 @@ func GeneratePayloads(cfg OllamaConfig, prompt string) ([]PayloadInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	resBody, err := io.ReadAll(resp.Body)
+	// Bounded read: a local model server (or something pretending to be one)
+	// must not be able to exhaust this process's memory with its reply.
+	resBody, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return nil, fmt.Errorf("ai: read response: %w", err)
 	}

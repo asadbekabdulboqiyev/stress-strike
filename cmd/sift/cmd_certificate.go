@@ -62,6 +62,10 @@ func cmdCertificate() {
 	fs.BoolVar(&quiet, "quiet", false, "only print the result, not the next steps")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
+		if err == flag.ErrHelp {
+			printCertificateGuide(false)
+			return
+		}
 		fatal(fmt.Errorf("certificate: %v", err))
 	}
 
@@ -172,7 +176,7 @@ func verifyCertificateFile(path string, quiet bool) {
 	fmt.Printf("  findings:  %d (c %d h %d m %d l %d i %d)\n",
 		total, a.Counts.Critical, a.Counts.High, a.Counts.Medium, a.Counts.Low, a.Counts.Info)
 	fmt.Printf("  signer:    %s...\n", firstN(c.PublicKey, 16))
-	fmt.Printf("  signed at: %s UTC\n", c.SignedAt)
+	fmt.Printf("  signed at: %s\n", displayTime(c.SignedAt))
 	if quiet {
 		return
 	}
@@ -232,7 +236,7 @@ func issueCertificate(from, out, format, keyPath, issuer string, quiet bool) {
 	case "html":
 		write(".html", []byte(certificate.HTML(cert)))
 	case "pdf":
-		write(".pdf", renderPDF(a, cert))
+		write(".pdf", renderPDF(cert.Assessment, cert))
 	case "all":
 		write(".json", jdata)
 		write(".html", []byte(certificate.HTML(cert)))
@@ -350,17 +354,37 @@ WHERE THE CODE LIVES
   the HTML does not change what was signed.)`)
 }
 
-// renderPDF renders the one-page printable certificate.
+// renderPDF renders a printable certificate PDF.
 func renderPDF(a certificate.Assessment, cert *certificate.Certificate) []byte {
+	if cert != nil {
+		if strings.TrimSpace(a.DocumentSHA) == "" {
+			a.DocumentSHA = cert.Assessment.DocumentSHA
+		}
+		if strings.TrimSpace(a.SignedAt) == "" {
+			a.SignedAt = cert.Assessment.SignedAt
+		}
+	}
 	total := a.Counts.Critical + a.Counts.High + a.Counts.Medium + a.Counts.Low + a.Counts.Info
 	pdf := certificate.NewPDF().
-		Text("Sift — Security Assessment Certificate (ss-cert/v1)").
-		Text("Target: " + a.Target).
-		Text("Grade: " + a.Grade + "   Verdict: " + a.Verdict + "   Risk: " + fmt.Sprintf("%d", a.RiskScore) + "/100").
-		Text("Findings: " + fmt.Sprintf("%d", total)).
-		Text("Issuer: " + a.Issuer + "   Signed: " + a.SignedAt + " UTC").
-		Text("Signature: " + cert.Signature).
-		Text("Public key: " + cert.PublicKey)
+		Text("Sift - Security Assessment Certificate (ss-cert/v1)").
+		Text("").
+		Text("Target: " + displayOrDash(a.Target)).
+		Text("Grade: " + displayOrDash(a.Grade) + "   Verdict: " + displayOrDash(a.Verdict) + "   Risk: " + fmt.Sprintf("%d", a.RiskScore) + "/100").
+		Text(fmt.Sprintf("Findings: %d (critical %d, high %d, medium %d, low %d, info %d)", total, a.Counts.Critical, a.Counts.High, a.Counts.Medium, a.Counts.Low, a.Counts.Info)).
+		Text("Scope: " + displayOrDash(a.Scope)).
+		Text("Started: " + displayTime(a.Started) + "   Ended: " + displayTime(a.Ended)).
+		Text("Duration: " + displayOrDash(a.Duration)).
+		Text("Issuer: " + displayOrDash(a.Issuer) + "   Issued: " + displayTime(a.SignedAt)).
+		Text("Tool: " + displayOrDash(strings.TrimSpace(a.Tool+" "+a.ToolVersion))).
+		Text("Scanner families: " + displayList(a.Covered)).
+		Text("Certificate ID: " + displayOrDash(cert.CertificateID)).
+		Text("Validity: " + displayOrDash(cert.ValidityPeriod)).
+		Text("").
+		Text("Signature (Ed25519, over canonical assessment JSON):").
+		Text(cert.Signature).
+		Text("Signer public key:").
+		Text(cert.PublicKey).
+		Text("Document SHA-256: " + displayOrDash(a.DocumentSHA))
 	out, err := pdf.Bytes()
 	if err != nil {
 		fatal(fmt.Errorf("render pdf: %w", err))
@@ -398,3 +422,35 @@ func certJSONBytes(c *certificate.Certificate) ([]byte, error) {
 
 // binaryVersion is the build version stamped into issued certificates.
 func binaryVersion() string { return buildVersion }
+
+// displayTime formats an RFC3339 timestamp for human-readable CLI/PDF output
+// without appending a redundant "UTC" suffix when the timezone is already present.
+func displayTime(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0001-01-01T00:00:00Z" {
+		return "-"
+	}
+	return s
+}
+
+func displayOrDash(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
+func displayList(items []string) string {
+	if len(items) == 0 {
+		return "-"
+	}
+	return strings.Join(items, ", ")
+}
+
+func signedAssessment(cert *certificate.Certificate) certificate.Assessment {
+	if cert == nil {
+		return certificate.Assessment{}
+	}
+	return cert.Assessment
+}

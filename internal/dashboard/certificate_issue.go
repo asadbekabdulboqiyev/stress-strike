@@ -260,20 +260,32 @@ func (s *Server) handleCertificateHistory(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// certToPDF renders a certificate to PDF bytes (single page).
+// certToPDF renders a certificate to PDF bytes.
 func certToPDF(c *certificate.Certificate) ([]byte, error) {
+	a := c.Assessment
+	total := a.Counts.Critical + a.Counts.High + a.Counts.Medium + a.Counts.Low + a.Counts.Info
 	pdf := certificate.NewPDF().
-		Text("Sift — Security Assessment Certificate (ss-cert/v1)").
-		Text("Certificate ID: " + c.CertificateID).
-		Text("Target: " + c.Assessment.Target).
-		Text("Grade: " + c.Assessment.Grade + "   Verdict: " + c.Assessment.Verdict + "   Risk: " + fmt.Sprintf("%d", c.Assessment.RiskScore) + "/100").
-		Text("Issuer: " + c.Assessment.Issuer + "   Signed: " + c.SignedAt + " UTC").
-		Text("Signature: " + c.Signature).
-		Text("Public key: " + c.PublicKey).
-		Text("Experiment reference: " + c.ExperimentReference).
-		Text("Previous certificate hash: " + c.PreviousCertificateHash).
-		Text("Validity period: " + c.ValidityPeriod).
-		Page()
+		Text("Sift - Security Assessment Certificate (ss-cert/v1)").
+		Text("").
+		Text("Certificate ID: " + displayOrDashDash(c.CertificateID)).
+		Text("Target: " + displayOrDashDash(a.Target)).
+		Text("Grade: " + displayOrDashDash(a.Grade) + "   Verdict: " + displayOrDashDash(a.Verdict) + "   Risk: " + fmt.Sprintf("%d", a.RiskScore) + "/100").
+		Text(fmt.Sprintf("Findings: %d (critical %d, high %d, medium %d, low %d, info %d)", total, a.Counts.Critical, a.Counts.High, a.Counts.Medium, a.Counts.Low, a.Counts.Info)).
+		Text("Scope: " + displayOrDashDash(a.Scope)).
+		Text("Started: " + displayOrDashDash(a.Started) + "   Ended: " + displayOrDashDash(a.Ended)).
+		Text("Duration: " + displayOrDashDash(a.Duration)).
+		Text("Issuer: " + displayOrDashDash(a.Issuer) + "   Issued: " + displayOrDashDash(a.SignedAt)).
+		Text("Tool: " + displayOrDashDash(strings.TrimSpace(a.Tool+" "+a.ToolVersion))).
+		Text("Scanner families: " + displayOrDashDash(strings.Join(a.Covered, ", "))).
+		Text("Experiment reference: " + displayOrDashDash(c.ExperimentReference)).
+		Text("Previous certificate hash: " + displayOrDashDash(c.PreviousCertificateHash)).
+		Text("Validity period: " + displayOrDashDash(c.ValidityPeriod)).
+		Text("").
+		Text("Signature (Ed25519, over canonical assessment JSON):").
+		Text(displayOrDashDash(c.Signature)).
+		Text("Signer public key:").
+		Text(displayOrDashDash(c.PublicKey)).
+		Text("Document SHA-256: " + displayOrDashDash(a.DocumentSHA))
 	return pdf.Bytes()
 }
 
@@ -282,4 +294,11 @@ func boolString(v bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func displayOrDashDash(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "-"
+	}
+	return s
 }

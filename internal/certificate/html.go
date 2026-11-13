@@ -40,6 +40,10 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 	for _, x := range a.Covered {
 		covered = append(covered, html.EscapeString(x))
 	}
+	coveredText := strings.Join(covered, ", ")
+	if coveredText == "" {
+		coveredText = "—"
+	}
 
 	total := a.Counts.Critical + a.Counts.High + a.Counts.Medium + a.Counts.Low + a.Counts.Info
 
@@ -78,7 +82,7 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 <div class="cert">
   <div class="header">
     <h1>Sift Security Assessment Certificate</h1>
-    <div class="sub">Format: ss-cert/v1 &bull; Ed25519-signed &bull; verifies offline with ` + "Sift certificate --verify" + `</div>
+    <div class="sub">Format: ss-cert/v1 &bull; Ed25519-signed &bull; verifies offline with <code>Sift certificate cert.json</code></div>
   </div>
 
   <div class="grid">
@@ -91,15 +95,15 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 
   <h2>Assessment</h2>
   <table>
-    <tr><td style="width:30%"><b>Target</b></td><td>` + html.EscapeString(a.Target) + `</td></tr>
-    <tr><td><b>Scope</b></td><td>` + html.EscapeString(a.Scope) + `</td></tr>
-    <tr><td><b>Started</b></td><td>` + html.EscapeString(a.Started) + ` UTC</td></tr>
-    <tr><td><b>Ended</b></td><td>` + html.EscapeString(a.Ended) + ` UTC</td></tr>
-    <tr><td><b>Duration</b></td><td>` + html.EscapeString(a.Duration) + `</td></tr>
-    <tr><td><b>Issuer</b></td><td>` + html.EscapeString(a.Issuer) + `</td></tr>
-    <tr><td><b>Issued</b></td><td>` + html.EscapeString(a.SignedAt) + ` UTC</td></tr>
-    <tr><td><b>Tool</b></td><td>` + html.EscapeString(a.Tool) + ` ` + html.EscapeString(a.ToolVersion) + `</td></tr>
-    <tr><td><b>Scanner families</b></td><td>` + strings.Join(covered, ", ") + `</td></tr>
+    <tr><td style="width:30%"><b>Target</b></td><td>` + html.EscapeString(displayOrDash(a.Target)) + `</td></tr>
+    <tr><td><b>Scope</b></td><td>` + html.EscapeString(displayOrDash(a.Scope)) + `</td></tr>
+    <tr><td><b>Started</b></td><td>` + html.EscapeString(displayTime(a.Started)) + `</td></tr>
+    <tr><td><b>Ended</b></td><td>` + html.EscapeString(displayTime(a.Ended)) + `</td></tr>
+    <tr><td><b>Duration</b></td><td>` + html.EscapeString(displayOrDash(a.Duration)) + `</td></tr>
+    <tr><td><b>Issuer</b></td><td>` + html.EscapeString(displayOrDash(a.Issuer)) + `</td></tr>
+    <tr><td><b>Issued</b></td><td>` + html.EscapeString(displayTime(a.SignedAt)) + `</td></tr>
+    <tr><td><b>Tool</b></td><td>` + html.EscapeString(displayOrDash(strings.TrimSpace(a.Tool+" "+a.ToolVersion))) + `</td></tr>
+    <tr><td><b>Scanner families</b></td><td>` + coveredText + `</td></tr>
   </table>
 
   <h2>Severity counts</h2>
@@ -127,8 +131,8 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
     <pre>` + html.EscapeString(signature) + `</pre>
     <div><b>Signer public key:</b></div>
     <pre>` + html.EscapeString(publicKey) + `</pre>
-    <div><b>Signed at:</b> ` + html.EscapeString(signedAt) + ` UTC &nbsp;&bull;&nbsp; <b>Format:</b> ` + html.EscapeString(version) + `</div>
-    <div style="margin-top:10px">Verify: ` + "Sift certificate --verify cert.json" + ` &mdash; valid only if the signature matches the assessment and public key.</div>
+    <div><b>Signed at:</b> ` + html.EscapeString(displayTime(signedAt)) + ` &nbsp;&bull;&nbsp; <b>Format:</b> ` + html.EscapeString(version) + `</div>
+    <div style="margin-top:10px">Verify offline: <code>Sift certificate cert.json</code> &mdash; valid only if the signature matches the assessment and public key.</div>
   </div>
 </div>
 </body>
@@ -140,4 +144,20 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 // the Assessment.DocumentSHA over the seal-excluded body.
 func HTML(c *Certificate) string {
 	return RenderHTML(c.Assessment, c.Signature, c.PublicKey, c.SignedAt, c.Version)
+}
+
+func displayTime(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0001-01-01T00:00:00Z" {
+		return "—"
+	}
+	return s
+}
+
+func displayOrDash(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "—"
+	}
+	return s
 }

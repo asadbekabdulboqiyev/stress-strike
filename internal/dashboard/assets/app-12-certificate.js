@@ -157,7 +157,7 @@ function certVerify(raw, obj) {
       certShowResult('verify-valid', obj);
       toast('Certificate is valid', 'ok');
     } else {
-      certState.reason = res.detail || 'signature mismatch';
+      certState.reason = res.reason || res.detail || 'signature mismatch';
       certStatus('Invalid: ' + certState.reason, 'bad');
       certShowResult('verify-invalid', obj);
     }
@@ -507,7 +507,14 @@ function wireCertificate() {
 /* ---- Issue: POST /api/certificate/generate ---- */
 function certIssueApi(raw, issuer, experimentRef) {
   certStatus('Issuing signed certificate…', 'busy');
-  var body = JSON.stringify({ report: raw, issuer: issuer, experiment_reference: experimentRef });
+  var reportObj;
+  try {
+    reportObj = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+  } catch (e) {
+    certStatus('That file is not valid JSON.', 'bad');
+    return;
+  }
+  var body = JSON.stringify({ report: reportObj, issuer: issuer, experiment_reference: experimentRef });
   fetch(API + '/api/certificate/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

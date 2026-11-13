@@ -7,7 +7,7 @@
 // against cloud metadata endpoints, internal networks, or third-party hosts by
 // accident or by a malicious insider.
 //
-// Three pieces:
+// Four pieces:
 //
 //	target.go   classify a target (public / private / link-local / metadata)
 //	policy.go   decide allow or deny from a policy and an allow-list

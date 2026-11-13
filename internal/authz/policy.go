@@ -93,10 +93,26 @@ func (r Rule) active(now time.Time) bool {
 	return r.Until.IsZero() || now.Before(r.Until)
 }
 
-// exact reports whether the pattern names a specific target rather than a
-// wildcard. Metadata and pentest require an exact rule.
-func (r Rule) exact() bool {
-	return r.Pattern != "" && r.Pattern != "*" && !strings.HasPrefix(r.Pattern, "*")
+// namesTarget reports whether the pattern names the host or address it covers,
+// rather than describing a scope that happens to contain it.
+//
+// The distinction is the difference between consent and convenience. A rule for
+// "shop.example.com" or "203.0.113.7" says *this* target may be attacked; a rule
+// for "*.example.com" or "10.0.0.0/8" only says a region of the network is in
+// scope. Metadata access, pentests and --authorized tickets therefore require a
+// rule that names the target: a /8 with an approver on it must never stand in
+// for an approval of the one host inside that /8 which is about to be scanned.
+func (r Rule) namesTarget() bool {
+	p := strings.TrimSpace(r.Pattern)
+	if p == "" || strings.HasPrefix(p, "*") {
+		return false
+	}
+	// A CIDR block is a range, not a target, however narrow it is: /32 and /128
+	// included, so "which host was approved" never depends on subnet arithmetic.
+	if strings.Contains(p, "/") {
+		return false
+	}
+	return true
 }
 
 // matches reports whether the rule covers t.
@@ -119,9 +135,13 @@ func (r Rule) matches(t Target) bool {
 		return false
 	}
 	if strings.HasPrefix(p, "*.") {
-		suffix := strings.TrimPrefix(p, "*.")
-		suffix = strings.ToLower(suffix)
-		return strings.HasSuffix(t.Host, "."+suffix) || t.Host == suffix
+		suffix := strings.ToLower(strings.TrimPrefix(p, "*."))
+		// Subdomains only: "*.example.com" does NOT cover "example.com". The
+		// scanner's scope allow-list makes the same choice, and for the same
+		// reason — an authorization written for a wildcard must not silently
+		// grant the apex as well, since the apex is usually the one host with
+		// production data behind it.
+		return strings.HasSuffix(t.Host, "."+suffix)
 	}
 	p = strings.ToLower(p)
 	if p == t.Host {
@@ -168,44 +188,47 @@ func (p Policy) Check(t Target, op Operation, now time.Time) Decision {
 	class := t.Class()
 	d := Decision{Class: class}
 
-	// Find the best matching active rule. Exact rules win over wildcards so a
-	// narrow authorization is never shadowed by a broad one.
-	var wildcard, exact *Rule
+	// Find the best matching active rule. A rule that names the target wins
+	// over a range or a wildcard, so a narrow authorization is never shadowed
+	// by a broad one.
+	var wildcard, named *Rule
 	for i := range p.Rules {
 		r := &p.Rules[i]
 		if !r.active(now) || !r.matches(t) {
 			continue
 		}
-		if r.exact() {
-			exact = r
+		if r.namesTarget() {
+			named = r
 			break
 		}
 		if wildcard == nil {
 			wildcard = r
 		}
 	}
-	matched := exact
+	matched := named
 	if matched == nil {
 		matched = wildcard
 	}
 
-	// Metadata: always denied unless an exact rule names it. A wildcard must
-	// never unlock the instance-metadata service.
+	// Metadata: always denied unless a rule names it. Neither a wildcard nor a
+	// CIDR that happens to contain 169.254.169.254 may unlock the
+	// instance-metadata service.
 	if class == ClassMetadata {
-		if exact == nil {
+		if named == nil {
 			d.Reason = fmt.Sprintf("refusing to send traffic to cloud instance metadata (%s) — this is the credential-theft path", t.Host)
 			return d
 		}
-		return d.allow(exact, "metadata explicitly authorized")
+		return d.allow(named, "metadata explicitly authorized")
 	}
 
-	// Offensive scanning always needs an exact, active authorization.
+	// Offensive scanning always needs an active authorization that names the
+	// target. A wildcard or a CIDR is a scope, never a consent for one host.
 	if op == OpPentest {
-		if exact == nil {
-			d.Reason = fmt.Sprintf("pentest against %s requires an explicit authorization entry (approver + ticket)", t.Host)
+		if named == nil {
+			d.Reason = fmt.Sprintf("pentest against %s requires an authorization entry naming that host (approver + ticket); a wildcard or CIDR rule is not enough", t.Host)
 			return d
 		}
-		return d.allow(exact, "pentest explicitly authorized")
+		return d.allow(named, "pentest explicitly authorized")
 	}
 
 	if matched != nil {
@@ -263,17 +286,21 @@ func (d Decision) allow(r *Rule, why string) Decision {
 	return d
 }
 
-// AuthorizedBy reports whether an active, exact rule matching t carries the
-// given ticket, and returns the matched pattern. It is the check behind the
+// AuthorizedBy reports whether an active rule that names t carries the given
+// ticket, and returns the matched pattern. It is the check behind the
 // --authorized flag: the operator names a ticket that an approver already
 // recorded, and the run proceeds only if such a rule exists.
+//
+// The rule must name the target (a host or an address). A ticket on a wildcard
+// or on a CIDR block does not count: the point of the flag is that a named
+// human approved *this* host.
 func (p Policy) AuthorizedBy(t Target, ticket string, now time.Time) (string, bool) {
 	if strings.TrimSpace(ticket) == "" {
 		return "", false
 	}
 	for i := range p.Rules {
 		r := &p.Rules[i]
-		if !r.active(now) || !r.matches(t) || !r.exact() {
+		if !r.active(now) || !r.matches(t) || !r.namesTarget() {
 			continue
 		}
 		if r.Ticket == ticket {

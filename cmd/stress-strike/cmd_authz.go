@@ -215,7 +215,7 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 	fmt.Fprintf(os.Stderr, "  target: %s\n", strings.Join(targets, ", "))
 	fmt.Fprintf(os.Stderr, "  reason: %s\n\n", out.Reason)
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
-	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-cidr> --approver <name> --ticket <id>")
+	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
 	exitProcess(authzDeniedExitCode)
 }
@@ -302,17 +302,21 @@ func authorizeUsage() {
 Authorization entries define which targets may be tested and by whose approval.
 They are stored in `+defaultPolicyPath()+`.
 
-  add     --pattern <host|*.domain|cidr|*> [--until RFC3339] [--approver NAME]
+  add     --pattern <host|ip|*.domain|cidr|*> [--until RFC3339] [--approver NAME]
           [--ticket ID] [--reason TEXT] [--policy PATH]
   list    [--policy PATH]
   remove  --pattern <pattern> [--policy PATH]
   verify  [--policy PATH]
+
+A pentest (and --authorized <ticket>) needs an entry that names the target:
+a host or an IP. "*.domain" and CIDR entries scope load tests and scans; they
+never authorize a pentest against the hosts inside them.
 `)
 }
 
 func authorizeAdd(args []string) {
 	fs := flag.NewFlagSet("authorize add", flag.ContinueOnError)
-	pattern := fs.String("pattern", "", "target pattern: host, *.domain, CIDR, or *")
+	pattern := fs.String("pattern", "", "target pattern: host, ip, *.domain, CIDR, or * (pentest needs host/ip)")
 	until := fs.String("until", "", "expiry as RFC3339 (default: no expiry)")
 	approver := fs.String("approver", "", "who approved this authorization")
 	ticket := fs.String("ticket", "", "change/incident ticket id")

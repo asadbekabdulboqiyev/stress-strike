@@ -1172,7 +1172,7 @@ func enforceScanAuthz(targetURL string, opts scanGateOptions) {
 	fmt.Fprintf(os.Stderr, "  target: %s\n", targetURL)
 	fmt.Fprintf(os.Stderr, "  reason: %s\n\n", d.Reason)
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
-	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-cidr> --approver <name> --ticket <id>")
+	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
 	cancel()
 	os.Exit(authzDeniedExitCode)

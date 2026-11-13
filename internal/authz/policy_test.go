@@ -156,3 +156,59 @@ func TestPentestRequiresExactEvenWithWildcardPresent(t *testing.T) {
 		t.Fatalf("exact rule should win: allowed=%v rule=%q", d.Allowed, d.Rule)
 	}
 }
+
+// A wildcard names subdomains, not the apex. The scanner's scope allow-list
+// makes the same choice (see internal/scanner/guard.go), and the direction of
+// the mistake matters: silently covering the apex would grant more than the
+// approver wrote down.
+func TestWildcardRuleDoesNotCoverApex(t *testing.T) {
+	apex := target(t, "https://example.com", fakeResolver{"example.com": {"93.184.216.40"}})
+	p := Policy{Mode: ModeStrict, Rules: []Rule{{Pattern: "*.example.com", Approver: "ciso"}}}
+	if d := p.Check(apex, OpLoadTest, time.Now()); d.Allowed {
+		t.Fatalf("*.example.com must not authorize the apex: %s", d.Reason)
+	}
+	sub := target(t, "https://www.example.com", fakeResolver{"www.example.com": {"93.184.216.41"}})
+	if d := p.Check(sub, OpLoadTest, time.Now()); !d.Allowed {
+		t.Fatalf("*.example.com should authorize www.example.com: %s", d.Reason)
+	}
+}
+
+// A CIDR is a scope, not a consent. Whatever ticket sits on the /8, the host
+// inside it has not been approved by name.
+func TestCIDRAndWildcardNeverAuthorizePentest(t *testing.T) {
+	tgt := target(t, "https://93.184.216.34", nil)
+	for _, pattern := range []string{"93.184.216.0/24", "93.184.0.0/16", "*.example.com", "*"} {
+		p := DefaultPolicy()
+		p.Rules = []Rule{{
+			Pattern:  pattern,
+			Approver: "ciso@corp",
+			Ticket:   "PEN-7",
+			Until:    time.Now().Add(time.Hour),
+		}}
+		if d := p.Check(tgt, OpPentest, time.Now()); d.Allowed {
+			t.Fatalf("%q must not authorize a pentest against one host", pattern)
+		}
+		if _, ok := p.AuthorizedBy(tgt, "PEN-7", time.Now()); ok {
+			t.Fatalf("%q must not satisfy --authorized for one host", pattern)
+		}
+	}
+	// The same ticket on a rule that names the address does authorize it.
+	p := DefaultPolicy()
+	p.Rules = []Rule{{Pattern: "93.184.216.34", Approver: "ciso@corp", Ticket: "PEN-7"}}
+	if d := p.Check(tgt, OpPentest, time.Now()); !d.Allowed {
+		t.Fatalf("a rule naming the address must authorize the pentest: %s", d.Reason)
+	}
+	if pat, ok := p.AuthorizedBy(tgt, "PEN-7", time.Now()); !ok || pat != "93.184.216.34" {
+		t.Fatalf("AuthorizedBy should accept the named rule, got %q %v", pat, ok)
+	}
+}
+
+// A CIDR that contains the metadata address is still not consent for it.
+func TestCIDRContainingMetadataDoesNotUnlockIt(t *testing.T) {
+	tgt := target(t, "http://169.254.169.254/latest/meta-data/", nil)
+	p := DefaultPolicy()
+	p.Rules = []Rule{{Pattern: "169.254.0.0/16", Approver: "netops"}}
+	if d := p.Check(tgt, OpLoadTest, time.Now()); d.Allowed {
+		t.Fatalf("169.254.0.0/16 must not unlock instance metadata: %s", d.Reason)
+	}
+}

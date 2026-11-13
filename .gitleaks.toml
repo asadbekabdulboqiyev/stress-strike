@@ -29,7 +29,7 @@ id = "generic-api-key"
 # mints a fresh Ed25519 keypair on every run, and the transcript prints the
 # *public* key, its fingerprint (key_id) and the coordinator key — the same 32
 # bytes, three ways. Public keys are public by construction (that is the whole
-# point of the VeriBench seal), and the private key is written mode 0600, never
+# point of the stress-strike seal), and the private key is written mode 0600, never
 # leaves the host, and never appears in a transcript. gitleaks' generic-api-key
 # rule matches any 64-character hex string, so it flags the public key.
 #

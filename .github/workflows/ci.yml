@@ -368,7 +368,7 @@ jobs:
             REVISION=${{ github.sha }}
 
   # ── verifiable evidence: prove the product claim end to end ────────────────
-  # VeriBench's entire promise is that a third party can verify a load-test
+  # stress-strike's entire promise is that a third party can verify a load-test
   # result offline: `stress-strike verify` exits 0 for a genuine bundle and 1
   # for one whose evidence was altered after signing. This job exercises that
   # against a real target and asserts BOTH directions — the positive gate would

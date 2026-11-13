@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VeriBench — verify load-test evidence offline</title>
+<title>stress-strike — verify load-test evidence offline</title>
 <meta name="description" content="An offline, dependency-free verifier for vpmp/v1 load-test evidence bundles. Drop the bundle and its raw request log; the page recomputes the fingerprint, checks the signatures and re-derives the statistics in your browser.">
 <style>
-/* page.css — VeriBench verifier page. Inlined into docs/VERIFIER.html. */
+/* page.css — stress-strike verifier page. Inlined into docs/VERIFIER.html. */
 
 :root {
   --bg: #0b0d10;
@@ -179,7 +179,7 @@ footer code { font-family: var(--mono); word-break: break-all; color: var(--text
   <div class="tag">vpmp/v1 · runs entirely in this page · nothing is uploaded</div>
   <h1>Verify load-test evidence</h1>
   <p class="lead">
-    A VeriBench bundle is a signed claim about a load test: which requests were measured, how long
+    A stress-strike bundle is a signed claim about a load test: which requests were measured, how long
     they took, and what the summary numbers are. This page re-derives all of that from the files
     themselves. If a single byte of the records, the statistics or the signatures has changed since
     the run, the check fails — and it says exactly which check failed.
@@ -232,15 +232,15 @@ footer code { font-family: var(--mono); word-break: break-all; color: var(--text
     that the correction, if claimed, is exactly the one recomputed from the raw records.
   </p>
   <p class="subtle">
-    vpmp/v1 verifier module SHA-256: <code>301b117645a2f7f756b714b21deea75851ad5a5fc5db30753fbd95aac4623e5c</code><br>
-    page interface SHA-256: <code>ab2a07226111ad7645d31f4d0616cd20199a8ff2976181a52841edf956a1628e</code>
+    vpmp/v1 verifier module SHA-256: <code>4cdcd54377c599aa0136c6b3600482ca15fcfc35f2cb3645218f8f0ceb25318a</code><br>
+    page interface SHA-256: <code>bd69b0c6ca604af7052f796dddcf14ba9568d9d7d0b237e7711a30fa6b26e898</code>
   </p>
 </footer>
 </div>
 
 <script type="module">
 /* ==== BEGIN vpmp-verifier (inlined verbatim from web/verifier/vpmp.mjs) ==== */
-// vpmp.mjs — an independent, dependency-free implementation of the VeriBench
+// vpmp.mjs — an independent, dependency-free implementation of the stress-strike
 // bundle verification algorithm (format `vpmp/v1`) in JavaScript.
 //
 // This is the browser/Node mirror of the Go verifier in internal/attest. It is
@@ -1802,7 +1802,7 @@ function isRFC3339(s) {
 /* ==== END vpmp-verifier ==== */
 
 /* ==== page interface (inlined verbatim from web/verifier/page-glue.js) ==== */
-// page-glue.js — the interface for the VeriBench verifier page.
+// page-glue.js — the interface for the stress-strike verifier page.
 //
 // This file is inlined *after* vpmp.mjs inside one <script type="module">, so it
 // can call the verifier's functions directly (same module scope). It is kept in

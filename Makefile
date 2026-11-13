@@ -54,7 +54,7 @@ verifier-page: ## Regenerate docs/VERIFIER.html from the tested verifier module
 	node web/verifier/build-html.mjs
 
 .PHONY: demo-verified
-demo-verified: ## Run the LIVE VeriBench demo (seal -> verify -> one-byte tamper -> restore)
+demo-verified: ## Run the LIVE stress-strike demo (seal -> verify -> one-byte tamper -> restore)
 	bash scripts/demo-verified.sh
 
 GOSEC ?= gosec

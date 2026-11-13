@@ -1,4 +1,4 @@
-// page-glue.js — the interface for the VeriBench verifier page.
+// page-glue.js — the interface for the stress-strike verifier page.
 //
 // This file is inlined *after* vpmp.mjs inside one <script type="module">, so it
 // can call the verifier's functions directly (same module scope). It is kept in

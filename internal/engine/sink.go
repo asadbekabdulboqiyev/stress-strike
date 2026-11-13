@@ -2,7 +2,7 @@ package engine
 
 // Sample is one attested measurement: a single executed request attempt,
 // captured with the raw latency the request actually took. It is the atomic
-// unit a VeriBench evidence bundle commits to, so a third party can recompute
+// unit a stress-strike evidence bundle commits to, so a third party can recompute
 // the run's numbers — including any coordinated-omission correction, which is
 // derived from these samples rather than stored in them — instead of trusting
 // the report.

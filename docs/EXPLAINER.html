@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>VeriBench - Load tests that prove themselves</title>
-<meta name="description" content="VeriBench turns a performance claim into checkable evidence: the plan is fixed before the run, every request becomes a sealed sample, and anyone can recompute the numbers offline.">
+<title>stress-strike - Load tests that prove themselves</title>
+<meta name="description" content="stress-strike turns a performance claim into checkable evidence: the plan is fixed before the run, every request becomes a sealed sample, and anyone can recompute the numbers offline.">
 <!-- A blank inline icon keeps the page self-contained and avoids a stray favicon request. -->
 <link rel="icon" href="data:,">
 <!-- Flip the no-js switch before first paint, so reveal animations only ever
      apply when scripting is available. Without it, everything renders static. -->
 <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 <!--
-  VeriBench explainer - single file, no external assets, works from file:// offline.
+  stress-strike explainer - single file, no external assets, works from file:// offline.
   Terminology, field names and limits follow docs/INVENTION.md (vpmp/v1), the
   frozen normative specification, and scripts/demo-verified.sh, the runnable demo.
   Palette roles:
@@ -562,7 +562,7 @@ footer{
 
 <nav class="rail" aria-label="Section navigation">
   <div class="rail-in">
-    <span class="brand"><span class="dot" aria-hidden="true"></span>VeriBench</span>
+    <span class="brand"><span class="dot" aria-hidden="true"></span>stress-strike</span>
     <ul class="rail-links">
       <li><a href="#problem">01 Problem</a></li>
       <li><a href="#idea">02 The idea</a></li>
@@ -584,13 +584,13 @@ footer{
     <div class="wrap">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow"><span class="num">VeriBench</span> <span>evidence layer for performance testing</span></p>
+          <p class="eyebrow"><span class="num">stress-strike</span> <span>evidence layer for performance testing</span></p>
           <h1>Load tests that prove themselves.</h1>
           <p class="tagline">Numbers nobody can quietly rewrite.</p>
           <p class="hero-lede">
             A load-test report today is a claim you have to take on faith. The same person
             runs the test <em>and</em> writes the result - and the result is a text file
-            anyone can edit. VeriBench changes the shape of the artifact: the measurement
+            anyone can edit. stress-strike changes the shape of the artifact: the measurement
             plan is fixed <strong>before</strong> the run, every request becomes a sealed
             sample, and the summary numbers are forced to equal what the raw stream actually
             says. A customer, a procurement officer, an auditor or a CI pipeline can
@@ -605,10 +605,10 @@ footer{
         </div>
 
         <!-- The artifact the whole document is about -->
-        <aside class="cert" data-reveal aria-label="Example VeriBench measurement bundle">
+        <aside class="cert" data-reveal aria-label="Example stress-strike measurement bundle">
           <div class="cert-head">
             <div>
-              <p class="cert-kind">VeriBench bundle</p>
+              <p class="cert-kind">stress-strike bundle</p>
               <p class="cert-id">vb-1f7c9a3d5e21</p>
             </div>
             <span class="chip chip-pass"><span aria-hidden="true">&#10003;</span> Pass</span>
@@ -717,8 +717,8 @@ footer{
             </p>
           </div>
           <div class="pane good">
-            <p class="pane-head"><span>VeriBench - sealed</span><span aria-hidden="true">&#10003;</span></p>
-            <pre tabindex="0" role="region" aria-label="VeriBench manifest example, sealed record">{
+            <p class="pane-head"><span>stress-strike - sealed</span><span aria-hidden="true">&#10003;</span></p>
+            <pre tabindex="0" role="region" aria-label="stress-strike manifest example, sealed record">{
   "format": "vpmp/v1",
   "claims": { "p99_ns": 41000000,
               "rps_milli": 150000 },
@@ -734,7 +734,7 @@ footer{
           </div>
         </div>
         <figcaption>
-          <b>Figure 1.</b> The gap VeriBench closes. Both sides can quote a p99. Only one side
+          <b>Figure 1.</b> The gap stress-strike closes. Both sides can quote a p99. Only one side
           can prove it.
         </figcaption>
       </figure>
@@ -749,7 +749,7 @@ footer{
       <p class="eyebrow"><span class="num">02</span> <span>The idea</span></p>
       <h2 class="title" id="idea-h">Commit to the plan, then reveal the evidence.</h2>
       <p class="lede narrow" data-reveal>
-        VeriBench does not ask you to trust a better dashboard. It changes the shape of the
+        stress-strike does not ask you to trust a better dashboard. It changes the shape of the
         artifact. A result becomes three things at once: a plan fixed in advance, a
         fingerprint that covers every single request, and a seal that only the operator
         could have produced.
@@ -1174,7 +1174,7 @@ footer{
       <p class="eyebrow"><span class="num">03</span> <span>Why it matters</span></p>
       <h2 class="title" id="business-h">Disputes become arithmetic.</h2>
       <p class="lede narrow" data-reveal>
-        Performance numbers are already used as commercial promises. VeriBench makes them
+        Performance numbers are already used as commercial promises. stress-strike makes them
         checkable, which changes what both sides can say in a room.
       </p>
 
@@ -1192,7 +1192,7 @@ footer{
           <span class="idx">PROCUREMENT</span>
           <h3>A checkable line in the RFP</h3>
           <p>
-            A buyer can require a VeriBench bundle as an acceptance artifact, with the exact
+            A buyer can require a stress-strike bundle as an acceptance artifact, with the exact
             verification command written into the contract. A vendor who can prove the numbers
             has an advantage over one who asks to be believed.
           </p>
@@ -1273,7 +1273,7 @@ footer{
         </table>
       </div>
 
-      <h3 class="sub" style="margin-top:3rem" data-reveal>What a VeriBench bundle does prove</h3>
+      <h3 class="sub" style="margin-top:3rem" data-reveal>What a stress-strike bundle does prove</h3>
       <ul class="limits prove" data-reveal>
         <li><span><strong>Integrity and tamper-evidence.</strong> Change the manifest and check 3 fails; change a sample and check 5 fails; change both coherently and you need the private key.</span></li>
         <li><span><strong>Attribution.</strong> The bundle was signed by the holder of the key whose fingerprint is <code>key_id</code>, embedded in the bundle.</span></li>
@@ -1303,7 +1303,7 @@ footer{
       <p class="eyebrow"><span class="num">04</span> <span>The three pillars</span></p>
       <h2 class="title" id="pillars-h">Sealing is only worth anything if the numbers are honest.</h2>
       <p class="lede narrow" data-reveal>
-        Cryptographic proof of a rigged measurement is proof of nothing. VeriBench stands on
+        Cryptographic proof of a rigged measurement is proof of nothing. stress-strike stands on
         three pillars: what was measured, how the latency was counted, and whether the claim
         survives being attacked.
       </p>
@@ -1349,7 +1349,7 @@ footer{
           <div class="staged in-card" style="margin-top:1rem">
             <div class="stage plain">
               <p class="tag">In plain words</p>
-              <p>If the server freezes for two seconds, a closed-loop tool simply stops sending - and therefore stops measuring - exactly when things are worst. The reported percentiles get better as the system gets worse. VeriBench adds the missed schedule skew back, request by request, and signs it.</p>
+              <p>If the server freezes for two seconds, a closed-loop tool simply stops sending - and therefore stops measuring - exactly when things are worst. The reported percentiles get better as the system gets worse. stress-strike adds the missed schedule skew back, request by request, and signs it.</p>
             </div>
             <div class="stage tech">
               <p class="tag">Under the hood</p>
@@ -1604,7 +1604,7 @@ veribench verify (vpmp/v1)
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <p class="eyebrow" style="margin-bottom:1rem"><span class="num">VeriBench</span> <span>in one line</span></p>
+        <p class="eyebrow" style="margin-bottom:1rem"><span class="num">stress-strike</span> <span>in one line</span></p>
         <p class="lede" style="max-width:38ch">
           A load test that fixes its plan before the run, signs every sample, and lets anyone
           check the seal offline.
@@ -1632,7 +1632,7 @@ veribench verify (vpmp/v1)
 </footer>
 
 <script>
-/* VeriBench explainer - progressive enhancement only. No external deps.
+/* stress-strike explainer - progressive enhancement only. No external deps.
    Everything here is additive: without it the document is fully readable. */
 (function () {
   'use strict';

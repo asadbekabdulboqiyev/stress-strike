@@ -1,6 +1,6 @@
 package main
 
-// cmd_verify.go — the VeriBench command surface: keygen and verify.
+// cmd_verify.go — the stress-strike command surface: keygen and verify.
 //
 // These two commands are the whole user-facing protocol. keygen makes a
 // coordinator's digital seal (an Ed25519 keypair in PEM); verify replays every
@@ -232,7 +232,7 @@ func printVerifyHuman(res attest.VerifyResult, bundlePath, samplesPath string, s
 func keygenUsage() {
 	fmt.Fprint(os.Stderr, `Usage: stress-strike keygen --out <file>
 
-Creates an Ed25519 coordinator keypair for VeriBench, written as PEM
+Creates an Ed25519 coordinator keypair for stress-strike, written as PEM
 (PKCS#8 private key + PKIX public key, mode 0600), and prints the public
 key as lowercase hex.
 
@@ -248,7 +248,7 @@ Example:
 func verifyUsage() {
 	fmt.Fprint(os.Stderr, `Usage: stress-strike verify --bundle <bundle.json> [--samples <samples.jsonl>]
 
-Verifies a VeriBench (vpmp/v1) evidence pack. It replays every check from
+Verifies a stress-strike (vpmp/v1) evidence pack. It replays every check from
 scratch: the coordinator signature, each worker's commit signature, the
 Merkle root recomputed from the raw records, the aggregates, the run-wide
 percentiles and the confidence interval.

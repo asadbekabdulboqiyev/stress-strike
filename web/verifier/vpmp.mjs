@@ -1,4 +1,4 @@
-// vpmp.mjs — an independent, dependency-free implementation of the VeriBench
+// vpmp.mjs — an independent, dependency-free implementation of the stress-strike
 // bundle verification algorithm (format `vpmp/v1`) in JavaScript.
 //
 // This is the browser/Node mirror of the Go verifier in internal/attest. It is

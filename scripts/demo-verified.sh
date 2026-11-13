@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# VeriBench demo — "your load-test report is now a receipt".
+# stress-strike demo — "your load-test report is now a receipt".
 #
 # What this proves, mechanically and checkably:
 #   1. A vpmp/v1 measurement bundle VERIFIES (signature + Merkle root + claims
@@ -56,7 +56,7 @@ warn() { printf '%s\n' "${YEL}NOTE${R}  $*"; }
 note() { printf '%s\n' "${DIM}$*${R}"; }
 
 banner() {
-  say "${B}VeriBench — verifiable measurement demo${R}"
+  say "${B}stress-strike — verifiable measurement demo${R}"
   say "${DIM}format vpmp/v1 · Ed25519 seal · Merkle-locked samples · offline verify${R}"
 }
 
@@ -111,7 +111,7 @@ PY
 
 # ──────────────────────────── CLI capability probe ───────────────────────────
 # find_bin — the binary to drive. A candidate is accepted only if it exposes the
-# VeriBench surface: a stale ./stress-strike left over from an older build
+# stress-strike surface: a stale ./stress-strike left over from an older build
 # predates `keygen`/`--emit-bundle`, and accepting one silently downgraded this
 # demo to synthetic data once already. If nothing usable is found, build from
 # this checkout (so a fresh clone with Go installed runs LIVE); failing that,
@@ -163,7 +163,7 @@ probe_emit_bundle() {
 write_reference() {
   cat > "${REF}" <<'PYEOF'
 #!/usr/bin/env python3
-"""Reference implementation of vpmp/v1 (VeriBench). Stdlib only."""
+"""Reference implementation of vpmp/v1 (stress-strike). Stdlib only."""
 import base64, datetime, hashlib, json, math, os, random, sys, time
 
 # ------------------------------- Ed25519 -------------------------------------
@@ -480,7 +480,7 @@ def cmd_emit(out, samples_path, count, duration_s, target, seed):
         "bundle_id": "vb-" + hashlib.sha256(
             b64d(key["public_key_b64"]) + str(base_ns).encode()).hexdigest()[:12],
         "created_at": iso(base_ns),
-        "tool": {"name": "VeriBench", "binary": "stress-strike",
+        "tool": {"name": "stress-strike", "binary": "stress-strike",
                  "version": "0.14.13", "protocol": "vpmp/v1"},
         "signer": {"alg": "Ed25519", "key_id": key["key_id"],
                    "public_key_b64": key["public_key_b64"]},

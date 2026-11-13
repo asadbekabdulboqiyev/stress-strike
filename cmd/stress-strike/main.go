@@ -170,8 +170,8 @@ stress-strike %s — Ultra-Fast Load Testing & Security Suite
    pentest     1-click professional security assessment
    authorize   Manage target authorizations (allow-list + approvals)
    audit       Show or verify the authorization audit trail
-   keygen      Create a VeriBench coordinator keypair (Ed25519, PEM)
-   verify      Verify a VeriBench (vpmp/v1) evidence bundle
+   keygen      Create a stress-strike coordinator keypair (Ed25519, PEM)
+   verify      Verify a stress-strike (vpmp/v1) evidence bundle
    certificate Issue/verify an Ed25519-signed security assessment certificate
    admin       Local admin area: code, status, unlock/lock the bypass switch
    help        Show this help

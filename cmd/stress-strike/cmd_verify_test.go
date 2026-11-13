@@ -1,6 +1,6 @@
 package main
 
-// cmd_verify_test.go — black-box end-to-end tests for the VeriBench command
+// cmd_verify_test.go — black-box end-to-end tests for the stress-strike command
 // surface (keygen and verify).
 //
 // keygen and verify call os.Exit, so they cannot be driven in-process without

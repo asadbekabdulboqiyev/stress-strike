@@ -171,6 +171,21 @@ for b in "${BINARIES[@]}"; do
   chmod 0755 "${PREFIX}/${b}.new"
   mv -f "${PREFIX}/${b}.new" "${PREFIX}/${b}"
   ok "$b"
+  # Cross-platform convenience: lowercase aliases/symlinks (Linux is case-sensitive).
+  lower="$(printf '%s' "$b" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lower" != "$b" ]; then
+    if [ "$os" = "windows" ]; then
+      # Best-effort: copy as lowercase name for Windows shells that expect it.
+      if [ "$lower.exe" != "$b.exe" ]; then
+        cp "${PREFIX}/${b}" "${PREFIX}/${lower}.exe" 2>/dev/null || true
+      fi
+    else
+      # Skip on Darwin (default case-insensitive filesystem) to avoid clobbering binaries.
+      if [ "$(uname -s 2>/dev/null || echo)" != "Darwin" ]; then
+        ln -sf "$b" "${PREFIX}/${lower}"
+      fi
+    fi
+  fi
 done
 
 # macOS validates the Mach-O ad-hoc signature at exec time. A copied binary can
@@ -202,7 +217,8 @@ if [[ ":$PATH:" != *":${PREFIX}:"* ]]; then
   say "    export PATH=\"\${PATH}:${PREFIX}\""
   say
 fi
-say "  verify it:   Sift version"
-say "  first run:   Sift run --url https://example.com --users 10 --duration 10"
+say "  verify it:   sift version"
+say "  first run:   sift run --url https://example.com --users 10 --duration 10"
+say "  aliases:     lowercase commands (sift, sift-dashboard, ...) are installed"
 say
-say "  Uninstall:   rm ${PREFIX}/Sift*"
+say "  Uninstall:   rm ${PREFIX}/Sift* ${PREFIX}/sift* 2>/dev/null || true"

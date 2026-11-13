@@ -147,6 +147,12 @@ for entry in "${BINARIES[@]}"; do
     cd "${REPO_ROOT}"
     CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="${LDFLAGS}" -o "${out}" "${pkg}"
   )
+  # Cross-platform convenience: provide lowercase aliases (Linux is case-sensitive).
+  # Skip on Darwin (default case-insensitive filesystem) to avoid clobbering binaries.
+  lower="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lower" != "$name" ] && [ "$(uname -s 2>/dev/null || echo)" != "Darwin" ]; then
+    ln -sf "$name" "${BIN_DIR}/${lower}"
+  fi
   built=$((built + 1))
 done
 

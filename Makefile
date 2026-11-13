@@ -83,9 +83,9 @@ release: ## Cross-compile for all platforms into ./dist
 
 .PHONY: docker
 docker: ## Build Docker image
-	docker build --build-arg VERSION=$(VERSION) -t Sift:$(VERSION) .
-	docker tag Sift:$(VERSION) Sift:latest
-	@echo "docker image built: Sift:$(VERSION)"
+	docker build --build-arg VERSION=$(VERSION) -t sift:$(VERSION) .
+	docker tag sift:$(VERSION) sift:latest
+	@echo "docker image built: sift:$(VERSION)"
 
 .PHONY: worker-linux
 worker-linux: ## Cross-compile Linux worker packages (amd64 + arm64) into ./dist
@@ -93,13 +93,13 @@ worker-linux: ## Cross-compile Linux worker packages (amd64 + arm64) into ./dist
 
 .PHONY: docker-worker
 docker-worker: ## Build the distributed worker Docker image
-	docker build -f Dockerfile.worker --build-arg VERSION=$(VERSION) -t Sift-worker:$(VERSION) .
-	@echo "docker worker image built: Sift-worker:$(VERSION)"
+	docker build -f Dockerfile.worker --build-arg VERSION=$(VERSION) -t sift-worker:$(VERSION) .
+	@echo "docker worker image built: sift-worker:$(VERSION)"
 
 .PHONY: docker-master
 docker-master: ## Build the master/coordinator Docker image
-	docker build -f Dockerfile.master --build-arg VERSION=$(VERSION) -t Sift-master:$(VERSION) .
-	@echo "docker master image built: Sift-master:$(VERSION)"
+	docker build -f Dockerfile.master --build-arg VERSION=$(VERSION) -t sift-master:$(VERSION) .
+	@echo "docker master image built: sift-master:$(VERSION)"
 
 .PHONY: deploy
 deploy: ## Friendly launcher: Docker fleet (local) or VPS fleet (SSH)

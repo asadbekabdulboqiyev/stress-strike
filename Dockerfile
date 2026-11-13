@@ -102,6 +102,14 @@ COPY --from=builder /out/Sift-worker    /usr/local/bin/Sift-worker
 COPY --from=builder /out/Sift-replay    /usr/local/bin/Sift-replay
 COPY --from=builder /out/Sift-scan      /usr/local/bin/Sift-scan
 
+# Lowercase aliases for cross-platform/consistent CLI usage inside the container.
+RUN ln -s /usr/local/bin/Sift /usr/local/bin/sift \
+ && ln -s /usr/local/bin/Sift-dashboard /usr/local/bin/sift-dashboard \
+ && ln -s /usr/local/bin/Sift-master /usr/local/bin/sift-master \
+ && ln -s /usr/local/bin/Sift-worker /usr/local/bin/sift-worker \
+ && ln -s /usr/local/bin/Sift-replay /usr/local/bin/sift-replay \
+ && ln -s /usr/local/bin/Sift-scan /usr/local/bin/sift-scan
+
 # Apache-2.0 §4.
 COPY LICENSE NOTICE /usr/share/doc/Sift/
 

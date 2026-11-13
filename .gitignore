@@ -28,3 +28,6 @@ coverage.html
 *.env
 .arena/
 coverage.out
+
+# Local/archived artifacts
+.audit-backup/

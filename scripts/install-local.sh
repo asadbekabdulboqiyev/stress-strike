@@ -43,12 +43,12 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 
 BINARIES=(
-  "Sift:./cmd/Sift"
-  "Sift-dashboard:./cmd/Sift-dashboard"
-  "Sift-scan:./cmd/Sift-scan"
-  "Sift-master:./cmd/Sift-master"
-  "Sift-replay:./cmd/Sift-replay"
-  "Sift-worker:./cmd/Sift-worker"
+  "Sift:./cmd/sift"
+  "Sift-dashboard:./cmd/sift-dashboard"
+  "Sift-scan:./cmd/sift-scan"
+  "Sift-master:./cmd/sift-master"
+  "Sift-replay:./cmd/sift-replay"
+  "Sift-worker:./cmd/sift-worker"
 )
 
 dest_dir() {
@@ -130,6 +130,12 @@ for entry in "${BINARIES[@]}"; do
   else
     ok "${name} (launch rc=${rc})"
   fi
+
+  # Cross-platform convenience: lowercase aliases/symlinks (Linux is case-sensitive).
+  lower="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lower" != "$name" ] && [ "$(uname -s 2>/dev/null || echo)" != "Darwin" ]; then
+    ln -sf "$name" "${DEST}/${lower}"
+  fi
 done
 
 say
@@ -145,5 +151,6 @@ if [[ ":$PATH:" != *":${DEST}:"* ]]; then
   say "    export PATH=\"\${PATH}:${DEST}\""
   say
 fi
-say "  run:     Sift"
-say "  web:     Sift dashboard   → http://127.0.0.1:8888"
+say "  run:     sift"
+say "  web:     sift dashboard   → http://127.0.0.1:8888"
+say "  note:    lowercase aliases (sift, sift-dashboard, ...) are installed for cross-platform use"

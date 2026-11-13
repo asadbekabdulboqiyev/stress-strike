@@ -178,22 +178,7 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 	if len(targets) == 0 {
 		return
 	}
-	out, err := evaluateAuthz(op, targets, g)
-	if err != nil {
-		fatal(err)
-	}
-
-	recordAuthz(authz.Entry{
-		Action:  op.String(),
-		Targets: targets,
-		IPs:     out.IPs,
-		Class:   out.Class,
-		Allowed: out.Allowed,
-		Rule:    out.Rule,
-		Reason:  out.Reason,
-		Version: buildVersion,
-		Argv:    argv,
-	}, g.auditPath, g.webhook)
+	out := authzDecision(op, targets, argv, g)
 
 	if out.Allowed {
 		if out.Rule == "admin-unlock" {
@@ -211,13 +196,43 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 		return
 	}
 
+	printAuthzDenial(targets, out)
+	exitProcess(authzDeniedExitCode)
+}
+
+// authzDecision evaluates the policy and appends the audit record, without
+// deciding what to do about a denial. enforceAuthz is the version that stops
+// the program; `pentest --dry-run` calls this one so it can show the decision
+// as part of the plan instead of refusing to show the plan at all.
+func authzDecision(op authz.Operation, targets []string, argv []string, g gateOptions) authzOutcome {
+	out, err := evaluateAuthz(op, targets, g)
+	if err != nil {
+		fatal(err)
+	}
+
+	recordAuthz(authz.Entry{
+		Action:  op.String(),
+		Targets: targets,
+		IPs:     out.IPs,
+		Class:   out.Class,
+		Allowed: out.Allowed,
+		Rule:    out.Rule,
+		Reason:  out.Reason,
+		Version: buildVersion,
+		Argv:    argv,
+	}, g.auditPath, g.webhook)
+
+	return out
+}
+
+// printAuthzDenial explains a refusal and what would lift it.
+func printAuthzDenial(targets []string, out authzOutcome) {
 	fmt.Fprintf(os.Stderr, "\nBLOCKED by authorization policy\n")
 	fmt.Fprintf(os.Stderr, "  target: %s\n", strings.Join(targets, ", "))
 	fmt.Fprintf(os.Stderr, "  reason: %s\n\n", out.Reason)
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
 	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
-	exitProcess(authzDeniedExitCode)
 }
 
 func recordAuthz(e authz.Entry, auditPath, webhook string) {

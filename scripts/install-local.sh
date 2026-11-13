@@ -5,7 +5,7 @@
 #
 # Usage:
 #   ./scripts/install-local.sh                 # install into $(go env GOBIN)
-#   ./scripts/install-local.sh 0.14.14         # pin the version string
+#   ./scripts/install-local.sh 0.15.0         # pin the version string
 #   SIFT_INSTALL_DIR=~/.local/bin ./scripts/install-local.sh
 #
 # Why the signing step exists

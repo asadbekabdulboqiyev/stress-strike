@@ -8,7 +8,7 @@
 # Replace both hashes with the values from checksums.txt in the release.
 
 PackageIdentifier: asadbekabdulboqiyev.Sift
-PackageVersion: 0.14.14
+PackageVersion: 0.15.0
 DefaultLocale: en-US
 ManifestType: installer
 InstallerType: zip
@@ -16,8 +16,8 @@ License: Apache-2.0
 Publisher: asadbekabdulboqiyev
 Author: Sift maintainers
 Homepage: https://github.com/asadbekabdulboqiyev/Sift
-ReleaseNotes: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.14
-ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.14
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.15.0
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.15.0
 InstallationNotes: |
   Pure Go build: no libpcap, no C runtime, no system dependencies.
 
@@ -40,7 +40,7 @@ InstallerSwitches:
 
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/download/v0.14.14/Sift_0.14.14_windows_amd64.zip
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/download/v0.15.0/Sift_0.15.0_windows_amd64.zip
     InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
 
 FileExtensions:

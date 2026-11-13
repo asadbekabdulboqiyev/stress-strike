@@ -30,7 +30,7 @@ Ultra-fast multi-protocol load testing, traffic replay, and security audit suite
 - **SLA gate** — CI/CD performance gate with exit code 2 on regression
 - **VeriGate protection** — built-in WAF-style gate (rate limit + proof-of-work challenge + IP blocking) with a live on/off toggle, shipped with VoltStore, a real-world e-commerce demo built to be attacked (`docs/VERIGATE.md`)
 - **Baseline comparison** — delta reports against a previous run (RPS, p50/p95/p99, errors)
-- **Go library API** — `import "stress-strike/api"` for embedding in programs and test suites
+- **Go library API** — `import "Sift/api"` for embedding in programs and test suites
 - **Timeline CSV** — per-second export for Grafana, Jupyter, or spreadsheet analysis
 - **Global pacing** — optional `rps` cap via a thread-safe token bucket
 - **Real-time telemetry** — live progress bar (RPS, active users, errors, p50/p95/p99, top error types) and color-coded final report with per-step latency percentiles
@@ -66,21 +66,21 @@ when you&rsquo;re done and cleans up the demo site.
 
 ### Install (one command)
 
-> By default `stress-strike` installs from the module proxy. Requires **Go 1.26+**.
+> By default `Sift` installs from the module proxy. Requires **Go 1.26+**.
 > The whole suite is pure Go — no CGO, no libpcap, no system dependencies.
 
 ```sh
 # Latest release (installs all binaries: run, replay, scan, dashboard, master, worker)
-go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+go install github.com/asadbekabdulboqiyev/sift/cmd/sift@latest
 
 # Or use the convenience installer (installs every binary; pinned release, checksum-verified)
 # Download first, review, then run — never pipe remote code straight into bash.
-curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/stress-strike/v0.14.14/scripts/install.sh
+curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.14.14/scripts/install.sh
 less install.sh
 ./install.sh v0.14.14
 ```
 
-If `stress-strike` isn't found after installing, add Go's bin directory to your `PATH`:
+If `Sift` isn't found after installing, add Go's bin directory to your `PATH`:
 
 ```sh
 export PATH="$PATH:$(go env GOPATH)/bin"
@@ -90,7 +90,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 > no `brew install libpcap`, works on macOS/Linux/Windows out of the box.
 > Upgrade an old install anytime:
 > ```sh
-> go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+> go install github.com/asadbekabdulboqiyev/sift/cmd/sift@latest
 > ./scripts/install.sh   # or: ./scripts/install.sh v0.14.14
 > ```
 
@@ -101,10 +101,10 @@ service to try it out — there is nothing to break:
 
 ```sh
 # Terminal 1 — start a local demo target (health, auth, slow, and failing endpoints)
-go run github.com/asadbekabdulboqiyev/stress-strike/examples/demo_server.go
+go run github.com/asadbekabdulboqiyev/sift/examples/demo_server.go
 
 # Terminal 2 — 200 concurrent users hitting /health for 30 seconds
-stress-strike run --url http://localhost:8080/health --users 200 --duration 30
+Sift run --url http://localhost:8080/health --users 200 --duration 30
 ```
 
 You get a live progress bar, then a terminal report with RPS, latency
@@ -113,7 +113,7 @@ again with `--mode dashboard`, then open http://localhost:8888 and hit **Start**
 
 ### Interactive mode (no flags)
 
-Running `stress-strike` with no arguments from a terminal opens a three-option picker:
+Running `Sift` with no arguments from a terminal opens a three-option picker:
 
 ```
   1) CLI   — run a load test and print the report here
@@ -127,38 +127,38 @@ Choosing **AUTH** opens a submenu:
 - Audit — show the authorization audit trail
 - Verify — check an evidence bundle or certificate file
 
-Everything is also available via direct commands (`stress-strike authorize ...`, `stress-strike audit ...`, etc.).
+Everything is also available via direct commands (`Sift authorize ...`, `Sift audit ...`, etc.).
 
 ### Load profiles that matter
 
 ```sh
 # Ramp to 1000 users over 30s, hold for 60s, capped at 2000 rps
-stress-strike run --url https://api.example.com --profile linear-ramp \
+Sift run --url https://api.example.com --profile linear-ramp \
   --users 1000 --duration 90 --ramp-up 30 --rps 2000
 
 # Instant spike: 100 users baseline, burst to 50K for 15s
-stress-strike run --url https://api.example.com --profile spike \
+Sift run --url https://api.example.com --profile spike \
   --users 100 --spike-users 50000 --spike-warmup 5 --spike-hold 15
 
 # 1-hour soak test at 500 users
-stress-strike run --url https://api.example.com --profile soak \
+Sift run --url https://api.example.com --profile soak \
   --users 500 --duration 3600
 
 # Sinusoidal wave with 60s oscillation period
-stress-strike run --url https://api.example.com --profile wave \
+Sift run --url https://api.example.com --profile wave \
   --users 1000 --duration 180 --wave-period 60
 
 # CI/CD gate — fail (exit 2) if P99 > 200ms or error rate > 1%
-stress-strike run --url https://api.example.com --users 50 --duration 30 \
+Sift run --url https://api.example.com --users 50 --duration 30 \
   --expect-p99-ms 200 --expect-error-rate 1
 ```
 
 ### Build from source
 
 ```sh
-git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
-cd stress-strike
-make build          # produces bin/stress-strike + all sibling binaries
+git clone https://github.com/asadbekabdulboqiyev/sift.git
+cd sift
+make build          # produces bin/Sift + all sibling binaries
 make test           # run the full suite with the race detector
 ```
 
@@ -167,7 +167,7 @@ demo target locally and run a test against it:
 
 ```sh
 go run ./examples/demo_server.go          # terminal 1 — local demo target
-go run ./cmd/stress-strike run --url http://localhost:8080/health --users 100 --duration 20
+go run ./cmd/Sift run --url http://localhost:8080/health --users 100 --duration 20
 ```
 
 ---
@@ -175,7 +175,7 @@ go run ./cmd/stress-strike run --url http://localhost:8080/health --users 100 --
 ## Commands Reference
 
 ```
-stress-strike <command> [flags]
+Sift <command> [flags]
 ```
 
 | Command | Description |
@@ -199,58 +199,58 @@ recorded by someone else plus the ticket name on the command line.
 
 ```sh
 # an approver records the authorization
-stress-strike authorize add --pattern shop.example.com \
+Sift authorize add --pattern shop.example.com \
   --approver ciso@corp --ticket SEC-77 --until 2026-12-01T00:00:00Z --reason "pre-release soak"
 
 # the operator runs against it
-stress-strike run --url https://shop.example.com --users 200 --duration 300 --authorized SEC-77
-stress-strike pentest --target https://shop.example.com --authorized SEC-77
+Sift run --url https://shop.example.com --users 200 --duration 300 --authorized SEC-77
+Sift pentest --target https://shop.example.com --authorized SEC-77
 ```
 
 Every allow and deny is written to a hash-chained, tamper-evident audit log:
 
 ```sh
-stress-strike audit show --limit 20
-stress-strike audit verify        # exits 1 if any record was modified
+Sift audit show --limit 20
+Sift audit verify        # exits 1 if any record was modified
 ```
 
 `--notify-webhook <url>` posts each decision to Slack or any webhook; a blocked
 run exits with code `3`. See [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) for
 the target classes, the policy file format, and the audit record.
 
-### `stress-strike pentest`
+### `Sift pentest`
 
 Full security assessment in one command — 14 automated phases:
 
 ```bash
 # Standard assessment (crawl + NVD + compliance, all report formats)
-stress-strike pentest --target https://example.com
+Sift pentest --target https://example.com
 
 # Authenticated scan behind login (where 80% of vulnerabilities live)
-stress-strike pentest --target https://app.example.com \
+Sift pentest --target https://app.example.com \
   --auth-form https://app.example.com/login \
   --auth-user admin --auth-pass 'S3cret'
 
 # Session cookie / API token auth
-stress-strike pentest --target https://app.example.com --auth-cookie 'session=abc123'
-stress-strike pentest --target https://api.example.com --auth-header 'Authorization: Bearer eyJ...'
+Sift pentest --target https://app.example.com --auth-cookie 'session=abc123'
+Sift pentest --target https://api.example.com --auth-header 'Authorization: Bearer eyJ...'
 
 # Browser-based auth for OAuth / deep login flows (SPA, SSO, etc.)
-stress-strike pentest --target https://app.example.com \
+Sift pentest --target https://app.example.com \
   --auth-browser-login-url https://app.example.com/login \
   --auth-browser-user admin --auth-browser-pass 'S3cret'
 
 # Deep scan, verbose, PDF only, PCI DSS only
-stress-strike pentest --target example.com --depth 3 --verbose --format pdf --compliance pci-dss
+Sift pentest --target example.com --depth 3 --verbose --format pdf --compliance pci-dss
 
 # Web-only scope, no crawling, skip load test
-stress-strike pentest --target https://example.com --crawl=false --skip-load-test
+Sift pentest --target https://example.com --crawl=false --skip-load-test
 
 # Crawl JS-rendered SPA pages with headless browser
-stress-strike pentest --target https://app.example.com --use-browser --crawl
+Sift pentest --target https://app.example.com --use-browser --crawl
 
 # Show what a scan would do, and send nothing (no reachability probe, no phase)
-stress-strike pentest --target https://example.com --dry-run
+Sift pentest --target https://example.com --dry-run
 ```
 
 Phases: technology fingerprint → port scan → subdomain discovery →
@@ -299,7 +299,7 @@ CI/CD friendly.
 > **Ethical use:** only run against systems you own or have written
 > authorization to test.
 
-### `stress-strike run`
+### `Sift run`
 
 Core load testing command. Run with `--url` for quick mode or `--config` for YAML scenarios.
 
@@ -335,7 +335,7 @@ Core load testing command. Run with `--url` for quick mode or `--config` for YAM
 
 **Exit codes:** `0` success · `1` setup error · `2` SLA/regression gate failed
 
-### `stress-strike replay`
+### `Sift replay`
 
 Replay captured production traffic at configurable speed. Supports PCAP and HAR formats.
 
@@ -359,19 +359,19 @@ Replay captured production traffic at configurable speed. Supports PCAP and HAR 
 
 ```sh
 # Replay HAR at 10x speed
-stress-strike replay --input traffic.har --rate 10x
+Sift replay --input traffic.har --rate 10x
 
 # Replay PCAP at 50x with 50 workers, only GET requests
-stress-strike replay --input capture.pcap --rate 50x --concurrency 50 --methods GET
+Sift replay --input capture.pcap --rate 50x --concurrency 50 --methods GET
 
 # Replay with response validation
-stress-strike replay --input traffic.har --rate 5x --validate --assert-status 200
+Sift replay --input traffic.har --rate 5x --validate --assert-status 200
 
 # Replay to staging server
-stress-strike replay --input traffic.har --base-url https://staging.example.com --rate 5x
+Sift replay --input traffic.har --base-url https://staging.example.com --rate 5x
 ```
 
-### `stress-strike scan`
+### `Sift scan`
 
 TLS/WAF deep scanner with vulnerability detection and risk scoring.
 
@@ -395,18 +395,18 @@ Scans include:
 
 ```sh
 # Full scan
-stress-strike scan --target example.com --all
+Sift scan --target example.com --all
 
 # TLS scan only
-stress-strike scan --target example.com --tls
+Sift scan --target example.com --tls
 
 # Export scan to JSON
-stress-strike scan --target example.com --all --output-json scan.json
+Sift scan --target example.com --all --output-json scan.json
 ```
 
 ## Headless Browser Scanning (SPA / OAuth / JS-rendered pages)
 
-stress-strike can use headless Chromium (via Chrome DevTools Protocol) to scan
+Sift can use headless Chromium (via Chrome DevTools Protocol) to scan
 JavaScript-rendered applications (React, Vue, Angular, etc.) where links and
 forms are generated dynamically. This also enables browser-based authentication
 for OAuth, SAML, SSO, and other deep login flows that standard HTTP auth cannot
@@ -418,7 +418,7 @@ Use `--use-browser` to crawl with headless Chromium instead of plain HTTP.
 This discovers endpoints and forms that only appear after JavaScript execution:
 
 ```bash
-stress-strike pentest --target https://app.example.com --use-browser --crawl
+Sift pentest --target https://app.example.com --use-browser --crawl
 ```
 
 ### Browser-based authentication (OAuth / deep login)
@@ -428,7 +428,7 @@ Use `--auth-browser-login-url` with `--auth-browser-user` and
 login flows that involve redirects, CAPTCHA challenges, or multi-step forms:
 
 ```bash
-stress-strike pentest --target https://app.example.com \
+Sift pentest --target https://app.example.com \
   --auth-browser-login-url https://accounts.example.com/oauth/login \
   --auth-browser-user admin --auth-browser-pass 'S3cret'
 ```
@@ -436,7 +436,7 @@ stress-strike pentest --target https://app.example.com \
 Optional CSS selectors can override the default field detection:
 
 ```bash
-stress-strike pentest --target https://app.example.com \
+Sift pentest --target https://app.example.com \
   --auth-browser-login-url https://app.example.com/login \
   --auth-browser-user admin --auth-browser-pass 'S3cret' \
   --auth-browser-user-sel "input[name='email']" \
@@ -447,7 +447,7 @@ stress-strike pentest --target https://app.example.com \
 **Requirements:** Google Chrome or Chromium must be installed on the system.
 The browser runs headless and is automatically detected.
 
-### `stress-strike dashboard`
+### `Sift dashboard`
 
 Start a real-time web dashboard with live telemetry over WebSocket.
 
@@ -474,7 +474,7 @@ Features:
 - Start/stop runs directly from the browser
 - **Sidebar shell** — Overview, Security, History views (Alt+1–4)
 - **Verifiable evidence for every run** — a finished run seals a `vpmp/v1`
-  bundle you can download and check offline (see *web mode* under stress-strike
+  bundle you can download and check offline (see *web mode* under Sift
   below); the UI shows the operator-key fingerprint and offers a server-side
   `verify`
 - Operations endpoints for orchestrators: `/healthz`, `/readyz`, `/metrics`
@@ -482,10 +482,10 @@ Features:
 
 ```sh
 # Local only — loopback bind, no credential needed
-stress-strike dashboard
+Sift dashboard
 
 # Exposed on all interfaces — a bearer token is required
-stress-strike dashboard --listen 0.0.0.0:8888 --auth-token "$(openssl rand -hex 24)"
+Sift dashboard --listen 0.0.0.0:8888 --auth-token "$(openssl rand -hex 24)"
 # Open http://<host>:8888 and send the token as `Authorization: Bearer <token>`
 ```
 
@@ -519,7 +519,7 @@ A category the scanner could not actually exercise is reported as `NOT TESTED`,
 never as `PASS`. See [docs/OWASP-SCANNER.md](docs/OWASP-SCANNER.md) for the
 coverage and its limits.
 
-### `stress-strike master`
+### `Sift master`
 
 Distributed load testing coordinator. Distributes users across worker nodes.
 
@@ -544,7 +544,7 @@ Distributed load testing coordinator. Distributes users across worker nodes.
 | `--timeline` | | Export CSV timeline |
 | `--quiet` | `false` | Suppress the live aggregate progress line |
 
-### `stress-strike worker`
+### `Sift worker`
 
 Distributed load testing worker node. Receives commands from master over gRPC.
 
@@ -780,13 +780,13 @@ Run load tests across multiple machines using the master/worker architecture ove
 
 ```sh
 # On machine A (worker)
-stress-strike-worker -listen :50052 -id worker-a -max-users 200000
+Sift-worker -listen :50052 -id worker-a -max-users 200000
 
 # On machine B (worker)
-stress-strike-worker -listen :50052 -id worker-b -max-users 200000
+Sift-worker -listen :50052 -id worker-b -max-users 200000
 
 # On machine C (master) — distributes 3000 users across 2 workers
-stress-strike-master \
+Sift-master \
   -workers host-a:50052,host-b:50052 \
   -url https://api.example.com \
   -users 3000 \
@@ -797,7 +797,7 @@ stress-strike-master \
 ### With scenario file
 
 ```sh
-stress-strike-master \
+Sift-master \
   -workers host-a:50052,host-b:50052,host-c:50052 \
   -config scenario.yaml
 ```
@@ -813,9 +813,9 @@ Start the master with `-wait-workers N`, then launch workers that register
 themselves — no static address list needed:
 
 ```sh
-stress-strike-master -listen :50051 -wait-workers 3 -url https://api.example.com -users 30000 -duration 120
+Sift-master -listen :50051 -wait-workers 3 -url https://api.example.com -users 30000 -duration 120
 
-stress-strike-worker -listen 0.0.0.0:50052 -id worker-a \
+Sift-worker -listen 0.0.0.0:50052 -id worker-a \
   -master master-host:50051 -advertise host-a:50052
 ```
 
@@ -825,8 +825,8 @@ Pass the same `-token` to the master and every worker; calls without it are
 rejected with `Unauthenticated`:
 
 ```sh
-stress-strike-master -workers host-a:50052 -token "$STRESS_TOKEN" ...
-stress-strike-worker -listen :50052 -token "$STRESS_TOKEN" ...
+Sift-master -workers host-a:50052 -token "$STRESS_TOKEN" ...
+Sift-worker -listen :50052 -token "$STRESS_TOKEN" ...
 ```
 
 ### Deploying to real Linux load hosts
@@ -845,10 +845,10 @@ the repo:
 
 ```sh
 # one host manually
-scp dist/linux-worker/stress-strike-worker-v0.14.14-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
+scp dist/linux-worker/Sift-worker-v0.14.14-linux-amd64.tar.gz deploy/fleet/bootstrap-worker.sh root@HOST:/tmp/
 ssh root@HOST 'cd /tmp && \
   SS_MASTER=10.0.0.5:50051 SS_TOKEN=secret \
-  bash bootstrap-worker.sh stress-strike-worker-v0.14.14-linux-amd64.tar.gz'
+  bash bootstrap-worker.sh Sift-worker-v0.14.14-linux-amd64.tar.gz'
 
 # a whole fleet (builds packages, scp + installs, prints the master command)
 ./scripts/deploy-fleet.sh --master 10.0.0.5:50051 --token secret -- root@10.0.0.11 root@10.0.0.12
@@ -866,11 +866,11 @@ Many CDNs and WAFs fingerprint clients by their TLS ClientHello (JA3/JA4).
 Go's own hello is distinctive, so pure-Go load generators get blocked or
 challenged the instant a fingerprinting rule goes live.
 
-`stress-strike` can impersonate a real browser or mobile client at the TLS
+`Sift` can impersonate a real browser or mobile client at the TLS
 layer with `-tls-fingerprint` (or `tls_fingerprint:` in a scenario):
 
 ```sh
-stress-strike run --url https://api.example.com \
+Sift run --url https://api.example.com \
   --users 500 --duration 120 \
   --tls-fingerprint chrome      # or: firefox, safari, edge, ios, android_okhttp
 ```
@@ -905,7 +905,7 @@ path). The engine has been exercised end-to-end against live TLS hosts, where a
 `chrome` masked run returns full 200s while unmasked Go hellos get marked.
 
 In distributed mode, pass the same flag on the master and every worker receives
-it in the scenario: `stress-strike-master -tls-fingerprint chrome -wait-workers 4 ...`.
+it in the scenario: `Sift-master -tls-fingerprint chrome -wait-workers 4 ...`.
 
 ---
 
@@ -916,7 +916,7 @@ Define performance thresholds that fail the run with exit code 2 when violated.
 ### CLI flags
 
 ```sh
-stress-strike run --url http://localhost:8080/health \
+Sift run --url http://localhost:8080/health \
   --users 300 --duration 30 \
   --expect-p99-ms 250 \
   --expect-error-rate 1 \
@@ -956,14 +956,14 @@ jobs:
         with:
           go-version: '1.26'
 
-      - run: go install github.com/asadbekabdulboqiyev/stress-strike/cmd/stress-strike@latest
+      - run: go install github.com/asadbekabdulboqiyev/sift/cmd/sift@latest
 
       - name: Start service
         run: ./your-service &
 
       - name: Performance gate
         run: |
-          stress-strike run \
+          Sift run \
             --url http://localhost:8080/health \
             --users 300 --duration 30 \
             --expect-p99-ms 250 \
@@ -976,11 +976,11 @@ jobs:
 
 ```sh
 # Day 1: save a healthy baseline
-stress-strike run --url http://localhost:8080/health \
+Sift run --url http://localhost:8080/health \
   --users 200 --duration 10 --name baseline-v1
 
 # Day 2: gate on regression detection
-stress-strike run --url http://localhost:8080/health \
+Sift run --url http://localhost:8080/health \
   --users 200 --duration 10 --name release-candidate \
   --compare "$(ls -t reports/baseline-v1_*.json | head -1)" \
   --regress-pct 25
@@ -1001,7 +1001,7 @@ import (
     "log"
     "time"
 
-    "stress-strike/api"
+    "Sift/api"
 )
 
 func main() {
@@ -1059,7 +1059,7 @@ Requires Go 1.26+.
                   [ Telemetry --> Report (JSON/TXT) ]
 ```
 
-- `cmd/stress-strike` — CLI entry point and flag parsing
+- `cmd/Sift` — CLI entry point and flag parsing
 - `api` — stable, public Go library API
 - `internal/engine` — concurrency, load profiles, protocol clients, assertions, token-bucket pacing
 - `internal/config` — scenario model and validation
@@ -1069,15 +1069,15 @@ Requires Go 1.26+.
 The `internal/engine` package is designed to later split into standalone **Worker Nodes**; `internal/report` + CLI logic maps to a future **Master Controller**.
 
 ```sh
-git clone https://github.com/asadbekabdulboqiyev/stress-strike.git
-cd stress-strike
+git clone https://github.com/asadbekabdulboqiyev/sift.git
+cd sift
 ```
 
 ### Makefile targets
 
 | Target | Description |
 |--------|-------------|
-| `make build` | Build `stress-strike` + `demo-server` into `./bin` |
+| `make build` | Build `Sift` + `demo-server` into `./bin` |
 | `make test` | Run tests with race detector |
 | `make vet` | Run `go vet` |
 | `make lint` | `go vet` + `gofmt` enforcement |
@@ -1099,9 +1099,9 @@ linux/amd64     windows/amd64
 ### Docker
 
 ```sh
-docker build -t stress-strike .
+docker build -t Sift .
 docker run --rm --cpus=2 --memory=512m \
-  stress-strike run --url http://host.docker.internal:8080/health \
+  Sift run --url http://host.docker.internal:8080/health \
   --users 100 --duration 5
 ```
 
@@ -1154,10 +1154,10 @@ attacked. The gate toggles live via CLI flag or HTTP endpoint:
 make demo-store-protect     # boot VoltStore with VeriGate ON
 make demo-sla               # SLA verify gate: ON->FAIL, OFF->PASS (one command)
 
-# or launch it straight from the stress-strike CLI (VeriGate ON by default,
+# or launch it straight from the Sift CLI (VeriGate ON by default,
 # same supervision as the dashboard button):
-stress-strike demo-store
-stress-strike demo-store -protect=false -addr 127.0.0.1:9090
+Sift demo-store
+Sift demo-store -protect=false -addr 127.0.0.1:9090
 
 # or toggle at runtime, no restart:
 curl -X POST 127.0.0.1:8090/admin/protect \
@@ -1166,7 +1166,7 @@ curl 127.0.0.1:8090/admin/stats          # live counters
 open http://127.0.0.1:8090/admin          # live dashboard
 ```
 
-`scripts/demo-store-sla.sh` runs the same stress-strike SLA gate twice —
+`scripts/demo-store-sla.sh` runs the same Sift SLA gate twice —
 with protection ON the attack is throttled to >99% errors (exit 2), then the
 gate is toggled OFF and the store absorbs ~16k req/s (exit 0). One command
 proves the protection flips a CI gate:
@@ -1182,9 +1182,9 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 
 ---
 
-## stress-strike — Verifiable, Honest Load-Test Evidence
+## Sift — Verifiable, Honest Load-Test Evidence
 
-**stress-strike** turns a load-test run into a cryptographic receipt. A judge, auditor, or CI gate can verify the evidence **offline** — no trust in the runner required.
+**Sift** turns a load-test run into a cryptographic receipt. A judge, auditor, or CI gate can verify the evidence **offline** — no trust in the runner required.
 
 ### Three pillars
 
@@ -1200,7 +1200,7 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 # 1. Start a target (local demo server on loopback)
 go run ./examples/demo_server.go
 
-# 2. Run the stress-strike demo — builds the CLI, runs paced traffic, seals & verifies
+# 2. Run the Sift demo — builds the CLI, runs paced traffic, seals & verifies
 ./scripts/demo-verified.sh
 # → keygen → run (coordinated-omission corrected) → verify PASS
 # → one-byte tamper → verify FAIL → restore → verify PASS
@@ -1212,10 +1212,10 @@ go run ./examples/demo_server.go
 - **Samples**: raw wire measurements (JSONL sidecar). The coordinated-omission correction is *derived* by any verifier from those samples (`internal/honesty.CorrectedLatencyNS`), not baked in — so the derivation is auditable.
 - **CLI**:
   ```sh
-  stress-strike keygen --out <file>
-  stress-strike run --url <t> --rps <N> --users <M> --duration <S> \
+  Sift keygen --out <file>
+  Sift run --url <t> --rps <N> --users <M> --duration <S> \
       --coordinated-omission --emit-bundle <b.json> --bundle-key <key>
-  stress-strike verify --bundle <b.json> [--samples <s.jsonl>] [--json] [--expect-key <hex>]
+  Sift verify --bundle <b.json> [--samples <s.jsonl>] [--json] [--expect-key <hex>]
   # exit 0 = valid, 1 = tampered (fail-closed) or unreadable input, 2 = usage error
   ```
 
@@ -1226,12 +1226,12 @@ The web dashboard is not only a viewer: a run started from it **seals the same
 verifiable evidence.
 
 - **Persistent operator key** — the coordinator key is minted once and reused
-  (`~/.stress-strike/dashboard/operator.key`, written `0600`), so every run from
+  (`~/.Sift/dashboard/operator.key`, written `0600`), so every run from
   this dashboard carries a **stable fingerprint** you can pin with
   `--expect-key` on any other machine.
 - **Artifacts** — each completed run writes `bundle.json` and
   `bundle.json.samples.jsonl` under
-  `~/.stress-strike/dashboard/bundles/<runID>/`.
+  `~/.Sift/dashboard/bundles/<runID>/`.
 - **In the UI** — an *Attestation* card shows the fingerprint, the artifact
   status, whether the percentiles are raw or corrected, and one-click
   **Download** for the bundle and its sidecar.
@@ -1252,12 +1252,12 @@ rejects such a body with `400`.
 
 Dashboard bundles record `co_corrected: false`: dashboard scenarios never set
 `profile.coordinated_omission`, which is exactly what
-`stress-strike run --emit-bundle` does for the same scenario, so the percentiles
+`Sift run --emit-bundle` does for the same scenario, so the percentiles
 are labelled **raw** rather than falsely corrected.
 
 The bundle the dashboard writes is byte-for-byte the format the CLI verifies —
 verified end-to-end: a dashboard run reported *N* requests, its bundle contained
-*N* records, and `stress-strike verify` returned exit `0` (`valid: true`,
+*N* records, and `Sift verify` returned exit `0` (`valid: true`,
 `checks_failed: 0`) while a one-byte edit of the sidecar returned exit `1`.
 
 ### Verify it yourself — in a browser, offline
@@ -1292,7 +1292,7 @@ The same check runs in the `Security` workflow (gosec pinned to v2.29.0, the ver
 
 ### When is CO correction claimed?
 
-Only when the schedule is *provably constant*: `--profile steady` or `soak` **with a fixed `--rps` cap**. Ramped, spiked, or unpaced runs print raw percentiles and withhold the correction (see `coCorrectionGate` in `cmd/stress-strike/cmd_run.go`). This is structural — an accuracy threshold would withhold the correction precisely when it matters most.
+Only when the schedule is *provably constant*: `--profile steady` or `soak` **with a fixed `--rps` cap**. Ramped, spiked, or unpaced runs print raw percentiles and withhold the correction (see `coCorrectionGate` in `cmd/Sift/cmd_run.go`). This is structural — an accuracy threshold would withhold the correction precisely when it matters most.
 
 ### Honesty limits (what this proves, what it doesn't)
 
@@ -1342,7 +1342,7 @@ components.
 ## WARNING: Authorized Testing Only
 
 ```
-stress-strike is a load testing tool. Only use it against systems you own
+Sift is a load testing tool. Only use it against systems you own
 or have explicit written permission to test. Unauthorized load floods are
 illegal and constitute a denial-of-service attack (DDoS).
 ```

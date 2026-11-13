@@ -1002,7 +1002,13 @@ func interactiveExtra(r *bufio.Reader) {
 // and the real engine; the user drives it from the browser.
 func interactiveDashboard(r *bufio.Reader) {
 	last := loadLastRun()
-	url := last.URL
+	url := strings.TrimSpace(last.URL)
+	if url == "" {
+		fmt.Println()
+		fmt.Println("Load test configuration (WEB mode):")
+		fmt.Println()
+		url = strings.TrimSpace(readLine(r, "Target URL (e.g. https://api.example.com)"))
+	}
 	if url == "" {
 		fmt.Println("error: target URL is required.")
 		exitProcess(1)

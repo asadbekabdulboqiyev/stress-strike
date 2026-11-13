@@ -45,6 +45,46 @@ func ParseMode(s string) (Mode, error) {
 	}
 }
 
+// MarshalJSON writes the mode by name.
+//
+// `"mode": 0` in a file an approver has to read and sign off is not a policy,
+// it is an enum leaking out of the implementation. The name is what the docs
+// show and what `authorize list` prints, so the file should say the same.
+func (m Mode) MarshalJSON() ([]byte, error) {
+	switch m {
+	case ModePermissive:
+		return []byte(`"permissive"`), nil
+	case ModeStrict:
+		return []byte(`"strict"`), nil
+	default:
+		return nil, fmt.Errorf("authz: cannot write unknown mode %d", int(m))
+	}
+}
+
+// UnmarshalJSON accepts the name and, for files written before the name was
+// used, the integer. A policy file that fails to parse is a policy file that is
+// not enforcing anything, so both spellings have to load.
+func (m *Mode) UnmarshalJSON(b []byte) error {
+	var name string
+	if err := json.Unmarshal(b, &name); err == nil {
+		parsed, err := ParseMode(name)
+		if err != nil {
+			return err
+		}
+		*m = parsed
+		return nil
+	}
+	var n int
+	if err := json.Unmarshal(b, &n); err != nil {
+		return fmt.Errorf("authz: mode must be \"permissive\", \"strict\", or 0/1, got %s", string(b))
+	}
+	if n != int(ModePermissive) && n != int(ModeStrict) {
+		return fmt.Errorf("authz: unknown numeric mode %d (want 0 or 1)", n)
+	}
+	*m = Mode(n)
+	return nil
+}
+
 // Operation is the kind of activity being authorized.
 type Operation int
 
@@ -91,6 +131,25 @@ type Rule struct {
 // active reports whether the rule applies at now.
 func (r Rule) active(now time.Time) bool {
 	return r.Until.IsZero() || now.Before(r.Until)
+}
+
+// MarshalJSON omits `until` when there is no expiry.
+//
+// encoding/json's omitempty does not apply to a struct such as time.Time, so a
+// rule with no expiry was written as "until": "0001-01-01T00:00:00Z" — a date
+// that reads as "expired in year 1" instead of "never expires". A policy file is
+// read by people, and that line made them ask the wrong question.
+func (r Rule) MarshalJSON() ([]byte, error) {
+	type plain Rule // no methods, so no recursion into this one
+	if r.Until.IsZero() {
+		return json.Marshal(struct {
+			Pattern  string `json:"pattern"`
+			Approver string `json:"approver,omitempty"`
+			Ticket   string `json:"ticket,omitempty"`
+			Reason   string `json:"reason,omitempty"`
+		}{Pattern: r.Pattern, Approver: r.Approver, Ticket: r.Ticket, Reason: r.Reason})
+	}
+	return json.Marshal(plain(r))
 }
 
 // namesTarget reports whether the pattern names the host or address it covers,

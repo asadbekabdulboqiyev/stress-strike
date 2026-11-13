@@ -2,6 +2,8 @@ package authz
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -210,5 +212,78 @@ func TestCIDRContainingMetadataDoesNotUnlockIt(t *testing.T) {
 	p.Rules = []Rule{{Pattern: "169.254.0.0/16", Approver: "netops"}}
 	if d := p.Check(tgt, OpLoadTest, time.Now()); d.Allowed {
 		t.Fatalf("169.254.0.0/16 must not unlock instance metadata: %s", d.Reason)
+	}
+}
+
+// The documented policy file has to load. `docs/AUTHORIZATION.md` shows
+// "mode": "permissive" while the struct only understood an integer, so a user
+// who followed the docs got a parse error instead of a policy.
+func TestPolicyJSONAcceptsModeNameAndNumber(t *testing.T) {
+	for _, tc := range []struct {
+		body string
+		want Mode
+	}{
+		{`{"mode":"permissive"}`, ModePermissive},
+		{`{"mode":"strict"}`, ModeStrict},
+		{`{"mode":"standard"}`, ModePermissive},
+		{`{"mode":0}`, ModePermissive},
+		{`{"mode":1}`, ModeStrict},
+		{`{}`, ModePermissive},
+	} {
+		p := Policy{}
+		if err := json.Unmarshal([]byte(tc.body), &p); err != nil {
+			t.Errorf("%s: %v", tc.body, err)
+			continue
+		}
+		if p.Mode != tc.want {
+			t.Errorf("%s: mode = %v, want %v", tc.body, p.Mode, tc.want)
+		}
+	}
+
+	for _, body := range []string{`{"mode":"yolo"}`, `{"mode":7}`, `{"mode":`} {
+		var p Policy
+		if err := json.Unmarshal([]byte(body), &p); err == nil {
+			t.Errorf("%s: expected an error, got mode %v", body, p.Mode)
+		}
+	}
+}
+
+// A written policy reads like the docs and carries no year-1 expiry.
+func TestPolicyJSONWritesNamesAndOmitsZeroExpiry(t *testing.T) {
+	p := DefaultPolicy()
+	p.Mode = ModeStrict
+	p.Rules = []Rule{{Pattern: "shop.example.com", Approver: "ciso", Ticket: "SEC-1"}}
+	raw, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+
+	if !strings.Contains(got, `"mode": "strict"`) {
+		t.Errorf("mode is not written by name:\n%s", got)
+	}
+	if strings.Contains(got, "0001-01-01") {
+		t.Errorf("a rule with no expiry wrote a year-1 timestamp:\n%s", got)
+	}
+	if strings.Contains(got, `"until"`) {
+		t.Errorf("a rule with no expiry still wrote an until field:\n%s", got)
+	}
+	// Absent must read back as "never expires", not as a parse failure.
+	var back Policy
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatalf("round trip: %v", err)
+	}
+	if len(back.Rules) != 1 || !back.Rules[0].Until.IsZero() {
+		t.Fatalf("round trip lost the rule: %+v", back.Rules)
+	}
+
+	// An expiry that exists is still written.
+	p.Rules[0].Until = time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	raw, err = json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"until": "2026-12-01T00:00:00Z"`) {
+		t.Errorf("expiry missing:\n%s", raw)
 	}
 }

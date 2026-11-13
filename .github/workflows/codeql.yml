@@ -21,6 +21,14 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # Code scanning — the SARIF upload that is the entire point of this job —
+    # needs GitHub Advanced Security on a private repository, which is a paid
+    # add-on. Without it the upload is rejected, so the job would fail on every
+    # push while telling us nothing. Skipping keeps the pipeline honest: green
+    # means "the analysis ran and its results landed". If GHAS is ever enabled
+    # for this repository, delete this condition; if the repository is made
+    # public again, it resumes on its own.
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

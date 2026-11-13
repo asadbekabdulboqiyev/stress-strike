@@ -158,8 +158,12 @@ jobs:
           # above would apply to neither the report nor any exit code.
           limit-severities-for-sarif: "true"
 
+      # The scan above always runs; only the upload depends on code scanning
+      # being available. On a private repository that means GitHub Advanced
+      # Security (paid), and an unguarded upload would fail the job and hide
+      # the scan result.
       - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.event.repository.visibility == 'public'
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
           category: trivy-${{ matrix.image }}
@@ -230,9 +234,12 @@ jobs:
           # already clean. Verified with trivy 0.70.0 against the remote tags.
           limit-severities-for-sarif: "true"
 
+      # Guarded for the same reason as the `trivy` job above: this is the
+      # enforcing gate, and it must stay red only for a real finding, not for a
+      # missing GHAS licence on a private repository.
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.event.repository.visibility == 'public'
         with:
           sarif_file: trivy-image-${{ matrix.image }}.sarif
           category: trivy-image-${{ matrix.image }}
@@ -240,7 +247,13 @@ jobs:
   # ── dependency review on PRs ──────────────────────────────────────────────
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    # Dependency review is a GitHub Advanced Security feature on private
+    # repositories (it is free on public ones). On a private repo without GHAS
+    # the action fails with "Dependency review is not supported on this
+    # repository", which says nothing about the dependency graph — so the job
+    # is skipped rather than red. `govulncheck` above still covers reachable
+    # vulnerable code on every push, which is the part that matters most.
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

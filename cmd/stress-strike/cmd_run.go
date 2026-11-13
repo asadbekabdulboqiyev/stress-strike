@@ -254,6 +254,19 @@ func cmdRun() {
 	// and the decision is appended to the audit trail.
 	enforceAuthz(authz.OpLoadTest, scenarioTargets(scenario), os.Args, authzOpts)
 
+	// Load the baseline before the run, not after it. A mistyped --compare path
+	// used to surface only once the load had already been generated, so a typo
+	// cost a full run and — worse — the report was printed and the verdict
+	// announced before the error appeared. Fail first, run second.
+	var baseline *report.Report
+	if comparePath != "" {
+		var err error
+		baseline, err = report.LoadReport(comparePath)
+		if err != nil {
+			fatal(err)
+		}
+	}
+
 	// Dashboard mode: open the real-time WebSocket dashboard and drive the
 	// real load engine from the browser. No terminal report is printed.
 	if mode == "dashboard" {
@@ -314,7 +327,7 @@ func cmdRun() {
 		progress = engine.NewProgressTracker(dur, scenario.Profile.Users)
 	}
 
-	// VeriBench: when a bundle is requested, every measured request is fed to a
+	// stress-strike: when a bundle is requested, every measured request is fed to a
 	// collector as well, so the evidence pack is built from the same
 	// measurements the report is — not from a summary of them.
 	var collector *evidence.Collector
@@ -343,20 +356,9 @@ func cmdRun() {
 	fmt.Fprintln(os.Stderr)
 	r.Render(os.Stdout)
 
-	if comparePath != "" {
-		baseline, err := report.LoadReport(comparePath)
-		if err != nil {
-			fatal(err)
-		}
-		result := report.Compare(&r, baseline)
-		fmt.Print(result.Render())
-		if result.Regression && result.RegressionPct > regressPct {
-			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%, actual %.1f%%)\n",
-				comparePath, regressPct, result.RegressionPct)
-			exitProcess(2)
-		}
-	}
-
+	// Reports are written before any gate can exit, so a run that trips a gate
+	// still leaves the evidence behind. A CI job that fails without the report
+	// that explains the failure is a debugging dead end.
 	jsonPath, err := r.SaveJSON(reportDir)
 	if err != nil {
 		fatal(err)
@@ -382,6 +384,16 @@ func cmdRun() {
 	if collector != nil {
 		if err := emitEvidenceBundle(emitBundle, bundleKey, collector, scenario); err != nil {
 			fatal(err)
+		}
+	}
+
+	if baseline != nil {
+		result := report.Compare(&r, baseline)
+		fmt.Print(result.Render())
+		if result.Regression && result.RegressionPct > regressPct {
+			fmt.Fprintf(os.Stderr, "REGRESSION DETECTED vs %s (threshold %.0f%%, actual %.1f%%)\n",
+				comparePath, regressPct, result.RegressionPct)
+			exitProcess(2)
 		}
 	}
 

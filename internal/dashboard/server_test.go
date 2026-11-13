@@ -1419,11 +1419,16 @@ func TestServeHTTP_UnknownAPIPathIsJSON404(t *testing.T) {
 		}
 	}
 
-	// A client-side route still gets the shell.
-	req := httptest.NewRequest("GET", "/certificate", nil)
-	w := httptest.NewRecorder()
-	s.ServeHTTP(w, req)
-	if w.Code != http.StatusOK || !strings.Contains(w.Header().Get("Content-Type"), "text/html") {
-		t.Errorf("GET /certificate = %d %q, want the HTML shell", w.Code, w.Header().Get("Content-Type"))
+	// Unknown non-API paths must not fall through to the SPA shell.
+	for _, path := range []string{"/certificate", "/.git/config", "/.env", "/debug/pprof", "/actuator"} {
+		req := httptest.NewRequest("GET", path, nil)
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want 404", path, w.Code)
+		}
+		if strings.Contains(w.Body.String(), "<html") {
+			t.Errorf("GET %s unexpectedly returned the HTML shell", path)
+		}
 	}
 }

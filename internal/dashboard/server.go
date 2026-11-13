@@ -511,6 +511,14 @@ func (s *Server) serveIndexHTML(w http.ResponseWriter) {
 
 // serveApp routes the UI, JSON API and WebSocket traffic.
 func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
+	// TRACE is disabled to avoid method-based reflection/XST-style scanner findings
+	// and to keep behavior explicit in production-like deployments.
+	if r.Method == http.MethodTrace {
+		w.Header().Set("Allow", "GET, HEAD, POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	path := r.URL.Path
 
 	switch {
@@ -583,14 +591,30 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/websocket/scan":
 		s.handleWebSocketScan(w, r)
 	case path == "/style.css":
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
+		if r.Method == http.MethodHead {
+			return
+		}
 		w.Write(dashboardCSS)
 	case path == "/app.js":
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
+		if r.Method == http.MethodHead {
+			return
+		}
 		w.Write(dashboardJS)
 	case path == "/api" || strings.HasPrefix(path, "/api/"):
 		// An unknown API path must not fall through to the HTML shell. A client
@@ -599,11 +623,21 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"ok":false,"error":"unknown API endpoint"}`))
-	default:
+	case path == "/" || path == "/index.html":
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
+		if r.Method == http.MethodHead {
+			return
+		}
 		s.serveIndexHTML(w)
+	default:
+		http.NotFound(w, r)
 	}
 }
 
@@ -878,6 +912,9 @@ func securityHeaders(w http.ResponseWriter, r *http.Request) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
 	h.Set("Referrer-Policy", "no-referrer")
+	if r.TLS != nil {
+		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+	}
 	h.Set("Content-Security-Policy", fmt.Sprintf(
 		"default-src 'self'; "+
 			"script-src 'self'; "+

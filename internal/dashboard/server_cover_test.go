@@ -200,24 +200,44 @@ func TestServeAppStaticAssets(t *testing.T) {
 	tests := []struct {
 		path        string
 		contentType string
+		wantCode    int
 	}{
-		{"/style.css", "text/css; charset=utf-8"},
-		{"/app.js", "application/javascript; charset=utf-8"},
-		{"/", "text/html; charset=utf-8"},
-		{"/some/deep/route", "text/html; charset=utf-8"},
+		{"/style.css", "text/css; charset=utf-8", http.StatusOK},
+		{"/app.js", "application/javascript; charset=utf-8", http.StatusOK},
+		{"/", "text/html; charset=utf-8", http.StatusOK},
+		{"/index.html", "text/html; charset=utf-8", http.StatusOK},
 	}
 	for _, tc := range tests {
 		req := httptest.NewRequest(http.MethodGet, tc.path, nil)
 		rec := httptest.NewRecorder()
 		s.ServeHTTP(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Errorf("%s = %d, want 200", tc.path, rec.Code)
+		if rec.Code != tc.wantCode {
+			t.Errorf("%s = %d, want %d", tc.path, rec.Code, tc.wantCode)
 		}
 		if got := rec.Header().Get("Content-Type"); got != tc.contentType {
 			t.Errorf("%s Content-Type = %q, want %q", tc.path, got, tc.contentType)
 		}
 		if rec.Body.Len() == 0 {
 			t.Errorf("%s served an empty body", tc.path)
+		}
+	}
+
+	for _, path := range []string{"/some/deep/route", "/.git/config", "/.env", "/debug/pprof", "/actuator", "/certificate"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		s.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s = %d, want 404", path, rec.Code)
+		}
+	}
+
+	// TRACE must not be allowed on the dashboard UI/asset surface.
+	for _, path := range []string{"/", "/style.css", "/app.js"} {
+		req := httptest.NewRequest(http.MethodTrace, path, nil)
+		rec := httptest.NewRecorder()
+		s.ServeHTTP(rec, req)
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("TRACE %s = %d, want 405", path, rec.Code)
 		}
 	}
 }

@@ -499,6 +499,16 @@ func (s *Server) serveOps(w http.ResponseWriter, r *http.Request, h http.Handler
 	http.NotFound(w, r)
 }
 
+// serveIndexHTML serves the dashboard shell with cache-busted asset URLs so the
+// browser always loads assets for the current binary version.
+func (s *Server) serveIndexHTML(w http.ResponseWriter) {
+	v := url.QueryEscape(s.versionOrDefault())
+	html := string(dashboardHTML)
+	html = strings.Replace(html, `href="/style.css"`, fmt.Sprintf(`href="/style.css?v=%s"`, v), 1)
+	html = strings.Replace(html, `src="/app.js"`, fmt.Sprintf(`src="/app.js?v=%s"`, v), 1)
+	_, _ = w.Write([]byte(html))
+}
+
 // serveApp routes the UI, JSON API and WebSocket traffic.
 func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
@@ -574,9 +584,13 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleWebSocketScan(w, r)
 	case path == "/style.css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
 		w.Write(dashboardCSS)
 	case path == "/app.js":
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
 		w.Write(dashboardJS)
 	case path == "/api" || strings.HasPrefix(path, "/api/"):
 		// An unknown API path must not fall through to the HTML shell. A client
@@ -587,7 +601,9 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"ok":false,"error":"unknown API endpoint"}`))
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(dashboardHTML)
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		s.serveIndexHTML(w)
 	}
 }
 

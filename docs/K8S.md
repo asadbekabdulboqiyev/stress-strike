@@ -7,7 +7,7 @@ helm upgrade --install ss ./deploy/charts/Sift
 
 ## CRDs
 ```
-kubectl apply -f deploy/crds/stressstrike-crd.yaml
+kubectl apply -f deploy/crds/sift-crd.yaml
 ```
 
 ## HPA

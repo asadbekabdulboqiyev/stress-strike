@@ -14,7 +14,7 @@ package coordinator
 //
 // A signature covers a small canonical byte string, never the raw protobuf:
 //
-//	stressstrike/worker-progress-attest/v1\n
+//	sift/worker-progress-attest/v1\n
 //	<len>:<worker_id>\n
 //	<len>:<run_id>\n
 //	<len>:<timestamp-ms>\n
@@ -63,11 +63,11 @@ const (
 	// progressAttestDomain versions the progress statement. Changing the fields
 	// below requires a new domain string so an old signature can never be
 	// reinterpreted under the new rules.
-	progressAttestDomain = "stressstrike/worker-progress-attest/v1"
+	progressAttestDomain = "sift/worker-progress-attest/v1"
 	// reportAttestDomain versions the final-report statement.
-	reportAttestDomain = "stressstrike/worker-report-attest/v1"
+	reportAttestDomain = "sift/worker-report-attest/v1"
 	// statusAttestDomain versions the status-heartbeat statement.
-	statusAttestDomain = "stressstrike/worker-status-attest/v1"
+	statusAttestDomain = "sift/worker-status-attest/v1"
 )
 
 // SnapshotDigest returns the SHA-256 of the deterministic protobuf encoding of

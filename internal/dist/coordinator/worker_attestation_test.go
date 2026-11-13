@@ -64,7 +64,7 @@ func TestVerifyWorkerAttestation(t *testing.T) {
 		t.Fatalf("set worker key: %v", err)
 	}
 
-	msg := []byte("stressstrike/worker-attest/v1\nworker=w1\nrun=demo\nreport=abc")
+	msg := []byte("sift/worker-attest/v1\nworker=w1\nrun=demo\nreport=abc")
 	sig, err := attest.Sign(&attest.Keypair{Private: priv}, msg)
 	if err != nil {
 		t.Fatalf("sign: %v", err)

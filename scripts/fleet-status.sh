@@ -79,7 +79,7 @@ grpc_ping() {
   if [[ -n "$TOKEN" ]]; then
     args+=(-H "authorization: Bearer ${TOKEN}")
   fi
-  out="$("$GRPCURL" -plaintext -max-time "$TIMEOUT" "${args[@]+"${args[@]}"}" "$addr" stressstrike.dist.MasterWorker/Ping 2>/dev/null)"
+  out="$("$GRPCURL" -plaintext -max-time "$TIMEOUT" "${args[@]+"${args[@]}"}" "$addr" sift.dist.MasterWorker/Ping 2>/dev/null)"
   local rc=$?
   [[ $rc -ne 0 ]] && return $rc
   if command -v jq >/dev/null 2>&1; then

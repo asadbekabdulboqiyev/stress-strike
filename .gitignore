@@ -26,3 +26,5 @@ coverage.html
 # Secrets
 .env
 *.env
+.arena/
+coverage.out

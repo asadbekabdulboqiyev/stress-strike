@@ -5,11 +5,11 @@
 # very first formula, before any release has been published.
 #
 # Test with:   brew tap asadbekabdulboqiyev/tap && brew install Sift
-class StressStrike < Formula
+class Sift < Formula
   desc "Distributed load testing and network simulator written in Go"
   homepage "https://github.com/asadbekabdulboqiyev/sift"
-  url "https://github.com/asadbekabdulboqiyev/sift/releases/download/v0.14.3/Sift_0.14.3_darwin_arm64.tar.gz"
-  version "0.14.3"
+  url "https://github.com/asadbekabdulboqiyev/sift/releases/download/v0.14.14/Sift_0.14.14_darwin_arm64.tar.gz"
+  version "0.14.14"
   license "Apache-2.0"
   head "https://github.com/asadbekabdulboqiyev/sift.git", branch: "main"
 

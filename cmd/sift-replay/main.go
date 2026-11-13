@@ -14,9 +14,22 @@ import (
 
 	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
 	"github.com/asadbekabdulboqiyev/sift/internal/replay"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
+func isVersionArg(arg string) bool {
+	switch arg {
+	case "version", "--version", "-version", "-v":
+		return true
+	}
+	return false
+}
+
 func main() {
+	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
+		fmt.Printf("Sift-replay v%s\n", version.Full())
+		return
+	}
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
 	flag.CommandLine.Init("Sift-replay", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)

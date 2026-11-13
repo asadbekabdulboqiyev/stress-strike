@@ -22,7 +22,8 @@ func TestInprocFindProjectRoot(t *testing.T) {
 	if _, err := os.Stat(mod); err != nil {
 		t.Errorf("findProjectRoot = %q, but %q does not exist: %v", root, mod, err)
 	}
-	if !strings.HasSuffix(root, "Sift") {
+	base := filepath.Base(root)
+	if !strings.EqualFold(base, "sift") && !strings.EqualFold(base, "Sift") {
 		t.Errorf("findProjectRoot = %q, want the Sift checkout root", root)
 	}
 }

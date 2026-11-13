@@ -54,7 +54,7 @@ func main() {
 	// `--version` is how the image build proves the binary it is about to ship
 	// is not a dev build; without it Dockerfile.worker logs "Unknown flag".
 	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
-		fmt.Printf("Sift-worker %s\n", version.Full())
+		fmt.Printf("Sift-worker v%s\n", version.Full())
 		return
 	}
 

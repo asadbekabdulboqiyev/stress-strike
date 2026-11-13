@@ -570,7 +570,16 @@ func TestInprocInteractiveDashboard(t *testing.T) {
 
 func TestInprocInteractiveDashboardNoURL(t *testing.T) {
 	scanCLIHome(t)
-	withHistoryFile(t) // empty history
+	withHistoryFile(t) // empty history -> dashboard should use a default target
+
+	// interactiveDashboard hard-codes 127.0.0.1:8888. Occupy it so the
+	// dashboard's ListenAndServe fails immediately instead of blocking.
+	ln, err := net.Listen("tcp", "127.0.0.1:8888")
+	if err != nil {
+		t.Skipf("127.0.0.1:8888 unavailable: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	t.Setenv("PATH", "") // openBrowser must not launch a real browser
 
 	res := runCommandFn(t, func() {
 		interactiveDashboard(bufio.NewReader(strings.NewReader("")))
@@ -578,8 +587,11 @@ func TestInprocInteractiveDashboardNoURL(t *testing.T) {
 	if res.code != 1 {
 		t.Fatalf("exit = %d, want 1 (stderr: %s)", res.code, res.stderr)
 	}
-	if !strings.Contains(res.stdout, "target URL is required") {
-		t.Errorf("stdout = %q, want the URL error", res.stdout)
+	if !strings.Contains(res.stdout, "Web Server dashboard: http://127.0.0.1:8888") {
+		t.Errorf("stdout = %q, want dashboard URL", res.stdout)
+	}
+	if !strings.Contains(res.stderr, "dashboard server failed") {
+		t.Errorf("stderr = %q, want the bind error", res.stderr)
 	}
 }
 

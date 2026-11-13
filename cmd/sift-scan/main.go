@@ -69,7 +69,19 @@ func (s *stringSliceFlag) Set(v string) error {
 	return nil
 }
 
+func isVersionArg(arg string) bool {
+	switch arg {
+	case "version", "--version", "-version", "-v":
+		return true
+	}
+	return false
+}
+
 func main() {
+	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
+		fmt.Printf("Sift-scan v%s\n", version.Full())
+		return
+	}
 	fs := flag.CommandLine
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
 	fs.Init("Sift-scan", flag.ContinueOnError)

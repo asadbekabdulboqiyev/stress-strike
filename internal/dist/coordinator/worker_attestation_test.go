@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
 )
 
 // TestRegisterFailsClosedWhenPinned verifies the identity gate of the worker

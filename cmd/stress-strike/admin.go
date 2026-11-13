@@ -1,15 +1,15 @@
 package main
 
-// cmdAdmin implements `stress-strike admin` — the local maintenance switch.
+// cmdAdmin implements `Sift admin` — the local maintenance switch.
 //
 // The admin area is deliberately boring and local:
 //
-//	stress-strike admin            show the status and the code
-//	stress-strike admin code       print the code (for the dashboard panel)
-//	stress-strike admin status     show the current bypass window
-//	stress-strike admin rotate     mint a new code (the "code leaked" step)
-//	stress-strike admin lock       close the window immediately
-//	stress-strike admin unlock     open the window for --minutes (default 15)
+//	Sift admin            show the status and the code
+//	Sift admin code       print the code (for the dashboard panel)
+//	Sift admin status     show the current bypass window
+//	Sift admin rotate     mint a new code (the "code leaked" step)
+//	Sift admin lock       close the window immediately
+//	Sift admin unlock     open the window for --minutes (default 15)
 //
 // An open window makes every authorization gate on this host allow work
 // without an authorization ticket. It expires, it is audit-logged, and it
@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/adminlock"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
 )
 
 func cmdAdmin() {
@@ -57,7 +57,7 @@ func cmdAdmin() {
 }
 
 func adminUsage() {
-	fmt.Fprint(os.Stderr, `usage: stress-strike admin [code|status|rotate|unlock|lock]
+	fmt.Fprint(os.Stderr, `usage: Sift admin [code|status|rotate|unlock|lock]
 
 The admin code and the bypass window live in `+adminlock.DefaultPath()+`.
 
@@ -146,7 +146,7 @@ func adminUnlock(args []string) {
 		c = strings.TrimSpace(line)
 	}
 	if c == "" {
-		fatal(fmt.Errorf("no admin code given — run `stress-strike admin code` on this host to read it"))
+		fatal(fmt.Errorf("no admin code given — run `Sift admin code` on this host to read it"))
 	}
 
 	ttl := time.Duration(*minutes) * time.Minute
@@ -161,7 +161,7 @@ func adminUnlock(args []string) {
 	fmt.Println("  effect      scans run WITHOUT an authorization ticket")
 	fmt.Println("  still off   cloud instance metadata (169.254.169.254) stays denied")
 	fmt.Println()
-	fmt.Println("Turn it off now:  stress-strike admin lock")
+	fmt.Println("Turn it off now:  Sift admin lock")
 }
 
 func adminLock() {
@@ -178,7 +178,7 @@ func adminLock() {
 }
 
 // recordAdminEvent writes the switch change to the same hash-chained trail as
-// scans, so `stress-strike audit show` explains why a scan had no ticket.
+// scans, so `Sift audit show` explains why a scan had no ticket.
 func recordAdminEvent(rule string, allowed bool, reason string) {
 	recordAuthz(authz.Entry{
 		Actor:   "local-admin",

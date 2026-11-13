@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/replay"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/replay"
 )
 
 func main() {
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
-	flag.CommandLine.Init("stress-strike-replay", flag.ContinueOnError)
+	flag.CommandLine.Init("Sift-replay", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
 
 	// Flags
@@ -46,14 +46,14 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
 ╔═══════════════════════════════════════════════════════════════╗
-║  stress-strike replay — Real Traffic Replay Engine            ║
+║  Sift replay — Real Traffic Replay Engine            ║
 ║                                                               ║
 ║  Replay captured production traffic at configurable speed.    ║
 ║  Supports PCAP (gopacket) and HAR (browser export).          ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 Usage:
-  stress-strike-replay [flags]
+  Sift-replay [flags]
 
 Flags:
 `)
@@ -61,28 +61,28 @@ Flags:
 		fmt.Fprintf(os.Stderr, `
 Examples:
   # Replay HAR at 10x speed
-  stress-strike-replay -input traffic.har -rate 10x
+  Sift-replay -input traffic.har -rate 10x
 
   # Replay HAR at real-time capture pace (timing-accurate, the default)
-  stress-strike-replay -input traffic.har -pace timing
+  Sift-replay -input traffic.har -pace timing
 
   # Constant-rate replay
-  stress-strike-replay -input traffic.har -pace rps -rps 50
+  Sift-replay -input traffic.har -pace rps -rps 50
 
   # Legacy fixed pacing (1s per rate unit)
-  stress-strike-replay -input traffic.har -rate 10x -pace legacy
+  Sift-replay -input traffic.har -rate 10x -pace legacy
 
   # Replay PCAP at 50x with 50 workers, filter GET requests
-  stress-strike-replay -input capture.pcap -rate 50x -concurrency 50 -methods GET
+  Sift-replay -input capture.pcap -rate 50x -concurrency 50 -methods GET
 
   # Replay with response validation
-  stress-strike-replay -input traffic.har -rate 5x -validate -assert-status 200
+  Sift-replay -input traffic.har -rate 5x -validate -assert-status 200
 
   # Replay with custom TLS keys
-  stress-strike-replay -input capture.pcap -tls-key client.key -tls-cert client.crt -rate 10x
+  Sift-replay -input capture.pcap -tls-key client.key -tls-cert client.crt -rate 10x
 
   # Replay with base URL override (redirect to staging)
-  stress-strike-replay -input traffic.har -base-url https://staging.example.com -rate 5x
+  Sift-replay -input traffic.har -base-url https://staging.example.com -rate 5x
 `)
 	}
 
@@ -90,13 +90,13 @@ Examples:
 		Command: "replay",
 		FlagSet: flag.CommandLine,
 		Examples: []string{
-			"stress-strike replay -input traffic.har -rate 10x",
+			"Sift replay -input traffic.har -rate 10x",
 		},
 	})
 
 	if *inputFile == "" {
 		fmt.Fprintln(os.Stderr, "Error: --input is required.")
-		fmt.Fprintln(os.Stderr, "Example: stress-strike replay -input traffic.har -rate 10x")
+		fmt.Fprintln(os.Stderr, "Example: Sift replay -input traffic.har -rate 10x")
 		fmt.Fprintln(os.Stderr, "")
 		flag.Usage()
 		exitProcess(1)
@@ -192,7 +192,7 @@ Examples:
 	var capture *replay.Capture
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║  stress-strike replay — Loading capture...                   ║")
+	fmt.Println("║  Sift replay — Loading capture...                   ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 
 	// Security notice: warn loudly when certificate verification is disabled.

@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store/memstore"
+	"github.com/asadbekabdulboqiyev/sift/internal/store/memstore"
 )
 
 // ErrNotFound is returned by lookups when no matching row exists, by Revoke for

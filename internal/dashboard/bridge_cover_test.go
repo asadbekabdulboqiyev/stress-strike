@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
 )
 
 // newTestBridge builds a bridge whose attestation data dir lands in a temp

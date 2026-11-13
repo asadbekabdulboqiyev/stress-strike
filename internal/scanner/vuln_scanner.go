@@ -172,7 +172,7 @@ func (vs *VulnScanner) doRequest(method, url string, body io.Reader, headers htt
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "stress-strike-vulnscanner/1.0")
+	req.Header.Set("User-Agent", "Sift-vulnscanner/1.0")
 	if headers != nil {
 		for k, vals := range headers {
 			for _, v := range vals {
@@ -1285,7 +1285,7 @@ func (vs *VulnScanner) scanCORS() {
 			continue
 		}
 		req.Header.Set("Origin", origin)
-		req.Header.Set("User-Agent", "stress-strike-vulnscanner/1.0")
+		req.Header.Set("User-Agent", "Sift-vulnscanner/1.0")
 
 		resp, err := vs.Client.Do(req)
 		if err != nil {

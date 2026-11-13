@@ -18,7 +18,7 @@ func TestCertificateCLIExplain(t *testing.T) {
 }
 
 func TestCertificateCLIMissingFileFails(t *testing.T) {
-	res := runCommandFn(t, cmdCertificate, "certificate", "/tmp/stress-strike-definitely-missing-"+strings.ReplaceAll(t.Name(), "/", "-")+".json")
+	res := runCommandFn(t, cmdCertificate, "certificate", "/tmp/Sift-definitely-missing-"+strings.ReplaceAll(t.Name(), "/", "-")+".json")
 	if res.code != 1 {
 		t.Fatalf("missing file exit = %d, stderr = %s", res.code, res.stderr)
 	}

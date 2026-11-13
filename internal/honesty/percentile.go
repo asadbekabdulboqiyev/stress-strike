@@ -6,11 +6,11 @@ package honesty
 //
 // Commercial tools usually report a percentile by interpolating between two
 // neighbouring samples, which is a modelling choice: "the 95th percentile" then
-// depends on which interpolation formula the tool picked. stress-strike does not
+// depends on which interpolation formula the tool picked. Sift does not
 // want a modelling choice inside the evidence, because a producer and a
 // verifier must agree *bit for bit*.
 //
-// So stress-strike uses the nearest-rank definition and nothing else: for a sorted
+// So Sift uses the nearest-rank definition and nothing else: for a sorted
 // sample of length n and a fraction p (given in parts per million), the answer
 // is
 //

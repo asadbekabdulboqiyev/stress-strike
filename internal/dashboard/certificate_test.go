@@ -9,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/certificate"
+	"github.com/asadbekabdulboqiyev/sift/internal/certificate"
 )
 
 // resetCertStoreForTest gives the test its own home and an empty certificate
 // store.
 //
 // The home matters. Without it the store points at $STRESS_STRIKE_HOME, or at
-// ~/.stress-strike when that is unset — so running the test suite on a
+// ~/.Sift when that is unset — so running the test suite on a
 // developer machine appended a couple of hundred throwaway certificates for
 // "https://example.com" to the real certificate history, and on a CI runner,
-// where ~/.stress-strike does not exist, every issue returned 500 and the
+// where ~/.Sift does not exist, every issue returned 500 and the
 // whole suite failed.
 //
 // The store path is only assigned inside a sync.Once that tests cannot reset,

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // exeSuffix keeps the compiled test binary addressable on Windows, where
@@ -25,7 +25,7 @@ var exeSuffix = func() string {
 	return ""
 }()
 
-// scanBin is the compiled stress-strike-scan binary, built once by TestMain so
+// scanBin is the compiled Sift-scan binary, built once by TestMain so
 // the CLI tests exercise main() end to end including the os.Exit paths.
 var scanBin string
 
@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(1)
 	}
-	scanBin = filepath.Join(dir, "stress-strike-scan"+exeSuffix)
+	scanBin = filepath.Join(dir, "Sift-scan"+exeSuffix)
 
 	build := exec.Command("go", "build", "-o", scanBin, ".")
 	if out, err := build.CombinedOutput(); err != nil {
@@ -167,7 +167,7 @@ func TestCLIStrictPolicyDenies(t *testing.T) {
 	if !strings.Contains(res.stderr, "BLOCKED by authorization policy") {
 		t.Errorf("stderr = %q", res.stderr)
 	}
-	if !strings.Contains(res.stderr, "stress-strike authorize add") {
+	if !strings.Contains(res.stderr, "Sift authorize add") {
 		t.Error("denial should explain how to authorize")
 	}
 }
@@ -256,7 +256,7 @@ func TestCLIAllPhasesAgainstServer(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("exit = %d (stderr %q)", res.code, res.stderr)
 	}
-	for _, want := range []string{"stress-strike scan", "TLS Scan", "HTTP Fingerprint", "WAF Detection",
+	for _, want := range []string{"Sift scan", "TLS Scan", "HTTP Fingerprint", "WAF Detection",
 		"Security Headers", "VULNERABILITIES & RISK SCORE", "Risk Score:", "Scan Duration:"} {
 		if !strings.Contains(res.stdout, want) {
 			t.Errorf("stdout missing %q", want)
@@ -350,7 +350,7 @@ func TestCLISelectedPhasesOnly(t *testing.T) {
 
 func TestCLIHelpExitCode(t *testing.T) {
 	res := runScan(t, nil, "-h")
-	if !strings.Contains(res.stderr, "stress-strike scan — TLS/WAF Deep Scanner") {
+	if !strings.Contains(res.stderr, "Sift scan — TLS/WAF Deep Scanner") {
 		t.Errorf("help text missing: %q", res.stderr)
 	}
 	if !strings.Contains(res.stderr, "Examples:") {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
 )
 
 func TestHealthzAlwaysOK(t *testing.T) {

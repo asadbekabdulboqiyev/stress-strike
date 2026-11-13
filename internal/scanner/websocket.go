@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 	"github.com/gorilla/websocket"
 )
 
@@ -54,7 +54,7 @@ func TestWebSocket(ctx context.Context, url string, req core.Requester) *WebSock
 	}
 
 	header := http.Header{}
-	header.Set("User-Agent", "stress-strike-ws/1.0")
+	header.Set("User-Agent", "Sift-ws/1.0")
 	// No Origin header by default -> tests whether server enforces origin.
 	conn, resp, err := dialer.DialContext(ctx, url, header)
 	if err != nil {

@@ -1,7 +1,7 @@
 package main
 
-// cli_verify_inproc_test.go — in-process coverage for `stress-strike keygen`
-// and `stress-strike verify`.
+// cli_verify_inproc_test.go — in-process coverage for `Sift keygen`
+// and `Sift verify`.
 //
 // keygen and verify call exitProcess (the new seam) directly, so they can be
 // driven inside the test process without spawning the binary. A valid bundle is
@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 )
 
 // writeBundleToFile persists a signed bundle and returns its path.

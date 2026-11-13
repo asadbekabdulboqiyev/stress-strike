@@ -1,15 +1,15 @@
 package main
 
-// cmdCertificate implements `stress-strike certificate` — issue and verify
+// cmdCertificate implements `Sift certificate` — issue and verify
 // Ed25519-signed security assessment certificates (ss-cert/v1, pure English).
 //
 // The command is zero-flag by design: point it at a file and it works out what
 // the file is.
 //
-//	stress-strike certificate                        # short guide
-//	stress-strike certificate pentest.json           # issue cert.json/.html/.pdf
-//	stress-strike certificate cert.json              # verify it
-//	stress-strike certificate --explain              # plain-English explanation
+//	Sift certificate                        # short guide
+//	Sift certificate pentest.json           # issue cert.json/.html/.pdf
+//	Sift certificate cert.json              # verify it
+//	Sift certificate --explain              # plain-English explanation
 //
 // The old flag forms still work (`--from`, `--verify --cert`); nothing that
 // scripts already use was removed.
@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/certificate"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/certificate"
 )
 
 // defaultCertificateKeyPath is the persistent sealing identity. It lives with
@@ -54,8 +54,8 @@ func cmdCertificate() {
 	fs.StringVar(&from, "from", "", "pentest JSON report to certify (optional: a positional file is auto-detected)")
 	fs.StringVar(&out, "out", "cert", "output certificate stem (json/html/pdf derived from it)")
 	fs.StringVar(&format, "format", "all", "output format: json, html, pdf, all")
-	fs.StringVar(&keyPath, "key", "", "Ed25519 keypair PEM that seals the certificate (default: persistent key in the stress-strike home)")
-	fs.StringVar(&issuer, "issuer", "stress-strike assessment", "certificate issuer name")
+	fs.StringVar(&keyPath, "key", "", "Ed25519 keypair PEM that seals the certificate (default: persistent key in the Sift home)")
+	fs.StringVar(&issuer, "issuer", "Sift assessment", "certificate issuer name")
 	fs.BoolVar(&verify, "verify", false, "force verify mode")
 	fs.StringVar(&certPath, "cert", "", "certificate file to verify")
 	fs.BoolVar(&explain, "explain", false, "explain what the certificate is and how to get/check one")
@@ -98,7 +98,7 @@ func cmdCertificate() {
 	}
 
 	if from == "" {
-		fatal(fmt.Errorf("no input file. Try:\n  stress-strike certificate pentest.json    # issue\n  stress-strike certificate cert.json       # verify\n  stress-strike certificate --explain      # what is this?"))
+		fatal(fmt.Errorf("no input file. Try:\n  Sift certificate pentest.json    # issue\n  Sift certificate cert.json       # verify\n  Sift certificate --explain      # what is this?"))
 	}
 
 	issueCertificate(from, out, format, keyPath, issuer, quiet)
@@ -147,7 +147,7 @@ func detectCertificateInput(path string) (certificateInput, error) {
 	// certificate, so point the operator at the verifier that understands it
 	// instead of reporting a flat "not JSON we know".
 	if format, ok := probe["format"]; ok && strings.Contains(string(format), attest.FormatID) {
-		return inputUnknown, fmt.Errorf("%s is an attestation bundle (format %q), not a certificate.\nVerify it with:\n  stress-strike verify --bundle %s", path, attest.FormatID, path)
+		return inputUnknown, fmt.Errorf("%s is an attestation bundle (format %q), not a certificate.\nVerify it with:\n  Sift verify --bundle %s", path, attest.FormatID, path)
 	}
 	return inputUnknown, fmt.Errorf("%s is JSON but not a file we can use — expected a pentest report (needs \"target\"), a certificate (needs \"assessment\"+\"signature\"), or an attestation bundle (needs \"format\":%q)", path, attest.FormatID)
 }
@@ -263,9 +263,9 @@ func issueCertificate(from, out, format, keyPath, issuer string, quiet bool) {
 	fmt.Println()
 	fmt.Println("Verify it (offline, no key needed):")
 	if hasFile(written, stem+".json") {
-		fmt.Printf("  stress-strike certificate %s.json\n", stem)
+		fmt.Printf("  Sift certificate %s.json\n", stem)
 	} else {
-		fmt.Printf("  stress-strike certificate <certificate>.json\n")
+		fmt.Printf("  Sift certificate <certificate>.json\n")
 	}
 	fmt.Println()
 	fmt.Println("Share the .html copy for a printable view; the .json is the proof.")
@@ -289,13 +289,13 @@ func firstN(s string, n int) string {
 }
 
 func printCertificateGuide(explain bool) {
-	fmt.Println(`stress-strike certificate — signed proof of a security assessment
+	fmt.Println(`Sift certificate — signed proof of a security assessment
 
   ISSUE a certificate from a pentest report:
-    stress-strike certificate pentest.json
+    Sift certificate pentest.json
 
   VERIFY a certificate someone sent you:
-    stress-strike certificate cert.json
+    Sift certificate cert.json
 
   Both forms are the same command: it looks at the file and knows which one
   you meant. No flags, no key hunting, no network.
@@ -307,8 +307,8 @@ func printCertificateGuide(explain bool) {
 	if !explain {
 		fmt.Println(`
   More:
-    stress-strike certificate --explain     what the certificate proves
-    stress-strike pentest --target URL --authorized TICKET --format json`)
+    Sift certificate --explain     what the certificate proves
+    Sift pentest --target URL --authorized TICKET --format json`)
 		return
 	}
 
@@ -332,15 +332,15 @@ WHAT IT PROVES — AND WHAT IT DOES NOT
 
 HOW TO OBTAIN ONE
   1. Register the authorization the target owner gave you:
-       stress-strike authorize add --pattern example.com --approver "Owner Name" --ticket TICKET-001
+       Sift authorize add --pattern example.com --approver "Owner Name" --ticket TICKET-001
   2. Run the assessment:
-       stress-strike pentest --target https://example.com --authorized TICKET-001 --format json
+       Sift pentest --target https://example.com --authorized TICKET-001 --format json
   3. Seal the report:
-       stress-strike certificate pentest-example.com-....json
+       Sift certificate pentest-example.com-....json
   4. Send cert.json (proof) and cert.html (readable copy).
 
 HOW TO VERIFY ONE
-  Command line:   stress-strike certificate cert.json
+  Command line:   Sift certificate cert.json
   Dashboard:      open the dashboard, Certificate page, drop cert.json
   Exit codes:     0 = VALID, 1 = INVALID (the reason is printed)
 
@@ -354,7 +354,7 @@ WHERE THE CODE LIVES
 func renderPDF(a certificate.Assessment, cert *certificate.Certificate) []byte {
 	total := a.Counts.Critical + a.Counts.High + a.Counts.Medium + a.Counts.Low + a.Counts.Info
 	pdf := certificate.NewPDF().
-		Text("stress-strike — Security Assessment Certificate (ss-cert/v1)").
+		Text("Sift — Security Assessment Certificate (ss-cert/v1)").
 		Text("Target: " + a.Target).
 		Text("Grade: " + a.Grade + "   Verdict: " + a.Verdict + "   Risk: " + fmt.Sprintf("%d", a.RiskScore) + "/100").
 		Text("Findings: " + fmt.Sprintf("%d", total)).

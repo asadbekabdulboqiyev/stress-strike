@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // OWASPChecker performs automated OWASP Top 10 checks
@@ -248,7 +248,7 @@ func (c *OWASPChecker) makeRequestURL(method, baseURL, path string, headers http
 		return nil, ""
 	}
 
-	req.Header.Set("User-Agent", "stress-strike-owasp/1.0")
+	req.Header.Set("User-Agent", "Sift-owasp/1.0")
 	if headers != nil {
 		for k, vs := range headers {
 			for _, v := range vs {

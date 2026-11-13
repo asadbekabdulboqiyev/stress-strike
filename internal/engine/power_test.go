@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // prefillPool opens n connections to url through the shared transport with

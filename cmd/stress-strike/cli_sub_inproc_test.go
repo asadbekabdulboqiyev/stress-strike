@@ -22,8 +22,8 @@ func TestInprocFindProjectRoot(t *testing.T) {
 	if _, err := os.Stat(mod); err != nil {
 		t.Errorf("findProjectRoot = %q, but %q does not exist: %v", root, mod, err)
 	}
-	if !strings.HasSuffix(root, "stress-strike") {
-		t.Errorf("findProjectRoot = %q, want the stress-strike checkout root", root)
+	if !strings.HasSuffix(root, "Sift") {
+		t.Errorf("findProjectRoot = %q, want the Sift checkout root", root)
 	}
 }
 

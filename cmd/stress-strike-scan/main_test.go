@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 func TestPrintTLSInfo(t *testing.T) {

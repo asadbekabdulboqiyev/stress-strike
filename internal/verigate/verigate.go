@@ -1,5 +1,5 @@
 // Package verigate is a lightweight, toggleable WAF-style protection
-// middleware for Go HTTP servers, designed for the stress-strike demo store
+// middleware for Go HTTP servers, designed for the Sift demo store
 // (and usable by any net/http server).
 //
 // It chains three defenses, in order:

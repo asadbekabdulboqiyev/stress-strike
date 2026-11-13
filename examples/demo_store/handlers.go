@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/verigate"
+	"github.com/asadbekabdulboqiyev/sift/internal/verigate"
 )
 
 //------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ func clearSessionCookie(w http.ResponseWriter, secure bool) {
 
 // sameOrigin is a cheap CSRF defense-in-depth: browsers always attach an
 // Origin header to cross-origin POSTs (even simple form posts), while
-// non-browser clients (curl, stress-strike) send none. Requests from another
+// non-browser clients (curl, Sift) send none. Requests from another
 // origin are rejected, which closes the classic text/plain form CSRF on
 // /admin/protect.
 func sameOrigin(r *http.Request) bool {

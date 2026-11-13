@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // --- JWT dashboard -----------------------------------------------------------

@@ -73,12 +73,12 @@ func newTestFlagSet() (*flag.FlagSet, *string, *int) {
 
 func TestHandleFlagErrorMissingArgument(t *testing.T) {
 	fs, _, _ := newTestFlagSet()
-	// Simulate: stress-strike run --url
+	// Simulate: Sift run --url
 	if err := fs.Parse([]string{"--url"}); err == nil {
 		t.Fatal("expected parse error")
 	} else {
 		var buf bytes.Buffer
-		code := HandleFlagError(&buf, Options{Command: "run", FlagSet: fs, Err: err, Examples: []string{"stress-strike run --url https://x --users 10"}})
+		code := HandleFlagError(&buf, Options{Command: "run", FlagSet: fs, Err: err, Examples: []string{"Sift run --url https://x --users 10"}})
 		if code != 2 {
 			t.Errorf("exit code = %d, want 2", code)
 		}
@@ -86,10 +86,10 @@ func TestHandleFlagErrorMissingArgument(t *testing.T) {
 		if !strings.Contains(out, "--url requires a value") {
 			t.Errorf("missing value message not found: %q", out)
 		}
-		if !strings.Contains(out, "Example:") || !strings.Contains(out, "stress-strike run --url https://x") {
+		if !strings.Contains(out, "Example:") || !strings.Contains(out, "Sift run --url https://x") {
 			t.Errorf("example missing: %q", out)
 		}
-		if !strings.Contains(out, "stress-strike run --help") {
+		if !strings.Contains(out, "Sift run --help") {
 			t.Errorf("help hint missing: %q", out)
 		}
 	}

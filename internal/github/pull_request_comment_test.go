@@ -221,7 +221,7 @@ func TestRichReportWithMetricsAndFindings(t *testing.T) {
 	got := RichReport("Nightly fuzz", "FAIL", map[string]int{"crashes": 3}, []string{"heap overflow"})
 
 	for _, want := range []string{
-		"stress-strike Security Assessment",
+		"Sift Security Assessment",
 		"**Nightly fuzz**",
 		"**Status:** FAIL",
 		"| Metric | Count |",

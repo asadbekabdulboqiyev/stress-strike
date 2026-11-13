@@ -28,7 +28,7 @@ import (
 
 const (
 	nvdDefaultBaseURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-	nvdUserAgent      = "stress-strike/1.0"
+	nvdUserAgent      = "Sift/1.0"
 	nvdAPIKeyHeader   = "apiKey"
 	nvdPageSize       = 2000           // API maximum resultsPerPage
 	nvdMaxPages       = 5              // hard cap: 10K CVEs per search
@@ -80,7 +80,7 @@ type NVDService struct {
 // under os.TempDir(); timeout <= 0 defaults to 20s.
 func NewNVDService(cacheDir string, timeout time.Duration) *NVDService {
 	if cacheDir == "" {
-		cacheDir = filepath.Join(os.TempDir(), "stress-strike-nvd")
+		cacheDir = filepath.Join(os.TempDir(), "Sift-nvd")
 	}
 	if timeout <= 0 {
 		timeout = 20 * time.Second

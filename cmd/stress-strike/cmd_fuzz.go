@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_fuzz.go implements `stress-strike fuzz`: the CLI face of the dashboard's
+// cmd_fuzz.go implements `Sift fuzz`: the CLI face of the dashboard's
 // POST /api/fuzz/scan. Same engine, same gate, same authorization semantics —
 // only the transport differs.
 //
@@ -51,12 +51,12 @@ func cmdFuzz() {
 		Command: "fuzz",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike fuzz --target https://example.com --path /item/{id} --mutations 200",
+			"Sift fuzz --target https://example.com --path /item/{id} --mutations 200",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike fuzz --target https://example.com --path /item/{id}"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift fuzz --target https://example.com --path /item/{id}"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -64,7 +64,7 @@ func cmdFuzz() {
 	}
 	normPaths := fuzzNormalizePaths(paths)
 	if len(normPaths) == 0 {
-		usageFatal(fmt.Errorf("--path is required (at least one endpoint path)\n\nExample: stress-strike fuzz --target https://example.com --path /item/{id}"))
+		usageFatal(fmt.Errorf("--path is required (at least one endpoint path)\n\nExample: Sift fuzz --target https://example.com --path /item/{id}"))
 	}
 	tryMethods := []string(methods)
 	if len(tryMethods) == 0 {
@@ -162,12 +162,12 @@ func fuzzNormalizePaths(paths []string) []string {
 	return out
 }
 
-// printFuzzHelp renders `stress-strike fuzz --help`.
+// printFuzzHelp renders `Sift fuzz --help`.
 func printFuzzHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike fuzz — coverage-aware HTTP fuzzer\n\n")
+	fmt.Fprintf(w, "\n Sift fuzz — coverage-aware HTTP fuzzer\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike fuzz --target https://example.com --path /item/{id} [flags]\n\n")
+	fmt.Fprintf(w, "   Sift fuzz --target https://example.com --path /item/{id} [flags]\n\n")
 	fmt.Fprintf(w, " Honestly report what a fuzzing campaign touches: every request goes\n")
 	fmt.Fprintf(w, " through the probe gate (scope, rate, budget, dry-run) and the\n")
 	fmt.Fprintf(w, " authorization decision is recorded in the audit log.\n\n")
@@ -180,16 +180,16 @@ func printFuzzHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Fuzz two endpoints, 200 mutations each",
-		"stress-strike fuzz --target https://example.com --path /search --path /item/{id} --mutations 200",
+		"Sift fuzz --target https://example.com --path /search --path /item/{id} --mutations 200",
 		"",
 		"# Enable intrusive mutations (write methods, traversal, injection)",
-		"stress-strike fuzz --target https://example.com --path /api/item --intrusive",
+		"Sift fuzz --target https://example.com --path /api/item --intrusive",
 		"",
 		"# Preview the policy without sending anything",
-		"stress-strike fuzz --target example.com --path / --dry-run",
+		"Sift fuzz --target example.com --path / --dry-run",
 		"",
 		"# Machine-readable output",
-		"stress-strike fuzz --target https://example.com --path / --json --output-json fuzz.json",
+		"Sift fuzz --target https://example.com --path / --json --output-json fuzz.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

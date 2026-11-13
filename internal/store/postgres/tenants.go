@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 type tenantStore struct{ db *DB }

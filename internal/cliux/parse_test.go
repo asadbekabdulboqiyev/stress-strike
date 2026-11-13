@@ -83,15 +83,15 @@ func TestBoxHelp(t *testing.T) {
 	fs.Bool("verbose", false, "verbose output")
 
 	var buf bytes.Buffer
-	BoxHelp(&buf, "stress-strike worker — test node",
-		[]string{"stress-strike worker --listen :50052"},
-		[]string{"# start", "stress-strike worker"},
+	BoxHelp(&buf, "Sift worker — test node",
+		[]string{"Sift worker --listen :50052"},
+		[]string{"# start", "Sift worker"},
 		fs)
 	out := buf.String()
 	for _, want := range []string{
-		"stress-strike worker — test node",
+		"Sift worker — test node",
 		" USAGE",
-		"stress-strike worker --listen :50052",
+		"Sift worker --listen :50052",
 		" FLAGS",
 		"--listen string  listen address (default \":0\")",
 		"--verbose",

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dist/coordinator"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // captureStdout redirects os.Stdout to a temp file for the duration of fn and

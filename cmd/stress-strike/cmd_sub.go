@@ -9,8 +9,8 @@ import (
 )
 
 // subBinaryName renders the on-disk name of a sibling sub-binary. Windows
-// resolves executables by extension, so a bare "stress-strike-scan" never
-// matches "stress-strike-scan.exe": without this the Windows build would always
+// resolves executables by extension, so a bare "Sift-scan" never
+// matches "Sift-scan.exe": without this the Windows build would always
 // miss the shipped sibling and fall through to `go run`, which a distributed
 // binary cannot do.
 func subBinaryName(name string) string {
@@ -88,11 +88,11 @@ func exitFromChild(name, bin, hint string, err error) {
 	exitProcess(exitErr.ExitCode())
 }
 
-func cmdReplay()    { runSubCommand("stress-strike-replay", os.Args[2:]) }
-func cmdScan()      { runSubCommand("stress-strike-scan", os.Args[2:]) }
-func cmdDashboard() { runSubCommand("stress-strike-dashboard", os.Args[2:]) }
-func cmdMaster()    { runSubCommand("stress-strike-master", os.Args[2:]) }
-func cmdWorker()    { runSubCommand("stress-strike-worker", os.Args[2:]) }
+func cmdReplay()    { runSubCommand("Sift-replay", os.Args[2:]) }
+func cmdScan()      { runSubCommand("Sift-scan", os.Args[2:]) }
+func cmdDashboard() { runSubCommand("Sift-dashboard", os.Args[2:]) }
+func cmdMaster()    { runSubCommand("Sift-master", os.Args[2:]) }
+func cmdWorker()    { runSubCommand("Sift-worker", os.Args[2:]) }
 
 func findProjectRoot() string {
 	dir, err := os.Getwd()

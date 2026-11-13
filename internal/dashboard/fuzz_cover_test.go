@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 func fuzzPost(t *testing.T, s *Server, body string) *httptest.ResponseRecorder {

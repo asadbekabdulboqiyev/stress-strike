@@ -55,8 +55,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
 )
 
 const (

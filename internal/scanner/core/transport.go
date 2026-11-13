@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
 )
 
 // NewHTTPClient builds an *http.Client that, when profile is non-empty,

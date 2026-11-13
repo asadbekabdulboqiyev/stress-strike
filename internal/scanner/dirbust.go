@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // DirBustResult is the output of a directory brute-force run.
@@ -99,7 +99,7 @@ func DirBust(ctx context.Context, base string, paths []string, req core.Requeste
 			if err != nil {
 				return
 			}
-			reqHTTP.Header.Set("User-Agent", "stress-strike-dirbust/1.0")
+			reqHTTP.Header.Set("User-Agent", "Sift-dirbust/1.0")
 
 			if err := req.Check(ctx, http.MethodGet, parsed.String(), false); err != nil {
 				return

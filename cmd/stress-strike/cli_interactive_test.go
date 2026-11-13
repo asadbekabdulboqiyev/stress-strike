@@ -50,7 +50,7 @@ func TestBanner(t *testing.T) {
 	os.Stdout = old
 
 	out, _ := io.ReadAll(r)
-	if !strings.Contains(string(out), "stress-strike") {
+	if !strings.Contains(string(out), "Sift") {
 		t.Errorf("banner missing program name: %q", string(out))
 	}
 	if !strings.Contains(string(out), buildVersion) {

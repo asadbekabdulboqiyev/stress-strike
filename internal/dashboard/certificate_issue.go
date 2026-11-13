@@ -20,9 +20,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/certificate"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/certificate"
 )
 
 // maxCertificateBody caps a dropped pentest request body.
@@ -90,7 +90,7 @@ func (s *Server) handleCertificateIssue(w http.ResponseWriter, r *http.Request) 
 	}
 	issuer := strings.TrimSpace(req.Issuer)
 	if issuer == "" {
-		issuer = "stress-strike assessment"
+		issuer = "Sift assessment"
 	}
 	experimentRef := strings.TrimSpace(req.ExperimentReference)
 
@@ -100,7 +100,7 @@ func (s *Server) handleCertificateIssue(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": err.Error(),
-			"hint":  "this endpoint needs the JSON report `stress-strike pentest --format json` writes",
+			"hint":  "this endpoint needs the JSON report `Sift pentest --format json` writes",
 		})
 		return
 	}
@@ -263,7 +263,7 @@ func (s *Server) handleCertificateHistory(w http.ResponseWriter, r *http.Request
 // certToPDF renders a certificate to PDF bytes (single page).
 func certToPDF(c *certificate.Certificate) ([]byte, error) {
 	pdf := certificate.NewPDF().
-		Text("stress-strike — Security Assessment Certificate (ss-cert/v1)").
+		Text("Sift — Security Assessment Certificate (ss-cert/v1)").
 		Text("Certificate ID: " + c.CertificateID).
 		Text("Target: " + c.Assessment.Target).
 		Text("Grade: " + c.Assessment.Grade + "   Verdict: " + c.Assessment.Verdict + "   Risk: " + fmt.Sprintf("%d", c.Assessment.RiskScore) + "/100").

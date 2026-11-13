@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 )
 
 // -----------------------------------------------------------------------------

@@ -44,7 +44,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // ppmScale is 100% in parts per million. It mirrors honesty.PPMScale inside

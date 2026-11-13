@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_websocket.go implements `stress-strike websocket`: the CLI face of the
+// cmd_websocket.go implements `Sift websocket`: the CLI face of the
 // dashboard's POST /api/websocket/scan. It connects to a WebSocket endpoint
 // (ws:// or wss://) and reports structural weaknesses — missing origin
 // validation, absent subprotocol negotiation, whether the server answers an
@@ -40,13 +40,13 @@ func cmdWebSocket() {
 		Command: "websocket",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike websocket --url wss://example.com/socket",
+			"Sift websocket --url wss://example.com/socket",
 		},
 	})
 
 	raw := strings.TrimSpace(wsURL)
 	if raw == "" {
-		usageFatal(fmt.Errorf("--url is required\n\nExample: stress-strike websocket --url wss://example.com/socket"))
+		usageFatal(fmt.Errorf("--url is required\n\nExample: Sift websocket --url wss://example.com/socket"))
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Host == "" {
@@ -96,12 +96,12 @@ func cmdWebSocket() {
 	}
 }
 
-// printWebSocketHelp renders `stress-strike websocket --help`.
+// printWebSocketHelp renders `Sift websocket --help`.
 func printWebSocketHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike websocket — WebSocket security tester\n\n")
+	fmt.Fprintf(w, "\n Sift websocket — WebSocket security tester\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike websocket --url wss://example.com/socket [flags]\n\n")
+	fmt.Fprintf(w, "   Sift websocket --url wss://example.com/socket [flags]\n\n")
 	fmt.Fprintf(w, " Connects without an Origin header and reports structural weaknesses:\n")
 	fmt.Fprintf(w, " missing origin validation, absent subprotocol negotiation, and whether\n")
 	fmt.Fprintf(w, " the server answers an unsolicited probe.\n\n")
@@ -117,13 +117,13 @@ func printWebSocketHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Test a WebSocket endpoint",
-		"stress-strike websocket --url wss://example.com/socket",
+		"Sift websocket --url wss://example.com/socket",
 		"",
 		"# Preview the policy without connecting",
-		"stress-strike websocket --url wss://example.com/socket --dry-run",
+		"Sift websocket --url wss://example.com/socket --dry-run",
 		"",
 		"# Machine-readable output",
-		"stress-strike websocket --url wss://example.com/socket --json",
+		"Sift websocket --url wss://example.com/socket --json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

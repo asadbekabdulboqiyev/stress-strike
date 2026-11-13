@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
 )
 
 // --- tiny exposition parser (test-only) -------------------------------------

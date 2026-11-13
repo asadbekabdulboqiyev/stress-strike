@@ -1,4 +1,4 @@
-// Package authz is stress-strike's authorization and consent layer.
+// Package authz is Sift's authorization and consent layer.
 //
 // It answers one question before any traffic is sent: is this run permitted?
 // The layer exists because a load generator and an offensive scanner are, from

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
 )
 
 // runAndCollect drives a short live run against a local target and returns the
@@ -75,7 +75,7 @@ func testKeys(t *testing.T) (*attest.Keypair, *attest.Keypair) {
 }
 
 func testTool() attest.Tool {
-	return attest.Tool{Name: "stress-strike", Version: "test"}
+	return attest.Tool{Name: "Sift", Version: "test"}
 }
 
 // The whole point of the invention: a run sealed here must verify from the

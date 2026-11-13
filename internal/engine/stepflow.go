@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // stopFlags is a package-level registry of per-Engine run-stop state. The

@@ -16,10 +16,10 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // Liveness tuning for the fleet monitor. Workers stream a StatusReport
@@ -32,7 +32,7 @@ const (
 )
 
 // registerTTL is how long a self-registration stays valid without a
-// re-register. Workers re-register every 10s (see cmd/stress-strike-worker),
+// re-register. Workers re-register every 10s (see cmd/Sift-worker),
 // so an entry older than this belongs to a dead worker and is pruned so
 // auto-discovery never waits on — or selects — a corpse.
 var registerTTL = 35 * time.Second

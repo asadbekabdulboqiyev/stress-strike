@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // cmd_scan_shared.go holds the plumbing every standalone scanner command
@@ -32,7 +32,7 @@ import (
 type scanFlags struct {
 	// gate is the authorization surface (--authorized, --policy, --audit-log,
 	// --notify-webhook). Reused verbatim from cmd_authz.go so the CLI, the
-	// dashboard and `stress-strike pentest` resolve the same policy.
+	// dashboard and `Sift pentest` resolve the same policy.
 	gate gateOptions
 
 	// allow / allowAll widen the Guard's scope allowlist. Default: the host
@@ -72,9 +72,9 @@ func addScanGateFlags(fs *flag.FlagSet, sf *scanFlags) {
 	fs.BoolVar(&sf.gate.allowPrivate, "allow-private", false,
 		"allow RFC1918/link-local targets without an explicit authorization entry")
 	fs.StringVar(&sf.gate.policyPath, "policy", "",
-		"authorization policy file (default ~/.stress-strike/authz.json)")
+		"authorization policy file (default ~/.Sift/authz.json)")
 	fs.StringVar(&sf.gate.auditPath, "audit-log", "",
-		"audit log file (default ~/.stress-strike/audit.jsonl)")
+		"audit log file (default ~/.Sift/audit.jsonl)")
 	fs.StringVar(&sf.gate.webhook, "notify-webhook", "",
 		"webhook URL for audit notifications")
 	fs.Var(&sf.allow, "allow",
@@ -204,7 +204,7 @@ func announceScanScope(name string, parsed *url.URL, sf *scanFlags) {
 // scanWarning prints the standing legal warning every probe-sending scanner
 // command shows before it builds its guard. Same wording as `pentest`.
 func scanWarning(name string) {
-	fmt.Fprintf(os.Stderr, "WARNING: stress-strike %s issues real requests. Only test systems you own or\n", name)
+	fmt.Fprintf(os.Stderr, "WARNING: Sift %s issues real requests. Only test systems you own or\n", name)
 	fmt.Fprintln(os.Stderr, "have explicit permission to test. Unauthorized testing is illegal.")
 }
 

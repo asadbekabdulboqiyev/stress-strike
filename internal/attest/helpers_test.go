@@ -10,7 +10,7 @@ package attest
 import (
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // mustKey returns a fresh Ed25519 keypair or fails the test.
@@ -145,7 +145,7 @@ func produceBundle(t *testing.T, coord *Keypair, run Run, specs []workerSpec, co
 	b := Bundle{
 		Format:    FormatID,
 		CreatedAt: "2026-10-13T18:00:00Z",
-		Tool:      Tool{Name: "stress-strike", Version: "test"},
+		Tool:      Tool{Name: "Sift", Version: "test"},
 		Run:       run,
 		Workers:   workers,
 		Aggregate: agg,

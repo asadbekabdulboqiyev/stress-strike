@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
 )
 
 func startWorker(t *testing.T, cfg WorkerConfig) (string, *grpc.Server) {

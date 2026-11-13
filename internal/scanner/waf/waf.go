@@ -1,4 +1,4 @@
-// Package waf implements WAF fingerprinting for the stress-strike scanner.
+// Package waf implements WAF fingerprinting for the Sift scanner.
 package waf
 
 import (
@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // WAFInfo contains the results of a WAF detection scan.

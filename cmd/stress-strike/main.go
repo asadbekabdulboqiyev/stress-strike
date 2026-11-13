@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 // buildVersion is the release version, overridden at build time via ldflags.
@@ -105,7 +105,7 @@ func main() {
 			printFullHelp()
 			return
 		case "version", "--version", "-v":
-			fmt.Printf("stress-strike v%s\n", version.Full())
+			fmt.Printf("Sift v%s\n", version.Full())
 			return
 		default:
 			unknownCommand(cmd)
@@ -139,7 +139,7 @@ func unknownCommand(cmd string) {
 	for _, c := range knownCommands {
 		fmt.Fprintf(w, "   %s\n", c)
 	}
-	fmt.Fprintf(w, "\nRun 'stress-strike --help' to see all commands, flags and examples.\n")
+	fmt.Fprintf(w, "\nRun 'Sift --help' to see all commands, flags and examples.\n")
 }
 
 // shouldFailGate reports whether the measured error rate should trip the SLA
@@ -151,10 +151,10 @@ func shouldFailGate(ratePct, threshold float64) bool {
 
 func printFullHelp() {
 	fmt.Fprintf(os.Stderr, `
-stress-strike %s — Ultra-Fast Load Testing & Security Suite
+Sift %s — Ultra-Fast Load Testing & Security Suite
 
  USAGE
-   stress-strike <command> [flags]
+   Sift <command> [flags]
 
 ═══════════════════════════════════════════════════════════════════════
  COMMANDS
@@ -170,8 +170,8 @@ stress-strike %s — Ultra-Fast Load Testing & Security Suite
    pentest     1-click professional security assessment
    authorize   Manage target authorizations (allow-list + approvals)
    audit       Show or verify the authorization audit trail
-   keygen      Create a stress-strike coordinator keypair (Ed25519, PEM)
-   verify      Verify a stress-strike (vpmp/v1) evidence bundle
+   keygen      Create a Sift coordinator keypair (Ed25519, PEM)
+   verify      Verify a Sift (vpmp/v1) evidence bundle
    certificate Issue/verify an Ed25519-signed security assessment certificate
    admin       Local admin area: code, status, unlock/lock the bypass switch
    help        Show this help
@@ -328,69 +328,69 @@ stress-strike %s — Ultra-Fast Load Testing & Security Suite
 ═══════════════════════════════════════════════════════════════════════
 
   # Simple load test
-  stress-strike run --url https://api.example.com --users 100 --duration 60
+  Sift run --url https://api.example.com --users 100 --duration 60
 
   # Constant RPS mode (1000 requests/sec)
-  stress-strike run --url https://api.example.com --target-rps 1000 --duration 30
+  Sift run --url https://api.example.com --target-rps 1000 --duration 30
 
   # Pre-warm connections (zero handshake overhead)
-  stress-strike run --url https://api.example.com --users 100 --pre-warm
+  Sift run --url https://api.example.com --users 100 --pre-warm
 
   # SLA gate for CI/CD (exit code 2 on failure)
-  stress-strike run --url https://api.example.com --users 50 --duration 30 \
+  Sift run --url https://api.example.com --users 50 --duration 30 \
     --expect-p99-ms 200 --expect-error-rate 1
 
   # Compare with baseline (detect regressions)
-  stress-strike run --url https://api.example.com --users 50 --duration 30 \
+  Sift run --url https://api.example.com --users 50 --duration 30 \
     --compare reports/baseline.json --regress-pct 20
 
   # Replay production traffic at 10x speed
-  stress-strike replay -input traffic.har -rate 10x -concurrency 20
+  Sift replay -input traffic.har -rate 10x -concurrency 20
 
   # Scan server security
-  stress-strike scan -target example.com -all
+  Sift scan -target example.com -all
 
   # Start web dashboard (loopback only by default)
-  stress-strike dashboard
+  Sift dashboard
 
   # Expose on all interfaces (warns: no auth)
-  stress-strike dashboard -listen :8888
+  Sift dashboard -listen :8888
 
   # Distributed load test
-  stress-strike master --workers host1:50052,host2:50052 --url URL --users 1000
-  stress-strike worker --listen :50052
+  Sift master --workers host1:50052,host2:50052 --url URL --users 1000
+  Sift worker --listen :50052
 
   # YAML scenario file
-  stress-strike run --config examples/login-flow.yaml
+  Sift run --config examples/login-flow.yaml
 
   # Spike test
-  stress-strike run --url https://api.example.com --users 100 --duration 60 \
+  Sift run --url https://api.example.com --users 100 --duration 60 \
     --profile spike --spike-users 500 --spike-warmup 10 --spike-hold 20
 
   # 1-click security assessment
-  stress-strike pentest --target https://example.com --depth 2 --verbose
+  Sift pentest --target https://example.com --depth 2 --verbose
 
   # Individual scanners (each is scope-gated; add --authorized <ticket> for pentest-grade ops)
-  stress-strike fuzz    --target https://example.com --path /item/{id} --mutations 200
-  stress-strike dirbust --target https://example.com
-  stress-strike crawl   --target https://example.com --depth 3
-  stress-strike subdomain --target https://example.com
-  stress-strike portscan --target https://example.com --ports 22,80,443
-  stress-strike sslscan --target https://example.com
-  stress-strike graphql --target https://example.com/graphql
-  stress-strike websocket --url wss://example.com/socket
+  Sift fuzz    --target https://example.com --path /item/{id} --mutations 200
+  Sift dirbust --target https://example.com
+  Sift crawl   --target https://example.com --depth 3
+  Sift subdomain --target https://example.com
+  Sift portscan --target https://example.com --ports 22,80,443
+  Sift sslscan --target https://example.com
+  Sift graphql --target https://example.com/graphql
+  Sift websocket --url wss://example.com/socket
 
   # Offline JWT analysis (no network, no gate) — token is never echoed back
-  stress-strike jwt --token eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.
+  Sift jwt --token eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.
 
   # Preview any scanner's probe policy without sending a byte
-  stress-strike dirbust --target https://example.com --dry-run
+  Sift dirbust --target https://example.com --dry-run
 
   # Quiet mode (no progress bar, for scripts)
-  stress-strike run --url https://api.example.com --users 100 --duration 60 --quiet
+  Sift run --url https://api.example.com --users 100 --duration 60 --quiet
 
   # Real-time web dashboard output (open browser, press Start)
-  stress-strike run --url https://api.example.com --users 100 --duration 60 --mode dashboard
+  Sift run --url https://api.example.com --users 100 --duration 60 --mode dashboard
 
 ═══════════════════════════════════════════════════════════════════════
  WARNING: Only test systems you own or have explicit permission to test.

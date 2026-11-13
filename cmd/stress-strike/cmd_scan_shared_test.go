@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // captureStream swaps a package-global *os.File (os.Stdout / os.Stderr) for a

@@ -3,9 +3,9 @@ package evidence
 import (
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // A rate is a number with a unit, and the bundle's unit is thousandths of a

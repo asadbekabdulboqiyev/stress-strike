@@ -46,9 +46,9 @@ var shippedFiles = []string{
 	"NOTICE",
 	"README.md",
 	"CONTRIBUTING.md",
-	"packaging/scoop/stress-strike.json",
-	"packaging/homebrew/stress-strike.rb",
-	"packaging/winget/stress-strike.yaml",
+	"packaging/scoop/Sift.json",
+	"packaging/homebrew/Sift.rb",
+	"packaging/winget/Sift.yaml",
 	".goreleaser.yaml",
 	"Dockerfile",
 	"Dockerfile.master",
@@ -153,7 +153,7 @@ func compiledModules(repoRoot string) ([]string, error) {
 		return nil, fmt.Errorf("go list -deps: %w", err)
 	}
 
-	const self = "github.com/asadbekabdulboqiyev/stress-strike"
+	const self = "github.com/asadbekabdulboqiyev/sift"
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)

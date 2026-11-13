@@ -18,18 +18,18 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/opsserver"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dist/coordinator"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/opsserver"
+	"github.com/asadbekabdulboqiyev/sift/internal/probe"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 var (
@@ -64,7 +64,7 @@ var (
 
 func main() {
 	// The container HEALTHCHECK / Kubernetes exec probe invokes this binary as
-	// `stress-strike-master healthcheck -addr <url>`. Handle it before any flag
+	// `Sift-master healthcheck -addr <url>`. Handle it before any flag
 	// parsing so the probe never needs a shell (distroless images ship none).
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		exitProcess(probe.Run(os.Args[2:], "http://127.0.0.1:9090/healthz"))
@@ -72,30 +72,30 @@ func main() {
 	// `--version` is how the image build proves the binary it is about to ship
 	// is not a dev build; without it Dockerfile.master logs "Unknown flag".
 	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
-		fmt.Printf("stress-strike-master v%s\n", version.Full())
+		fmt.Printf("Sift-master v%s\n", version.Full())
 		return
 	}
 
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
-	flag.CommandLine.Init("stress-strike-master", flag.ContinueOnError)
+	flag.CommandLine.Init("Sift-master", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
 	masterHelp := func() {
 		cliux.BoxHelp(os.Stderr,
-			"stress-strike master — distributed load-test coordinator",
+			"Sift master — distributed load-test coordinator",
 			[]string{
-				"stress-strike master --url https://api.example.com --users 1000 --duration 60",
-				"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
-				"stress-strike master --config scenario.yaml --workers host1:50052",
+				"Sift master --url https://api.example.com --users 1000 --duration 60",
+				"Sift master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+				"Sift master --config scenario.yaml --workers host1:50052",
 			},
 			[]string{
 				"# Static fleet",
-				"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+				"Sift master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
 				"",
 				"# Auto-discovery (wait for 2 workers to self-register)",
-				"stress-strike master --url https://api.example.com --wait-workers 2 --wait-timeout 30",
+				"Sift master --url https://api.example.com --wait-workers 2 --wait-timeout 30",
 				"",
 				"# YAML scenario with SLA gate",
-				"stress-strike master --config scenario.yaml --workers host1:50052 --expect-p99-ms 200",
+				"Sift master --config scenario.yaml --workers host1:50052 --expect-p99-ms 200",
 			},
 			flag.CommandLine)
 	}
@@ -103,7 +103,7 @@ func main() {
 		Command: "master",
 		FlagSet: flag.CommandLine,
 		Examples: []string{
-			"stress-strike master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
+			"Sift master --workers host1:50052,host2:50052 --url https://api.example.com --users 1000",
 		},
 	})
 	coordinator.Version = version.Version

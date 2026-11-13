@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // Aggregator accumulates the latest cumulative telemetry snapshot from each

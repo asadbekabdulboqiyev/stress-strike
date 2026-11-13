@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // wsReadLimit caps the size of a single WebSocket frame read during a step.

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
 )
 
 func testGate(t *testing.T) gateOptions {

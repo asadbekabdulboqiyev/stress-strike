@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // renderRef is the regexp implementation render replaced. It is kept here as

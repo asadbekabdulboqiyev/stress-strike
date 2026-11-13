@@ -1,23 +1,23 @@
-# Windows Package Manager manifest for stress-strike.
+# Windows Package Manager manifest for Sift.
 #
 # Put this directory in a winget-pkgs fork as:
-#   manifests/a/asadbekabdulboqiyev/stress-strike/0.14.3/stress-strike.yaml
-#   manifests/a/asadbekabdulboqiyev/stress-strike/0.14.3/
-#       stress-strike.installer.yaml   (see packaging/winget/)
+#   manifests/a/asadbekabdulboqiyev/Sift/0.14.3/Sift.yaml
+#   manifests/a/asadbekabdulboqiyev/Sift/0.14.3/
+#       Sift.installer.yaml   (see packaging/winget/)
 #
 # Replace both hashes with the values from checksums.txt in the release.
 
-PackageIdentifier: asadbekabdulboqiyev.stress-strike
+PackageIdentifier: asadbekabdulboqiyev.Sift
 PackageVersion: 0.14.13
 DefaultLocale: en-US
 ManifestType: installer
 InstallerType: zip
 License: Apache-2.0
 Publisher: asadbekabdulboqiyev
-Author: stress-strike maintainers
-Homepage: https://github.com/asadbekabdulboqiyev/stress-strike
-ReleaseNotes: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.13
-ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/tag/v0.14.13
+Author: Sift maintainers
+Homepage: https://github.com/asadbekabdulboqiyev/Sift
+ReleaseNotes: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.13
+ReleaseNotesUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/tag/v0.14.13
 InstallationNotes: |
   Pure Go build: no libpcap, no C runtime, no system dependencies.
 
@@ -36,14 +36,14 @@ Platform:
 Architectures:
   - x64
 InstallerSwitches:
-  Custom: stress-strike.exe
+  Custom: Sift.exe
 
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/asadbekabdulboqiyev/stress-strike/releases/download/v0.14.13/stress-strike_0.14.13_windows_amd64.zip
+    InstallerUrl: https://github.com/asadbekabdulboqiyev/Sift/releases/download/v0.14.13/Sift_0.14.13_windows_amd64.zip
     InstallerSha256: REPLACE_WITH_SHA256_FROM_checksums_txt
 
 FileExtensions:
   - ss
 Commands:
-  - name: stress-strike
+  - name: Sift

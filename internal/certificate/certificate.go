@@ -1,6 +1,6 @@
 // Package certificate issues and verifies signed assessment certificates.
 //
-// A certificate is an English, self-contained attestation that a stress-strike
+// A certificate is an English, self-contained attestation that a Sift
 // security assessment ran against a target, what it found, and its overall
 // grade/verdict. It is sealed with an Ed25519 signature over the canonical
 // assessment JSON, and the signer's public key travels inside the certificate
@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 )
 
 // Version is the ss-cert envelope format.
@@ -109,7 +109,7 @@ type Certificate struct {
 func NewFromPentest(target, scope, issuer, toolVersion string, risk int, grade, verdict string,
 	counts Counts, owaspPass int, started, ended, duration string) Assessment {
 	return Assessment{
-		Tool:        "stress-strike",
+		Tool:        "Sift",
 		ToolVersion: toolVersion,
 		Target:      target,
 		Scope:       scope,

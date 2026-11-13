@@ -1,6 +1,6 @@
 package attest
 
-// bundle.go — the cover sheet of a stress-strike evidence pack.
+// bundle.go — the cover sheet of a Sift evidence pack.
 //
 // # The format at a glance (vpmp/v1)
 //

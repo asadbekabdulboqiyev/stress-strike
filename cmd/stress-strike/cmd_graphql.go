@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_graphql.go implements `stress-strike graphql`: the CLI face of the
+// cmd_graphql.go implements `Sift graphql`: the CLI face of the
 // dashboard's POST /api/graphql/scan. It POSTs a GraphQL introspection query to
 // the endpoint and reports whether introspection is enabled (a serious
 // information-disclosure issue) plus any types that look like they expose
@@ -34,12 +34,12 @@ func cmdGraphQL() {
 		Command: "graphql",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike graphql --target https://example.com/graphql",
+			"Sift graphql --target https://example.com/graphql",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike graphql --target https://example.com/graphql"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift graphql --target https://example.com/graphql"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -87,12 +87,12 @@ func cmdGraphQL() {
 	}
 }
 
-// printGraphQLHelp renders `stress-strike graphql --help`.
+// printGraphQLHelp renders `Sift graphql --help`.
 func printGraphQLHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike graphql — GraphQL introspection scanner\n\n")
+	fmt.Fprintf(w, "\n Sift graphql — GraphQL introspection scanner\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike graphql --target https://example.com/graphql [flags]\n\n")
+	fmt.Fprintf(w, "   Sift graphql --target https://example.com/graphql [flags]\n\n")
 	fmt.Fprintf(w, " Sends a standard introspection query and reports whether the schema is\n")
 	fmt.Fprintf(w, " exposed, along with types whose names suggest sensitive data. Every\n")
 	fmt.Fprintf(w, " request passes through the probe gate (scope, rate, budget, dry-run).\n\n")
@@ -105,13 +105,13 @@ func printGraphQLHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Probe a GraphQL endpoint for introspection",
-		"stress-strike graphql --target https://example.com/graphql",
+		"Sift graphql --target https://example.com/graphql",
 		"",
 		"# Preview the policy without sending anything",
-		"stress-strike graphql --target example.com/graphql --dry-run",
+		"Sift graphql --target example.com/graphql --dry-run",
 		"",
 		"# Machine-readable output",
-		"stress-strike graphql --target https://example.com/graphql --json --output-json graphql.json",
+		"Sift graphql --target https://example.com/graphql --json --output-json graphql.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

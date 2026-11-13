@@ -16,7 +16,7 @@ import (
 // 900 µs one: both land in the same bucket, and every sub-millisecond target
 // (which is most Go/Java/Rust services on a LAN) reports min = p50 = 0 ms.
 // Enterprise load tools (k6, wrk2, Vegeta, Gatling) all resolve at the
-// microsecond/nanosecond level, so stress-strike now does too.
+// microsecond/nanosecond level, so Sift now does too.
 //
 // # Layout
 //

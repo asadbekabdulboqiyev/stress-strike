@@ -82,7 +82,7 @@ func TestScannerCommandHelpDispatches(t *testing.T) {
 			if res.code != 0 {
 				t.Fatalf("%s --help exit = %d, want 0\nstderr: %s", c, res.code, res.stderr)
 			}
-			if !strings.Contains(res.stderr, "stress-strike "+c) {
+			if !strings.Contains(res.stderr, "Sift "+c) {
 				t.Errorf("%s --help did not print its header\nstderr: %s", c, res.stderr)
 			}
 		})

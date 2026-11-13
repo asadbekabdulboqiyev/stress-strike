@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 func role(name string, perms ...string) store.Role {

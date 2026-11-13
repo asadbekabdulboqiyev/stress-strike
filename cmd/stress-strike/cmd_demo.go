@@ -11,12 +11,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/demostore"
 )
 
 // cmdDemoStore launches the bundled VoltStore demo target straight from the
-// stress-strike CLI. VeriGate protection is ON by default — the whole point
+// Sift CLI. VeriGate protection is ON by default — the whole point
 // of the demo — and can be disabled with -protect=false. The store runs in
 // the foreground, like any server command, until Ctrl+C (SIGINT/SIGTERM).
 //
@@ -55,8 +55,8 @@ func cmdDemoStore() {
 		Command: "demo-store",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike demo-store",
-			"stress-strike demo-store -protect=false",
+			"Sift demo-store",
+			"Sift demo-store -protect=false",
 		},
 	})
 
@@ -111,7 +111,7 @@ func cmdDemoStore() {
 	}
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║  VoltStore demo — launched from stress-strike                  ║")
+	fmt.Println("║  VoltStore demo — launched from Sift                  ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Printf("  Store:      %s\n", startedURL)
 	if already {
@@ -125,7 +125,7 @@ func cmdDemoStore() {
 		if *protect {
 			fmt.Println()
 			fmt.Println("  Attack it from another terminal:")
-			fmt.Printf("    stress-strike run --url %s --users 300 --duration 10 --expect-error-rate 5\n", startedURL)
+			fmt.Printf("    Sift run --url %s --users 300 --duration 10 --expect-error-rate 5\n", startedURL)
 		}
 		fmt.Println()
 		fmt.Println("  Press Ctrl+C to stop the demo store.")
@@ -168,7 +168,7 @@ func cmdDemoStoreStatus() {
 		Command: "demo-store status",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike demo-store status",
+			"Sift demo-store status",
 		},
 	})
 
@@ -211,7 +211,7 @@ func cmdDemoStoreStop() {
 		Command: "demo-store stop",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike demo-store stop",
+			"Sift demo-store stop",
 		},
 	})
 
@@ -257,7 +257,7 @@ func protectLabel(on bool) string {
 // printDemoStoreHelp renders the demo-store command's flag help.
 func printDemoStoreHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(os.Stderr, `
-stress-strike demo-store — launch the bundled VoltStore demo target
+Sift demo-store — launch the bundled VoltStore demo target
 
  Launches the realistic e-commerce demo site (VoltStore) with VeriGate
  protection, exactly like the one-click button in the web dashboard.
@@ -265,10 +265,10 @@ stress-strike demo-store — launch the bundled VoltStore demo target
 
  Examples:
    # Protected demo (default)
-   stress-strike demo-store
+   Sift demo-store
 
    # Open target, custom port, attackable immediately
-   stress-strike demo-store -protect=false -addr 127.0.0.1:9090
+   Sift demo-store -protect=false -addr 127.0.0.1:9090
 
  Flags:
 `)
@@ -281,10 +281,10 @@ stress-strike demo-store — launch the bundled VoltStore demo target
 `)
 }
 
-// printDemoStoreStatusHelp renders `stress-strike demo-store status --help`.
+// printDemoStoreStatusHelp renders `Sift demo-store status --help`.
 func printDemoStoreStatusHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(os.Stderr, `
-stress-strike demo-store status — report whether the VoltStore demo is up
+Sift demo-store status — report whether the VoltStore demo is up
 
  Probes the demo store address and reports running / managed / protection,
  like the dashboard's status endpoint. "managed" is false from a fresh CLI
@@ -295,15 +295,15 @@ stress-strike demo-store status — report whether the VoltStore demo is up
 	cliux.PrintFlagList(os.Stderr, fs)
 	fmt.Fprintf(os.Stderr, `
  Examples:
-   stress-strike demo-store status
-   stress-strike demo-store status --json
+   Sift demo-store status
+   Sift demo-store status --json
 `)
 }
 
-// printDemoStoreStopHelp renders `stress-strike demo-store stop --help`.
+// printDemoStoreStopHelp renders `Sift demo-store stop --help`.
 func printDemoStoreStopHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(os.Stderr, `
-stress-strike demo-store stop — stop the VoltStore demo this process launched
+Sift demo-store stop — stop the VoltStore demo this process launched
 
  The supervisor only terminates a store it spawned itself. From a standalone
  CLI invocation nothing is managed, so this reports the state and leaves any
@@ -314,6 +314,6 @@ stress-strike demo-store stop — stop the VoltStore demo this process launched
 	cliux.PrintFlagList(os.Stderr, fs)
 	fmt.Fprintf(os.Stderr, `
  Examples:
-   stress-strike demo-store stop
+   Sift demo-store stop
 `)
 }

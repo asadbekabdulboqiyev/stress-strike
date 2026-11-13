@@ -1,4 +1,4 @@
-module github.com/asadbekabdulboqiyev/stress-strike
+module github.com/asadbekabdulboqiyev/sift
 
 // Patch-pinned on purpose. A `go 1.26` or `go 1.26.0` directive lets any
 // 1.26.x toolchain build this module, including 1.26.10, which carries
@@ -9,6 +9,7 @@ module github.com/asadbekabdulboqiyev/stress-strike
 go 1.26.11
 
 require (
+	github.com/asadbekabdulboqiyev/stress-strike v0.14.11
 	github.com/chromedp/cdproto v0.159.0
 	github.com/chromedp/chromedp v0.23.0
 	github.com/google/gopacket v1.1.19

@@ -16,7 +16,7 @@ package honesty
 // measurement records only the fast service time and silently discards the
 // waiting time — the coordinated-omission bug.
 //
-// stress-strike's correction is exact and reproducible: for each record, the honest
+// Sift's correction is exact and reproducible: for each record, the honest
 // latency is
 //
 //	corrected = latency + max(0, start_ns - intended_start(seq))

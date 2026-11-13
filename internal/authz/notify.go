@@ -78,6 +78,6 @@ func slackText(e Entry) string {
 	if !e.Allowed {
 		verb = "BLOCKED"
 	}
-	return fmt.Sprintf("[stress-strike] %s: %s %s (target=%s, class=%s, actor=%s, rule=%s)",
+	return fmt.Sprintf("[Sift] %s: %s %s (target=%s, class=%s, actor=%s, rule=%s)",
 		verb, e.Action, e.Time.Format(time.RFC3339), strings.Join(e.Targets, ","), e.Class, e.Actor, e.Rule)
 }

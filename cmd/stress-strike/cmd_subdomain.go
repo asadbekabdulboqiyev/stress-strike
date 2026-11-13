@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_subdomain.go implements `stress-strike subdomain`: the CLI face of the
+// cmd_subdomain.go implements `Sift subdomain`: the CLI face of the
 // dashboard's POST /api/subdomain/scan. It passively discovers subdomains from
 // certificate transparency logs (crt.sh) and DNS records — no active probing of
 // the discovered hostnames.
@@ -39,12 +39,12 @@ func cmdSubdomain() {
 		Command: "subdomain",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike subdomain --target https://example.com",
+			"Sift subdomain --target https://example.com",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike subdomain --target https://example.com"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift subdomain --target https://example.com"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -96,12 +96,12 @@ func cmdSubdomain() {
 	}
 }
 
-// printSubdomainHelp renders `stress-strike subdomain --help`.
+// printSubdomainHelp renders `Sift subdomain --help`.
 func printSubdomainHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike subdomain — passive subdomain enumeration\n\n")
+	fmt.Fprintf(w, "\n Sift subdomain — passive subdomain enumeration\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike subdomain --target https://example.com [flags]\n\n")
+	fmt.Fprintf(w, "   Sift subdomain --target https://example.com [flags]\n\n")
 	fmt.Fprintf(w, " Passive discovery from certificate transparency logs (crt.sh) and DNS\n")
 	fmt.Fprintf(w, " records, then local resolution of what it finds. No active probing of\n")
 	fmt.Fprintf(w, " the discovered hostnames is performed.\n\n")
@@ -117,13 +117,13 @@ func printSubdomainHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Enumerate subdomains of a domain",
-		"stress-strike subdomain --target https://example.com",
+		"Sift subdomain --target https://example.com",
 		"",
 		"# Preview the policy without querying",
-		"stress-strike subdomain --target example.com --dry-run",
+		"Sift subdomain --target example.com --dry-run",
 		"",
 		"# Machine-readable output",
-		"stress-strike subdomain --target https://example.com --json --output-json subdomains.json",
+		"Sift subdomain --target https://example.com --json --output-json subdomains.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

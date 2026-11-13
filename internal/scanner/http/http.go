@@ -1,4 +1,4 @@
-// Package http implements HTTP fingerprinting for the stress-strike scanner.
+// Package http implements HTTP fingerprinting for the Sift scanner.
 package http
 
 import (
@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // HTTPInfo contains the results of an HTTP scan.

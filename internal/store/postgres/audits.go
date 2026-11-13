@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 type auditStore struct{ db *DB }

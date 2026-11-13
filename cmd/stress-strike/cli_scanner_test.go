@@ -33,7 +33,7 @@ func TestInprocMainDispatch(t *testing.T) {
 		if res.code != 0 {
 			t.Fatalf("exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 		}
-		if !strings.Contains(res.stderr, "stress-strike") {
+		if !strings.Contains(res.stderr, "Sift") {
 			t.Errorf("help output missing the program name: %q", res.stderr)
 		}
 		if !strings.Contains(res.stderr, "portscan") {
@@ -52,7 +52,7 @@ func TestInprocMainDispatch(t *testing.T) {
 		if res.code != 0 {
 			t.Fatalf("%s: exit = %d, want 0", v, res.code)
 		}
-		if !strings.Contains(res.stdout, "stress-strike v") {
+		if !strings.Contains(res.stdout, "Sift v") {
 			t.Errorf("%s: stdout = %q, want a version line", v, res.stdout)
 		}
 	}
@@ -85,7 +85,7 @@ func TestInprocScannerHelp(t *testing.T) {
 			if res.code != 0 {
 				t.Fatalf("exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 			}
-			if !strings.Contains(res.stderr, "stress-strike "+cmd) {
+			if !strings.Contains(res.stderr, "Sift "+cmd) {
 				t.Errorf("help text does not name the command: %q", res.stderr)
 			}
 			if !strings.Contains(res.stderr, "FLAGS") {

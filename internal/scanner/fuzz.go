@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // FuzzConfig configures a fuzzing campaign.
@@ -349,7 +349,7 @@ func (f *Fuzzer) sendProbe(ctx context.Context, method, path string, body []byte
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	req.Header.Set("User-Agent", "stress-strike-fuzzer/1.0")
+	req.Header.Set("User-Agent", "Sift-fuzzer/1.0")
 
 	start := time.Now()
 	if err := f.req.Check(ctx, method, u.String(), intrusive); err != nil {

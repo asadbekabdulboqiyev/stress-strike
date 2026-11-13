@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/demostore"
 	"github.com/gorilla/websocket"
 )
 
@@ -756,7 +756,7 @@ func TestGetDashboardDataDirCreatesTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDashboardDataDir: %v", err)
 	}
-	if !strings.HasSuffix(dir, filepath.Join("stress-strike", "dashboard")) {
+	if !strings.HasSuffix(dir, filepath.Join("Sift", "dashboard")) {
 		t.Errorf("dir = %q, want it to end with stress-strike/dashboard", dir)
 	}
 	st, err := os.Stat(dir)
@@ -779,7 +779,7 @@ func TestGetDashboardDataDirMkdirFailure(t *testing.T) {
 		t.Fatalf("os.UserConfigDir: %v", err)
 	}
 	// A regular file where the parent directory must be: MkdirAll fails.
-	blocker := filepath.Join(cfg, "stress-strike")
+	blocker := filepath.Join(cfg, "Sift")
 	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
 		if mkErr := os.MkdirAll(filepath.Dir(blocker), 0o750); mkErr != nil {
 			t.Fatal(mkErr)

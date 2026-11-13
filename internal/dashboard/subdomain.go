@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // --- Subdomain dashboard -----------------------------------------------------
@@ -74,7 +74,7 @@ func (s *Server) handleSubdomainScan(w http.ResponseWriter, r *http.Request) {
 		owaspWriteError(w, http.StatusInternalServerError, "authorization policy error: "+err.Error())
 		return
 	}
-	auditErr := subdomainAudit(authz.Entry{Action: authz.OpScan.String(), Targets: []string{hostname}, IPs: decision.IPs, Class: decision.Class, Allowed: decision.Allowed, Rule: decision.Rule, Reason: decision.Reason, Argv: []string{"stress-strike dashboard", "POST /api/subdomain/scan"}})
+	auditErr := subdomainAudit(authz.Entry{Action: authz.OpScan.String(), Targets: []string{hostname}, IPs: decision.IPs, Class: decision.Class, Allowed: decision.Allowed, Rule: decision.Rule, Reason: decision.Reason, Argv: []string{"Sift dashboard", "POST /api/subdomain/scan"}})
 	if !decision.Allowed {
 		reason := decision.Reason
 		if auditErr != nil {

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
 )
 
 // TestRegisterDedupAndPrune verifies that re-registering with the same

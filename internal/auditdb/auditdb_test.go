@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store/memstore"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store/memstore"
 )
 
 func sampleEntry() authz.Entry {

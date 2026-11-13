@@ -1,5 +1,5 @@
 // Package api exposes a small, stable Go library API on top of the
-// stress-strike engine. It is intended for embedding load tests into other
+// Sift engine. It is intended for embedding load tests into other
 // programs, test suites or custom tooling.
 package api
 
@@ -9,10 +9,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // Config describes a single load test to run against one HTTP endpoint.

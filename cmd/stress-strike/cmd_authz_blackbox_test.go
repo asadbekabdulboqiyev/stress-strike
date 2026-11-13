@@ -24,7 +24,7 @@ func TestCLIAuthorizeUsageErrors(t *testing.T) {
 	if res.code != 2 {
 		t.Errorf("authorize without a subcommand: exit = %d, want 2", res.code)
 	}
-	if !strings.Contains(res.stderr, "usage: stress-strike authorize") {
+	if !strings.Contains(res.stderr, "usage: Sift authorize") {
 		t.Errorf("stderr = %q", res.stderr)
 	}
 

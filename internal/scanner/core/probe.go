@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
 )
 
 // DefaultFingerprint is the TLS ClientHello profile every scanner subpackage
@@ -95,7 +95,7 @@ var (
 // ScannerUserAgent identifies every probe this tool sends. WSTG expects the
 // tester to be identifiable, and an operator of the scanned system can grep
 // their access log for this string.
-const ScannerUserAgent = "stress-strike-scanner/1.0 (+https://github.com/asadbekabdulboqiyev/stress-strike; authorized-assessment)"
+const ScannerUserAgent = "Sift-scanner/1.0 (+https://github.com/asadbekabdulboqiyev/sift; authorized-assessment)"
 
 // DefaultProbeLimit is the default response read cap: 2 MiB is enough for
 // headers, HTML, JSON and error pages, and small enough that a scanner cannot

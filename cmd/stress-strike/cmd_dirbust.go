@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_dirbust.go implements `stress-strike dirbust`: the CLI face of the
+// cmd_dirbust.go implements `Sift dirbust`: the CLI face of the
 // dashboard's POST /api/dirbust. It guesses common/sensitive paths on a web
 // server and reports the ones that do not answer 404.
 //
@@ -38,12 +38,12 @@ func cmdDirBust() {
 		Command: "dirbust",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike dirbust --target https://example.com",
+			"Sift dirbust --target https://example.com",
 		},
 	})
 
 	if target == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike dirbust --target https://example.com"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift dirbust --target https://example.com"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -91,12 +91,12 @@ func cmdDirBust() {
 	}
 }
 
-// printDirBustHelp renders `stress-strike dirbust --help`.
+// printDirBustHelp renders `Sift dirbust --help`.
 func printDirBustHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike dirbust — directory/file brute-forcer\n\n")
+	fmt.Fprintf(w, "\n Sift dirbust — directory/file brute-forcer\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike dirbust --target https://example.com [flags]\n\n")
+	fmt.Fprintf(w, "   Sift dirbust --target https://example.com [flags]\n\n")
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	fmt.Fprintf(w, " FLAGS\n")
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
@@ -106,13 +106,13 @@ func printDirBustHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Brute-force the built-in wordlist",
-		"stress-strike dirbust --target https://example.com",
+		"Sift dirbust --target https://example.com",
 		"",
 		"# Probe specific paths only",
-		"stress-strike dirbust --target https://example.com --path /admin --path /.env",
+		"Sift dirbust --target https://example.com --path /admin --path /.env",
 		"",
 		"# Machine-readable output",
-		"stress-strike dirbust --target https://example.com --json --output-json dirbust.json",
+		"Sift dirbust --target https://example.com --json --output-json dirbust.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

@@ -2838,7 +2838,7 @@ const file_internal_dist_proto_coordinator_proto_rawDesc = "" +
 	"Coordinate\x12 .stressstrike.dist.WorkerCommand\x1a\x1e.stressstrike.dist.WorkerEvent(\x010\x01\x12G\n" +
 	"\x04Ping\x12\x1e.stressstrike.dist.PingRequest\x1a\x1f.stressstrike.dist.PingResponse\x12b\n" +
 	"\x0fGetCapabilities\x12&.stressstrike.dist.CapabilitiesRequest\x1a'.stressstrike.dist.CapabilitiesResponse\x12S\n" +
-	"\bRegister\x12\".stressstrike.dist.RegisterRequest\x1a#.stressstrike.dist.RegisterResponseB-Z+stress-strike/internal/dist/proto;distprotob\x06proto3"
+	"\bRegister\x12\".stressstrike.dist.RegisterRequest\x1a#.stressstrike.dist.RegisterResponseB-Z+Sift/internal/dist/proto;distprotob\x06proto3"
 
 var (
 	file_internal_dist_proto_coordinator_proto_rawDescOnce sync.Once

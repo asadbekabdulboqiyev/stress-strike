@@ -18,11 +18,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // ── ANSI color codes ──────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ func defaultHistoryPath() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "stress-strike", "last-run.json")
+	return filepath.Join(dir, "Sift", "last-run.json")
 }
 
 func loadLastRun() lastRun {
@@ -665,7 +665,7 @@ func (w *wizard) renderSummary(ans *wizardAnswers, mode setupMode) {
 func runWizard(in io.Reader, out io.Writer, color bool) (*wizardAnswers, error) {
 	w := newWizard(in, out, color)
 
-	w.printf("\n%s\n", w.paint(ansiBold+ansiCyan, "⚡ stress-strike — Interactive Setup"))
+	w.printf("\n%s\n", w.paint(ansiBold+ansiCyan, "⚡ Sift — Interactive Setup"))
 	w.printf("%s\n", w.paint(ansiDim, "Press Enter to accept [recommended]. Ctrl+C to cancel."))
 	w.printf("%s\n\n", w.paint(ansiDim, "Only test systems you own or have permission to test."))
 
@@ -751,7 +751,7 @@ func openBrowser(u string) {
 //
 // Three doors, nothing else: run a load test here (CLI), drive it from a
 // browser (WEB), or manage the trust paperwork (AUTH). Everything the tool can
-// do is still one `stress-strike <command>` away, but the first screen stays
+// do is still one `Sift <command>` away, but the first screen stays
 // short enough to read.
 func interactivePicker() {
 	r := bufio.NewReader(os.Stdin)
@@ -868,7 +868,7 @@ func targetPrompt(r *bufio.Reader) string {
 }
 
 func runNamed(name string, args ...string) {
-	os.Args = append([]string{"stress-strike", name}, args...)
+	os.Args = append([]string{"Sift", name}, args...)
 	switch name {
 	case "pentest":
 		cmdPentest()
@@ -907,7 +907,7 @@ func runNamed(name string, args ...string) {
 
 func interactivePentest(r *bufio.Reader) {
 	target := targetPrompt(r)
-	fmt.Println("Pentest requires an authorization ticket (stress-strike authorize add ...).")
+	fmt.Println("Pentest requires an authorization ticket (Sift authorize add ...).")
 	fmt.Println("Running pentest against", target)
 	runNamed("pentest", "--target", target, "--depth", "1", "--timeout", "10", "--format", "json")
 }
@@ -1118,10 +1118,10 @@ func interactiveWizard(r *bufio.Reader) {
 	}
 
 	// The interactive wizard is another way to start a load test, so it goes
-	// through the same authorization gate as `stress-strike run`.
+	// through the same authorization gate as `Sift run`.
 	enforceAuthz(authz.OpLoadTest, scenarioTargets(sc), os.Args, gateOptions{})
 
-	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
+	fmt.Fprintln(os.Stderr, "WARNING: Sift is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 
 	warnLowFileLimit(sc.Profile)
@@ -1190,7 +1190,7 @@ func readInt(r *bufio.Reader, prompt string, def int) int {
 
 func banner() {
 	fmt.Println("┌─────────────────────────────────────────────────────────┐")
-	fmt.Println("│           stress-strike — Load Testing Suite           │")
+	fmt.Println("│           Sift — Load Testing Suite           │")
 	fmt.Printf("│                     version %-10s                │\n", buildVersion)
 	fmt.Println("└─────────────────────────────────────────────────────────┘")
 	fmt.Println()

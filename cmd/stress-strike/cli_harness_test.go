@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
 )
 
 // exitSignal carries the exit code a command asked for.
@@ -82,7 +82,7 @@ func driveCommand(t *testing.T, stdin string, fn func(), args ...string) (res cl
 	prevIn, prevOut, prevErr := os.Stdin, os.Stdout, os.Stderr
 	prevExit, prevCLIExit := exitProcess, cliux.ExitProcess
 
-	argv := append([]string{"stress-strike"}, args...)
+	argv := append([]string{"Sift"}, args...)
 	os.Args = argv
 	os.Stdin, os.Stdout, os.Stderr = stdinFile, stdoutFile, stderrFile
 

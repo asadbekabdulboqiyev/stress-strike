@@ -1,5 +1,5 @@
 // Command demo_store runs VoltStore — a realistic e-commerce demo target for
-// stress-strike, protected by the VeriGate middleware (rate limit +
+// Sift, protected by the VeriGate middleware (rate limit +
 // proof-of-work challenge + IP blocking) which can be toggled at runtime.
 //
 // Usage:
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/verigate"
+	"github.com/asadbekabdulboqiyev/sift/internal/verigate"
 )
 
 //go:embed templates/*.html

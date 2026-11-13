@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // owaspTestServer returns a Server whose policy and audit trail live in a
 // throwaway directory, so a test can never read the operator's real policy or
-// write into their real ~/.stress-strike audit log.
+// write into their real ~/.Sift audit log.
 func owaspTestServer(t *testing.T) *Server {
 	t.Helper()
 	t.Setenv("STRESS_STRIKE_HOME", t.TempDir())

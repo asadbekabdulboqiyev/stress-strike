@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 const (

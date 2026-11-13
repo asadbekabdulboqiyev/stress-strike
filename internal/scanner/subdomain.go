@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // Test seams. Passive enumeration is network-bound, so the DNS lookups and the
@@ -146,7 +146,7 @@ func crtSh(ctx context.Context, target string, add func(name, source string, met
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "stress-strike-subenum/1.0")
+	req.Header.Set("User-Agent", "Sift-subenum/1.0")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

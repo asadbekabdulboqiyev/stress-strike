@@ -1,6 +1,6 @@
 package main
 
-// cmd_verify_test.go — black-box end-to-end tests for the stress-strike command
+// cmd_verify_test.go — black-box end-to-end tests for the Sift command
 // surface (keygen and verify).
 //
 // keygen and verify call os.Exit, so they cannot be driven in-process without
@@ -25,8 +25,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // -----------------------------------------------------------------------------
@@ -56,13 +56,13 @@ func TestMain(m *testing.M) {
 // idempotent so every test can call it without paying the build cost twice.
 func buildCLI() {
 	cliBuildOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "stress-strike-cli")
+		dir, err := os.MkdirTemp("", "Sift-cli")
 		if err != nil {
 			cliBuildErr = err
 			return
 		}
 		cliDir = dir
-		bin := filepath.Join(dir, "stress-strike")
+		bin := filepath.Join(dir, "Sift")
 		if runtime.GOOS == "windows" {
 			// `go build -o` appends the extension on Windows, so the artifact
 			// lands at "stress-strike.exe" while cliBin would point at the
@@ -195,7 +195,7 @@ func vbBuildBundle(t *testing.T, coord, worker *attest.Keypair, id string, recs 
 	b := attest.Bundle{
 		Format:    attest.FormatID,
 		CreatedAt: "2026-10-13T18:00:00Z",
-		Tool:      attest.Tool{Name: "stress-strike", Version: "test"},
+		Tool:      attest.Tool{Name: "Sift", Version: "test"},
 		Run:       run,
 		Workers: []attest.WorkerBundle{{
 			ID:        id,
@@ -344,7 +344,7 @@ func TestCLIKeygenRequiresOut(t *testing.T) {
 	if res.code != 1 {
 		t.Fatalf("keygen with no --out exit = %d, want 1", res.code)
 	}
-	if !strings.Contains(res.stderr, "Usage: stress-strike keygen") {
+	if !strings.Contains(res.stderr, "Usage: Sift keygen") {
 		t.Fatalf("usage missing from stderr:\n%s", res.stderr)
 	}
 }
@@ -511,7 +511,7 @@ func TestCLIVerifyMissingBundleIsUsageError(t *testing.T) {
 	if res.code != 1 {
 		t.Fatalf("verify with no --bundle exit = %d, want 1", res.code)
 	}
-	if !strings.Contains(res.stderr, "Usage: stress-strike verify") {
+	if !strings.Contains(res.stderr, "Usage: Sift verify") {
 		t.Fatalf("usage missing from stderr:\n%s", res.stderr)
 	}
 }

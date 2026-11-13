@@ -9,7 +9,7 @@ import (
 
 	utls "github.com/refraction-networking/utls"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
 )
 
 const maxRedirects = 10

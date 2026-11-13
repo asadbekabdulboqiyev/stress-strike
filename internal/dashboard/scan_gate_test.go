@@ -3,9 +3,9 @@ package dashboard
 import (
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/rbac"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/rbac"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 // --- rbacAllowed ------------------------------------------------------------

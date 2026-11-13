@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/adminlock"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // --- OWASP control plane ----------------------------------------------------
@@ -389,7 +389,7 @@ func owaspValidateFlags(req *OWASPScanRequest) (rps float64, budget int64, timeo
 
 // owaspGate runs the authorization decision the CLI runs before it scans. The
 // web path is not a bypass: an offensive (intrusive) scan needs an approval
-// entry AND the ticket naming it, exactly like `stress-strike pentest`.
+// entry AND the ticket naming it, exactly like `Sift pentest`.
 func owaspGate(op authz.Operation, target, ticket string) (owaspGateOutcome, error) {
 	pol, err := authz.LoadPolicyOrDefault(authz.DefaultPolicyPath())
 	if err != nil {
@@ -437,7 +437,7 @@ func owaspGate(op authz.Operation, target, ticket string) (owaspGateOutcome, err
 		// the caller must name its ticket. Neither alone is enough.
 		if strings.TrimSpace(ticket) == "" {
 			d = authz.Decision{Class: tgt.Class(), Reason: fmt.Sprintf(
-				"intrusive scanning of %s requires an authorization ticket approved with `stress-strike authorize add`", tgt.Host)}
+				"intrusive scanning of %s requires an authorization ticket approved with `Sift authorize add`", tgt.Host)}
 		} else if pat, ok := pol.AuthorizedBy(tgt, ticket, now); ok {
 			d = authz.Decision{Allowed: true, Class: tgt.Class(), Rule: pat,
 				Reason: fmt.Sprintf("authorization ticket %q (%s)", ticket, pat)}
@@ -466,7 +466,7 @@ func owaspGate(op authz.Operation, target, ticket string) (owaspGateOutcome, err
 // owaspAudit appends the decision to the dashboard's audit log — the same
 // hash-chained file the CLI writes, kept next to the dashboard's own state.
 func owaspAudit(e authz.Entry) error {
-	// One trail for every entry point, so `stress-strike audit` shows scans
+	// One trail for every entry point, so `Sift audit` shows scans
 	// started from the browser alongside those started from a shell.
 	log, err := authz.Open(authz.DefaultAuditPath())
 	if err != nil {
@@ -557,7 +557,7 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 		Allowed: decision.Allowed,
 		Rule:    decision.Rule,
 		Reason:  decision.Reason,
-		Argv:    []string{"stress-strike dashboard", "POST /api/owasp/scan"},
+		Argv:    []string{"Sift dashboard", "POST /api/owasp/scan"},
 	})
 	if !decision.Allowed {
 		// Deny is the safe action, so a broken audit trail must not turn a

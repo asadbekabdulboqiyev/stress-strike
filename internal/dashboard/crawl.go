@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
 // --- Crawler (katana-like site spider) control plane -------------------------
@@ -221,7 +221,7 @@ func (s *Server) handleCrawlScan(w http.ResponseWriter, r *http.Request) {
 		Allowed: decision.Allowed,
 		Rule:    decision.Rule,
 		Reason:  decision.Reason,
-		Argv:    []string{"stress-strike dashboard", "POST /api/crawl/scan"},
+		Argv:    []string{"Sift dashboard", "POST /api/crawl/scan"},
 	})
 	if !decision.Allowed {
 		reason := decision.Reason
@@ -280,7 +280,7 @@ func (s *Server) handleCrawlScan(w http.ResponseWriter, r *http.Request) {
 		MaxPages:     pages,
 		Timeout:      timeout,
 		AllowOffsite: req.Offsite,
-		UserAgent:    "stress-strike-crawler/1.0",
+		UserAgent:    "Sift-crawler/1.0",
 		Concurrency:  conc,
 	})
 	crawler.Client = &http.Client{

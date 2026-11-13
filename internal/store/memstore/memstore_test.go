@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store/memstore"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store/memstore"
 )
 
 // newStore builds an isolated in-memory store per test so tests never share

@@ -1,4 +1,4 @@
-// Package prom renders stress-strike run telemetry in the Prometheus text
+// Package prom renders Sift run telemetry in the Prometheus text
 // exposition format (version 0.0.4), which OpenMetrics scrapers also accept.
 //
 // The exporter is dependency-free (standard library + internal/metrics) and
@@ -71,7 +71,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
 )
 
 // ContentType is the Content-Type served by the handlers and expected by

@@ -43,8 +43,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // GuardConfig configures a Guard. The zero value is usable and safe: it

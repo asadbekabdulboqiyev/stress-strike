@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/browser"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/browser"
 )
 
 // AuthType selects how a scan session authenticates against a target.

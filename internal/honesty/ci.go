@@ -2,10 +2,10 @@ package honesty
 
 // ci.go — a 95% confidence interval for a latency quantile, computed twice.
 //
-// Pillar 2 of stress-strike is not only "correct the latency" (see the corrected
+// Pillar 2 of Sift is not only "correct the latency" (see the corrected
 // values assembled in verify.go) but also "say how sure you are". A single
 // number like p99 = 41 ms hides the fact that the 99th percentile of a finite
-// sample is itself uncertain. stress-strike therefore reports an interval.
+// sample is itself uncertain. Sift therefore reports an interval.
 //
 // Two independent, integer-only methods are provided:
 //

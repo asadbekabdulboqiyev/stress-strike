@@ -14,8 +14,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
 )
 
 // Collector is an engine.SampleSink that records every measurement of a run as

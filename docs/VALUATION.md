@@ -4,7 +4,7 @@
 comparable capability, and what it is realistically worth — as a code asset, as
 an OEM licence, and as a running product.
 
-**Status of the numbers.** Everything below is dated 12 November 2026. Vendor
+**Status of the numbers.** Everything below is dated 13 November 2026. Vendor
 prices were checked against published 2026 sources and are quoted as market
 anchors, not offers. The valuation ranges are estimates with the reasoning
 shown, not a financial opinion. Currency is USD throughout.
@@ -20,20 +20,20 @@ with a distributed execution model and a verifiable-output story.
 
 | Metric | Value |
 |---|---|
-| Production Go | 64,249 lines across 236 files |
-| Test Go | 58,958 lines across 172 files |
-| Total Go | 123,207 lines, 408 files |
+| Production Go | 61,375 lines across 204 files (protobuf-generated code excluded) |
+| Test Go | 59,438 lines across 204 files |
+| Total Go | 124,042 lines, 410 files |
 | Packages | 57 |
-| Test functions | 1,973 |
+| Test functions | 1,986 |
 | Fuzz targets | 5 (HTTP stream, HAR, JWT, Set-Cookie, CSP) |
 | Benchmarks | 16 |
-| Statement coverage | 78.7% overall |
+| Statement coverage | 79.1% overall |
 | Direct dependencies | 17 |
 | Dashboard routes | 37 dispatch arms, 32 distinct endpoints (33 arms under `/api`; `certificate/generate` is an alias of `certificate/issue`) |
 | Dashboard frontend | 7,402 lines (13 embedded JS parts + CSS + templates) |
-| Documentation | 7,728 lines across README and `docs/` |
-| Commits / release tags | 178 / 24 |
-| Elapsed build time | 91 days (13 Aug → 12 Nov 2026) |
+| Documentation | 6,033 lines across README and `docs/*.md` (generated HTML not double-counted) |
+| Commits / release tags | 193 / 24 |
+| Elapsed build time | 92 days (13 Aug → 13 Nov 2026) |
 | Binaries | 6, 7–25 MB each, CGO-free, `-trimpath` |
 | Licence | Apache-2.0 (with NOTICE and a dual-use legal note) |
 

@@ -1,6 +1,6 @@
 package crawl
 
-// crawler.go implements the site-crawling module (spider) for stress-strike.
+// crawler.go implements the site-crawling module (spider) for Sift.
 // It performs a breadth-first crawl of a target web application, discovering
 // links and forms, and reports every endpoint found in an authorized
 // pentest engagement. Regex-based HTML extraction keeps this iteration
@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/browser"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/browser"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // --- Public API -------------------------------------------------------------
@@ -49,7 +49,7 @@ type CrawlOptions struct {
 	MaxPages     int           // default 100 if 0
 	Timeout      time.Duration // per-request, default 10s
 	AllowOffsite bool          // false (default) = never follow offsite links
-	UserAgent    string        // default stress-strike crawler UA
+	UserAgent    string        // default Sift crawler UA
 	Concurrency  int           // worker pool size, default 5
 	// UseBrowser, when true, uses headless Chromium to find endpoints and
 	// forms from JS-rendered (SPA/React/Vue) pages. chromedp (Chrome DevTools
@@ -81,7 +81,7 @@ const (
 	defaultMaxPages = 100
 	defaultTimeout  = 10 * time.Second
 	defaultConc     = 5
-	defaultUA       = "stress-strike-crawler/1.0"
+	defaultUA       = "Sift-crawler/1.0"
 	maxBodyBytes    = 4 << 20 // 4 MiB cap per page body
 )
 

@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_portscan.go implements `stress-strike portscan`: the CLI face of the
+// cmd_portscan.go implements `Sift portscan`: the CLI face of the
 // dashboard's POST /api/portscan. It performs a TCP connect scan (with light
 // banner grabbing) of a curated common-port list, or of an explicit --ports set.
 //
@@ -40,12 +40,12 @@ func cmdPortScan() {
 		Command: "portscan",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike portscan --target https://example.com --ports 80,443,8080",
+			"Sift portscan --target https://example.com --ports 80,443,8080",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike portscan --target https://example.com"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift portscan --target https://example.com"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -148,12 +148,12 @@ func oneLine(s string, max int) string {
 	return s
 }
 
-// printPortScanHelp renders `stress-strike portscan --help`.
+// printPortScanHelp renders `Sift portscan --help`.
 func printPortScanHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike portscan — TCP port & service scanner\n\n")
+	fmt.Fprintf(w, "\n Sift portscan — TCP port & service scanner\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike portscan --target https://example.com [--ports 80,443]\n\n")
+	fmt.Fprintf(w, "   Sift portscan --target https://example.com [--ports 80,443]\n\n")
 	fmt.Fprintf(w, " TCP connect scan with light banner grabbing over a curated common-port\n")
 	fmt.Fprintf(w, " list, or an explicit --ports set.\n\n")
 	fmt.Fprintf(w, " The scanner dials TCP directly and bypasses the probe gate: scope/rate/\n")
@@ -168,13 +168,13 @@ func printPortScanHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Scan the built-in common ports",
-		"stress-strike portscan --target https://example.com",
+		"Sift portscan --target https://example.com",
 		"",
 		"# Scan a specific set of ports",
-		"stress-strike portscan --target example.com --ports 22,80,443,3306",
+		"Sift portscan --target example.com --ports 22,80,443,3306",
 		"",
 		"# Machine-readable output",
-		"stress-strike portscan --target example.com --ports 80,443 --json",
+		"Sift portscan --target example.com --ports 80,443 --json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

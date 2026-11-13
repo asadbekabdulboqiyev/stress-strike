@@ -47,7 +47,7 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>stress-strike — Security Assessment Certificate</title>
+<title>Sift — Security Assessment Certificate</title>
 <style>
   body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.5; padding: 32px; max-width: 860px; margin: auto; background: #fafafa; }
   .cert { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 36px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
@@ -77,8 +77,8 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
 <body>
 <div class="cert">
   <div class="header">
-    <h1>stress-strike Security Assessment Certificate</h1>
-    <div class="sub">Format: ss-cert/v1 &bull; Ed25519-signed &bull; verifies offline with ` + "stress-strike certificate --verify" + `</div>
+    <h1>Sift Security Assessment Certificate</h1>
+    <div class="sub">Format: ss-cert/v1 &bull; Ed25519-signed &bull; verifies offline with ` + "Sift certificate --verify" + `</div>
   </div>
 
   <div class="grid">
@@ -128,7 +128,7 @@ func RenderHTML(a Assessment, signature, publicKey, signedAt, version string) st
     <div><b>Signer public key:</b></div>
     <pre>` + html.EscapeString(publicKey) + `</pre>
     <div><b>Signed at:</b> ` + html.EscapeString(signedAt) + ` UTC &nbsp;&bull;&nbsp; <b>Format:</b> ` + html.EscapeString(version) + `</div>
-    <div style="margin-top:10px">Verify: ` + "stress-strike certificate --verify cert.json" + ` &mdash; valid only if the signature matches the assessment and public key.</div>
+    <div style="margin-top:10px">Verify: ` + "Sift certificate --verify cert.json" + ` &mdash; valid only if the signature matches the assessment and public key.</div>
   </div>
 </div>
 </body>

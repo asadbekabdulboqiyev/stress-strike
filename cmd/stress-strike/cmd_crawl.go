@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_crawl.go implements `stress-strike crawl`: the CLI face of the dashboard's
+// cmd_crawl.go implements `Sift crawl`: the CLI face of the dashboard's
 // POST /api/crawl/scan. It is a breadth-first site spider that discovers links
 // and forms, and reports every endpoint it finds.
 //
@@ -49,12 +49,12 @@ func cmdCrawl() {
 		Command: "crawl",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike crawl --target https://example.com --depth 3",
+			"Sift crawl --target https://example.com --depth 3",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike crawl --target https://example.com"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift crawl --target https://example.com"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -95,7 +95,7 @@ func cmdCrawl() {
 		MaxPages:     pages,
 		Timeout:      timeoutDur,
 		AllowOffsite: offsite,
-		UserAgent:    "stress-strike-crawler/1.0",
+		UserAgent:    "Sift-crawler/1.0",
 		Concurrency:  concurrency,
 	})
 	crawler.Client = &http.Client{
@@ -133,12 +133,12 @@ func cmdCrawl() {
 	}
 }
 
-// printCrawlHelp renders `stress-strike crawl --help`.
+// printCrawlHelp renders `Sift crawl --help`.
 func printCrawlHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike crawl — site spider (endpoint discovery)\n\n")
+	fmt.Fprintf(w, "\n Sift crawl — site spider (endpoint discovery)\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike crawl --target https://example.com [flags]\n\n")
+	fmt.Fprintf(w, "   Sift crawl --target https://example.com [flags]\n\n")
 	fmt.Fprintf(w, " Breadth-first crawl that discovers links and forms and reports every\n")
 	fmt.Fprintf(w, " endpoint found. Information gathering (scope-enforced, not intrusive):\n")
 	fmt.Fprintf(w, " offsite links are never followed unless --offsite is given, and every\n")
@@ -152,13 +152,13 @@ func printCrawlHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Crawl a site three levels deep",
-		"stress-strike crawl --target https://example.com --depth 3 --pages 200",
+		"Sift crawl --target https://example.com --depth 3 --pages 200",
 		"",
 		"# Never leave the target host (the default)",
-		"stress-strike crawl --target https://example.com",
+		"Sift crawl --target https://example.com",
 		"",
 		"# Machine-readable output (the endpoint list)",
-		"stress-strike crawl --target https://example.com --json --output-json crawl.json",
+		"Sift crawl --target https://example.com --json --output-json crawl.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

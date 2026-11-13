@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/oidc"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/rbac"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/oidc"
+	"github.com/asadbekabdulboqiyev/sift/internal/rbac"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 // --- Authentication / authorization middleware -------------------------------

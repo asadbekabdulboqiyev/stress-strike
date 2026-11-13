@@ -1,6 +1,6 @@
-// Package http3 provides HTTP/3 (QUIC) probing for the stress-strike scanner.
+// Package http3 provides HTTP/3 (QUIC) probing for the Sift scanner.
 //
-// HTTP/3 support lets stress-strike measure targets that only speak QUIC/H3,
+// HTTP/3 support lets Sift measure targets that only speak QUIC/H3,
 // and report whether the target advertises H3 via Alt-Svc. This is a passive
 // detection layer: it does not perform a full H3 load test, but it tells the
 // operator whether H3 is available so they can decide whether to run one.

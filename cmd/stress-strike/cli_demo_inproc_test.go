@@ -1,6 +1,6 @@
 package main
 
-// cli_demo_inproc_test.go — in-process coverage for `stress-strike demo-store`
+// cli_demo_inproc_test.go — in-process coverage for `Sift demo-store`
 // control-plane subcommands (status / stop) and the small URL/banner helpers.
 //
 // status and stop make HTTP calls to the demo store URL. Pointed at a dead

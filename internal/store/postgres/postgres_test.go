@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 // defaultTestDSN targets the local PostgreSQL 16 instance that listens on the

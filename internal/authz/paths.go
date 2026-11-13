@@ -6,20 +6,20 @@ import (
 	"strings"
 )
 
-// ConfigHome is the directory holding stress-strike's local state: the
+// ConfigHome is the directory holding Sift's local state: the
 // authorization policy and the audit trail.
 //
 // STRESS_STRIKE_HOME overrides it (isolated runs, tests); otherwise it is
-// ~/.stress-strike, falling back to a relative directory when the host has no
+// ~/.Sift, falling back to a relative directory when the host has no
 // home directory at all.
 func ConfigHome() string {
 	if d := strings.TrimSpace(os.Getenv("STRESS_STRIKE_HOME")); d != "" {
 		return d
 	}
 	if d, err := os.UserHomeDir(); err == nil && d != "" {
-		return filepath.Join(d, ".stress-strike")
+		return filepath.Join(d, ".Sift")
 	}
-	return ".stress-strike"
+	return ".Sift"
 }
 
 // DefaultPolicyPath is where the authorization policy lives unless
@@ -38,7 +38,7 @@ func DefaultPolicyPath() string {
 }
 
 // DefaultAuditPath is the hash-chained audit trail every entry point appends
-// to. One file, so `stress-strike audit` shows web-triggered scans alongside
+// to. One file, so `Sift audit` shows web-triggered scans alongside
 // CLI ones.
 func DefaultAuditPath() string {
 	if p := os.Getenv("STRESS_STRIKE_AUDIT_LOG"); p != "" {

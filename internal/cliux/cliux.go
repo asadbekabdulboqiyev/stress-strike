@@ -1,5 +1,5 @@
 // Package cliux provides shared, friendly CLI ergonomics for every
-// stress-strike binary: human-readable flag errors with "did you mean"
+// Sift binary: human-readable flag errors with "did you mean"
 // suggestions, consistent two-dash flag listings, and a uniform boxed help
 // layout. It never changes flag names or exit-code conventions:
 //
@@ -25,7 +25,7 @@ import (
 // Options describes how to render a friendly flag parse error.
 type Options struct {
 	// Command is the subcommand name, e.g. "run" or "scan". Used to build
-	// the "Run 'stress-strike <command> --help' ..." hint. When empty the
+	// the "Run 'Sift <command> --help' ..." hint. When empty the
 	// hint falls back to the program basename.
 	Command string
 	// FlagSet holds the registered flags used for "did you mean" and type
@@ -115,12 +115,12 @@ func HandleFlagError(w io.Writer, o Options) int {
 
 func helpCommand(o Options) string {
 	if o.Command != "" {
-		return "stress-strike " + o.Command
+		return "Sift " + o.Command
 	}
 	if len(os.Args) > 0 && os.Args[0] != "" {
 		return os.Args[0]
 	}
-	return "stress-strike"
+	return "Sift"
 }
 
 func errorf(w io.Writer, format string, a ...any) {
@@ -356,7 +356,7 @@ func PrintFlagList(w io.Writer, fs *flag.FlagSet) {
 // ── Boxed help (master / worker and friends) ──────────────────────────────
 
 // BoxHelp renders help in the same sectioned style as the top-level
-// `stress-strike --help`, with USAGE, FLAGS and EXAMPLES sections.
+// `Sift --help`, with USAGE, FLAGS and EXAMPLES sections.
 func BoxHelp(w io.Writer, title string, usage []string, examples []string, fs *flag.FlagSet) {
 	fmt.Fprintf(w, "\n %s\n\n", title)
 	fmt.Fprintf(w, " USAGE\n")

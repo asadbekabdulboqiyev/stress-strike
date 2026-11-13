@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/demostore"
 	"github.com/gorilla/websocket"
 )
 
@@ -1160,14 +1160,14 @@ func (s *Server) handleAttestationVerifyUpload(w http.ResponseWriter, r *http.Re
 
 func getDashboardDataDir() (string, error) {
 	if d, err := os.UserConfigDir(); err == nil && d != "" {
-		dir := filepath.Join(d, "stress-strike", "dashboard")
+		dir := filepath.Join(d, "Sift", "dashboard")
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return "", err
 		}
 		return dir, nil
 	}
 	if h, err := os.UserHomeDir(); err == nil && h != "" {
-		dir := filepath.Join(h, ".stress-strike", "dashboard")
+		dir := filepath.Join(h, ".Sift", "dashboard")
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return "", err
 		}

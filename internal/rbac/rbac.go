@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 // Default roles and permissions.

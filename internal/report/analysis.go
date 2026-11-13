@@ -3,7 +3,7 @@ package report
 import (
 	"fmt"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // SLAResult is the outcome of a single service-level check.

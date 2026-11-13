@@ -1,6 +1,6 @@
 // Package main — VoltStore: a realistic e-commerce demo target built to
 // real-world standards (product catalog, auth, cart, checkout, orders) so it
-// can be load-tested with stress-strike and protected with VeriGate.
+// can be load-tested with Sift and protected with VeriGate.
 //
 // Everything runs in-memory: no database, no external dependencies — a single
 // binary that behaves like a production shop on loopback.

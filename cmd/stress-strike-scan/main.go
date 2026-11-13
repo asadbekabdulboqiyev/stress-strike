@@ -1,4 +1,4 @@
-// Command stress-strike-scan is the standalone TLS/WAF/HTTP deep scanner.
+// Command Sift-scan is the standalone TLS/WAF/HTTP deep scanner.
 //
 // On top of the existing fingerprinting phases it wires the OWASP Top 10
 // checker and the shared safety gate (scanner.Guard): every vulnerability probe
@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 // version is stamped at build time: go build -ldflags "-X buildVersion=0.14.13"
@@ -72,7 +72,7 @@ func (s *stringSliceFlag) Set(v string) error {
 func main() {
 	fs := flag.CommandLine
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
-	fs.Init("stress-strike-scan", flag.ContinueOnError)
+	fs.Init("Sift-scan", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
 	target := fs.String("target", "", "Target host to scan (e.g. example.com or example.com:9999)")
@@ -104,13 +104,13 @@ func main() {
 
 	// Authorization gate (OpScan).
 	authorized := fs.String("authorized", "", "Authorization ticket id naming an entry approved with `authorize add`")
-	policyPath := fs.String("policy", "", "Authorization policy JSON (default ~/.stress-strike/authz.json)")
+	policyPath := fs.String("policy", "", "Authorization policy JSON (default ~/.Sift/authz.json)")
 	auditLog := fs.String("audit-log", "", "Append-only audit log path; when set, the authorization decision is recorded")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
 ╔═══════════════════════════════════════════════════════════════╗
-║  stress-strike scan — TLS/WAF Deep Scanner + Fingerprinting  ║
+║  Sift scan — TLS/WAF Deep Scanner + Fingerprinting  ║
 ║                                                               ║
 ║  Scan servers for:                                            ║
 ║  • TLS cipher suites, cert chain, version vulnerabilities     ║
@@ -122,7 +122,7 @@ func main() {
 ╚═══════════════════════════════════════════════════════════════╝
 
 Usage:
-  stress-strike-scan -target example.com [flags]
+  Sift-scan -target example.com [flags]
 
 Every vulnerability probe goes through the safety gate: scope allowlist,
 request budget, per-host rate limit, intrusive opt-in and dry-run.
@@ -139,28 +139,28 @@ Safety:
 
 Examples:
   # Full scan
-  stress-strike-scan -target example.com -all
+  Sift-scan -target example.com -all
 
   # OWASP Top 10 against the named host (non-intrusive categories only)
-  stress-strike-scan -target example.com -owasp
+  Sift-scan -target example.com -owasp
 
   # OWASP Top 10 with intrusive probes, extra paths and a JSON export
-  stress-strike-scan -target example.com -owasp -intrusive -path /,/login -output-json scan.json
+  Sift-scan -target example.com -owasp -intrusive -path /,/login -output-json scan.json
 
   # Preview exactly what the gate would allow, sending nothing
-  stress-strike-scan -target example.com -owasp -dry-run
+  Sift-scan -target example.com -owasp -dry-run
 
   # TLS scan only
-  stress-strike-scan -target example.com -port 443 -tls
+  Sift-scan -target example.com -port 443 -tls
 
   # WAF detection
-  stress-strike-scan -target example.com -waf
+  Sift-scan -target example.com -waf
 
   # Security headers audit
-  stress-strike-scan -target example.com -security
+  Sift-scan -target example.com -security
 
   # Export to JSON
-  stress-strike-scan -target example.com -all -output-json scan.json
+  Sift-scan -target example.com -all -output-json scan.json
 `)
 	}
 
@@ -168,14 +168,14 @@ Examples:
 		Command: "scan",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike scan -target example.com -all",
-			"stress-strike scan -target example.com -owasp -dry-run",
+			"Sift scan -target example.com -all",
+			"Sift scan -target example.com -owasp -dry-run",
 		},
 	})
 
 	if *target == "" {
 		fmt.Fprintln(os.Stderr, "Error: --target is required.")
-		fmt.Fprintln(os.Stderr, "Example: stress-strike scan -target example.com -all")
+		fmt.Fprintln(os.Stderr, "Example: Sift scan -target example.com -all")
 		fmt.Fprintln(os.Stderr, "")
 		flag.Usage()
 		os.Exit(1)
@@ -217,7 +217,7 @@ Examples:
 	})
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║  stress-strike scan — Deep Security Scanner                  ║")
+	fmt.Println("║  Sift scan — Deep Security Scanner                  ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Printf("  Target: %s:%d\n", scanHost, scanPort)
 	fmt.Printf("  URL:    %s\n", baseURL)
@@ -1172,7 +1172,7 @@ func enforceScanAuthz(targetURL string, opts scanGateOptions) {
 	fmt.Fprintf(os.Stderr, "  target: %s\n", targetURL)
 	fmt.Fprintf(os.Stderr, "  reason: %s\n\n", d.Reason)
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
-	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
+	fmt.Fprintln(os.Stderr, "  Sift authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
 	cancel()
 	os.Exit(authzDeniedExitCode)

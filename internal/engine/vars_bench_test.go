@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // These benchmarks cover the per-request work that runs for every iteration

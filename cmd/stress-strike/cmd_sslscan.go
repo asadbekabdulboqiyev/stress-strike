@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner"
 )
 
-// cmd_sslscan.go implements `stress-strike sslscan`: the CLI face of the
+// cmd_sslscan.go implements `Sift sslscan`: the CLI face of the
 // dashboard's POST /api/sslscan. It performs a TLS handshake and reports the
 // certificate (issuer, subject, validity window, SANs) plus protocol/cipher
 // weaknesses.
@@ -36,12 +36,12 @@ func cmdSSLScan() {
 		Command: "sslscan",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike sslscan --target https://example.com",
+			"Sift sslscan --target https://example.com",
 		},
 	})
 
 	if strings.TrimSpace(target) == "" {
-		usageFatal(fmt.Errorf("--target is required\n\nExample: stress-strike sslscan --target https://example.com"))
+		usageFatal(fmt.Errorf("--target is required\n\nExample: Sift sslscan --target https://example.com"))
 	}
 	parsed, err := validateScanTarget(target)
 	if err != nil {
@@ -117,12 +117,12 @@ func cmdSSLScan() {
 	}
 }
 
-// printSSLScanHelp renders `stress-strike sslscan --help`.
+// printSSLScanHelp renders `Sift sslscan --help`.
 func printSSLScanHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike sslscan — TLS certificate & configuration analyzer\n\n")
+	fmt.Fprintf(w, "\n Sift sslscan — TLS certificate & configuration analyzer\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike sslscan --target https://example.com [flags]\n\n")
+	fmt.Fprintf(w, "   Sift sslscan --target https://example.com [flags]\n\n")
 	fmt.Fprintf(w, " Performs a TLS handshake and reports the certificate (issuer, subject,\n")
 	fmt.Fprintf(w, " validity window, SANs) plus protocol and cipher weaknesses.\n\n")
 	fmt.Fprintf(w, " The handshake dials TLS directly and bypasses the probe gate: scope/\n")
@@ -137,13 +137,13 @@ func printSSLScanHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Inspect a TLS endpoint",
-		"stress-strike sslscan --target https://example.com",
+		"Sift sslscan --target https://example.com",
 		"",
 		"# Use an explicit port",
-		"stress-strike sslscan --target https://example.com:8443",
+		"Sift sslscan --target https://example.com:8443",
 		"",
 		"# Machine-readable output",
-		"stress-strike sslscan --target https://example.com --json --output-json tls.json",
+		"Sift sslscan --target https://example.com --json --output-json tls.json",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}

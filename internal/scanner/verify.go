@@ -226,7 +226,7 @@ func (v *Verifier) fetch(rawURL string) (*verifyPage, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "stress-strike-verifier/1.0")
+	req.Header.Set("User-Agent", "Sift-verifier/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
 )
 
 func TestScenarioFromConfigDefaults(t *testing.T) {

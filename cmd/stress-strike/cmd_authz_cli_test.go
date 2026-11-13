@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // withArgs runs fn with os.Args set to argv and restores the original slice.
@@ -203,7 +203,7 @@ func TestCmdAuthorizeDispatch(t *testing.T) {
 	policy := filepath.Join(t.TempDir(), "authz.json")
 
 	run := func(args ...string) (stdout, stderr string) {
-		argv := append([]string{"stress-strike", "authorize"}, args...)
+		argv := append([]string{"Sift", "authorize"}, args...)
 		withArgs(t, argv, func() {
 			stdout, stderr = captureCmd(t, cmdAuthorize)
 		})
@@ -229,7 +229,7 @@ func TestCmdAuthorizeDispatch(t *testing.T) {
 	}
 	for _, sub := range []string{"help", "--help", "-h"} {
 		_, errOut := run(sub)
-		if !strings.Contains(errOut, "usage: stress-strike authorize <add|list|remove|verify>") {
+		if !strings.Contains(errOut, "usage: Sift authorize <add|list|remove|verify>") {
 			t.Errorf("%s dispatch stderr = %q", sub, errOut)
 		}
 	}
@@ -246,7 +246,7 @@ func TestCmdAuditDispatch(t *testing.T) {
 	}, logPath, "")
 
 	run := func(args ...string) (stdout, stderr string) {
-		argv := append([]string{"stress-strike", "audit"}, args...)
+		argv := append([]string{"Sift", "audit"}, args...)
 		withArgs(t, argv, func() {
 			stdout, stderr = captureCmd(t, cmdAudit)
 		})
@@ -283,7 +283,7 @@ func TestCmdAuditDispatch(t *testing.T) {
 	}
 
 	_, errOut := run("help")
-	if !strings.Contains(errOut, "usage: stress-strike audit <show|verify>") {
+	if !strings.Contains(errOut, "usage: Sift audit <show|verify>") {
 		t.Errorf("audit help stderr = %q", errOut)
 	}
 }

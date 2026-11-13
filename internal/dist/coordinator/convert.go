@@ -1,16 +1,16 @@
 // Package coordinator implements the distributed master/worker control plane:
 // scenario distribution, live telemetry streaming, result aggregation and the
-// gRPC service surface shared by `stress-strike-master` and
-// `stress-strike-worker`.
+// gRPC service surface shared by `Sift-master` and
+// `Sift-worker`.
 package coordinator
 
 import (
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // StatusToProto converts an in-process status-code histogram into proto form.

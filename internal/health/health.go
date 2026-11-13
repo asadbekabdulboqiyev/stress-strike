@@ -1,4 +1,4 @@
-// Package health provides liveness and readiness probes for the stress-strike
+// Package health provides liveness and readiness probes for the Sift
 // control plane and workers.
 //
 // A Checker holds a set of named checks registered at startup. Liveness is

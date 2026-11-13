@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 )
 
 func TestCertificateSignVerifyRoundtrip(t *testing.T) {
@@ -139,7 +139,7 @@ func TestCertificateHTMLAndPDF(t *testing.T) {
 		t.Fatal("html missing signature")
 	}
 
-	pdf := NewPDF().Text("stress-strike certificate").Page().Text("target: https://example.com")
+	pdf := NewPDF().Text("Sift certificate").Page().Text("target: https://example.com")
 	out, err := pdf.Bytes()
 	if err != nil {
 		t.Fatalf("PDF: %v", err)

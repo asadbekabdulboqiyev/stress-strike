@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	httpscan "github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/http"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/security"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/tls"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/waf"
+	httpscan "github.com/asadbekabdulboqiyev/sift/internal/scanner/http"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/security"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/tls"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/waf"
 )
 
 // findSecurityHeader returns a security header definition by name.

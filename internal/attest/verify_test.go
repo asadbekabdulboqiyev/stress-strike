@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // TestVerifyValidRoundTrip is the baseline: everything the producer wrote

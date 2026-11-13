@@ -4,7 +4,7 @@
 // cross-checks JA3/JA4 against the User-Agent will otherwise spot the
 // mismatch and block.
 //
-// All strings are browser-typical; none is a literal "stress-strike" token,
+// All strings are browser-typical; none is a literal "Sift" token,
 // which is what makes the header/hello pair consistent.
 package fingerprint
 

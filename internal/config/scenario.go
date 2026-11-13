@@ -11,7 +11,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
 )
 
 const (

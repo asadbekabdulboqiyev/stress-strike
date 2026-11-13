@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
 )
 
 func TestNextRegBackoffSequence(t *testing.T) {

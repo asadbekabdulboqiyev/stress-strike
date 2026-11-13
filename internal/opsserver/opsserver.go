@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
 )
 
 // Options configures the operations server.

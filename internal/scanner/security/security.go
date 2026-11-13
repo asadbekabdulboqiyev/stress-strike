@@ -1,4 +1,4 @@
-// Package security implements security-header scanning for the stress-strike scanner.
+// Package security implements security-header scanning for the Sift scanner.
 package security
 
 import (
@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // SecurityInfo contains the results of a security-header scan.

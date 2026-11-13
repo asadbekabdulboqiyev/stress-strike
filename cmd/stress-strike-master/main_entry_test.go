@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
 )
 
 // mainExit is the sentinel panic payload carrying the would-be exit code.
@@ -48,7 +48,7 @@ func runMasterMain(t *testing.T, args ...string) (code int) {
 	}()
 
 	resetMasterFlags(t)
-	os.Args = append([]string{"stress-strike-master"}, args...)
+	os.Args = append([]string{"Sift-master"}, args...)
 	exitProcess = func(c int) { panic(mainExit{c}) }
 	cliux.ExitProcess = func(c int) { panic(mainExit{c}) }
 	fatal = func(v ...any) { panic(mainExit{1}) }

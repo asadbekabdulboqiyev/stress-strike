@@ -37,10 +37,10 @@ func runMain(t *testing.T, args ...string) (stdout, stderr string) {
 		t.Fatalf("temp stderr: %v", err)
 	}
 
-	os.Args = append([]string{"stress-strike-scan"}, args...)
+	os.Args = append([]string{"Sift-scan"}, args...)
 	os.Stdout = outFile
 	os.Stderr = errFile
-	flag.CommandLine = flag.NewFlagSet("stress-strike-scan", flag.ContinueOnError)
+	flag.CommandLine = flag.NewFlagSet("Sift-scan", flag.ContinueOnError)
 
 	main()
 
@@ -95,7 +95,7 @@ func TestMainTLSPhase(t *testing.T) {
 	port := inprocTestServer(t)
 
 	stdout, _ := runMain(t, "-target", "127.0.0.1", "-port", port, "-tls")
-	for _, want := range []string{"stress-strike scan — Deep Security Scanner", "URL:    https://127.0.0.1",
+	for _, want := range []string{"Sift scan — Deep Security Scanner", "URL:    https://127.0.0.1",
 		"scope: 127.0.0.1 (derived from --target", "TLS Scan", "VULNERABILITIES & RISK SCORE", "Risk Score:"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("stdout missing %q", want)

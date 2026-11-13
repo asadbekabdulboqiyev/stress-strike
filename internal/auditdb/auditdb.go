@@ -6,8 +6,8 @@ package auditdb
 import (
 	"context"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/store"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/store"
 )
 
 // Adapter maps authz.Entry to store.AuditEvent.

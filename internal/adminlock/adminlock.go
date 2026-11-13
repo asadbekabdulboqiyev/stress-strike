@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
 )
 
 // DefaultTTL is how long one unlock lasts when the caller asks for no specific
@@ -235,7 +235,7 @@ func (s *Store) Unlock(code string, ttl time.Duration) (Status, error) {
 		return Status{}, err
 	}
 	if !ok {
-		return Status{}, errors.New("admin code does not match — run `stress-strike admin code` on the host to read the current code")
+		return Status{}, errors.New("admin code does not match — run `Sift admin code` on the host to read the current code")
 	}
 	if ttl <= 0 {
 		ttl = DefaultTTL

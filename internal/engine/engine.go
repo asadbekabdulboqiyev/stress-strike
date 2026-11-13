@@ -19,9 +19,9 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 	errExtract       = "extract_error"
 	errAssert        = "assert_failed"
 	bodyReadLimit    = 8 << 20
-	defaultUserAgent = "stress-strike/0.1"
+	defaultUserAgent = "Sift/0.1"
 	adjustInterval   = 100 * time.Millisecond
 )
 

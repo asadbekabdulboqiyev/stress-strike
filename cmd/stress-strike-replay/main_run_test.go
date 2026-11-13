@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
 )
 
 // mainExit is the sentinel panic payload carrying the would-be exit code.
@@ -34,7 +34,7 @@ func runReplayMain(t *testing.T, args ...string) (stdout string, code int) {
 		exitProcess, fatalf, cliux.ExitProcess = prevExit, prevFatal, prevCliExit
 	}()
 
-	flag.CommandLine = flag.NewFlagSet("stress-strike-replay", flag.ContinueOnError)
+	flag.CommandLine = flag.NewFlagSet("sift-replay", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
 
 	f, err := os.CreateTemp(t.TempDir(), "stdout-*")
@@ -43,7 +43,7 @@ func runReplayMain(t *testing.T, args ...string) (stdout string, code int) {
 	}
 	os.Stdout = f
 
-	os.Args = append([]string{"stress-strike-replay"}, args...)
+	os.Args = append([]string{"sift-replay"}, args...)
 	exitProcess = func(c int) { panic(mainExit{c}) }
 	cliux.ExitProcess = func(c int) { panic(mainExit{c}) }
 	fatalf = func(format string, v ...any) { panic(mainExit{1}) }

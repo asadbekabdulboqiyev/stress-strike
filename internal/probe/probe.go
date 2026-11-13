@@ -2,10 +2,10 @@
 // HEALTHCHECK instructions and Kubernetes exec probes.
 //
 // Distroless images ship no shell, wget or curl, so instead of shelling out
-// each stress-strike binary can probe its own operations endpoint:
+// each Sift binary can probe its own operations endpoint:
 //
-//	stress-strike-master healthcheck -addr http://127.0.0.1:9090/healthz
-//	stress-strike-worker healthcheck -addr http://127.0.0.1:9091/healthz
+//	Sift-master healthcheck -addr http://127.0.0.1:9090/healthz
+//	Sift-worker healthcheck -addr http://127.0.0.1:9091/healthz
 //
 // It exits 0 when the endpoint answers 2xx and 1 otherwise, which is exactly
 // the contract Docker and Kubernetes expect from a health probe.

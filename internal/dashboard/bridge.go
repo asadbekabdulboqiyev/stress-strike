@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/evidence"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/evidence"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 // EngineBridge connects the load engine to the dashboard
@@ -428,9 +428,9 @@ func (b *EngineBridge) initAttestation(config *RunConfig) {
 	}
 	if dataDir == "" {
 		if h, err := os.UserHomeDir(); err == nil {
-			dataDir = filepath.Join(h, ".stress-strike", "dashboard")
+			dataDir = filepath.Join(h, ".Sift", "dashboard")
 		} else {
-			dataDir = ".stress-strike-dashboard"
+			dataDir = ".Sift-dashboard"
 		}
 	}
 	b.attestDataDir = dataDir
@@ -516,7 +516,7 @@ func (b *EngineBridge) emitAttestation() error {
 		return err
 	}
 
-	tool := attest.Tool{Name: "stress-strike", Version: version.Version}
+	tool := attest.Tool{Name: "Sift", Version: version.Version}
 	run := attest.Run{
 		Target:     config.TargetURL,
 		Profile:    "dashboard",
@@ -535,9 +535,9 @@ func (b *EngineBridge) emitAttestation() error {
 		Run:            run,
 		CreatedAt:      time.Now(),
 		// Dashboard scenarios never set profile.coordinated_omission (see
-		// cmd/stress-strike-dashboard scenarioFromConfig), so the correction is
+		// cmd/Sift-dashboard scenarioFromConfig), so the correction is
 		// withheld and the bundle records raw percentiles, co_corrected=false.
-		// That is exactly what `stress-strike run --emit-bundle` does for the
+		// That is exactly what `Sift run --emit-bundle` does for the
 		// same scenario (cmd_run.emitEvidenceBundle gates the claim on the same
 		// flag), so the two producers can never disagree about it.
 		COCorrected: false,

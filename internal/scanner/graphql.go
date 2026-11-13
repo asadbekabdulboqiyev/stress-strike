@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // GraphQLResult is the output of a GraphQL scan.
@@ -52,7 +52,7 @@ func ScanGraphQL(ctx context.Context, target string, req core.Requester) *GraphQ
 		return res
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("User-Agent", "stress-strike-graphql/1.0")
+	httpReq.Header.Set("User-Agent", "Sift-graphql/1.0")
 
 	if err := req.Check(ctx, http.MethodPost, target, false); err != nil {
 		res.Issues = append(res.Issues, "refused by gate: "+err.Error())

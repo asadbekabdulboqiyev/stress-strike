@@ -10,7 +10,7 @@ package dashboard
 //	POST /api/admin/lock                       → closes it
 //
 // The code itself is never sent to the browser. The operator reads it with
-// `stress-strike admin code` on the host and types it in. Failed attempts are
+// `Sift admin code` on the host and types it in. Failed attempts are
 // throttled so a script cannot brute-force an 8-character code through the
 // dashboard, and every switch change lands in the same audit trail as scans.
 
@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/adminlock"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
 )
 
 const (
@@ -86,7 +86,7 @@ func adminStatusPayload() adminStatusResponse {
 		Configured:  adminStateExists(),
 		Active:      st.Active,
 		SecondsLeft: st.SecondsLeft,
-		Hint:        "Run `stress-strike admin code` on the host to read the code. The code is never sent to the browser.",
+		Hint:        "Run `Sift admin code` on the host to read the code. The code is never sent to the browser.",
 	}
 	if !st.ExpiresAt.IsZero() {
 		out.ExpiresAt = st.ExpiresAt.UTC().Format(time.RFC3339)
@@ -164,7 +164,7 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 	if code == "" {
 		adminAttempts.fail(now)
 		writeAdminError(w, http.StatusBadRequest,
-			"admin code required — run `stress-strike admin code` on the host and enter it here")
+			"admin code required — run `Sift admin code` on the host and enter it here")
 		return
 	}
 	st, err := store.Unlock(code, time.Duration(req.Minutes)*time.Minute)
@@ -225,7 +225,7 @@ func writeAdminError(w http.ResponseWriter, code int, msg string) {
 }
 
 // auditAdminSwitch records a switch change in the shared hash-chained trail, so
-// `stress-strike audit show` explains why a later scan needed no ticket.
+// `Sift audit show` explains why a later scan needed no ticket.
 func auditAdminSwitch(rule string, allowed bool, reason string) {
 	_ = owaspAudit(authz.Entry{
 		Actor:   "dashboard-admin",

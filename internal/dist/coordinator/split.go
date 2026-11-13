@@ -1,6 +1,6 @@
 package coordinator
 
-import "github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+import "github.com/asadbekabdulboqiyev/sift/internal/config"
 
 // share splits total across n workers, giving the first `total%n` workers one
 // extra unit so the shares always sum back to total.

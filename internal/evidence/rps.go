@@ -1,6 +1,6 @@
 package evidence
 
-import "github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+import "github.com/asadbekabdulboqiyev/sift/internal/config"
 
 // milliPerRPS converts a rate in requests per second into the thousandths-of-a-
 // request-per-second unit the bundle format uses.

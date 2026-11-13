@@ -15,13 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 // version is overridden at build time via ldflags.
@@ -38,7 +38,7 @@ func (s *flagStrings) Set(v string) error {
 
 func main() {
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
-	flag.CommandLine.Init("stress-strike-dashboard", flag.ContinueOnError)
+	flag.CommandLine.Init("Sift-dashboard", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
 
 	listen := flag.String("listen", "127.0.0.1:8888", "Dashboard listen address")
@@ -64,7 +64,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `
 ╔═══════════════════════════════════════════════════════════════╗
-║  stress-strike dashboard — Real-time Web Dashboard            ║
+║  Sift dashboard — Real-time Web Dashboard            ║
 ║                                                               ║
 ║  • Live RPS sparkline graph                                   ║
 ║  • Latency percentiles (p50/p95/p99)                         ║
@@ -76,7 +76,7 @@ func main() {
 ╚═══════════════════════════════════════════════════════════════╝
 
 Usage:
-  stress-strike-dashboard [flags]
+  Sift-dashboard [flags]
 
 Flags:
 `)
@@ -84,20 +84,20 @@ Flags:
 		fmt.Fprintf(os.Stderr, `
 Examples:
   # Start dashboard on default port
-  stress-strike-dashboard
+  Sift-dashboard
 
   # Custom port
-  stress-strike-dashboard -listen :9090
+  Sift-dashboard -listen :9090
 
   # Locked down with a bearer token (required beyond loopback)
-  stress-strike-dashboard -listen 0.0.0.0:8888 -auth-token 'change-me' -auth-origin https://team.example.com
+  Sift-dashboard -listen 0.0.0.0:8888 -auth-token 'change-me' -auth-origin https://team.example.com
 `)
 	}
 	cliux.Parse(flag.CommandLine, os.Args[1:], flag.Usage, cliux.Options{
 		Command: "dashboard",
 		FlagSet: flag.CommandLine,
 		Examples: []string{
-			"stress-strike dashboard",
+			"Sift dashboard",
 		},
 	})
 
@@ -183,7 +183,7 @@ Examples:
 	srv.SetMetricsHandler(selfMetrics.Handler())
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║  stress-strike dashboard — real-time load telemetry             ║")
+	fmt.Println("║  Sift dashboard — real-time load telemetry             ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Printf("  Dashboard: http://%s\n", *listen)
 	fmt.Println()

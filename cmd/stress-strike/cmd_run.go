@@ -11,15 +11,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/evidence"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/evidence"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 type headerFlags map[string]string
@@ -124,8 +124,8 @@ func cmdRun() {
 	fs.StringVar(&bundleWorker, "bundle-worker", "", "worker identity recorded in the bundle (default: hostname, sanitised)")
 	fs.StringVar(&authzOpts.authorized, "authorized", "", "authorization ticket id recorded by an approver")
 	fs.BoolVar(&authzOpts.allowPrivate, "allow-private", false, "allow private/link-local targets explicitly")
-	fs.StringVar(&authzOpts.policyPath, "policy", "", "authorization policy file (default ~/.stress-strike/authz.json)")
-	fs.StringVar(&authzOpts.auditPath, "audit-log", "", "audit log file (default ~/.stress-strike/audit.jsonl)")
+	fs.StringVar(&authzOpts.policyPath, "policy", "", "authorization policy file (default ~/.Sift/authz.json)")
+	fs.StringVar(&authzOpts.auditPath, "audit-log", "", "audit log file (default ~/.Sift/audit.jsonl)")
 	fs.StringVar(&authzOpts.webhook, "notify-webhook", "", "webhook URL for audit notifications")
 	fs.Float64Var(&expectP99, "expect-p99-ms", 0, "SLA: max p99 latency (ms)")
 	fs.Float64Var(&expectAvg, "expect-avg-ms", 0, "SLA: max avg latency (ms)")
@@ -155,12 +155,12 @@ func cmdRun() {
 		Command: "run",
 		FlagSet: fs,
 		Examples: []string{
-			"stress-strike run --url https://api.example.com --users 10 --duration 10",
+			"Sift run --url https://api.example.com --users 10 --duration 10",
 		},
 	})
 
 	if showVersion {
-		fmt.Printf("stress-strike v%s\n", buildVersion)
+		fmt.Printf("Sift v%s\n", buildVersion)
 		return
 	}
 
@@ -195,7 +195,7 @@ func cmdRun() {
 		scenario = sc
 	} else {
 		if url == "" {
-			fatal(fmt.Errorf("either --config or --url is required\n\nExample: stress-strike run --url https://api.example.com --users 10 --duration 10"))
+			fatal(fmt.Errorf("either --config or --url is required\n\nExample: Sift run --url https://api.example.com --users 10 --duration 10"))
 		}
 		// When --target-rps is set, automatically use constant-rps profile.
 		if targetRPS > 0 && profile == "steady" {
@@ -290,7 +290,7 @@ func cmdRun() {
 		}
 	}
 
-	fmt.Fprintln(os.Stderr, "WARNING: stress-strike is a load testing tool. Only run it against systems you own or")
+	fmt.Fprintln(os.Stderr, "WARNING: Sift is a load testing tool. Only run it against systems you own or")
 	fmt.Fprintln(os.Stderr, "have explicit written permission to test. Unauthorized load floods are illegal (DDoS).")
 	if scenario.Profile.TLSFingerprint != "" {
 		fmt.Fprintf(os.Stderr, "TLS fingerprint: masking ClientHello as %q (JA3-mitigation bypass)\n", scenario.Profile.TLSFingerprint)
@@ -318,7 +318,7 @@ func cmdRun() {
 		exitProcess(130)
 	}()
 
-	fmt.Fprintf(os.Stderr, "stress-strike v%s | target: %s | profile: %s | duration: %ds\n",
+	fmt.Fprintf(os.Stderr, "Sift v%s | target: %s | profile: %s | duration: %ds\n",
 		buildVersion, targetDisplay(scenario), scenario.Profile.Type, scenario.Profile.TotalDuration())
 
 	var progress *engine.ProgressTracker
@@ -327,7 +327,7 @@ func cmdRun() {
 		progress = engine.NewProgressTracker(dur, scenario.Profile.Users)
 	}
 
-	// stress-strike: when a bundle is requested, every measured request is fed to a
+	// Sift: when a bundle is requested, every measured request is fed to a
 	// collector as well, so the evidence pack is built from the same
 	// measurements the report is — not from a summary of them.
 	var collector *evidence.Collector
@@ -454,16 +454,16 @@ func targetDisplay(scenario *config.Scenario) string {
 	return "n/a"
 }
 
-// printRunHelp renders `stress-strike run --help` in the same sectioned,
+// printRunHelp renders `Sift run --help` in the same sectioned,
 // two-dash style as the top-level help, with real examples.
 func printRunHelp(fs *flag.FlagSet) {
 	w := os.Stderr
-	fmt.Fprintf(w, "\n stress-strike run — HTTP/gRPC/WebSocket load test\n\n")
+	fmt.Fprintf(w, "\n Sift run — HTTP/gRPC/WebSocket load test\n\n")
 	fmt.Fprintf(w, " USAGE\n")
-	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --users 100 --duration 60\n")
-	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --target-rps 1000 --duration 30\n")
-	fmt.Fprintf(w, "   stress-strike run --url https://api.example.com --profile burst --users 500\n")
-	fmt.Fprintf(w, "   stress-strike run --config scenario.yaml\n\n")
+	fmt.Fprintf(w, "   Sift run --url https://api.example.com --users 100 --duration 60\n")
+	fmt.Fprintf(w, "   Sift run --url https://api.example.com --target-rps 1000 --duration 30\n")
+	fmt.Fprintf(w, "   Sift run --url https://api.example.com --profile burst --users 500\n")
+	fmt.Fprintf(w, "   Sift run --config scenario.yaml\n\n")
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	fmt.Fprintf(w, " FLAGS\n")
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
@@ -473,40 +473,40 @@ func printRunHelp(fs *flag.FlagSet) {
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	for _, e := range []string{
 		"# Simple load test",
-		"stress-strike run --url https://api.example.com --users 100 --duration 60",
+		"Sift run --url https://api.example.com --users 100 --duration 60",
 		"",
 		"# Constant RPS mode (1000 requests/sec)",
-		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30",
+		"Sift run --url https://api.example.com --target-rps 1000 --duration 30",
 		"",
 		"# Constant RPS with coordinated-omission correction (trustworthy p99 under saturation)",
-		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission",
+		"Sift run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission",
 		"",
 		"# SEAL THE RESULT: emit verifiable evidence a third party can check offline",
-		"stress-strike keygen --out operator.key",
-		"stress-strike run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission \\",
+		"Sift keygen --out operator.key",
+		"Sift run --url https://api.example.com --target-rps 1000 --duration 30 --coordinated-omission \\",
 		"    --emit-bundle bundle.json --bundle-key operator.key",
-		"stress-strike verify --bundle bundle.json --samples bundle.samples.jsonl   # 0 = valid, 1 = tampered",
+		"Sift verify --bundle bundle.json --samples bundle.samples.jsonl   # 0 = valid, 1 = tampered",
 		"",
 		"# Burst: 3s maximum-speed volley, all users at once, no RPS cap",
-		"stress-strike run --url https://api.example.com --profile burst --users 500",
+		"Sift run --url https://api.example.com --profile burst --users 500",
 		"",
 		"# Advanced scenario: branching, retries, think time",
-		"stress-strike run --config examples/branching-flow.yaml",
+		"Sift run --config examples/branching-flow.yaml",
 		"",
 		"# Client-streaming gRPC load test",
-		"stress-strike run --config examples/streaming.yaml",
+		"Sift run --config examples/streaming.yaml",
 		"",
 		"# Compare with a baseline report (exit 2 on regression)",
-		"stress-strike run --url https://api.example.com --users 50 --duration 30 --compare reports/baseline.json",
+		"Sift run --url https://api.example.com --users 50 --duration 30 --compare reports/baseline.json",
 		"",
 		"# SLA gate for CI/CD (exit code 2 on failure)",
-		"stress-strike run --url https://api.example.com --users 50 --duration 30 --expect-p99-ms 200 --expect-error-rate 1",
+		"Sift run --url https://api.example.com --users 50 --duration 30 --expect-p99-ms 200 --expect-error-rate 1",
 		"",
 		"# YAML scenario file",
-		"stress-strike run --config examples/login-flow.yaml",
+		"Sift run --config examples/login-flow.yaml",
 		"",
 		"# Real-time web dashboard output",
-		"stress-strike run --url https://api.example.com --users 100 --duration 60 --mode dashboard",
+		"Sift run --url https://api.example.com --users 100 --duration 60 --mode dashboard",
 	} {
 		fmt.Fprintf(w, "\n   %s\n", e)
 	}
@@ -571,7 +571,7 @@ func coCorrectionGate(scenario *config.Scenario, plannedMilli int64) string {
 // value reports whether the key is ephemeral: an ephemeral seal still proves
 // the evidence was fixed before it was published, but nobody can attribute it
 // to a key they already trust, so a real workflow uses --bundle-key with a key
-// from `stress-strike keygen`.
+// from `Sift keygen`.
 func bundleKeypair(path string) (*attest.Keypair, bool, error) {
 	if p := strings.TrimSpace(path); p != "" {
 		kp, err := attest.LoadKeypairPEM(p)
@@ -630,7 +630,7 @@ func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, sce
 		Collector:      collector,
 		WorkerKey:      kp,
 		CoordinatorKey: kp,
-		Tool:           attest.Tool{Name: "stress-strike", Version: buildVersion},
+		Tool:           attest.Tool{Name: "Sift", Version: buildVersion},
 		Run: attest.Run{
 			Target:     targetDisplay(scenario),
 			Profile:    scenario.Profile.Type,
@@ -663,7 +663,7 @@ func emitEvidenceBundle(path, keyPath string, collector *evidence.Collector, sce
 	} else {
 		fmt.Fprintf(os.Stderr, "  p99:           %s (raw, uncorrected)\n", asMillis(bundle.Aggregate.P99NS))
 	}
-	fmt.Fprintf(os.Stderr, "  verify it yourself (exit 0 = valid, 1 = tampered):\n    stress-strike verify --bundle %s --samples %s\n", path, sidecar)
+	fmt.Fprintf(os.Stderr, "  verify it yourself (exit 0 = valid, 1 = tampered):\n    Sift verify --bundle %s --samples %s\n", path, sidecar)
 	return nil
 }
 

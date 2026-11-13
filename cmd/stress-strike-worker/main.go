@@ -18,15 +18,15 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/cliux"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dist/coordinator"
-	distproto "github.com/asadbekabdulboqiyev/stress-strike/internal/dist/proto"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/opsserver"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/probe"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/version"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
+	"github.com/asadbekabdulboqiyev/sift/internal/dist/coordinator"
+	distproto "github.com/asadbekabdulboqiyev/sift/internal/dist/proto"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/opsserver"
+	"github.com/asadbekabdulboqiyev/sift/internal/probe"
+	"github.com/asadbekabdulboqiyev/sift/internal/version"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 	tlsCA      = flag.String("tls-ca", "", "CA bundle used to verify the master this worker registers with")
 	tlsSkip    = flag.Bool("tls-skip-verify", false, "Disable master verification when self-registering (self-signed demo fleets only)")
 	httpAddr   = flag.String("http-addr", "0.0.0.0:9091", "HTTP health/metrics listen address (/healthz /readyz /metrics); empty disables")
-	attestKey  = flag.String("attest-key", "", "Ed25519 keypair PEM (from `stress-strike keygen`); signs telemetry so an attested master accepts it")
+	attestKey  = flag.String("attest-key", "", "Ed25519 keypair PEM (from `Sift keygen`); signs telemetry so an attested master accepts it")
 )
 
 func main() {
@@ -54,29 +54,29 @@ func main() {
 	// `--version` is how the image build proves the binary it is about to ship
 	// is not a dev build; without it Dockerfile.worker logs "Unknown flag".
 	if len(os.Args) > 1 && isVersionArg(os.Args[1]) {
-		fmt.Printf("stress-strike-worker %s\n", version.Full())
+		fmt.Printf("Sift-worker %s\n", version.Full())
 		return
 	}
 
 	// Friendly flag errors + consistent help (exit 2 on usage errors).
-	flag.CommandLine.Init("stress-strike-worker", flag.ContinueOnError)
+	flag.CommandLine.Init("Sift-worker", flag.ContinueOnError)
 	flag.CommandLine.SetOutput(io.Discard)
 	workerHelp := func() {
 		cliux.BoxHelp(os.Stderr,
-			"stress-strike worker — distributed load-test worker node",
+			"Sift worker — distributed load-test worker node",
 			[]string{
-				"stress-strike worker --listen :50052",
-				"stress-strike worker --listen :50052 --master coordinator:50051",
+				"Sift worker --listen :50052",
+				"Sift worker --listen :50052 --master coordinator:50051",
 			},
 			[]string{
 				"# Start a worker on the default ephemeral port",
-				"stress-strike worker",
+				"Sift worker",
 				"",
 				"# Fixed port, self-register with a master",
-				"stress-strike worker --listen :50052 --master coordinator:50051",
+				"Sift worker --listen :50052 --master coordinator:50051",
 				"",
 				"# Shared control-plane token (must match master)",
-				"stress-strike worker --listen :50052 --token secret",
+				"Sift worker --listen :50052 --token secret",
 			},
 			flag.CommandLine)
 	}
@@ -84,7 +84,7 @@ func main() {
 		Command: "worker",
 		FlagSet: flag.CommandLine,
 		Examples: []string{
-			"stress-strike worker --listen :50052",
+			"Sift worker --listen :50052",
 		},
 	})
 	coordinator.Version = version.Version

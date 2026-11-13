@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/verigate"
+	"github.com/asadbekabdulboqiyev/sift/internal/verigate"
 )
 
 // newTestSrv builds a demo server with protection disabled unless protect=true.

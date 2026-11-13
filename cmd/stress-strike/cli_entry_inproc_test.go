@@ -27,9 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
 )
 
 // okServer starts a loopback server that answers 200 to everything.
@@ -80,7 +80,7 @@ func TestInprocDemoStoreHelp(t *testing.T) {
 		argv []string
 		want string
 	}{
-		{"store", []string{"demo-store", "--help"}, "stress-strike demo-store — launch"},
+		{"store", []string{"demo-store", "--help"}, "Sift demo-store — launch"},
 		{"status", []string{"demo-store", "status", "--help"}, "demo-store status — report"},
 		{"stop", []string{"demo-store", "stop", "--help"}, "demo-store stop — stop"},
 	}
@@ -231,11 +231,11 @@ func skipUnlessPOSIXExec(t *testing.T) {
 }
 
 func TestSubBinaryNameSuffix(t *testing.T) {
-	want := "stress-strike-scan"
+	want := "Sift-scan"
 	if runtime.GOOS == "windows" {
 		want += ".exe"
 	}
-	if got := subBinaryName("stress-strike-scan"); got != want {
+	if got := subBinaryName("Sift-scan"); got != want {
 		t.Errorf("subBinaryName = %q, want %q", got, want)
 	}
 }
@@ -243,14 +243,14 @@ func TestSubBinaryNameSuffix(t *testing.T) {
 func TestInprocRunSubCommandSibling(t *testing.T) {
 	skipUnlessPOSIXExec(t)
 
-	writeExecSibling(t, "stress-strike-test-ok", "#!/bin/sh\nexit 0\n")
-	res := runCommandFn(t, func() { runSubCommand("stress-strike-test-ok", []string{"--flag"}) }, "x")
+	writeExecSibling(t, "Sift-test-ok", "#!/bin/sh\nexit 0\n")
+	res := runCommandFn(t, func() { runSubCommand("Sift-test-ok", []string{"--flag"}) }, "x")
 	if res.code != 0 {
 		t.Fatalf("sibling success: exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 	}
 
-	writeExecSibling(t, "stress-strike-test-fail", "#!/bin/sh\nexit 7\n")
-	res = runCommandFn(t, func() { runSubCommand("stress-strike-test-fail", nil) }, "x")
+	writeExecSibling(t, "Sift-test-fail", "#!/bin/sh\nexit 7\n")
+	res = runCommandFn(t, func() { runSubCommand("Sift-test-fail", nil) }, "x")
 	if res.code != 7 {
 		t.Fatalf("sibling failure: exit = %d, want 7 (stderr: %s)", res.code, res.stderr)
 	}
@@ -267,7 +267,7 @@ func TestInprocRunSubCommandGoFallback(t *testing.T) {
 	}
 	t.Setenv("PATH", dir)
 
-	res := runCommandFn(t, func() { runSubCommand("stress-strike-no-such-subcommand-xyz", nil) }, "x")
+	res := runCommandFn(t, func() { runSubCommand("Sift-no-such-subcommand-xyz", nil) }, "x")
 	if res.code != 0 {
 		t.Fatalf("fallback success: exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 	}
@@ -275,7 +275,7 @@ func TestInprocRunSubCommandGoFallback(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "go"), []byte("#!/bin/sh\nexit 4\n"), 0o755); err != nil {
 		t.Fatalf("rewrite go stub: %v", err)
 	}
-	res = runCommandFn(t, func() { runSubCommand("stress-strike-no-such-subcommand-xyz", nil) }, "x")
+	res = runCommandFn(t, func() { runSubCommand("Sift-no-such-subcommand-xyz", nil) }, "x")
 	if res.code != 4 {
 		t.Fatalf("fallback failure: exit = %d, want 4 (stderr: %s)", res.code, res.stderr)
 	}
@@ -292,11 +292,11 @@ func TestInprocSubCommandWrappers(t *testing.T) {
 		name string
 		fn   func()
 	}{
-		{"stress-strike-replay", cmdReplay},
-		{"stress-strike-scan", cmdScan},
-		{"stress-strike-dashboard", cmdDashboard},
-		{"stress-strike-master", cmdMaster},
-		{"stress-strike-worker", cmdWorker},
+		{"Sift-replay", cmdReplay},
+		{"Sift-scan", cmdScan},
+		{"Sift-dashboard", cmdDashboard},
+		{"Sift-master", cmdMaster},
+		{"Sift-worker", cmdWorker},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -348,7 +348,7 @@ func TestInprocRunWithDashboardRefusesOpenBind(t *testing.T) {
 		if !strings.Contains(res.stderr, "dashboard server failed") {
 			t.Errorf("stderr = %q, want the bind error", res.stderr)
 		}
-		if !strings.Contains(res.stdout, "stress-strike dashboard") {
+		if !strings.Contains(res.stdout, "Sift dashboard") {
 			t.Errorf("stdout = %q, want the banner", res.stdout)
 		}
 	})

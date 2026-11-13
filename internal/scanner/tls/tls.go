@@ -1,4 +1,4 @@
-// Package tls implements TLS/SSL scanning for the stress-strike scanner.
+// Package tls implements TLS/SSL scanning for the Sift scanner.
 package tls
 
 import (
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
 )
 
 // KnownCiphers lists known TLS cipher suites.

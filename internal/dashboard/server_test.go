@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/demostore"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/honesty"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/demostore"
+	"github.com/asadbekabdulboqiyev/sift/internal/honesty"
 )
 
 // --- NewServer Tests --------------------------------------------------------
@@ -1257,7 +1257,7 @@ func produceBundleDashboard(t *testing.T, coord *attest.Keypair, run attest.Run,
 	b := attest.Bundle{
 		Format:    attest.FormatID,
 		CreatedAt: "2026-10-13T18:00:00Z",
-		Tool:      attest.Tool{Name: "stress-strike", Version: "test"},
+		Tool:      attest.Tool{Name: "Sift", Version: "test"},
 		Run:       run,
 		Workers:   workers,
 		Aggregate: agg,

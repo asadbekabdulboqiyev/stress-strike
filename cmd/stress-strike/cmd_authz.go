@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/authz"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/adminlock"
+	"github.com/asadbekabdulboqiyev/sift/internal/authz"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // authzDeniedExitCode is returned when a run is blocked by the authorization
@@ -50,16 +50,16 @@ func (g gateOptions) bypassActive() bool {
 func addAuthzFlags(fs *flag.FlagSet, g *gateOptions) {
 	fs.StringVar(&g.authorized, "authorized", "", "authorization ticket id granted by an approver (required for pentest)")
 	fs.BoolVar(&g.allowPrivate, "allow-private", false, "allow RFC1918/private targets without an explicit authorization entry")
-	fs.StringVar(&g.policyPath, "policy", "", "authorization policy JSON (default ~/.stress-strike/authz.json)")
-	fs.StringVar(&g.auditPath, "audit-log", "", "append-only audit log path (default ~/.stress-strike/audit.jsonl)")
+	fs.StringVar(&g.policyPath, "policy", "", "authorization policy JSON (default ~/.Sift/authz.json)")
+	fs.StringVar(&g.auditPath, "audit-log", "", "append-only audit log path (default ~/.Sift/audit.jsonl)")
 	fs.StringVar(&g.webhook, "notify-webhook", "", "webhook URL to notify on every authorization decision")
 }
 
-// configHome returns the directory holding stress-strike's local state.
+// configHome returns the directory holding Sift's local state.
 // configHome, defaultPolicyPath and defaultAuditPath delegate to the authz
 // package so the CLI, the scan binary and the dashboard resolve the same
 // policy and the same audit trail. The bodies used to live here and in
-// cmd/stress-strike-scan as two hand-kept copies.
+// cmd/Sift-scan as two hand-kept copies.
 func configHome() string {
 	return authz.ConfigHome()
 }
@@ -185,7 +185,7 @@ func enforceAuthz(op authz.Operation, targets []string, argv []string, g gateOpt
 			fmt.Fprintln(os.Stderr, "════════════════════════════════════════════════════════════════")
 			fmt.Fprintln(os.Stderr, " WARNING: ADMIN BYPASS ACTIVE — authorization checks are OFF")
 			fmt.Fprintln(os.Stderr, " This run was allowed by the local admin unlock, not by a ticket.")
-			fmt.Fprintln(os.Stderr, " Restore the gate now:  stress-strike admin lock")
+			fmt.Fprintln(os.Stderr, " Restore the gate now:  Sift admin lock")
 			fmt.Fprintln(os.Stderr, "════════════════════════════════════════════════════════════════")
 		}
 		if out.Rule != "" {
@@ -231,7 +231,7 @@ func printAuthzDenial(targets []string, out authzOutcome) {
 	fmt.Fprintf(os.Stderr, "  target: %s\n", strings.Join(targets, ", "))
 	fmt.Fprintf(os.Stderr, "  reason: %s\n\n", out.Reason)
 	fmt.Fprintln(os.Stderr, "To authorize a test, have the approver add an entry:")
-	fmt.Fprintln(os.Stderr, "  stress-strike authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
+	fmt.Fprintln(os.Stderr, "  Sift authorize add --pattern <host-or-ip> --approver <name> --ticket <id>")
 	fmt.Fprintln(os.Stderr, "then re-run with --authorized <id>.")
 }
 
@@ -312,7 +312,7 @@ func cmdAuthorize() {
 }
 
 func authorizeUsage() {
-	fmt.Fprint(os.Stderr, `usage: stress-strike authorize <add|list|remove|verify> [flags]
+	fmt.Fprint(os.Stderr, `usage: Sift authorize <add|list|remove|verify> [flags]
 
 Authorization entries define which targets may be tested and by whose approval.
 They are stored in `+defaultPolicyPath()+`.
@@ -484,7 +484,7 @@ func cmdAudit() {
 }
 
 func auditUsage() {
-	fmt.Fprint(os.Stderr, `usage: stress-strike audit <show|verify> [flags]
+	fmt.Fprint(os.Stderr, `usage: Sift audit <show|verify> [flags]
 
   show    [--log PATH] [--limit N]   print recorded decisions
   verify  [--log PATH]               verify the hash chain (detect tampering)

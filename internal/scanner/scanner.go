@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/auth"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/core"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/crawl"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/http"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/owasp"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/security"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/tls"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/scanner/waf"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/auth"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/core"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/crawl"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/http"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/owasp"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/security"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/tls"
+	"github.com/asadbekabdulboqiyev/sift/internal/scanner/waf"
 )
 
 // ScanResult is the top-level output of a complete scan (re-exported from core).

@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/dashboard"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/engine"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/health"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/metrics"
-	prom "github.com/asadbekabdulboqiyev/stress-strike/internal/metrics/exporter"
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/report"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/dashboard"
+	"github.com/asadbekabdulboqiyev/sift/internal/engine"
+	"github.com/asadbekabdulboqiyev/sift/internal/health"
+	"github.com/asadbekabdulboqiyev/sift/internal/metrics"
+	prom "github.com/asadbekabdulboqiyev/sift/internal/metrics/exporter"
+	"github.com/asadbekabdulboqiyev/sift/internal/report"
 )
 
 // runWithDashboard starts the real-time web dashboard and serves live JSON
@@ -176,7 +176,7 @@ func runWithDashboard(scenario *config.Scenario, dashListen, reportDir string, d
 	srv.SetMetricsHandler(selfMetrics.Handler())
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║  stress-strike dashboard — real-time load telemetry             ║")
+	fmt.Println("║  Sift dashboard — real-time load telemetry             ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Printf("  Dashboard : http://%s\n", dashListen)
 	fmt.Printf("  Default   : %s (%d users, %ds)\n", targetDisplay(scenario), scenario.Profile.Users, scenario.Profile.TotalDuration())

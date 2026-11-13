@@ -1,5 +1,5 @@
 // Package browserload provides browser-based load testing using a real
-// Chromium-based browser via chromedp. This lets stress-strike measure how a
+// Chromium-based browser via chromedp. This lets Sift measure how a
 // target performs for an actual end user (JS rendering, CSS layout, image
 // loading, XHR/fetch), which the plain HTTP engine cannot capture.
 //

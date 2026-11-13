@@ -1,7 +1,7 @@
 // Package demostore supervises the bundled VoltStore demo target: it locates
 // the demo-store binary, spawns it, and tracks liveness. It is shared by the
 // web dashboard (one-click "open the demo" button) and the
-// `stress-strike demo-store` CLI command, so both entry points behave
+// `Sift demo-store` CLI command, so both entry points behave
 // identically and supervision logic stays in one place.
 package demostore
 
@@ -168,12 +168,12 @@ func (d *DemoStore) locate() (string, []string, error) {
 			return p, nil, nil
 		}
 	}
-	// 3) A demo-store binary on PATH (installed alongside stress-strike).
+	// 3) A demo-store binary on PATH (installed alongside Sift).
 	if p, err := exec.LookPath("demo-store"); err == nil {
 		return p, nil, nil
 	}
 	return "", nil, fmt.Errorf(
-		"demo store not found: build it with `make build` (bin/demo-store), install it on PATH, or run the command from the stress-strike checkout")
+		"demo store not found: build it with `make build` (bin/demo-store), install it on PATH, or run the command from the Sift checkout")
 }
 
 // findUp walks from the working directory toward the filesystem root looking

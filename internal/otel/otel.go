@@ -1,4 +1,4 @@
-// Package otel wires the OpenTelemetry tracing SDK into stress-strike.
+// Package otel wires the OpenTelemetry tracing SDK into Sift.
 //
 // Tracing is opt-in: nothing is exported unless Start (or SetGlobal) is called
 // with a configured Provider. When tracing is off every helper degrades to a
@@ -37,12 +37,12 @@ type Config struct {
 }
 
 // ConfigFromEnv builds a Config from the standard OTEL_* environment variables
-// plus the stress-strike specific STRESS_STRIKE_OTEL_ENABLED switch.
+// plus the Sift specific STRESS_STRIKE_OTEL_ENABLED switch.
 func ConfigFromEnv() Config {
 	cfg := Config{
 		Enabled:     envBool("STRESS_STRIKE_OTEL_ENABLED", false),
 		Endpoint:    firstNonEmpty(os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"), os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
-		ServiceName: firstNonEmpty(os.Getenv("OTEL_SERVICE_NAME"), "stress-strike"),
+		ServiceName: firstNonEmpty(os.Getenv("OTEL_SERVICE_NAME"), "Sift"),
 		SampleRatio: 1,
 	}
 	if v := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE"); v != "" {
@@ -115,7 +115,7 @@ func newProvider(cfg Config, exp sdktrace.SpanExporter) *Provider {
 	}
 	svc := cfg.ServiceName
 	if svc == "" {
-		svc = "stress-strike"
+		svc = "Sift"
 	}
 	res := resource.NewSchemaless(attribute.String("service.name", svc))
 
@@ -125,7 +125,7 @@ func newProvider(cfg Config, exp sdktrace.SpanExporter) *Provider {
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(ratio))),
 	)
 	otel.SetTracerProvider(tp)
-	p := &Provider{tp: tp, tracer: tp.Tracer("github.com/asadbekabdulboqiyev/stress-strike")}
+	p := &Provider{tp: tp, tracer: tp.Tracer("github.com/asadbekabdulboqiyev/sift")}
 	SetGlobal(p)
 	return p
 }
@@ -223,7 +223,7 @@ func StartSpan(ctx context.Context, name string) (context.Context, Span) {
 
 // --- Span abstraction -------------------------------------------------------
 
-// Span is the minimal tracing surface used across stress-strike. It is backed
+// Span is the minimal tracing surface used across Sift. It is backed
 // by a real OpenTelemetry span when tracing is enabled.
 type Span interface {
 	End()

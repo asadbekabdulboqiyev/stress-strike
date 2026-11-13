@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/attest"
+	"github.com/asadbekabdulboqiyev/sift/internal/attest"
 )
 
 // Issue renders, binds and signs one assessment. The document's SHA-256 is
@@ -15,7 +15,7 @@ import (
 // signature seal is applied for display — so the JSON, the HTML and the PDF all
 // describe the same signed evidence and a tampered body still fails Verify.
 //
-// Both the CLI (`stress-strike certificate`) and the dashboard call this, so
+// Both the CLI (`Sift certificate`) and the dashboard call this, so
 // the two cannot produce certificates that verify differently.
 //
 // prevHash is the SHA-256 of the previously issued certificate JSON (empty for

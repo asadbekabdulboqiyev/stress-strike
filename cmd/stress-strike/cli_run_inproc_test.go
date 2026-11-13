@@ -1,6 +1,6 @@
 package main
 
-// cli_run_inproc_test.go — in-process coverage for `stress-strike run`.
+// cli_run_inproc_test.go — in-process coverage for `Sift run`.
 //
 // The load engine talks to a loopback httptest server, so the whole happy path
 // (plan, run, report, save) executes for real without leaving the machine. One
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/config"
+	"github.com/asadbekabdulboqiyev/sift/internal/config"
 )
 
 // runTestServer starts a loopback server that answers every request 200.
@@ -88,7 +88,7 @@ func TestInprocRunHelpAndVersion(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("help exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 	}
-	if !strings.Contains(res.stderr, "stress-strike run") || !strings.Contains(res.stderr, "FLAGS") {
+	if !strings.Contains(res.stderr, "Sift run") || !strings.Contains(res.stderr, "FLAGS") {
 		t.Errorf("help text incomplete: %q", res.stderr)
 	}
 
@@ -96,7 +96,7 @@ func TestInprocRunHelpAndVersion(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("version exit = %d, want 0", res.code)
 	}
-	if !strings.Contains(res.stdout, "stress-strike v"+buildVersion) {
+	if !strings.Contains(res.stdout, "Sift v"+buildVersion) {
 		t.Errorf("stdout = %q, want the version", res.stdout)
 	}
 }
@@ -149,7 +149,7 @@ func TestInprocRunHappyPath(t *testing.T) {
 	if res.code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr: %s)", res.code, res.stderr)
 	}
-	for _, want := range []string{"WARNING: stress-strike is a load testing tool", "stress-strike v" + buildVersion, "Reports written:"} {
+	for _, want := range []string{"WARNING: Sift is a load testing tool", "Sift v" + buildVersion, "Reports written:"} {
 		if !strings.Contains(res.stderr, want) {
 			t.Errorf("stderr missing %q:\n%s", want, res.stderr)
 		}

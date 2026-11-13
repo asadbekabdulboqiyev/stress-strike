@@ -1,6 +1,6 @@
 package browser
 
-// Headless browser (Chromium/CDP) integration for stress-strike scanner.
+// Headless browser (Chromium/CDP) integration for Sift scanner.
 //
 // USE:
 //   - JavaScript-rendered (SPA / React / Vue / Angular) page endpoints and

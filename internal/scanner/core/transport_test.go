@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/fingerprint"
+	"github.com/asadbekabdulboqiyev/sift/internal/fingerprint"
 )
 
 func mustURL(t *testing.T, raw string) *url.URL {

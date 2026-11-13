@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asadbekabdulboqiyev/stress-strike/internal/adminlock"
+	"github.com/asadbekabdulboqiyev/sift/internal/adminlock"
 )
 
 func resetAdminThrottleForTest() func() {

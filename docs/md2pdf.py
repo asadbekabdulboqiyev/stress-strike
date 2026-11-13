@@ -278,7 +278,7 @@ def build_doc():
     story.extend(parse(lines))
 
     story.append(Spacer(1, 10))
-    story.append(Paragraph("— End of document. Stress-strike study guide —", styles["foot"]))
+    story.append(Paragraph("— End of document. Sift study guide —", styles["foot"]))
 
     # footer page numbers
     def footer(canvas, d):

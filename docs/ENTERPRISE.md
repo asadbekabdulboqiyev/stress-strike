@@ -1,4 +1,4 @@
-# Stress-Strike Enterprise
+# Sift Enterprise
 
 **Status:** Mapping only (no SOC 2 / ISO 27001 certification yet)  
 **Version:** 1.0  

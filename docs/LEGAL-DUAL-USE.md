@@ -1,9 +1,9 @@
-# Stress-Strike — Dual-Use & Legal
+# Sift — Dual-Use & Legal
 
 **Status:** Draft  
 **Version:** 1.0  
 **Date:** 2026-11-05  
-**Abstract:** Stress-strike — bu muallifona tekshirish (authorized assessment) va
+**Abstract:** Sift — bu muallifona tekshirish (authorized assessment) va
 yuk sinovi (load testing) uchun mo'ljallangan dastur. U "dual-use": ham foydali
 texnik xavfsizlik tekshirishi uchun, ham (agar noto'g'ri ishlatilsa) hujum
 sabbab bo'lishi mumkin. Quyidagi hujjat foydalanish chegarasi, soritish (responsible
@@ -37,7 +37,7 @@ yoziladi va coordinator tomonidan kuzatiladi.
 
 ## 2. Responsible Disclosure (Xavfsizlik xabari)
 
-Stress-strike da xavfsizlik zaiflik aniqlagan bo'lsangiz, quyida amalrang:
+Sift da xavfsizlik zaiflik aniqlagan bo'lsangiz, quyida amalrang:
 
 1. **Afsoskarish (embargo):** Mavjud xatoni ochiq kokiga chiqarmang.
 2. **Yuborish:** `security@techcorp.example` manziliga xabar yuboring.
@@ -53,7 +53,7 @@ Stress-strike da xavfsizlik zaiflik aniqlagan bo'lsangiz, quyida amalrang:
 
 ## 3. Abuse Monitoring (Nostrat kuzatish)
 
-Stress-strike kuzatish vositalari:
+Sift kuzatish vositalari:
 
 | vosita | maqsad | log'lanadi |
 |--------|--------|------------|
@@ -72,7 +72,7 @@ Abuse aniqlangan holda:
 
 ## 4. DPA (Data Processing Agreement)
 
-Stress-strike quyidagi ma'lumotlarni qayta ishlashi mumkin:
+Sift quyidagi ma'lumotlarni qayta ishlashi mumkin:
 
 | Ma'lumot turi | Manba | Saqlash muddati |
 |--------------|-------|-----------------|
@@ -91,7 +91,7 @@ Stress-strike quyidagi ma'lumotlarni qayta ishlashi mumkin:
 
 ### 4.2 Huquqi chegara
 
-Stress-strike — bu "as-is" (hozirgidek) taqdim etiladi, hech qanday kafolat
+Sift — bu "as-is" (hozirgidek) taqdim etiladi, hech qanday kafolat
 siz. Foydalanuvchi o'zi uchun javobgardan holda ishlaydi.
 
 ---

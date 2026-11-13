@@ -2928,6 +2928,34 @@ html {
   white-space: nowrap;
 }
 
+/* Certificate text/JSON overflow safety */
+.cert-panel pre,
+.cert-panel code,
+.cert-result-panel pre,
+.cert-result-panel code,
+.cert-html-frame,
+.cert-note,
+.cert-status,
+.cert-chain,
+.cert-fact-value,
+.cert-verdict,
+.cert-findings li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.cert-panel pre,
+.cert-result-panel pre {
+  white-space: pre-wrap;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.cert-facts,
+.cert-findings,
+.cert-result-panel,
+.cert-panel {
+  min-width: 0;
+}
+
 /* Mobile improvements */
 @media (max-width: 768px) {
   .page-head { padding: 14px 16px; }

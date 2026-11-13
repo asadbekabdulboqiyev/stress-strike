@@ -130,19 +130,57 @@ func (cr *CompareResult) Render() string {
 	fmt.Fprintf(&b, "  %s\n", line)
 
 	b.WriteString(cr.renderRow("Requests", formatCount(cr.baselineReq), formatCount(cr.currentReq), cr.RequestChangePct))
-	b.WriteString(cr.renderRow("Avg Latency", cr.baselineAvg.Round(time.Millisecond).String(), cr.currentAvg.Round(time.Millisecond).String(), cr.AvgDiff/max1(msOf(cr.baselineAvg), 0.001)*100))
-	b.WriteString(cr.renderRow("P99 Latency", cr.baselineP99.Round(time.Millisecond).String(), cr.currentP99.Round(time.Millisecond).String(), cr.P99Diff/max1(msOf(cr.baselineP99), 0.001)*100))
+	b.WriteString(cr.renderRow("Avg Latency", formatLatency(cr.baselineAvg), formatLatency(cr.currentAvg), cr.AvgDiff/max1(msOf(cr.baselineAvg), 0.001)*100))
+	b.WriteString(cr.renderRow("P99 Latency", formatLatency(cr.baselineP99), formatLatency(cr.currentP99), cr.P99Diff/max1(msOf(cr.baselineP99), 0.001)*100))
 	b.WriteString(cr.renderRow("Error Rate", fmt.Sprintf("%.2f%%", cr.baselineErr), fmt.Sprintf("%.2f%%", cr.currentErr), cr.ErrorChangePct))
 	b.WriteString(cr.renderRow("RPS", formatRPS(cr.baselineRPS), formatRPS(cr.currentRPS), cr.RPSChangePct))
 
 	fmt.Fprintf(&b, "  %s\n", line)
-	if cr.Regression {
+	switch {
+	case cr.Regression:
 		fmt.Fprintf(&b, "  VERDICT: REGRESSED — worst metric %.1f%% beyond baseline\n", cr.RegressionPct)
-	} else {
-		fmt.Fprintf(&b, "  VERDICT: IMPROVED — All metrics within threshold\n")
+	case cr.improved():
+		fmt.Fprintf(&b, "  VERDICT: IMPROVED — no metric regressed past the threshold\n")
+	default:
+		// Two identical runs are not an improvement. Saying "IMPROVED" for a
+		// flat result is the kind of flattery this tool exists to refuse.
+		fmt.Fprintf(&b, "  VERDICT: UNCHANGED — every metric within the threshold\n")
 	}
 	fmt.Fprintf(&b, "%s\n\n", sep)
 	return b.String()
+}
+
+// improved reports whether at least one metric moved in the good direction by
+// more than measurement noise, so the IMPROVED verdict means something.
+func (cr *CompareResult) improved() bool {
+	const meaningfulPct = 1.0
+	avgPct := cr.AvgDiff / max1(msOf(cr.baselineAvg), 0.001) * 100
+	p99Pct := cr.P99Diff / max1(msOf(cr.baselineP99), 0.001) * 100
+	return avgPct < -meaningfulPct ||
+		p99Pct < -meaningfulPct ||
+		cr.ErrorChangePct < -meaningfulPct ||
+		cr.RPSChangePct > meaningfulPct
+}
+
+// formatLatency renders a measured latency for the comparison table.
+//
+// The unit follows the value: a 1.2µs baseline printed as "0s" reads as "no
+// measurement was taken", which is the one thing a comparison table must never
+// imply. Rounding only starts once the number itself is coarse enough to carry
+// it.
+func formatLatency(d time.Duration) string {
+	switch {
+	case d <= 0:
+		return "0"
+	case d < time.Microsecond:
+		return d.String()
+	case d < time.Millisecond:
+		return d.Round(100 * time.Nanosecond).String()
+	case d < time.Second:
+		return d.Round(100 * time.Microsecond).String()
+	default:
+		return d.Round(10 * time.Millisecond).String()
+	}
 }
 
 func (cr *CompareResult) renderRow(metric, baseVal, curVal string, changePct float64) string {

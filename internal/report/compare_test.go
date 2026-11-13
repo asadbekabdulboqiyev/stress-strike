@@ -180,3 +180,34 @@ func TestRenderImproved(t *testing.T) {
 		t.Error("Render should show IMPROVED verdict")
 	}
 }
+
+// Sub-millisecond latencies keep their unit. "0s" for a measured microsecond
+// reads as "nothing was measured", and the table exists to be believed.
+func TestRenderKeepsSubMillisecondLatency(t *testing.T) {
+	base := baseReport()
+	base.Overall.Avg = 900 * time.Nanosecond
+	base.Overall.P99 = 1200 * time.Nanosecond
+	cur := baseReport()
+	cur.Overall.Avg = 950 * time.Nanosecond
+	cur.Overall.P99 = 1300 * time.Nanosecond
+
+	out := Compare(cur, base).Render()
+	if strings.Contains(out, " 0s ") {
+		t.Fatalf("sub-millisecond latency rendered as 0s:\n%s", out)
+	}
+	if !strings.Contains(out, "µs") && !strings.Contains(out, "ns") {
+		t.Fatalf("sub-millisecond latency lost its unit:\n%s", out)
+	}
+}
+
+// Two identical runs are UNCHANGED, not IMPROVED.
+func TestRenderIdenticalSaysUnchanged(t *testing.T) {
+	base := baseReport()
+	out := Compare(baseReport(), base).Render()
+	if !strings.Contains(out, "UNCHANGED") {
+		t.Fatalf("identical runs should report UNCHANGED:\n%s", out)
+	}
+	if strings.Contains(out, "IMPROVED") {
+		t.Fatalf("identical runs must not be called IMPROVED:\n%s", out)
+	}
+}

@@ -72,8 +72,23 @@ stress-strike authorize add \
   --reason "pre-release load test, window agreed with the platform team"
 ```
 
-`--pattern` accepts an exact host, `*.example.com`, a CIDR (`10.0.0.0/8`), an
-IP, or `*`. `--until` is an expiry; without it the entry never expires.
+`--pattern` accepts an exact host, an IP, `*.example.com`, a CIDR
+(`10.0.0.0/8`), or `*`. `--until` is an expiry; without it the entry never
+expires.
+
+A pattern does one of two different jobs, and the difference is consent:
+
+| Pattern | What it means |
+| --- | --- |
+| `shop.example.com`, `203.0.113.7` | **names a target** — this host may be pentested |
+| `*.example.com` | scopes load tests to subdomains (the apex does **not** match) |
+| `10.0.0.0/8`, `203.0.113.0/24` | scopes load tests to a range |
+| `*` | scopes load tests to anything |
+
+A pentest — and `--authorized <ticket>` — needs a rule that **names** the
+target: a host or an IP. A wildcard or a CIDR is scope, never consent, however
+narrow it is: `/32` included. A `/8` with an approver on it must not stand in
+for an approval of the one host inside that `/8` about to be scanned.
 
 ```
 $ stress-strike authorize list
@@ -95,8 +110,8 @@ stress-strike pentest --target https://shop.example.com --authorized SEC-77
 ```
 
 For `pentest` both are required: the entry must exist **and** the operator must
-name it. Naming a ticket with no matching entry fails. A wildcard never
-satisfies a pentest.
+name it. Naming a ticket with no matching entry fails. Neither a wildcard nor a
+CIDR satisfies a pentest: the entry has to name the host or IP.
 
 ---
 
@@ -169,7 +184,7 @@ rule, reason, tool version, and argv:
   "class": "metadata",
   "allowed": false,
   "reason": "refusing to send traffic to cloud instance metadata (169.254.169.254) — this is the credential-theft path",
-  "version": "0.14.3",
+  "version": "0.14.13",
   "prev_hash": "",
   "hash": "ec7c093327623715ba7e9d91bbca257c97fc3020db24a859525c6cc0d8a6b105"
 }

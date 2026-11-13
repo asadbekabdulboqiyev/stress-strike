@@ -1,7 +1,7 @@
-# VeriBench — Invention Disclosure: Verifiable Performance Measurement
+# stress-strike — Invention Disclosure: Verifiable Performance Measurement
 
 **Format identifier:** `vpmp/v1`
-**Product name:** VeriBench
+**Product name:** stress-strike
 **Status of this document:** invention disclosure + protocol specification
 **Scope note:** this document states honestly what the MVP proves and what it
 does not. Sections marked **[MVP]** are in scope today; **[ROADMAP]** are
@@ -57,8 +57,8 @@ addresses fabrication by external corroboration.
 
 ## 3. Invention summary
 
-VeriBench introduces a **measurement protocol** (`vpmp/v1`) with three pillars.
-The pillars are named identically across all VeriBench documents.
+stress-strike introduces a **measurement protocol** (`vpmp/v1`) with three pillars.
+The pillars are named identically across all stress-strike documents.
 
 | # | Pillar | Mechanism | Addresses |
 |---|---|---|---|
@@ -143,7 +143,7 @@ Performed by the verifier, offline, with no network access (§6).
   "format": "vpmp/v1",
   "bundle_id": "vb-1f7c9a3d5e21",
   "created_at": "2026-10-13T10:15:04Z",
-  "tool": { "name": "VeriBench", "binary": "stress-strike", "version": "0.14.3", "protocol": "vpmp/v1" },
+  "tool": { "name": "stress-strike", "binary": "stress-strike", "version": "0.14.13", "protocol": "vpmp/v1" },
   "signer": {
     "alg": "Ed25519",
     "key_id": "<hex SHA-256 of public key>",

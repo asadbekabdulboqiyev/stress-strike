@@ -29,7 +29,7 @@ with a distributed execution model and a verifiable-output story.
 | Benchmarks | 16 |
 | Statement coverage | 78.7% overall |
 | Direct dependencies | 17 |
-| Dashboard routes | 36 dispatch routes (32 under `/api`) |
+| Dashboard routes | 37 dispatch arms, 32 distinct endpoints (33 arms under `/api`; `certificate/generate` is an alias of `certificate/issue`) |
 | Dashboard frontend | 7,402 lines (13 embedded JS parts + CSS + templates) |
 | Documentation | 7,728 lines across README and `docs/` |
 | Commits / release tags | 178 / 24 |

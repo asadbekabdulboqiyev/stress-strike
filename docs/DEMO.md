@@ -1,4 +1,4 @@
-# VeriBench — 2-Minute Demo Script
+# stress-strike — 2-Minute Demo Script
 
 **Goal of the demo:** in 120 seconds, show that a load-test result can be
 *checked* — and that tampering with it is detected, with a machine-readable exit
@@ -45,7 +45,7 @@ the top.
 |---|---|---|---|
 | 0:00 | `clear` | "Every website claim you've ever been sold looks like this." | blank terminal |
 | 0:05 | Type (don't run): `stress-strike run --url … --duration 10s` | "A load test. 52,000 requests per second, p99 of 41 milliseconds. Impressive. **How would you check it?**" | the command sits there, unexecuted |
-| 0:20 | `Ctrl-C` to clear the line | "You can't. You're trusting whoever produced the number. VeriBench changes that — three ideas, thirty seconds each." | — |
+| 0:20 | `Ctrl-C` to clear the line | "You can't. You're trusting whoever produced the number. stress-strike changes that — three ideas, thirty seconds each." | — |
 | 0:25 | Show `docs/EXPLAINER.md` §2 headings, or just say it | "One: a **digital seal**. Two: the raw data locked behind one fingerprint. Three: an **outside witness** that catches a fake test." | — |
 | 0:40 | `./scripts/demo-verified.sh` | "One command. Watch the verdicts." | banner + `1/5 Mode` + `2/5 keygen` |
 | 0:55 | *(let it run)* | "It creates a signing key, runs the test, and emits **two files**: a signed cover sheet and one line of raw evidence per request." | `3/5 run` + bundle/samples sizes and sha256 |
@@ -88,7 +88,7 @@ STRESS_STRIKE_BIN=/usr/local/bin/stress-strike ./scripts/demo-verified.sh
 ## 3. Expected output (real transcript, `NO_COLOR=1`, LIVE mode)
 
 ```
-VeriBench — verifiable measurement demo
+stress-strike — verifiable measurement demo
 format vpmp/v1 · Ed25519 seal · Merkle-locked samples · offline verify
 binary: /tmp/veribench-demo.xxx/stress-strike
 

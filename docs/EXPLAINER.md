@@ -1,4 +1,4 @@
-# VeriBench — Explained for Everyone
+# stress-strike — Explained for Everyone
 
 > **No programming background required.** Every technical term is explained the
 > moment it appears. If you can read a receipt, you can read this page.
@@ -20,7 +20,7 @@ This matters because real money and real decisions ride on those numbers:
 a company buys more servers, a client renews a contract, a regulator asks for
 evidence, an insurer prices a risk.
 
-**VeriBench makes load-test results checkable by a third party** — a client, an
+**stress-strike makes load-test results checkable by a third party** — a client, an
 auditor, a judge — without having to trust either the tool or the person who
 ran it.
 
@@ -39,7 +39,7 @@ that the card matches the result, and that the envelope was sealed the whole
 time, so you couldn't have written the card after the toss.
 
 The trick is the order of operations: **lock it first, reveal it later.**
-Cryptographers call this **commit-then-reveal**. VeriBench uses exactly this
+Cryptographers call this **commit-then-reveal**. stress-strike uses exactly this
 shape: at the start of a test the tool *commits* to a secret (publishes only a
 fingerprint of it), and at the end it *reveals* the secret. If the revealed
 secret doesn't produce the committed fingerprint, something was swapped.
@@ -59,7 +59,7 @@ and confirm it lands on the same final fingerprint. **Change one pixel in one
 photo and the final fingerprint changes completely.** So one short line of text
 secures 2,000 photos at once.
 
-This structure is called a **Merkle tree**, after Ralph Merkle. VeriBench uses
+This structure is called a **Merkle tree**, after Ralph Merkle. stress-strike uses
 it on the individual measurements (one per request) so that the thousands of
 underlying numbers are locked behind one short fingerprint. Each fingerprint also
 records the photo's *position* in the pile, so nobody can silently reorder or
@@ -77,12 +77,12 @@ everyone can recognise). Anyone can use the public key to check that a document
 was signed by the private key — and that not one character has changed since.
 
 **Ed25519** is simply the modern, fast, widely trusted standard for doing this.
-VeriBench's key generation command is `stress-strike keygen` — it creates your
-private key. That is your stamp. VeriBench never sends it anywhere.
+stress-strike's key generation command is `stress-strike keygen` — it creates your
+private key. That is your stamp. stress-strike never sends it anywhere.
 
 ---
 
-## 3. What VeriBench actually produces
+## 3. What stress-strike actually produces
 
 One test run produces a **bundled evidence pack** (a *bundle*) made of two files:
 
@@ -102,7 +102,7 @@ and it cannot be edited afterwards without detection.
 
 ## 4. The three pillars (what each one buys you)
 
-VeriBench stands on three ideas. They are named exactly like this everywhere in
+stress-strike stands on three ideas. They are named exactly like this everywhere in
 our documents.
 
 ### Pillar 1 — Attested Measurement (VPMP v1)
@@ -137,9 +137,9 @@ wrong.
 
 Correction: when a request was *supposed* to be sent at time T but was actually
 sent later, we add the hidden waiting time back into that request's latency.
-VeriBench reports this corrected latency as the **honest latency**.
+stress-strike reports this corrected latency as the **honest latency**.
 
-Because a single number hides how sure we are, VeriBench also reports a **95%
+Because a single number hides how sure we are, stress-strike also reports a **95%
 confidence interval** — a range that the true value is very likely to fall
 inside, computed by re-sampling the raw data many times (a *bootstrap*). A
 result is `p99 = 41 ms [39–44 ms]`, not just `p99 = 41 ms`. The raw per-request
@@ -152,7 +152,7 @@ The first two pillars stop *dishonest editing*. This third pillar goes after a
 harder cheat: **a worker that never measured anything at all**, but fabricates
 plausible-looking numbers.
 
-VeriBench turns protection into a detector. Its **VeriGate** layer
+stress-strike turns protection into a detector. Its **VeriGate** layer
 (already part of the product) raises the bar for traffic as it ramps: it can
 serve a small puzzle each client must solve, and it counts every real visitor
 that arrives.
@@ -164,7 +164,7 @@ So during a measurement run, VeriGate deliberately makes the target harder
 - what the target *actually saw* arrive.
 
 If the generator reports 200,000 requests and the target only ever observed 300,
-the claim is disproven by an **outside witness** — the target itself. VeriBench
+the claim is disproven by an **outside witness** — the target itself. stress-strike
 never has to trust the worker's word; it corroborates against the thing being
 tested, which has no reason to cooperate with a fake test.
 
@@ -176,7 +176,7 @@ tested, which has no reason to cooperate with a fake test.
 
 ## 5. Why anyone should care
 
-| Who you are | What VeriBench gives you |
+| Who you are | What stress-strike gives you |
 |---|---|
 | **Client / buyer** | You can independently check the performance claim in a vendor's report instead of taking it on faith. |
 | **Vendor / agency** | You can *prove* your numbers, so honest work stops losing to inflated work. |
@@ -223,7 +223,7 @@ refusing it with exit code `1`, then restores the file and shows `PASS` again.
 
 ## 6b. Checking it yourself — no trust, no tools, no internet
 
-Here is the part that surprises people. To check a VeriBench pack you do **not**
+Here is the part that surprises people. To check a stress-strike pack you do **not**
 need our software, an account, or an internet connection.
 
 `docs/VERIFIER.html` is a single web page. Double-click it and it opens in your
@@ -256,5 +256,5 @@ implementation agreeing with itself means nothing.
 
 ## 7. One-sentence summary
 
-**VeriBench turns a load-test report from a claim you must trust into evidence
+**stress-strike turns a load-test report from a claim you must trust into evidence
 you can check.**

@@ -1,4 +1,4 @@
-# VeriBench
+# stress-strike
 
 **Verifiable load-test results — hand the judge a receipt, not a claim.**
 
@@ -21,7 +21,7 @@ stops sending, so the slowest requests are never counted (coordinated omission).
 
 ### The solution
 
-**VeriBench emits a measurement bundle that any third party can verify offline**
+**stress-strike emits a measurement bundle that any third party can verify offline**
 — trusting neither the tool nor the operator.
 
 ```mermaid

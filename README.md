@@ -248,6 +248,9 @@ stress-strike pentest --target https://example.com --crawl=false --skip-load-tes
 
 # Crawl JS-rendered SPA pages with headless browser
 stress-strike pentest --target https://app.example.com --use-browser --crawl
+
+# Show what a scan would do, and send nothing (no reachability probe, no phase)
+stress-strike pentest --target https://example.com --dry-run
 ```
 
 Phases: technology fingerprint → port scan → subdomain discovery →
@@ -471,7 +474,7 @@ Features:
 - Start/stop runs directly from the browser
 - **Sidebar shell** — Overview, Security, History views (Alt+1–4)
 - **Verifiable evidence for every run** — a finished run seals a `vpmp/v1`
-  bundle you can download and check offline (see *web mode* under VeriBench
+  bundle you can download and check offline (see *web mode* under stress-strike
   below); the UI shows the operator-key fingerprint and offers a server-side
   `verify`
 - Operations endpoints for orchestrators: `/healthz`, `/readyz`, `/metrics`
@@ -1179,9 +1182,9 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 
 ---
 
-## VeriBench — Verifiable, Honest Load-Test Evidence
+## stress-strike — Verifiable, Honest Load-Test Evidence
 
-**VeriBench** turns a load-test run into a cryptographic receipt. A judge, auditor, or CI gate can verify the evidence **offline** — no trust in the runner required.
+**stress-strike** turns a load-test run into a cryptographic receipt. A judge, auditor, or CI gate can verify the evidence **offline** — no trust in the runner required.
 
 ### Three pillars
 
@@ -1197,7 +1200,7 @@ Full guide: [docs/VERIGATE.md](docs/VERIGATE.md).
 # 1. Start a target (local demo server on loopback)
 go run ./examples/demo_server.go
 
-# 2. Run the VeriBench demo — builds the CLI, runs paced traffic, seals & verifies
+# 2. Run the stress-strike demo — builds the CLI, runs paced traffic, seals & verifies
 ./scripts/demo-verified.sh
 # → keygen → run (coordinated-omission corrected) → verify PASS
 # → one-byte tamper → verify FAIL → restore → verify PASS

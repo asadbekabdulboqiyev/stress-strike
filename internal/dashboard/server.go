@@ -470,6 +470,18 @@ func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// writeJSON encodes v as the response body.
+//
+// By the time Encode runs the status line and headers are already committed, so
+// an encoding failure can only be logged: the client cannot be told, and a
+// second write would corrupt the body it already has. Logging it is the whole
+// of what a handler can do — silently discarding the error is not.
+func writeJSON(w http.ResponseWriter, v any) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("dashboard: encode response: %v", err)
+	}
+}
+
 // serveOps dispatches an operations request to its handler. When no handler
 // was injected, health endpoints answer a minimal 200 and /metrics answers 404,
 // so the server is still useful without the optional packages wired in.
@@ -566,6 +578,13 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 	case path == "/app.js":
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		w.Write(dashboardJS)
+	case path == "/api" || strings.HasPrefix(path, "/api/"):
+		// An unknown API path must not fall through to the HTML shell. A client
+		// that mistypes an endpoint would otherwise get 200 and a page of
+		// markup, which every caller reads as success.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"ok":false,"error":"unknown API endpoint"}`))
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(dashboardHTML)

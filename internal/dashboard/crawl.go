@@ -230,13 +230,11 @@ func (s *Server) handleCrawlScan(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		if err := json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"ok":     false,
 			"denied": true,
 			"reason": reason,
-		}); err != nil {
-			_ = err
-		}
+		})
 		return
 	}
 	if auditErr != nil {
@@ -316,7 +314,7 @@ func (s *Server) handleCrawlScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(CrawlScanResult{
+	writeJSON(w, CrawlScanResult{
 		OK:          true,
 		Target:      target,
 		Scope:       scopeOut,
@@ -336,9 +334,7 @@ func (s *Server) handleCrawlScan(w http.ResponseWriter, r *http.Request) {
 		},
 		Discovered: discovered,
 		Notes:      notes,
-	}); err != nil {
-		_ = err
-	}
+	})
 }
 
 // guardRoundTripper adapts *scanner.Guard to http.RoundTripper so the crawler's

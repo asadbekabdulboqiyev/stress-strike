@@ -568,11 +568,7 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		if err := json.NewEncoder(w).Encode(owaspDeny{OK: false, Denied: true, Reason: reason}); err != nil {
-			// Status line already sent: the client cannot receive a second
-			// failure, so keep the error referenced instead of dropping it.
-			_ = err
-		}
+		writeJSON(w, owaspDeny{OK: false, Denied: true, Reason: reason})
 		return
 	}
 	if auditErr != nil {
@@ -736,7 +732,7 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(OWASPScanResult{
+	writeJSON(w, OWASPScanResult{
 		OK:         true,
 		Target:     target,
 		Scope:      scopeOut,
@@ -751,11 +747,7 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 		Findings:   allFindings,
 		Gate:       st,
 		Notes:      notes,
-	}); err != nil {
-		// Status line already sent: the client cannot receive a second
-		// failure, so keep the error referenced instead of dropping it.
-		_ = err
-	}
+	})
 }
 
 // owaspWriteError writes a JSON error body, so the UI never has to parse a
@@ -763,14 +755,10 @@ func (s *Server) handleOWASPScan(w http.ResponseWriter, r *http.Request) {
 func owaspWriteError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, map[string]any{
 		"ok":    false,
 		"error": msg,
-	}); err != nil {
-		// Status line already sent: the client cannot receive a second
-		// failure, so keep the error referenced instead of dropping it.
-		_ = err
-	}
+	})
 }
 
 // dedupe keeps repeated findings/remediation strings out of the report while

@@ -1395,3 +1395,35 @@ func TestAttestation_AfterCompletedRun(t *testing.T) {
 		t.Fatalf("verify valid = %v, want true; result: %+v", verifyRes["valid"], verifyRes)
 	}
 }
+
+// An unknown API path is a 404 in JSON, not the HTML application shell with a
+// 200. The shell is what the browser gets for any client-side route; an API
+// client that mistypes /api/pentest/scna must not read that as success.
+func TestServeHTTP_UnknownAPIPathIsJSON404(t *testing.T) {
+	s := NewServer()
+
+	for _, path := range []string{"/api", "/api/does-not-exist", "/api/pentest/scna"} {
+		req := httptest.NewRequest("GET", path, nil)
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want 404", path, w.Code)
+		}
+		ct := w.Header().Get("Content-Type")
+		if !strings.Contains(ct, "application/json") {
+			t.Errorf("GET %s Content-Type = %q, want application/json", path, ct)
+		}
+		if strings.Contains(w.Body.String(), "<html") {
+			t.Errorf("GET %s returned the HTML shell", path)
+		}
+	}
+
+	// A client-side route still gets the shell.
+	req := httptest.NewRequest("GET", "/certificate", nil)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != http.StatusOK || !strings.Contains(w.Header().Get("Content-Type"), "text/html") {
+		t.Errorf("GET /certificate = %d %q, want the HTML shell", w.Code, w.Header().Get("Content-Type"))
+	}
+}

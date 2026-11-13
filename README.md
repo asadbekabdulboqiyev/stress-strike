@@ -12,6 +12,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Features](#features)
+- [Comparison with Paid Alternatives](#comparison-with-paid-alternatives)
 - [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Interactive Mode](#interactive-mode)
@@ -67,6 +68,25 @@ Sift provides an integrated workflow for performance and security assessment:
 - **Go API:** `github.com/asadbekabdulboqiyev/sift/api`
 - **Outputs:** Terminal summaries, JSON/TXT reports, timeline CSV, and scan/pentest exports.
 - **CI/CD:** SLA and regression gates with non-zero exit codes on violations.
+
+
+## Comparison with Paid Alternatives
+
+Sift combines load testing, traffic replay, security scanning/pentest workflows, and verifiable evidence in one CLI/dashboard toolkit. The table below provides a high-level comparison with common **paid/commercial alternatives**. Capabilities, packaging, and pricing vary by vendor and plan; verify current details with each vendor.
+
+| Area | Sift (this project) | Typical paid alternatives (examples) | Notes |
+|---|---|---|---|
+| **Licensing / cost** | Open-core: Apache-2.0 core in this repo; optional commercial/enterprise tier for specific capabilities | Commercial licenses or SaaS subscriptions (e.g. Grafana Cloud k6, BlazeMeter, Tricentis NeoLoad, OpenText LoadRunner, Gatling Enterprise, Burp Suite Professional/Enterprise, Invicti, Acunetix) | Sift can be self-hosted and used locally without per-seat SaaS fees for core workflows. |
+| **Load & performance testing** | Multi-protocol load tests, profiles, YAML scenarios, assertions, SLA/regression gates, timeline/reports | Managed/cloud load generation, large-scale SaaS infrastructure, advanced analytics/collaboration (vendor-dependent) | Paid platforms may be easier for very large globally distributed SaaS load and team collaboration; Sift is strong for local/CI/self-managed and distributed master/worker setups. |
+| **Traffic replay** | PCAP/HAR replay with rate/concurrency/filtering and validation | Replay features may be included in APM/performance platforms or require additional products | Sift includes replay as a built-in CLI workflow. |
+| **Security scanning / pentest** | Built-in `scan`, `pentest`, and individual scanners (fuzz, crawl, JWT, GraphQL, WebSocket, TLS/ports/subdomains, etc.) with scope/authorization controls | Commercial DAST/pentest platforms often provide larger managed vulnerability knowledge bases, enterprise reporting workflows, integrations, and vendor support (e.g. Burp Suite Enterprise, Invicti, Acunetix, Qualys WAS) | Sift is useful for integrated engineering/security workflows and authorized testing; commercial tools may offer broader managed coverage and enterprise governance features. |
+| **Verifiable evidence** | VPMP/v1 evidence bundles, Ed25519/Merkle-based verification, CLI/browser verifier workflows | Typically not a primary focus of load-testing SaaS; some security/compliance products provide audit trails and reporting | Sift’s built-in attest/verify model is a differentiator for reproducible, tamper-evident run evidence. |
+| **Dashboard & operations** | Real-time local/self-hosted dashboard, scanner panels, run control/history, health/metrics endpoints | Hosted dashboards, team workspaces, SSO/RBAC, centralized governance and support (plan/vendor-dependent) | Paid offerings often excel at managed multi-team operations; Sift focuses on operator-controlled/self-hosted workflows. |
+| **Distributed execution** | Master/worker mode (gRPC), static/auto-discovery fleets, deploy scripts/docs | Managed distributed load generators and global regions in SaaS platforms | Sift supports self-managed fleets; paid SaaS can reduce infrastructure operations overhead. |
+| **CI/CD integration** | CLI-first, scriptable commands, SLA/regression gates, JSON/TXT/CSV outputs | Native CI plugins/integrations and managed reporting vary by vendor | Sift integrates well in pipelines where teams control their own runners/environments. |
+| **API / extensibility** | Go library API (`github.com/asadbekabdulboqiyev/sift/api`), YAML scenarios, extensible codebase | Vendor SDKs/APIs/integrations vary; some ecosystems are broader, others more closed | Sift is source-available for core use cases and customization under its licensing terms. |
+
+**Summary:** Choose Sift when you want a unified, self-hosted/open-core toolkit for load testing, replay, scanning, and verifiable evidence with strong CLI/CI workflows. Choose paid alternatives when you primarily need managed SaaS scale, vendor support/SLAs, enterprise governance out of the box, or specialized commercial coverage in a single domain.
 
 ## Quick Start
 

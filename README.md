@@ -5,71 +5,84 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 [![Version](https://img.shields.io/badge/Version-0.14.14-green.svg)]()
 
-**Sift** — Go tilida yozilgan, ko‘p protokolli yuklama testi (load testing), trafik replay, xavfsizlik skanerlash va tekshiriladigan dalil (attestation) vositasi.
+**Sift** is a Go-based toolkit for multi-protocol load testing, traffic replay, security scanning, and verifiable test evidence.
 
-> **Faqat ruxsat etilgan testlar uchun.** O‘zingizga tegishli yoki yozma ruxsat olingan tizimlarda ishlating. Ruxsatsiz yuklama/DDoS noqonuniy.
+> **Authorized testing only.** Use Sift only on systems you own or have explicit written permission to test. Unauthorized load generation or scanning may be illegal.
 
-## Mundarija
-- [Imkoniyatlar](#imkoniyatlar)
-- [Tez boshlash](#tez-boshlash)
-- [O‘rnatish](#ornatish)
-- [Interaktiv rejim](#interaktiv-rejim)
-- [Buyruqlar](#buyruqlar)
-- [Load test (`run`) va YAML stsenariylar](#load-test-run-va-yaml-stsenariylar)
-- [Xavfsizlik skanerlari va pentest](#xavfsizlik-skanerlari-va-pentest)
-- [Replay va Scan](#replay-va-scan)
-- [Web dashboard](#web-dashboard)
-- [Distributed rejim (master/worker)](#distributed-rejim-masterworker)
-- [Avtorizatsiya, audit, sertifikat va dalil](#avtorizatsiya-audit-sertifikat-va-dalil)
-- [VPMP dalil va verifikatsiya](#vpmp-dalil-va-verifikatsiya)
-- [VeriGate va demo](#verigate-va-demo)
-- [Go kutubxona API](#go-kutubxona-api)
-- [Hisobotlar, SLA va chiqish kodlari](#hisobotlar-sla-va-chiqish-kodlari)
-- [Loyiha tuzilmasi va hujjatlar](#loyiha-tuzilmasi-va-hujjatlar)
-- [Build, test va rivojlantirish](#build-test-va-rivojlantirish)
-- [Litsenziya va mualliflar](#litsenziya-va-mualliflar)
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Interactive Mode](#interactive-mode)
+- [Commands](#commands)
+- [Load Testing (`run`) and YAML Scenarios](#load-testing-run-and-yaml-scenarios)
+- [Security Scanning and Pentest](#security-scanning-and-pentest)
+- [Replay and Scan](#replay-and-scan)
+- [Web Dashboard](#web-dashboard)
+- [Distributed Mode (Master/Worker)](#distributed-mode-masterworker)
+- [Authorization, Audit, Certificates, and Evidence](#authorization-audit-certificates-and-evidence)
+- [VPMP Evidence and Verification](#vpmp-evidence-and-verification)
+- [VeriGate and Demo Store](#verigate-and-demo-store)
+- [Go Library API](#go-library-api)
+- [Reports, SLA Gates, and Exit Codes](#reports-sla-gates-and-exit-codes)
+- [Project Structure and Documentation](#project-structure-and-documentation)
+- [Build, Test, and Development](#build-test-and-development)
+- [License and Maintainers](#license-and-maintainers)
 
-## Imkoniyatlar
+## Overview
 
-### Load testing va trafik
-- **Protokollar:** HTTP/HTTPS, WebSocket (`ws`/`wss`), gRPC (`grpc`/`grpcs`), TCP, UDP (stsenariy `type` orqali).
-- **Load profillar:** `steady`, `soak`, `linear-ramp`, `spike`, `wave`, `constant-rps`.
-- **Stsenariylar:** YAML/JSON ko‘p bosqichli oqimlar, `{{var}}` o‘zgaruvchilar, stepdan qiymat ajratib olish (`extract`), `assertions` (`status`, `json_path`, `regex`).
-- **Boshqaruv:** virtual userlar, duration, ramp-up, timeout, keep-alive, global RPS, pre-warm, TLS fingerprint (`chrome`, `firefox`, `safari`, `edge`, `ios`, `android_okhttp`, `randomized`, `golang`).
-- **Aniqlik va tahlil:** coordinated omission tuzatish (`--coordinated-omission`, mos profillarda), warmup/debug capture, payload pool, timeline CSV, baseline taqqoslash va regressiya gati.
-- **Replay:** PCAP/HAR trafikni qayta ijro etish (tezlik, concurrency, filterlar, validatsiya).
+Sift provides an integrated workflow for performance and security assessment:
 
-### Xavfsizlik va tekshiruv
-- **`pentest`:** 1-click professional baholash (recon/fingerprint, port/subdomain, auth, crawl, headers/TLS/WAF, deep vuln scan, CVE/NVD, OWASP Top 10, compliance mapping, reportlar) — `--dry-run` mavjud.
-- **Alohida skanerlar (scope-gate bilan):** `fuzz`, `dirbust`, `jwt` (offline), `graphql`, `websocket`, `crawl`, `subdomain`, `portscan`, `sslscan`.
-- **`scan`:** TLS/WAF/HTTP fingerprint va xavfsizlik headerlari tekshiruvi.
-- **Scope va himoya:** `authorize`/`audit` siyosati, ruxsat/ticket, allowlist, rate/budget, dry-run; tekshirilmagan kategoriya `PASS` emas, `NOT TESTED` sifatida ko‘rsatiladi.
+- Generate and shape load across multiple protocols
+- Replay captured production-like traffic (PCAP/HAR)
+- Run TLS/WAF/security scans and offensive test workflows
+- Control execution via CLI or real-time web dashboard
+- Scale tests across distributed workers
+- Produce reports and cryptographically verifiable evidence bundles
 
-### Dashboard, distributed va ishonch
-- **Web dashboard:** real-time RPS/latency/error grafiklari, run boshqaruvi, tarix, scanner panellari, `/healthz` `/readyz` `/metrics`.
-- **Distributed:** `master`/`worker` (gRPC), statik yoki auto-discovery fleet, token/TLS/attestation imkoniyatlari.
-- **Dalil va sertifikat:** `keygen`, `verify` (VPMP/v1), `certificate` (issue/verify), har run uchun attestatsiya bundle va brauzer/verifier orqali tekshiruv.
-- **VeriGate:** rate-limit + proof-of-work challenge + IP blocking, `demo-store` (VoltStore) bilan jonli demo/SLA tekshiruvi.
+## Features
 
-### Dasturchilar uchun
+### Load Testing and Traffic
+- **Protocols:** HTTP/HTTPS, WebSocket (`ws`/`wss`), gRPC (`grpc`/`grpcs`), TCP, and UDP (via scenario step `type`).
+- **Load profiles:** `steady`, `soak`, `linear-ramp`, `spike`, `wave`, and `constant-rps`.
+- **Scenarios:** YAML/JSON multi-step flows with `{{variable}}` templating, value extraction (`extract`), and assertions (`status`, `json_path`, `regex`).
+- **Execution controls:** virtual users, duration, ramp-up, timeout, keep-alive, global RPS, pre-warm, and TLS client fingerprint presets (`chrome`, `firefox`, `safari`, `edge`, `ios`, `android_okhttp`, `randomized`, `golang`).
+- **Measurement and analysis:** coordinated omission correction (`--coordinated-omission` for supported paced profiles), debug capture, payload pools, timeline CSV export, baseline comparison, and regression thresholds.
+- **Replay:** Re-run captured traffic from PCAP/HAR with configurable rate, concurrency, filters, and validation.
+
+### Security Testing
+- **`pentest`:** One-command assessment workflow (recon/fingerprinting, ports/subdomains, authentication, crawling, headers/TLS/WAF checks, deep vulnerability scanning, CVE/NVD lookups, OWASP Top 10 mapping, compliance mapping, and reporting). Supports `--dry-run`.
+- **Individual scanners (scope-gated):** `fuzz`, `dirbust`, `jwt` (offline analysis), `graphql`, `websocket`, `crawl`, `subdomain`, `portscan`, `sslscan`.
+- **`scan`:** TLS/WAF/HTTP fingerprinting and security-header analysis.
+- **Safety model:** authorization/audit policy, allowlists, rate/budget limits, dry-run, and explicit reporting of untested categories as `NOT TESTED` (never silently treated as `PASS`).
+
+### Dashboard, Distribution, and Trust
+- **Web dashboard:** Real-time metrics (RPS/latency/errors), run control, history, scanner panels, and operational endpoints (`/healthz`, `/readyz`, `/metrics`).
+- **Distributed execution:** `master`/`worker` architecture over gRPC with static fleets or auto-discovery, plus token/TLS/attestation options.
+- **Evidence and certificates:** `keygen`, `verify` (VPMP/v1 bundles), and `certificate` issuance/verification. Runs can emit verifiable evidence artifacts.
+- **VeriGate:** Built-in protection gate (rate limiting, proof-of-work challenge, IP blocking) with a bundled VoltStore demo for live behavior and SLA demonstrations.
+
+### Developer Integration
 - **Go API:** `github.com/asadbekabdulboqiyev/sift/api`
-- **Chiqishlar:** terminal hisobot, JSON/TXT reportlar, timeline CSV, scan/pentest eksportlari.
-- **CI/CD:** SLA va regressiya gate’lari (`exit 2`).
+- **Outputs:** Terminal summaries, JSON/TXT reports, timeline CSV, and scan/pentest exports.
+- **CI/CD:** SLA and regression gates with non-zero exit codes on violations.
 
-## Tez boshlash
+## Quick Start
 
 ```bash
-# Repodan (birinchi ishga tushirishda build qiladi)
+# From the repository (builds on first run)
 ./start.sh
-# Dashboard: http://127.0.0.1:8888 (brauzerda Start bosing)
+# Opens the dashboard at http://127.0.0.1:8888
 
-# Yoki o‘rnatilgan CLI bilan
-Sift                       # interaktiv menyu
+# Or with an installed CLI
+Sift
 Sift run --url http://127.0.0.1:8080/health --users 100 --duration 30
-Sift dashboard             # http://127.0.0.1:8888
+Sift dashboard
 ```
 
-Lokal demo target:
+Run against the bundled local demo server:
+
 ```bash
 # Terminal 1
 go run ./examples/demo_server.go
@@ -78,109 +91,123 @@ go run ./examples/demo_server.go
 Sift run --url http://localhost:8080/health --users 200 --duration 30
 ```
 
-## O‘rnatish
+## Installation
 
-Talab: **Go 1.26+** (to‘liq Go, CGO/libpcap talab qilinmaydi).
+**Requirements:** Go 1.26+ (pure Go; no CGO/libpcap required).
 
 ```bash
-# Go install (asosiy va yordamchi binarylar)
+# Install the main CLI (and related commands provided by the module)
 go install github.com/asadbekabdulboqiyev/sift/cmd/sift@latest
 
-# Yoki repo ichidan build
+# Or build from source
 git clone https://github.com/asadbekabdulboqiyev/sift.git
 cd sift
-make build   # bin/ ichiga binarylar
+make build   # builds binaries into ./bin
 ```
 
-`Sift` topilmasa PATH ga qo‘shing:
+If `Sift` is not found, add Go's bin directory to your `PATH`:
+
 ```bash
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-Convenience installer (skriptni avval ko‘rib chiqing):
+Optional convenience installer (review before running):
+
 ```bash
 curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.14.14/scripts/install.sh
 less install.sh
 ./install.sh v0.14.14
 ```
 
-## Interaktiv rejim
+Local source builds are also available via:
 
-`Sift` ni argumentsiz terminalda ishga tushirsangiz menyu ochiladi:
+```bash
+./scripts/build-all.sh 0.14.14
+./scripts/install-local.sh 0.14.14
+```
 
-- **1) CLI** — load testni shu yerda ishga tushirish va hisobot olish
-- **2) WEB** — real-time dashboardni brauzerda ochish
-- **3) AUTH** — certificate, authorize, audit, verify
-- **4) TOOLS** — GitOps (PR/issue report), AI fuzzing (Ollama), SIEM/Telegram alertlar
-- **0) Quit**
+## Interactive Mode
 
-> Eslatma: WEB rejimi dashboardni darhol tayyor holatda ochadi (default/oxirgi sozlamalar bilan), sozlamalarni brauzerda o‘zgartirasiz.
+Running `Sift` with no arguments in a terminal opens an interactive menu:
 
-## Buyruqlar
+1. **CLI** — Run a load test and print the report in the terminal
+2. **WEB** — Open the real-time dashboard in your browser
+3. **AUTH** — Certificate, authorize, audit, and verify workflows
+4. **TOOLS** — GitOps reporting, AI fuzzing gateway (Ollama), and SIEM/Telegram alerts
+0. **Quit**
+
+In **WEB** mode, Sift opens the dashboard immediately using default or last-used settings; target and run parameters can be adjusted in the browser.
+
+## Commands
 
 ```bash
 Sift <command> [flags]
 ```
 
-| Guruh | Buyruq | Vazifa |
+| Group | Command | Purpose |
 |---|---|---|
-| Load/Replay/Scan | `run` | HTTP/gRPC/WebSocket/TCP/UDP load test |
-|  | `replay` | PCAP/HAR trafik replay |
-|  | `scan` | TLS/WAF/HTTP/security scanner |
-|  | `pentest` | 1-click professional security assessment |
-| Dashboard/Distributed | `dashboard` | Real-time web dashboard |
-|  | `master` | Distributed coordinator |
-|  | `worker` | Distributed worker |
-| Skanerlar | `fuzz`, `dirbust`, `jwt`, `graphql`, `websocket`, `crawl`, `subdomain`, `portscan`, `sslscan` | Alohida xavfsizlik tekshiruvlari |
-| Trust/Dalil | `authorize`, `audit`, `keygen`, `verify`, `certificate` | Ruxsat, audit trail, kalit, dalil/sertifikat |
-| Boshqa | `demo-store`, `admin`, `help`, `version` | Demo, lokal admin, yordam, versiya |
+| Load / Replay / Scan | `run` | HTTP/gRPC/WebSocket/TCP/UDP load testing |
+|  | `replay` | Replay traffic from PCAP/HAR captures |
+|  | `scan` | TLS/WAF/HTTP/security scanning |
+|  | `pentest` | One-command professional security assessment |
+| Dashboard / Distributed | `dashboard` | Real-time web dashboard |
+|  | `master` | Distributed load-test coordinator |
+|  | `worker` | Distributed load-test worker |
+| Individual scanners | `fuzz`, `dirbust`, `jwt`, `graphql`, `websocket`, `crawl`, `subdomain`, `portscan`, `sslscan` | Targeted security checks |
+| Trust / Evidence | `authorize`, `audit`, `keygen`, `verify`, `certificate` | Authorization, audit trail, keys, and evidence/certificate workflows |
+| Other | `demo-store`, `admin`, `help`, `version` | Demo environment, local admin controls, help, and version info |
 
-Yordam: `Sift --help`, `Sift <command> --help` (buyruqqa qarab).
+Use `Sift --help` for global usage and `Sift <command> --help` for command-specific flags.
 
-## Load test (`run`) va YAML stsenariylar
+## Load Testing (`run`) and YAML Scenarios
 
-### Tez misollar
+### Common Examples
+
 ```bash
-# Oddiy test
+# Basic load test
 Sift run --url https://api.example.com --users 100 --duration 60
 
 # Constant RPS
 Sift run --url https://api.example.com --profile constant-rps --target-rps 1000 --duration 30
 
-# Ramp + SLA
+# Ramp-up with SLA gate
 Sift run --url https://api.example.com --profile linear-ramp --users 1000 --ramp-up 30 --duration 90 \
   --expect-p99-ms 200 --expect-error-rate 1
 
-# Baseline bilan taqqoslash
+# Baseline comparison (regression gate)
 Sift run --url https://api.example.com --users 50 --duration 30 \
   --compare reports/baseline.json --regress-pct 20
 
-# Dashboard rejimida ishga tushirish
+# Start with dashboard mode
 Sift run --url https://api.example.com --users 50 --duration 60 --mode dashboard --listen 127.0.0.1:8888
 ```
 
-### Asosiy `run` flaglari
-- Target/config: `--url`, `--config`, `--name`
-- Load: `--users`, `--duration`, `--ramp-up`, `--profile`, `--target-rps`, `--spike-users`, `--spike-warmup`, `--spike-hold`, `--wave-period`
-- So‘rov: `--method`, `--data`, `--header "Key: Value"` (takrorlanuvchi), `--timeout`, `--keep-alive`
-- Sifat/chiqish: `--coordinated-omission`, `--expect-p99-ms`, `--expect-error-rate`, `--expect-min-rps`, `--compare`, `--regress-pct`, `--timeline`, `--report-dir`, `--quiet`
-- Rejim: `--mode cli|dashboard`, `--listen`
+### Key `run` Flags
+- **Target/config:** `--url`, `--config`, `--name`
+- **Load shape:** `--users`, `--duration`, `--ramp-up`, `--profile`, `--target-rps`, `--spike-users`, `--spike-warmup`, `--spike-hold`, `--wave-period`
+- **Request behavior:** `--method`, `--data`, `--header "Key: Value"` (repeatable), `--timeout`, `--keep-alive`
+- **Quality/output:** `--coordinated-omission`, `--expect-p99-ms`, `--expect-error-rate`, `--expect-min-rps`, `--compare`, `--regress-pct`, `--timeline`, `--report-dir`, `--quiet`
+- **Mode:** `--mode cli|dashboard`, `--listen`
 
-> To‘liq va aniq flaglar ro‘yxati: `Sift --help` va `Sift run --help`.
+For the complete and current flag list, use `Sift --help` and `Sift run --help`.
 
-### YAML stsenariya (namuna)
+### YAML Scenario Example
+
 ```yaml
 name: login-flow
 base_url: http://localhost:8080
+
 variables:
   username: user1
   password: pass1
+
 load_profile:
   type: linear-ramp
   users: 100
   duration: 60
   ramp_up: 20
   timeout: 10
+
 steps:
   - name: login
     method: POST
@@ -197,141 +224,155 @@ steps:
         value: "200"
       - type: json_path
         value: data.token
+
   - name: profile
     method: GET
     url: /api/profile
     headers:
       Authorization: "Bearer {{token}}"
+
 sla:
   max_p99_ms: 300
   max_error_rate_pct: 1
 ```
 
-Qo‘llab-quvvatlanadigan step turlari: HTTP (default), `ws`, `grpc`, `tcp`, `udp` (stsenariyaga mos maydonlar bilan). Namunalarga qarang: `examples/*.yaml`.
+Scenario steps can target HTTP by default and other protocols (e.g. WebSocket, gRPC, TCP, UDP) depending on step configuration. See `examples/*.yaml` for additional patterns.
 
-## Xavfsizlik skanerlari va pentest
+## Security Scanning and Pentest
 
 ### `pentest`
+
 ```bash
 Sift pentest --target https://example.com
 Sift pentest --target https://example.com --depth 3 --format all --verbose
-Sift pentest --target https://example.com --dry-run   # tarmoq so‘rovlari yuborilmaydi (reja)
+Sift pentest --target https://example.com --dry-run
 ```
-Asosiy imkoniyatlar: fingerprinting, port/subdomain, auth (form/cookie/header/browser), crawl (shu jumladan SPA uchun `--use-browser`), headers/TLS/WAF, chuqur vuln tekshiruvlari, CVE/NVD, OWASP Top 10, compliance (PCI DSS/SOC2/ISO27001), hisobotlar (html/json/md/pdf/professional), CI-friendly chiqish kodlari.
 
-### Alohida skanerlar
+`pentest` supports a multi-phase assessment workflow (including discovery, authentication options, crawling, headers/TLS/WAF checks, vulnerability scanning, CVE/NVD enrichment, OWASP and compliance mapping, and report generation). Output formats include HTML/JSON/Markdown/PDF/professional variants depending on flags.
+
+### Individual Scanners
+
 - `fuzz` — HTTP fuzzing
-- `dirbust` — katalog/fayl brute-force
-- `jwt` — JWT tahlili (offline)
-- `graphql` — introspection tekshiruvi
-- `websocket` — WebSocket xavfsizlik tekshiruvi
-- `crawl` — sayt/link/form/endpoint yig‘ish
-- `subdomain` — passive subdomain enumeration
-- `portscan` — TCP port/service scan
-- `sslscan` — TLS sertifikat/konfiguratsiya tahlili
+- `dirbust` — Directory/file brute forcing
+- `jwt` — Offline JWT weakness analysis
+- `graphql` — GraphQL introspection checks
+- `websocket` — WebSocket security checks
+- `crawl` — Endpoint/form/link discovery
+- `subdomain` — Passive subdomain enumeration
+- `portscan` — TCP port and service scanning
+- `sslscan` — TLS certificate/configuration analysis
 
-Umumiy gate/chiqish flaglari (buyruqqa qarab): `--authorized`, `--policy`, `--audit-log`, `--notify-webhook`, `--allow`, `--allow-all`, `--dry-run`, `--rate`, `--budget`, `--json`, `--output-json`.
+Common gate/output flags (command-dependent): `--authorized`, `--policy`, `--audit-log`, `--notify-webhook`, `--allow`, `--allow-all`, `--dry-run`, `--rate`, `--budget`, `--json`, `--output-json`.
 
-## Replay va Scan
+## Replay and Scan
 
 ### `replay`
+
 ```bash
 Sift replay -input traffic.har -rate 10x
 Sift replay -input capture.pcap -rate 50x -concurrency 50 -methods GET
 Sift replay -input traffic.har -base-url https://staging.example.com -validate -assert-status 200
 ```
-Asosiy flaglar: `-input`, `-rate`, `-concurrency`, `-duration`, `-base-url`, filterlar (`-filter-methods`, `-filter-urls`, `-filter-min-status`, `-filter-max-status`), validatsiya (`-validate`, `-assert-status`, `-assert-regex`), TLS kalitlar, `-output-json`, `-report-dir`.
+
+Key flags include `-input`, `-rate`, `-concurrency`, `-duration`, `-base-url`, filtering options, validation/assertion flags, TLS key/cert options, and output/report flags.
 
 ### `scan`
+
 ```bash
 Sift scan -target example.com -all
 Sift scan -target example.com -tls
 Sift scan -target example.com -all -output-json scan.json
 ```
-Tekshiruvlar: TLS, WAF, HTTP fingerprint, security headers, risk-scored topilmalar.
 
-## Web dashboard
+`scan` performs TLS/WAF/HTTP/security-header checks and produces structured findings (including risk-oriented results).
+
+## Web Dashboard
 
 ```bash
-Sift dashboard                         # 127.0.0.1:8888
-Sift dashboard -listen 0.0.0.0:8888    # tashqi tarmoq uchun auth/insecure siyosatiga e'tibor bering
+Sift dashboard
+Sift dashboard -listen 127.0.0.1:8888
 Sift run --mode dashboard --listen 127.0.0.1:8888 --url https://api.example.com --users 50 --duration 60
 ```
 
-Imkoniyatlar:
-- Jonli metrikalar (RPS, latency p50/p95/p99, xatoliklar), run boshqaruvi, tarix
-- Scanner panellari (OWASP, pentest, crawl, fuzz, subdomain, portscan, dirbust, sslscan, jwt, graphql, websocket)
-- Operatsion endpointlar: `/healthz`, `/readyz`, `/metrics`
-- Har run uchun attestatsiya ma’lumotlari va bundle yuklab olish/verifikatsiya (dashboard UI orqali)
+Dashboard capabilities include:
+- Live telemetry (RPS, latency percentiles, errors/status distribution)
+- Run control and history
+- Security/scanner panels (OWASP, pentest, crawl, fuzz, subdomain, portscan, dirbust, TLS, JWT, GraphQL, WebSocket)
+- Operational endpoints: `/healthz`, `/readyz`, `/metrics`
+- Attestation metadata and bundle download/verification for runs (UI/API)
 
-Xavfsizlik: loopbackdan tashqarida autentifikatsiyasiz control API ishlatish cheklangan; token/API key/origin/rate-limit flaglari mavjud (batafsil: `Sift dashboard --help`).
+Security note: exposing the dashboard beyond loopback requires appropriate authentication/insecure acknowledgement depending on configuration. See `Sift dashboard --help` and related docs.
 
-## Distributed rejim (master/worker)
+## Distributed Mode (Master/Worker)
 
 ```bash
-# Workerlar
+# Workers
 Sift worker --listen :50052 --id worker-a
 Sift worker --listen :50052 --id worker-b
 
-# Master (statik fleet)
+# Master (static fleet)
 Sift master --workers host-a:50052,host-b:50052 --url https://api.example.com --users 3000 --duration 60
 ```
 
-Imkoniyatlar: user/RPS taqsimoti, jonli agregatsiya, worker uzilganda davom etish, token/TLS va (mos sozlamalarda) attestation. Qo‘shimcha: auto-discovery, Linux paketlar, systemd/Docker deploy.
+Distributed mode supports load splitting, live aggregation, and fleet-based execution. Depending on configuration, it can also use discovery, tokens/TLS, and attestation-related controls.
 
-Qo‘llanmalar: `docs/DISTRIBUTED.md`, `docs/DEPLOY-REMOTE.md`, `docs/K8S.md`, `deploy/`, `scripts/deploy-fleet.sh`.
+References: `docs/DISTRIBUTED.md`, `docs/DEPLOY-REMOTE.md`, `docs/K8S.md`, `deploy/`, `scripts/deploy-fleet.sh`.
 
-## Avtorizatsiya, audit, sertifikat va dalil
+## Authorization, Audit, Certificates, and Evidence
 
 ```bash
-# Ruxsat berish (policyga yozish)
+# Record authorization
 Sift authorize add --pattern example.com --approver ciso@corp --ticket SEC-77 --until 2026-12-01T00:00:00Z --reason "approved test"
 
-# Ruxsat bilan ishga tushirish
+# Run with authorization ticket
 Sift run --url https://example.com --users 100 --duration 30 --authorized SEC-77
 Sift pentest --target https://example.com --authorized SEC-77
 
-# Audit
+# Audit trail
 Sift audit show --limit 20
 Sift audit verify
 
-# Sertifikat va verifikatsiya
+# Keys, certificates, and verification
+Sift keygen --help
 Sift certificate --help
 Sift verify --help
-Sift keygen --help
 ```
 
-Barcha xavfsizlik/test amallari scope va policyga bo‘ysunadi; qarorlar audit trail’da saqlanadi. Batafsil: `docs/AUTHORIZATION.md`.
+Sift includes policy-based authorization controls and audit logging for sensitive operations. See `docs/AUTHORIZATION.md` for policy details and workflows.
 
-## VPMP dalil va verifikatsiya
+## VPMP Evidence and Verification
 
-Sift run natijalarini kriptografik dalil sifatida saqlash va tekshirish mumkin (VPMP/v1, Ed25519, Merkle tree).
+Sift can emit and verify cryptographic evidence bundles (VPMP/v1) for test runs.
 
 ```bash
-# Kalit
+# Generate key
 Sift keygen --out operator.key
 
-# Dalil bilan run
+# Run with evidence bundle
 Sift run --url http://localhost:8080/health --profile steady --target-rps 100 --users 20 --duration 30 \
   --coordinated-omission --emit-bundle run.bundle.json --bundle-key operator.key
 
-# Tekshiruv
+# Verify
 Sift verify --bundle run.bundle.json --samples run.bundle.json.samples.jsonl
 ```
 
-Dashboard ham runlar uchun bundle yaratadi va UI orqali download/verify imkonini beradi. Brauzerda mustaqil tekshiruvchi: `docs/VERIFIER.html` (offline), CLI verifier: `node web/verifier/verify-cli.mjs` (agar Node mavjud bo‘lsa). Batafsil: `docs/VPMP-RFC.md`, `docs/EXPLAINER.md`.
+The web dashboard can also produce and expose run attestations/bundles for verification. For independent browser-based verification, see `docs/VERIFIER.html`; for CLI verification via Node, see `web/verifier/verify-cli.mjs` (when Node.js is available).
 
-## VeriGate va demo
+References: `docs/VPMP-RFC.md`, `docs/EXPLAINER.md`.
+
+## VeriGate and Demo Store
 
 ```bash
-Sift demo-store                  # VoltStore demo (VeriGate yoqilgan)
-Sift demo-store status|stop
-make demo-store-protect          # (repo ichida) himoyalangan demo
+Sift demo-store
+Sift demo-store status
+Sift demo-store stop
 ```
 
-VeriGate: rate limiting, proof-of-work challenge va IP blocking; jonli holat va boshqaruv endpointlari demo ichida mavjud. Batafsil: `docs/VERIGATE.md`, `examples/demo_store`.
+The bundled VoltStore demo (`examples/demo_store`) is designed to exercise VeriGate protections (rate limiting, proof-of-work challenge, and IP blocking) and can be used to demonstrate behavior changes under load.
 
-## Go kutubxona API
+Additional materials: `docs/VERIGATE.md`, `make demo-store-protect` (from source repo).
+
+## Go Library API
 
 ```go
 package main
@@ -358,48 +399,62 @@ func main() {
 }
 ```
 
-Natija maydonlari va SLA integratsiyasi uchun `api` hamda `internal/config` (kutubxona sifatida ishlatilganda) paketlariga qarang.
+See the `api` package for available configuration and result fields.
 
-## Hisobotlar, SLA va chiqish kodlari
+## Reports, SLA Gates, and Exit Codes
 
-- **Hisobotlar:** har run uchun `reports/` ichida JSON va TXT (va sozlamaga ko‘ra timeline CSV, capture). Pentest uchun html/json/md/pdf/professional chiqishlar.
-- **SLA gate:** `--expect-p99-ms`, `--expect-error-rate`, `--expect-min-rps` (yoki stsenariyadagi `sla`) — buzilsa gate fail.
-- **Regressiya:** `--compare <baseline.json>` va `--regress-pct`.
-- **Chiqish kodlari (umumiy):** `0` muvaffaqiyat, `1` xato, `2` SLA/regressiya buzilishi, ba’zi auth/buyruqlarda maxsus kodlar (masalan, policy rad etishi).
+- **Reports:** Runs typically produce JSON/TXT outputs in `reports/` (and optional timeline/capture artifacts). Pentest and scan commands provide structured exports in supported formats.
+- **SLA gates:** `--expect-p99-ms`, `--expect-error-rate`, `--expect-min-rps` (and scenario `sla` settings) fail the run when thresholds are violated.
+- **Regression checks:** `--compare <baseline.json>` with `--regress-pct`.
+- **Common exit codes:** `0` success, `1` runtime/setup error, `2` SLA/regression failure; some commands may return additional command-specific codes (e.g. authorization denial).
 
-## Loyiha tuzilmasi va hujjatlar
+## Project Structure and Documentation
 
-Asosiy kataloglar:
-- `cmd/` — CLI va yordamchi binarylar (`sift`, `sift-dashboard`, `sift-master`, `sift-worker`, `sift-replay`, `sift-scan`)
-- `api/` — ommaviy Go API
-- `internal/` — engine, config, metrics, report, scanner, dashboard, dist, authz, attest va boshqalar
-- `examples/` — stsenariylar va demo ilovalar
-- `web/`, `website/` — web/verifier va sayt materiallari
-- `docs/` — batafsil hujjatlar
-- `deploy/`, `packaging/`, `scripts/` — deploy, paketlash va yordamchi skriptlar
+### Repository Layout (high-level)
+- `cmd/` — CLI entrypoints and binaries (`sift`, `sift-dashboard`, `sift-master`, `sift-worker`, `sift-replay`, `sift-scan`)
+- `api/` — Public Go API
+- `internal/` — Core implementation (engine, config, metrics, report, scanner, dashboard, distributed, authz, attest, etc.)
+- `examples/` — Example scenarios and demo applications
+- `web/`, `website/` — Web assets and verifier/site materials
+- `docs/` — Detailed documentation
+- `deploy/`, `packaging/`, `scripts/` — Deployment, packaging, and helper scripts
 
-Foydali hujjatlar: `docs/AUTHORIZATION.md`, `docs/DISTRIBUTED.md`, `docs/DEPLOY-REMOTE.md`, `docs/K8S.md`, `docs/OWASP-SCANNER.md`, `docs/VERIGATE.md`, `docs/VPMP-RFC.md`, `docs/VERIFIER.html`, `docs/COMPLIANCE.md`, `SECURITY.md`, `CONTRIBUTING.md`.
+### Key Documentation
+- `docs/AUTHORIZATION.md` — Authorization and audit model
+- `docs/DISTRIBUTED.md` — Distributed execution guide
+- `docs/DEPLOY-REMOTE.md`, `docs/K8S.md` — Deployment guides
+- `docs/OWASP-SCANNER.md` — Scanner behavior and coverage notes
+- `docs/VERIGATE.md` — VeriGate and demo details
+- `docs/VPMP-RFC.md`, `docs/EXPLAINER.md`, `docs/VERIFIER.html` — Evidence format and verification
+- `SECURITY.md` — Security reporting
+- `CONTRIBUTING.md` — Contribution guidelines
+- `LICENSING.md`, `NOTICE` — Licensing details and third-party notices
 
-## Build, test va rivojlantirish
+## Build, Test, and Development
 
 ```bash
-make build           # bin/ ichiga barcha binarylar
-make test            # race detector bilan testlar
-go test ./...        # to‘liq testlar
-go build ./...       # build tekshiruvi
-make lint            # go vet + format tekshiruvlari
-make release         # cross-platform release artefaktlari (skript/konfigga ko‘ra)
+# Build
+make build
 ./scripts/build-all.sh 0.14.14
+
+# Test and checks
+go build ./...
+go test ./...
+make test
+make lint
+
+# Run from source
+go run ./cmd/sift --help
 ```
 
-Lokal ishga tushirish (sorsdan): `go run ./cmd/sift ...`
+Local binaries can be installed with `./scripts/install-local.sh 0.14.14` or copied from `./bin/`.
 
-## Litsenziya va mualliflar
+## License and Maintainers
 
-- **Litsenziya:** Apache-2.0 (`LICENSE`). Qo‘shimcha ma’lumot: `LICENSING.md`, uchinchi tomon komponentlar: `NOTICE`.
-- **Mualliflik/maintainer:** `README` va `MAINTAINERS.md` dagi ma’lumotlarga qarang (joriy lead maintainer: Asadbek Abdulboqiyev).
-- **Xavfsizlik:** zaifliklarni mas’uliyat bilan xabar qilish tartibi `SECURITY.md` va `CONTRIBUTING.md` da ko‘rsatilgan.
+- **License:** Apache-2.0 (see `LICENSE`). Additional licensing information: `LICENSING.md`. Third-party attributions: `NOTICE`.
+- **Maintainers:** See `MAINTAINERS.md` for current maintainer information.
+- **Security:** Please follow the responsible disclosure process described in `SECURITY.md`.
 
 ---
 
-*Sift — ruxsat etilgan muhitlarda ishlash, natijalarni tekshiriladigan dalil bilan taqdim etish va xavfsizlikni tekshirish uchun mo‘ljallangan vosita.*
+Sift is intended for authorized performance and security testing workflows where reproducible results and verifiable evidence matter.

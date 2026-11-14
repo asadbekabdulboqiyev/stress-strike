@@ -265,14 +265,144 @@
     }
   }
 
+  function parseDurationToNs(s) {
+    if (s == null) return 0;
+    if (typeof s === 'number' && isFinite(s)) return Math.round(s * 1e9);
+    s = String(s).trim();
+    if (!s) return 0;
+    // Go duration string: e.g. 30s, 1m30s, 500ms
+    var re = /(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)/g, m, total = 0, found = false;
+    while ((m = re.exec(s)) !== null) {
+      found = true;
+      var v = parseFloat(m[1]); var u = m[2];
+      var mul = 1;
+      if (u === 'ns') mul = 1;
+      else if (u === 'us' || u === 'µs' || u === 'μs') mul = 1e3;
+      else if (u === 'ms') mul = 1e6;
+      else if (u === 's') mul = 1e9;
+      else if (u === 'm') mul = 60e9;
+      else if (u === 'h') mul = 3600e9;
+      total += v * mul;
+    }
+    if (found) return Math.round(total);
+    var n = parseFloat(s);
+    if (isFinite(n)) return Math.round(n * 1e9);
+    return 0;
+  }
+
+  function historyToReport(h) {
+    h = h || {};
+    var cfg = h.config || {};
+    var res = h.result || {};
+    var durSec = Number(cfg.duration_seconds || 0);
+    var durNs = durSec > 0 ? Math.round(durSec * 1e9) : parseDurationToNs(h.duration);
+    if (durNs <= 0) durNs = 1e9;
+    var total = Number(res.total_requests || 0);
+    var errs = Number(res.total_errors || 0);
+    var rps = Number(res.rps || 0);
+    if (rps <= 0 && total > 0) rps = total / (durNs / 1e9);
+    var errPct = total > 0 ? (errs / total * 100) : 0;
+    function msToNs(v) { v = Number(v || 0); return Math.round(v * 1e6); }
+    var p50 = msToNs(res.p50_latency);
+    var p95 = msToNs(res.p95_latency || res.p50_latency);
+    var p99 = msToNs(res.p99_latency || res.p95_latency || res.p50_latency);
+    var avg = msToNs(res.avg_latency || res.p50_latency);
+    var max = msToNs(res.max_latency || res.p99_latency || res.p95_latency || res.p50_latency);
+    if (p50 <= 0) p50 = 1e6; if (p95 < p50) p95 = p50; if (p99 < p95) p99 = p95; if (avg <= 0) avg = p50; if (max < p99) max = p99;
+    var ts = h.timestamp ? String(h.timestamp) : new Date().toISOString();
+    return {
+      name: h.id || cfg.target_url || 'run',
+      base_url: cfg.target_url || '',
+      load_profile: cfg.profile || 'steady',
+      target_rps: cfg.rate_limit || 0,
+      started_at: ts,
+      ended_at: ts,
+      duration: durNs,
+      active_users: cfg.users || 0,
+      total_requests: total,
+      total_errors: errs,
+      error_rate_pct: errPct,
+      rps: rps,
+      status_codes: res.status_codes || {},
+      errors: {},
+      gate: false,
+      overall: {
+        name: 'overall',
+        requests: total,
+        errors: errs,
+        status_codes: res.status_codes || {},
+        error_types: {},
+        min: p50,
+        avg: avg,
+        max: max,
+        p50: p50,
+        p95: p95,
+        p99: p99
+      },
+      steps: []
+    };
+  }
+
+  async function doTwinLoadLatest() {
+    setOut('twinFitOut', 'Loading latest run…');
+    try {
+      var d = await api('/api/history');
+      var hist = Array.isArray(d) ? d : (d && d.history ? d.history : (S && S.history ? S.history : []));
+      if (!hist || !hist.length) throw new Error('no completed runs found in history');
+      var latest = hist[hist.length - 1];
+      var rep = historyToReport(latest);
+      var ta = document.getElementById('twinReportJson');
+      if (ta) ta.value = JSON.stringify(rep, null, 2);
+      setOut('twinFitOut', 'Latest run loaded into Report JSON. Click <strong>Fit model</strong> to build a capacity model.', 'ok');
+    } catch (e) {
+      if (e && e.message === 'locked') return;
+      setText('twinFitOut', 'Error: ' + (e && e.message ? e.message : String(e)), 'err');
+    }
+  }
+
+  async function doXrayCorrelate() {
+    setOut('xrayCorrelateOut', 'Correlating…');
+    try {
+      var samples = parseJSONFrom('xraySamplesJson');
+      var signals = parseJSONFrom('xraySignalsJson');
+      if (!Array.isArray(samples)) throw new Error('samples must be a JSON array');
+      if (!Array.isArray(signals)) throw new Error('signals must be a JSON array');
+      var win = (document.getElementById('xrayWindow') || {}).value || '';
+      var payload = { samples: samples, signals: signals };
+      if (String(win).trim()) payload.window = String(win).trim();
+      var d = await api('/api/insights/xray/correlate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      if (!d || d.ok === false) throw new Error((d && d.error) || 'correlation failed');
+      var indicators = d.indicators || [];
+      var html = '<div class="ins-kv">' + kv('Indicators', indicators.length) + kv('Samples', samples.length) + kv('Signals', signals.length) + '</div>';
+      if (indicators.length) {
+        html += '<table class="ins-table"><thead><tr><th>Type</th><th>Severity</th><th>Summary</th></tr></thead><tbody>' +
+          indicators.map(function (it) {
+            return '<tr><td>' + esc(it.kind || it.type || '') + '</td><td>' + esc(it.severity || '') + '</td><td>' + esc(it.summary || it.detail || it.message || JSON.stringify(it)) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      } else {
+        html += '<p class="ins-note">No indicators produced for the provided window/data.</p>';
+      }
+      if (d.note) html += '<p class="ins-note">' + esc(d.note) + '</p>';
+      html += '<details class="ins-details"><summary>Indicators JSON</summary><pre>' + esc(JSON.stringify(indicators, null, 2)) + '</pre></details>';
+      setOut('xrayCorrelateOut', html, 'ok');
+    } catch (e) {
+      if (e && e.message === 'locked') return;
+      setText('xrayCorrelateOut', 'Error: ' + (e && e.message ? e.message : String(e)), 'err');
+    }
+  }
+
   function wire() {
     var b;
     b = document.getElementById('btnXrayCaps'); if (b) b.addEventListener('click', loadXrayCaps);
     b = document.getElementById('btnTwinFit'); if (b) b.addEventListener('click', doTwinFit);
+    b = document.getElementById('btnTwinLoadLatest'); if (b) b.addEventListener('click', doTwinLoadLatest);
     b = document.getElementById('btnTwinSim'); if (b) b.addEventListener('click', doTwinSim);
     b = document.getElementById('btnBountyValidate'); if (b) b.addEventListener('click', doBountyValidate);
     b = document.getElementById('btnBountyVerifyUpload'); if (b) b.addEventListener('click', doBountyVerifyUpload);
     b = document.getElementById('btnBountyStatus'); if (b) b.addEventListener('click', doBountyStatus);
+    b = document.getElementById('btnXrayCorrelate'); if (b) b.addEventListener('click', doXrayCorrelate);
     b = document.getElementById('btnTwinUseModel'); if (b) b.addEventListener('click', function () {
       if (window.__twinLastModel) {
         var ta = document.getElementById('twinModelJson');

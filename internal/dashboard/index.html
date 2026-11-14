@@ -910,7 +910,7 @@
         <label class="ins-label" for="twinReportJson">Report JSON</label>
         <textarea id="twinReportJson" class="ins-textarea" spellcheck="false" placeholder='Paste report JSON (e.g. reports/*.json)'></textarea>
         <div class="ins-row"><label class="ins-label" for="twinTargetP99">Target p99 (ms, optional)</label><input id="twinTargetP99" type="number" min="0" step="1" placeholder="0"></div>
-        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnTwinFit" type="button">Fit model</button><button class="btn btn-ghost btn-sm" id="btnTwinUseModel" type="button">Use fitted model →</button></div>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnTwinFit" type="button">Fit model</button><button class="btn btn-ghost btn-sm" id="btnTwinLoadLatest" type="button" title="Load the latest completed run from dashboard history">Load latest run</button><button class="btn btn-ghost btn-sm" id="btnTwinUseModel" type="button">Use fitted model →</button></div>
         <div id="twinFitOut" class="ins-out"></div>
       </div>
 
@@ -953,6 +953,28 @@
         <textarea id="bountyEventsJson" class="ins-textarea" spellcheck="false" placeholder='Paste events array'></textarea>
         <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnBountyStatus" type="button">Replay status</button></div>
         <div id="bountyStatusOut" class="ins-out"></div>
+      </div>
+    </div>
+
+    <div class="ins-cols" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Host X-Ray — correlate</div><div class="card-subtitle">Correlate host samples with workload signals (JSON arrays). Paste data from <code>sift xray collect</code> output and your signal timeline.</div></div></div>
+        <label class="ins-label" for="xraySamplesJson">Samples JSON array</label>
+        <textarea id="xraySamplesJson" class="ins-textarea" spellcheck="false" placeholder='[{"timestamp":"2026-...","cpu":{...},"memory":{...}}]'></textarea>
+        <label class="ins-label" for="xraySignalsJson">Signals JSON array</label>
+        <textarea id="xraySignalsJson" class="ins-textarea" spellcheck="false" placeholder='[{"timestamp":"2026-...","kind":"latency","value_ms":250}]'></textarea>
+        <div class="ins-row"><label class="ins-label" for="xrayWindow">Correlation window (optional, e.g. 30s)</label><input id="xrayWindow" type="text" placeholder="30s"></div>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnXrayCorrelate" type="button">Correlate</button></div>
+        <div id="xrayCorrelateOut" class="ins-out"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Report &amp; Insights tips</div><div class="card-subtitle">Quick ways to move data between views.</div></div></div>
+        <ul class="ins-notes">
+          <li><strong>Report view:</strong> the latest completed run is shown inline (no file required). Use <em>Load latest run</em> to fit a Digital Twin from it.</li>
+          <li><strong>Twin:</strong> fit a model, then copy it to simulation and run best/likely/worst or custom scenarios.</li>
+          <li><strong>Bounty:</strong> for complete evidence replay, upload the manifest and all package files (bundle/samples/report/scope) for full verification.</li>
+          <li><strong>X-Ray:</strong> collection is opt-in (<code>sift xray collect --allow</code>); correlation highlights time-aligned host and workload evidence.</li>
+        </ul>
       </div>
     </div>
 

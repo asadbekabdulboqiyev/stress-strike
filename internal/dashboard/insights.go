@@ -412,7 +412,7 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 	}
 	// Allow manifest + artifact files + optional bundle/samples.
 	r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // #nosec G120 -- request body is bounded by MaxBytesReader above; form memory cap is intentional.
 		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid multipart form: " + err.Error()})
 		return
 	}
@@ -574,7 +574,7 @@ func copyFileTo(src, baseDir, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(cleanDst), 0o700); err != nil {
 		return err
 	}
-	in, err := os.Open(src)
+	in, err := os.Open(src) // #nosec G304 -- src is an internal path previously saved within the request-scoped temp directory.
 	if err != nil {
 		return err
 	}

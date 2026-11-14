@@ -364,8 +364,8 @@ func printLiveProgress(master *coordinator.Master, stop <-chan struct{}) {
 			}
 			fmt.Printf("\r\x1b[K  workers=%d req=%s err=%s (%.2f%%) rps=%s p95=%s",
 				agg.Workers,
-				formatCount(uint64(max64(agg.TotalRequests, 0))),
-				formatCount(uint64(max64(agg.TotalErrors, 0))),
+				formatCount(uint64(max64(agg.TotalRequests, 0))), // #nosec G115 -- counters are expected to remain within int64 range
+				formatCount(uint64(max64(agg.TotalErrors, 0))), // #nosec G115 -- counters are expected to remain within int64 range
 				errorRate(agg.TotalRequests, agg.TotalErrors),
 				formatRPS(agg.RPS),
 				agg.P95,

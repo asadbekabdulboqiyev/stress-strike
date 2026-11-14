@@ -281,7 +281,7 @@ func (c *OWASPChecker) makeRequestURL(method, baseURL, path string, headers http
 	}
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	c.noteProbe()
 
 	return resp, string(respBody)
@@ -450,7 +450,7 @@ func (c *OWASPChecker) checkA02() *OWASPCategory {
 				"tcp", addr, config,
 			)
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				c.addFinding(cat,
 					fmt.Sprintf("Deprecated TLS version supported: %s", tv.name),
 					fmt.Sprintf("Disable %s and enforce TLS 1.2 or higher", tv.name),
@@ -612,7 +612,7 @@ func (c *OWASPChecker) checkA04() *OWASPCategory {
 			allowedCount++
 		}
 		if resp != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 	if allowedCount == 50 {
@@ -782,7 +782,7 @@ func (c *OWASPChecker) checkA05() *OWASPCategory {
 			addr := net.JoinHostPort(host, strconv.Itoa(ip.port))
 			conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				c.addFinding(cat,
 					fmt.Sprintf("Database/service port exposed: %s (port %d)", ip.name, ip.port),
 					fmt.Sprintf("Block port %d (%s) from external access via firewall", ip.port, ip.name),

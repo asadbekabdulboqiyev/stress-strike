@@ -477,7 +477,7 @@ func backoff(attempt int, base, max time.Duration, r float64) time.Duration {
 	return time.Duration(r * d)
 }
 
-func randFloat() float64 { return rand.Float64() } //nolint:gosec // backoff jitter only; not security-sensitive
+func randFloat() float64 { return rand.Float64() } // #nosec G404 -- non-cryptographic jitter for retry backoff only.
 
 // sleepCtx sleeps for d, returning early if ctx is cancelled.
 func sleepCtx(ctx context.Context, d time.Duration) error {

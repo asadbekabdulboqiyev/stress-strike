@@ -53,7 +53,7 @@ func certStoreInitOnce() error {
 	certStoreByID = make(map[string]certificate.Certificate)
 	certStoreHash = nil
 
-	f, err := os.Open(certStorePath)
+	f, err := os.Open(filepath.Clean(certStorePath)) // #nosec G304 -- path is the application-managed certificate store in config home
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // empty store is valid
@@ -113,7 +113,7 @@ func certStoreIssue(c certificate.Certificate) (*certificate.Certificate, string
 		return nil, "", err
 	}
 
-	f, err := os.OpenFile(certStorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(filepath.Clean(certStorePath), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) // #nosec G304 -- path is the application-managed certificate store in config home
 	if err != nil {
 		return nil, "", err
 	}

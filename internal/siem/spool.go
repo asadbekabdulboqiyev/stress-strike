@@ -80,8 +80,8 @@ func (n *Notifier) ReplaySpool(ctx context.Context) (int, error) {
 	n.spoolMu.Lock()
 	defer n.spoolMu.Unlock()
 
-	path := n.spoolPath()
-	f, err := os.Open(path) //nolint:gosec // path is the operator-configured spool file
+	path := filepath.Clean(n.spoolPath())
+	f, err := os.Open(path) // #nosec G304 -- path is the operator-configured spool file
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return 0, nil

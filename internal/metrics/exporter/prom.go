@@ -390,7 +390,7 @@ func writeHistogram(p *printer, rep report) {
 		p.line("%s_bucket{le=\"%s\"} %d\n", metricDuration, formatSeconds(b.UpperBound), b.Count)
 	}
 	p.line("%s_bucket{le=\"+Inf\"} %d\n", metricDuration, rep.histCount)
-	p.line("%s_sum %s\n", metricDuration, formatSeconds(time.Duration(rep.histSum))) //nolint:gosec // nanosecond sum fits int64
+	p.line("%s_sum %s\n", metricDuration, formatSeconds(time.Duration(rep.histSum))) // #nosec G115 -- value is within expected domain bounds
 	p.line("%s_count %d\n", metricDuration, rep.histCount)
 }
 

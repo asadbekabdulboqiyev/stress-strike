@@ -128,7 +128,7 @@ const (
 // detectCertificateInput sniffs a JSON file. A certificate carries "assessment"
 // and "signature"; a pentest report carries "target" and a risk/grade summary.
 func detectCertificateInput(path string) (certificateInput, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected input file
 	if err != nil {
 		if os.IsNotExist(err) {
 			return inputUnknown, fmt.Errorf("file not found: %s", path)
@@ -157,7 +157,7 @@ func detectCertificateInput(path string) (certificateInput, error) {
 }
 
 func verifyCertificateFile(path string, quiet bool) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected certificate file
 	if err != nil {
 		fatal(fmt.Errorf("read certificate: %w", err))
 	}
@@ -189,7 +189,7 @@ func verifyCertificateFile(path string, quiet bool) {
 }
 
 func issueCertificate(from, out, format, keyPath, issuer string, quiet bool) {
-	raw, err := os.ReadFile(from)
+	raw, err := os.ReadFile(filepath.Clean(from)) // #nosec G304 -- path is an operator-selected pentest report file
 	if err != nil {
 		fatal(fmt.Errorf("read report: %w", err))
 	}

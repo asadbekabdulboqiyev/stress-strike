@@ -308,7 +308,7 @@ func (e *Engine) preWarmConnections(count int) {
 		fmt.Fprintf(os.Stderr, "Pre-warm: cannot reach %s: %v\n", host, err)
 		return
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	ring := &prewarmRing{clients: make([]*prewarmClient, count)}
 	done := make(chan struct{}, count)
@@ -337,7 +337,7 @@ func (e *Engine) preWarmConnections(count int) {
 				ring.clients[idx] = nil
 				return
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			ring.clients[idx] = &prewarmClient{client: client, transport: transport}
 		}(i)
 	}

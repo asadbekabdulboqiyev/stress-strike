@@ -304,7 +304,7 @@ func (w *Worker) sendStatus(stream distproto.MasterWorker_CoordinateServer) erro
 		ActiveRuns: int64(w.ActiveRuns()),
 		System: &distproto.SystemMetrics{
 			CpuPercent:  w.cpuPercent(),
-			MemoryBytes: int64(m.Alloc),
+			MemoryBytes: int64(m.Alloc), // #nosec G115 -- counters are expected to remain within int64 range
 			Goroutines:  int64(runtime.NumGoroutine()),
 		},
 	}
@@ -365,7 +365,7 @@ func (w *Worker) GetCapabilities(ctx context.Context, req *distproto.Capabilitie
 func (w *Worker) Capabilities() *distproto.CapabilitiesResponse {
 	return &distproto.CapabilitiesResponse{
 		Protocols:        []string{"http", "ws", "grpc", "tcp", "udp"},
-		MaxUsers:         int32(w.cfg.MaxUsers),
+		MaxUsers:         int32(w.cfg.MaxUsers), // #nosec G115 -- configuration/protocol values are within expected int32 range
 		MaxDurationSec:   7 * 24 * 3600,
 		SupportsTls:      true,
 		SupportsSessions: true,

@@ -214,12 +214,13 @@ func WriteBundle(b attest.Bundle, recs []attest.Record, bundlePath string) (stri
 }
 
 func writeSidecar(path string, recs []attest.Record) error {
+	path = filepath.Clean(path)
 	if dir := filepath.Dir(path); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("evidence: create %s: %w", dir, err)
 		}
 	}
-	f, err := os.Create(path)
+	f, err := os.Create(path) // #nosec G304 -- sidecar path is derived from an operator-selected bundle path
 	if err != nil {
 		return fmt.Errorf("evidence: create sidecar %s: %w", path, err)
 	}

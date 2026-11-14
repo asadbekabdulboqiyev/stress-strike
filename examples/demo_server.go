@@ -31,7 +31,7 @@ func envMillis(name string) time.Duration {
 	}
 	ms, err := time.ParseDuration(raw + "ms")
 	if err != nil || ms < 0 {
-		log.Printf("ignoring %s=%q: not a millisecond count", name, raw)
+		log.Printf("ignoring %s=%q: not a millisecond count", name, strings.ReplaceAll(raw, "\n", ""))
 		return 0
 	}
 	return ms
@@ -51,8 +51,17 @@ func main() {
 	port.HandleFunc("/api/checkout", handleCheckout)
 	port.HandleFunc("/fail", handleFail)
 
-	log.Printf("demo target listening on %s (slow=%v)", addr, slowEndpoint)
-	if err := http.ListenAndServe(addr, port); err != nil {
+	safeAddr := strings.NewReplacer("\n", "\\n", "\r", "\\r").Replace(addr)
+	log.Printf("demo target listening on %q (slow=%v)", safeAddr, slowEndpoint) // #nosec G706 -- demo logs sanitized operator-provided address
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           port,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

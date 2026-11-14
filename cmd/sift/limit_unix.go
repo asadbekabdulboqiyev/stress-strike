@@ -19,9 +19,9 @@ func warnLowFileLimit(profile config.Profile) {
 		// Cannot read the limit; nothing useful to warn about.
 		return
 	}
-	need := uint64(profile.Users * 4)
+	need := uint64(profile.Users * 4) // #nosec G115 -- index/size values are within expected range
 	if profile.SpikeUsers > profile.Users {
-		need = uint64(profile.SpikeUsers * 4)
+		need = uint64(profile.SpikeUsers * 4) // #nosec G115 -- index/size values are within expected range
 	}
 	if lim.Cur < need {
 		fmt.Fprintf(os.Stderr, "warning: open-file limit is %d but the test may need ~%d sockets (raise with 'ulimit -n')\n", lim.Cur, need)

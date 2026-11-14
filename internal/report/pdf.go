@@ -673,7 +673,7 @@ func GenerateMarkdown(report *PentestReport) []byte {
 func SaveReport(report *PentestReport, format, filename string) error {
 	dir := filepath.Dir(filename)
 	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return err
 		}
 	}

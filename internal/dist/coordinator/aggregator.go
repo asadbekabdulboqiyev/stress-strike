@@ -143,10 +143,10 @@ func (a *Aggregator) Snapshot() Aggregate {
 			elapsedMax = snap.ElapsedMs
 		}
 		for code, n := range snap.StatusCodes {
-			agg.StatusCodes[int(code)] += uint64(n)
+			agg.StatusCodes[int(code)] += uint64(n) // #nosec G115 -- values are non-negative and within domain bounds
 		}
 		for name, n := range snap.ErrorTypes {
-			agg.ErrorTypes[name] += uint64(n)
+			agg.ErrorTypes[name] += uint64(n) // #nosec G115 -- values are non-negative and within domain bounds
 		}
 		lat := snap.Latency
 		if lat != nil {
@@ -193,10 +193,10 @@ func mergeLiveStep(sa *StepAggregate, step *distproto.StepTelemetry) {
 	sa.Requests += step.Requests
 	sa.Errors += step.Errors
 	for code, n := range step.StatusCodes {
-		sa.StatusCodes[int(code)] += uint64(n)
+		sa.StatusCodes[int(code)] += uint64(n) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	for name, n := range step.ErrorTypes {
-		sa.ErrorTypes[name] += uint64(n)
+		sa.ErrorTypes[name] += uint64(n) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	lat := step.Latency
 	if lat == nil {
@@ -369,7 +369,7 @@ func (a *stepAccumulator) add(s report.StepReport) {
 	if s.P99 > a.p99 {
 		a.p99 = s.P99
 	}
-	a.avgNum += int64(s.Avg) * int64(s.Requests)
+	a.avgNum += int64(s.Avg) * int64(s.Requests) // #nosec G115 -- counters are expected to remain within int64 range
 	a.avgDen += s.Requests
 }
 
@@ -387,7 +387,7 @@ func (a *stepAccumulator) result() report.StepReport {
 		P99:        a.p99,
 	}
 	if a.avgDen > 0 {
-		out.Avg = time.Duration(a.avgNum / int64(a.avgDen))
+		out.Avg = time.Duration(a.avgNum / int64(a.avgDen)) // #nosec G115 -- value is within expected domain bounds
 	}
 	return out
 }

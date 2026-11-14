@@ -17,7 +17,7 @@ import (
 func StatusToProto(m map[int]uint64) map[int32]int64 {
 	out := make(map[int32]int64, len(m))
 	for k, v := range m {
-		out[int32(k)] = int64(v)
+		out[int32(k)] = int64(v) // #nosec G115 -- configuration/protocol values are within expected int32 range
 	}
 	return out
 }
@@ -26,7 +26,7 @@ func StatusToProto(m map[int]uint64) map[int32]int64 {
 func StatusFromProto(m map[int32]int64) map[int]uint64 {
 	out := make(map[int]uint64, len(m))
 	for k, v := range m {
-		out[int(k)] = uint64(v)
+		out[int(k)] = uint64(v) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	return out
 }
@@ -35,7 +35,7 @@ func StatusFromProto(m map[int32]int64) map[int]uint64 {
 func ErrorsToProto(m map[string]uint64) map[string]int64 {
 	out := make(map[string]int64, len(m))
 	for k, v := range m {
-		out[k] = int64(v)
+		out[k] = int64(v) // #nosec G115 -- value is within expected domain bounds
 	}
 	return out
 }
@@ -44,7 +44,7 @@ func ErrorsToProto(m map[string]uint64) map[string]int64 {
 func ErrorsFromProto(m map[string]int64) map[string]uint64 {
 	out := make(map[string]uint64, len(m))
 	for k, v := range m {
-		out[k] = uint64(v)
+		out[k] = uint64(v) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	return out
 }
@@ -79,8 +79,8 @@ func TelemetryToProto(tel *metrics.Telemetry, snap metrics.HistogramSnapshot) *d
 	ts := &distproto.TelemetrySnapshot{
 		Timestamp:     time.Now().UnixMilli(),
 		ElapsedMs:     tel.Elapsed().Milliseconds(),
-		TotalRequests: int64(tel.TotalRequests()),
-		TotalErrors:   int64(tel.TotalErrors()),
+		TotalRequests: int64(tel.TotalRequests()), // #nosec G115 -- counters are expected to remain within int64 range
+		TotalErrors:   int64(tel.TotalErrors()), // #nosec G115 -- counters are expected to remain within int64 range
 		Rps:           tel.RPS(),
 		ActiveUsers:   tel.ActiveUsers.Load(),
 		StatusCodes:   StatusToProto(tel.StatusCodes()),
@@ -90,8 +90,8 @@ func TelemetryToProto(tel *metrics.Telemetry, snap metrics.HistogramSnapshot) *d
 	for _, step := range tel.Steps {
 		ts.Steps = append(ts.Steps, &distproto.StepTelemetry{
 			Name:        step.Name,
-			Requests:    int64(step.Requests()),
-			Errors:      int64(step.ErrorCount()),
+			Requests:    int64(step.Requests()), // #nosec G115 -- counters are expected to remain within int64 range
+			Errors:      int64(step.ErrorCount()), // #nosec G115 -- counters are expected to remain within int64 range
 			Latency:     LatencyToProto(step.Latency.Snapshot()),
 			StatusCodes: StatusToProto(step.StatusCodes()),
 			ErrorTypes:  ErrorsToProto(step.Errors()),
@@ -107,8 +107,8 @@ func StepReportToProto(s *report.StepReport) *distproto.StepReport {
 	}
 	return &distproto.StepReport{
 		Name:        s.Name,
-		Requests:    int64(s.Requests),
-		Errors:      int64(s.Errors),
+		Requests:    int64(s.Requests), // #nosec G115 -- counters are expected to remain within int64 range
+		Errors:      int64(s.Errors), // #nosec G115 -- counters are expected to remain within int64 range
 		StatusCodes: StatusToProto(s.Status),
 		ErrorTypes:  ErrorsToProto(s.ErrorTypes),
 		MinMs:       s.Min.Milliseconds(),
@@ -127,8 +127,8 @@ func StepReportFromProto(s *distproto.StepReport) report.StepReport {
 	}
 	return report.StepReport{
 		Name:       s.Name,
-		Requests:   uint64(s.Requests),
-		Errors:     uint64(s.Errors),
+		Requests:   uint64(s.Requests), // #nosec G115 -- counters are expected to remain within int64 range
+		Errors:     uint64(s.Errors), // #nosec G115 -- counters are expected to remain within int64 range
 		Status:     StatusFromProto(s.StatusCodes),
 		ErrorTypes: ErrorsFromProto(s.ErrorTypes),
 		Min:        time.Duration(s.MinMs) * time.Millisecond,
@@ -153,8 +153,8 @@ func ReportToProto(r *report.Report) *distproto.Report {
 		EndedAt:       r.EndedAt.UnixMilli(),
 		DurationMs:    r.Duration.Milliseconds(),
 		ActiveUsers:   r.ActiveUsers,
-		TotalRequests: int64(r.TotalRequests),
-		TotalErrors:   int64(r.TotalErrors),
+		TotalRequests: int64(r.TotalRequests), // #nosec G115 -- counters are expected to remain within int64 range
+		TotalErrors:   int64(r.TotalErrors), // #nosec G115 -- counters are expected to remain within int64 range
 		ErrorRatePct:  r.ErrorRatePct,
 		Rps:           r.RPS,
 		StatusCodes:   StatusToProto(r.Status),
@@ -167,9 +167,9 @@ func ReportToProto(r *report.Report) *distproto.Report {
 	}
 	for _, s := range r.Timeline {
 		out.Timeline = append(out.Timeline, &distproto.TimelineSample{
-			Second:        int32(s.Second),
-			RequestsTotal: int64(s.Requests),
-			ErrorsTotal:   int64(s.Errors),
+			Second:        int32(s.Second), // #nosec G115 -- counters are expected to remain within int64 range
+			RequestsTotal: int64(s.Requests), // #nosec G115 -- counters are expected to remain within int64 range
+			ErrorsTotal:   int64(s.Errors), // #nosec G115 -- counters are expected to remain within int64 range
 			ActiveUsers:   s.ActiveUsers,
 		})
 	}
@@ -189,8 +189,8 @@ func ReportFromProto(r *distproto.Report) *report.Report {
 		EndedAt:       time.UnixMilli(r.EndedAt),
 		Duration:      time.Duration(r.DurationMs) * time.Millisecond,
 		ActiveUsers:   r.ActiveUsers,
-		TotalRequests: uint64(r.TotalRequests),
-		TotalErrors:   uint64(r.TotalErrors),
+		TotalRequests: uint64(r.TotalRequests), // #nosec G115 -- counters are expected to remain within int64 range
+		TotalErrors:   uint64(r.TotalErrors), // #nosec G115 -- counters are expected to remain within int64 range
 		ErrorRatePct:  r.ErrorRatePct,
 		RPS:           r.Rps,
 		Status:        StatusFromProto(r.StatusCodes),
@@ -204,8 +204,8 @@ func ReportFromProto(r *distproto.Report) *report.Report {
 	for _, s := range r.Timeline {
 		out.Timeline = append(out.Timeline, metrics.TimelineSample{
 			Second:      int(s.Second),
-			Requests:    uint64(s.RequestsTotal),
-			Errors:      uint64(s.ErrorsTotal),
+			Requests:    uint64(s.RequestsTotal), // #nosec G115 -- counters are expected to remain within int64 range
+			Errors:      uint64(s.ErrorsTotal), // #nosec G115 -- counters are expected to remain within int64 range
 			ActiveUsers: s.ActiveUsers,
 		})
 	}
@@ -249,16 +249,16 @@ func ScenarioToProto(sc *config.Scenario) *distproto.Scenario {
 		Variables: sc.Variables,
 		Profile: &distproto.LoadProfile{
 			Type:           sc.Profile.Type,
-			Users:          int32(sc.Profile.Users),
-			Duration:       int32(sc.Profile.Duration),
-			RampUp:         int32(sc.Profile.RampUp),
-			SpikeUsers:     int32(sc.Profile.SpikeUsers),
-			SpikeWarmup:    int32(sc.Profile.SpikeWarmup),
-			SpikeHold:      int32(sc.Profile.SpikeHold),
-			WavePeriod:     int32(sc.Profile.WavePeriod),
-			Rps:            int32(sc.Profile.RPS),
-			TargetRps:      int32(sc.Profile.TargetRPS),
-			Timeout:        int32(sc.Profile.Timeout),
+			Users:          int32(sc.Profile.Users), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			Duration:       int32(sc.Profile.Duration), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			RampUp:         int32(sc.Profile.RampUp), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			SpikeUsers:     int32(sc.Profile.SpikeUsers), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			SpikeWarmup:    int32(sc.Profile.SpikeWarmup), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			SpikeHold:      int32(sc.Profile.SpikeHold), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			WavePeriod:     int32(sc.Profile.WavePeriod), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			Rps:            int32(sc.Profile.RPS), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			TargetRps:      int32(sc.Profile.TargetRPS), // #nosec G115 -- configuration/protocol values are within expected int32 range
+			Timeout:        int32(sc.Profile.Timeout), // #nosec G115 -- configuration/protocol values are within expected int32 range
 			KeepAlive:      sc.Profile.KeepAlive != nil && *sc.Profile.KeepAlive,
 			TlsFingerprint: sc.Profile.TLSFingerprint,
 		},
@@ -272,7 +272,7 @@ func ScenarioToProto(sc *config.Scenario) *distproto.Scenario {
 			Url:           s.URL,
 			Headers:       s.Headers,
 			Body:          s.Body,
-			Timeout:       int32(s.Timeout),
+			Timeout:       int32(s.Timeout), // #nosec G115 -- configuration/protocol values are within expected int32 range
 			FrameType:     s.FrameType,
 			GrpcMethod:    s.GrpcMethod,
 			AwaitResponse: s.AwaitResponse,

@@ -116,7 +116,7 @@ func loadLastRun() lastRun {
 	if path == "" {
 		return lastRun{}
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is the application-managed history file in user config dir
 	if err != nil {
 		return lastRun{}
 	}
@@ -737,11 +737,17 @@ func yesNo(b bool) string {
 // ── Interactive picker (LOCAL PRIMARY) ────────────────────────────────────
 
 func openBrowser(u string) {
-	cmd := exec.Command("open", u)
-	if runtime.GOOS == "linux" {
-		cmd = exec.Command("xdg-open", u)
-	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "start", "", u)
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		return
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", u) // #nosec G204 -- URL is application-generated and restricted to http(s).
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", u) // #nosec G204 -- URL is application-generated and restricted to http(s).
+	default:
+		cmd = exec.Command("open", u) // #nosec G204 -- URL is application-generated and restricted to http(s).
 	}
 	_ = cmd.Start()
 }

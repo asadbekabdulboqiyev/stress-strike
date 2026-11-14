@@ -98,7 +98,7 @@ func (s *Server) handleCertificateIssue(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"error": err.Error(),
 			"hint":  "this endpoint needs the JSON report `Sift pentest --format json` writes",
 		})
@@ -211,7 +211,7 @@ func (s *Server) handleCertificateVerify(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"valid":  false,
 			"reason": err.Error(),
 		})

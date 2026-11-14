@@ -75,7 +75,7 @@ func (pt *ProgressTracker) Update(totalReqs, totalErrors uint64, latency time.Du
 	pt.totalReqs.Store(totalReqs)
 	pt.totalErrors.Store(totalErrors)
 
-	nsec := uint64(latency.Nanoseconds())
+	nsec := uint64(latency.Nanoseconds()) // #nosec G115 -- values are non-negative and within domain bounds
 	for {
 		old := pt.latencySum.Load()
 		if pt.latencySum.CompareAndSwap(old, old+nsec) {
@@ -83,7 +83,7 @@ func (pt *ProgressTracker) Update(totalReqs, totalErrors uint64, latency time.Du
 		}
 	}
 
-	nsMax := uint64(latency.Nanoseconds())
+	nsMax := uint64(latency.Nanoseconds()) // #nosec G115 -- values are non-negative and within domain bounds
 	for {
 		old := pt.latencyMax.Load()
 		if nsMax <= old || pt.latencyMax.CompareAndSwap(old, nsMax) {
@@ -171,9 +171,9 @@ func (pt *ProgressTracker) render() {
 
 	avgLat := time.Duration(0)
 	if count > 0 {
-		avgLat = time.Duration(sumNs / count)
+		avgLat = time.Duration(sumNs / count) // #nosec G115 -- latency/duration values are bounded in practice
 	}
-	maxLat := time.Duration(maxNs)
+	maxLat := time.Duration(maxNs) // #nosec G115 -- latency/duration values are bounded in practice
 
 	errPct := 0.0
 	if reqs > 0 {
@@ -234,9 +234,9 @@ func (pt *ProgressTracker) renderFinal() {
 
 	avgLat := time.Duration(0)
 	if count > 0 {
-		avgLat = time.Duration(sumNs / count)
+		avgLat = time.Duration(sumNs / count) // #nosec G115 -- latency/duration values are bounded in practice
 	}
-	maxLat := time.Duration(maxNs)
+	maxLat := time.Duration(maxNs) // #nosec G115 -- latency/duration values are bounded in practice
 
 	errPct := 0.0
 	if reqs > 0 {

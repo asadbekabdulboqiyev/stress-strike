@@ -175,7 +175,7 @@ func (c *Capture) ExportJSON(w io.Writer) error {
 
 func TLSConfigFromKeys(keys []*TLSKey, skipVerify bool) *tls.Config {
 	cfg := &tls.Config{
-		InsecureSkipVerify: skipVerify,
+		InsecureSkipVerify: skipVerify, // #nosec G402 -- replay intentionally supports operator-controlled skip-verify for capturing/replaying targets with non-public TLS setups.
 		MinVersion:         tls.VersionTLS12,
 	}
 	if len(keys) > 0 {

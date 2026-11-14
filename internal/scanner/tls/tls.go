@@ -124,18 +124,18 @@ func ScanTLS(host string, port int) (*core.TLSInfo, error) {
 			info.HTTP2Supported = state.NegotiatedProtocol == "h2"
 		}
 
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	// Session resumption check
 	config := &tls.Config{InsecureSkipVerify: true} // #nosec G402 -- authorized pentest targets may use self-signed certificates
 	conn1, err := tls.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}, "tcp", addr, config)
 	if err == nil {
-		conn1.Close()
+		_ = conn1.Close()
 		conn2, err := tls.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}, "tcp", addr, config)
 		if err == nil {
 			info.SessionResumption = true
-			conn2.Close()
+			_ = conn2.Close()
 		}
 	}
 

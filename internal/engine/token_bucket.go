@@ -92,7 +92,7 @@ func (t *tokenBucket) correctedDelay() time.Duration {
 		t.anchor = now
 	}
 	interval := time.Duration(float64(time.Second) / t.rate)
-	nominal := t.anchor.Add(time.Duration(t.issued) * interval) //nolint:gosec // issued-token counter fits int64
+	nominal := t.anchor.Add(time.Duration(t.issued) * interval) // #nosec G115 -- value is within expected domain bounds
 	t.issued++
 	if now.After(nominal) {
 		return now.Sub(nominal)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -566,7 +567,7 @@ func normalizeControlFlow(st *Step) error {
 }
 
 func Load(path string) (*Scenario, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected scenario file
 	if err != nil {
 		return nil, err
 	}

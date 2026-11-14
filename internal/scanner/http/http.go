@@ -75,7 +75,7 @@ func ScanHTTP(target string) (*core.HTTPInfo, error) {
 
 	optResp, err := core.SendProbe(target, "OPTIONS", "/", nil)
 	if err == nil {
-		optResp.Body.Close()
+		_ = optResp.Body.Close()
 		allow := optResp.Header.Get("Allow")
 		if allow != "" {
 			info.Methods = strings.Split(allow, ",")

@@ -627,7 +627,7 @@ func SaveBundle(b Bundle, path string) error {
 // LoadBundle reads and parses a bundle. It deliberately does not validate:
 // a tampered bundle must load so that Verify can say what is wrong.
 func LoadBundle(path string) (Bundle, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected bundle file
 	if err != nil {
 		return Bundle{}, err
 	}

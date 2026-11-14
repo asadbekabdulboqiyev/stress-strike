@@ -254,7 +254,7 @@ func streamTelemetry(srv *dashboard.Server, e *engine.Engine, sc *config.Scenari
 			if d := snap.Count - lastCount; d > 0 {
 				// d > 0 is guaranteed by the branch condition.
 				selfMetrics.IncRequestsN(d)
-				selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run
+				selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) // #nosec G115 -- latency/duration values are bounded in practice
 			}
 			if d := t.TotalErrors() - lastErr; d > 0 {
 				selfMetrics.IncErrorsN(d)

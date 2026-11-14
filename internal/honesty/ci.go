@@ -67,7 +67,7 @@ func (r *rng) next() uint64 {
 
 // intn returns a uniform-ish index in [0, n). The modulo bias is irrelevant to
 // a reproducibility aid and is far cheaper than rejection sampling.
-func (r *rng) intn(n int) int { return int(r.next() % uint64(n)) }
+func (r *rng) intn(n int) int { return int(r.next() % uint64(n)) } // #nosec G115 -- values are non-negative and within domain bounds
 
 // CI95Bootstrap returns a 95% confidence interval for the ppm quantile of the
 // ascending sorted slice, by percentile bootstrap.
@@ -165,8 +165,8 @@ func CI95OrderStatistic(sorted []int64, ppm int) (int64, int64) {
 	meanS := nn * fp
 	// (sd scaled by 1e6)^2 = n * ppm * (1e6 - ppm).
 	varSq := uint64(nn) * uint64(fp) * uint64(ppmScale-ppm)
-	sdS := int64(isqrt(varSq))
-	delta := int64(mulDivRoundU(uint64(z95), uint64(sdS), ppmScale))
+	sdS := int64(isqrt(varSq)) // #nosec G115 -- values are non-negative and within domain bounds
+	delta := int64(mulDivRoundU(uint64(z95), uint64(sdS), ppmScale)) // #nosec G115 -- values are non-negative and within domain bounds
 
 	loRank := ceilScale(meanS-delta, ppmScale)
 	hiRank := ceilScale(meanS+delta, ppmScale)

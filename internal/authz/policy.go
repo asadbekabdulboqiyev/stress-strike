@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -371,7 +372,7 @@ func (p Policy) AuthorizedBy(t Target, ticket string, now time.Time) (string, bo
 
 // LoadPolicy reads a policy JSON file.
 func LoadPolicy(path string) (Policy, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-configured policy file
 	if err != nil {
 		return Policy{}, err
 	}

@@ -57,12 +57,13 @@ type Log struct {
 // created with 0700 and the file with 0600: the trail records who tested what,
 // which is sensitive.
 func Open(path string) (*Log, error) {
+	path = filepath.Clean(path)
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return nil, fmt.Errorf("create audit dir: %w", err)
 		}
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600) // #nosec G304 -- path is the operator-configured audit log file
 	if err != nil {
 		return nil, fmt.Errorf("open audit log: %w", err)
 	}
@@ -134,7 +135,7 @@ func (l *Log) tail() (string, int64, error) {
 // the stored bytes still round-trip to the same record (so a field added to or
 // removed from the JSON is caught even though it would not change the hash).
 func Verify(path string) (int, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is the operator-selected audit log file
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +175,7 @@ func Verify(path string) (int, error) {
 
 // ReadAll parses every entry in the log at path.
 func ReadAll(path string) ([]Entry, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is the operator-selected audit log file
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func ReadAll(path string) ([]Entry, error) {
 
 // lastEntry reads only the final non-empty line of the file.
 func lastEntry(path string) (*Entry, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is the operator-configured audit log file
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

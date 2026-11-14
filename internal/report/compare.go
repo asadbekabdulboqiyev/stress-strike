@@ -55,7 +55,7 @@ func Compare(current, baseline *Report) *CompareResult {
 		CurrentName:  current.Name,
 	}
 
-	cr.RequestDiff = int64(current.TotalRequests) - int64(baseline.TotalRequests)
+	cr.RequestDiff = int64(current.TotalRequests) - int64(baseline.TotalRequests) // #nosec G115 -- counters are expected to remain within int64 range
 	cr.RequestChangePct = pctChange(float64(current.TotalRequests), float64(baseline.TotalRequests))
 
 	cr.P50Diff = msOf(current.Overall.P50) - msOf(baseline.Overall.P50)
@@ -63,7 +63,7 @@ func Compare(current, baseline *Report) *CompareResult {
 	cr.P99Diff = msOf(current.Overall.P99) - msOf(baseline.Overall.P99)
 	cr.AvgDiff = msOf(current.Overall.Avg) - msOf(baseline.Overall.Avg)
 
-	cr.ErrorDiff = int64(current.TotalErrors) - int64(baseline.TotalErrors)
+	cr.ErrorDiff = int64(current.TotalErrors) - int64(baseline.TotalErrors) // #nosec G115 -- counters are expected to remain within int64 range
 	cr.ErrorChangePct = pctChange(float64(current.TotalErrors), float64(baseline.TotalErrors))
 
 	cr.RPSDiff = current.RPS - baseline.RPS

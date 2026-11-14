@@ -167,14 +167,14 @@ func NewDialer(opts Options) func(ctx context.Context, network, addr string) (ne
 			}
 			u = utls.UClient(raw, cfg, utls.HelloCustom)
 			if err := u.ApplyPreset(&spec); err != nil {
-				raw.Close()
+				_ = raw.Close()
 				return nil, err
 			}
 		}
 		hctx, cancel := context.WithTimeout(ctx, opts.HandshakeTimeout)
 		defer cancel()
 		if err := u.HandshakeContext(hctx); err != nil {
-			raw.Close()
+			_ = raw.Close()
 			return nil, err
 		}
 		return u, nil

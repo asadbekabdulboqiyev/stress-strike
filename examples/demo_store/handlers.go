@@ -242,7 +242,7 @@ func (s *demoServer) cartKey(w http.ResponseWriter, r *http.Request) string {
 		return c.Value
 	}
 	id := randomHex(12)
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure follows request TLS state; HttpOnly and SameSite are always set.
 		Name:     guestCookie,
 		Value:    id,
 		Path:     "/",
@@ -263,17 +263,26 @@ func (s *demoServer) mergeGuestCart(r *http.Request, token string) {
 }
 
 func setSessionCookie(w http.ResponseWriter, token string, secure bool) {
-	http.SetCookie(w, &http.Cookie{
-		Name: "ss_session", Value: token, Path: "/",
-		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
-		MaxAge: int((24 * time.Hour).Seconds()),
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure is caller-controlled from request TLS state; HttpOnly and SameSite are always set.
+		Name:     "ss_session",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int((24 * time.Hour).Seconds()),
 	})
 }
 
 func clearSessionCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
-		Name: "ss_session", Value: "", Path: "/",
-		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure is caller-controlled from request TLS state; HttpOnly and SameSite are always set.
+		Name:     "ss_session",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
 	})
 }
 

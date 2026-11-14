@@ -640,7 +640,7 @@ func (v *verifier) verifyGlobalAggregate(b Bundle, samples map[string][]Record) 
 			// The run-wide sum is always the raw sum: the schema's
 			// sum_latency_ns is checked against the workers' raw sums. Only the
 			// distribution (percentiles, interval) is corrected.
-			sum += uint64(r.LatencyNS)
+			sum += uint64(r.LatencyNS) // #nosec G115 -- values are non-negative and within domain bounds
 			count++
 			val := r.LatencyNS
 			if co {
@@ -788,10 +788,10 @@ func AggregateRecords(recs []Record, windowStartNS int64, co bool, rpsMilli int6
 			}
 		}
 		st.Count++
-		if st.SumLatencyNS > math.MaxUint64-uint64(val) {
+		if st.SumLatencyNS > math.MaxUint64-uint64(val) { // #nosec G115 -- values are non-negative and within domain bounds
 			return AggregateStats{}, errors.New("aggregate: latency sum overflows uint64")
 		}
-		st.SumLatencyNS += uint64(val)
+		st.SumLatencyNS += uint64(val) // #nosec G115 -- values are non-negative and within domain bounds
 		st.Hist[strconv.FormatInt(BucketUpperNS(val), 10)]++
 		st.Values = append(st.Values, val)
 	}
@@ -847,7 +847,7 @@ func BucketUpperNS(latencyNS int64) int64 {
 	if latencyNS <= 0 {
 		return 0
 	}
-	return int64((uint64(1) << bits.Len64(uint64(latencyNS))) - 1)
+	return int64((uint64(1) << bits.Len64(uint64(latencyNS))) - 1) // #nosec G115 -- value is within expected domain bounds
 }
 
 // parseBucketUpperNS parses a histogram key and insists it is of the form

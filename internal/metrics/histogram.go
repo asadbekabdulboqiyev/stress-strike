@@ -85,7 +85,7 @@ func (h *Histogram) Add(d time.Duration) {
 	if d <= 0 {
 		ns = 0
 	} else {
-		ns = uint64(d.Nanoseconds())
+		ns = uint64(d.Nanoseconds()) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	trueNs := ns
 	if ns > maxTrackable {
@@ -131,13 +131,13 @@ func (h *Histogram) Snapshot() HistogramSnapshot {
 	s := HistogramSnapshot{
 		Count:   h.count.Load(),
 		Sum:     h.sum.Load(),
-		Min:     time.Duration(h.min.Load()),
-		Max:     time.Duration(h.max.Load()),
+		Min:     time.Duration(h.min.Load()), // #nosec G115 -- latency/duration values are bounded in practice
+		Max:     time.Duration(h.max.Load()), // #nosec G115 -- latency/duration values are bounded in practice
 		Clamped: h.clamped.Load(),
 		Buckets: make([]uint64, histogramBuckets),
 	}
 	if s.Count > 0 {
-		s.Average = time.Duration(s.Sum / s.Count)
+		s.Average = time.Duration(s.Sum / s.Count) // #nosec G115 -- latency/duration values are bounded in practice
 	}
 	for i := range h.buckets {
 		s.Buckets[i] = h.buckets[i].Load()
@@ -187,10 +187,10 @@ func (h *Histogram) Percentile(p float64) time.Duration {
 		return 0
 	}
 	if p <= 0 {
-		return time.Duration(h.min.Load())
+		return time.Duration(h.min.Load()) // #nosec G115 -- latency/duration values are bounded in practice
 	}
 	if p >= 1 {
-		return time.Duration(h.max.Load())
+		return time.Duration(h.max.Load()) // #nosec G115 -- latency/duration values are bounded in practice
 	}
 	rank := uint64(float64(count)*p + 0.999999)
 	if rank == 0 {
@@ -203,7 +203,7 @@ func (h *Histogram) Percentile(p float64) time.Duration {
 			return bucketUpperBound(i)
 		}
 	}
-	return time.Duration(h.max.Load())
+	return time.Duration(h.max.Load()) // #nosec G115 -- latency/duration values are bounded in practice
 }
 
 // Avg returns the exact mean without copying any buckets.
@@ -212,7 +212,7 @@ func (h *Histogram) Avg() time.Duration {
 	if count == 0 {
 		return 0
 	}
-	return time.Duration(h.sum.Load() / count)
+	return time.Duration(h.sum.Load() / count) // #nosec G115 -- latency/duration values are bounded in practice
 }
 
 // MinLatency and MaxLatency expose the observed extremes directly.
@@ -220,14 +220,14 @@ func (h *Histogram) MinLatency() time.Duration {
 	if h.count.Load() == 0 {
 		return 0
 	}
-	return time.Duration(h.min.Load())
+	return time.Duration(h.min.Load()) // #nosec G115 -- latency/duration values are bounded in practice
 }
 
 func (h *Histogram) MaxLatency() time.Duration {
 	if h.count.Load() == 0 {
 		return 0
 	}
-	return time.Duration(h.max.Load())
+	return time.Duration(h.max.Load()) // #nosec G115 -- latency/duration values are bounded in practice
 }
 
 // CumulativeBuckets returns the non-cumulative snapshot folded into
@@ -257,7 +257,7 @@ func bucketIndexOf(v uint64) int {
 	e := bits.Len64(v) - 1           // highest set bit
 	shift := e - (subBucketBits - 1) // >= 1
 	mantissa := v >> uint(shift)     // in [subBucketHalf, subBucketCount)
-	idx := subBucketCount + (shift-1)*subBucketHalf + int(mantissa-subBucketHalf)
+	idx := subBucketCount + (shift-1)*subBucketHalf + int(mantissa-subBucketHalf) // #nosec G115 -- index/size values are within expected range
 	if idx >= histogramBuckets {
 		idx = histogramBuckets - 1
 	}
@@ -267,7 +267,7 @@ func bucketIndexOf(v uint64) int {
 // bucketLowerBound returns the smallest value that maps into bucket idx.
 func bucketLowerBound(idx int) uint64 {
 	if idx < subBucketCount {
-		return uint64(idx)
+		return uint64(idx) // #nosec G115 -- index/size values are within expected range
 	}
 	t := idx - subBucketCount
 	shift := t/subBucketHalf + 1
@@ -284,5 +284,5 @@ func bucketUpperBound(idx int) time.Duration {
 	shift := t/subBucketHalf + 1
 	mantissa := t%subBucketHalf + subBucketHalf
 	upper := (uint64(mantissa) + 1) << uint(shift)
-	return time.Duration(upper) - 1
+	return time.Duration(upper) - 1 // #nosec G115 -- latency/duration values are bounded in practice
 }

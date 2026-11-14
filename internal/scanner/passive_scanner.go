@@ -60,17 +60,17 @@ const (
 	passiveCheckIDHeaders   = "PSV-HDR"      // security headers present
 	passiveCheckIDCSP       = "PSV-CSP"      // Content-Security-Policy analysis
 	passiveCheckIDClickjack = "PSV-CLICK"    // X-Frame-Options / frame-ancestors
-	passiveCheckIDHSTS      = "PSV-HSTS"     // Strict-Transport-Security
+	passiveCheckIDHSTS      = "PSV-HSTS"     // #nosec G101 -- security header check ID, not a credential
 	passiveCheckIDCookie    = "PSV-COOKIE"   // Set-Cookie attributes
 	passiveCheckIDPrefix    = "PSV-PREFIX"   // __Host- / __Secure- cookie prefixes
-	passiveCheckIDJWTAlg    = "PSV-JWTALG"   // JWT alg weaknesses
-	passiveCheckIDJWTExp    = "PSV-JWTEXP"   // JWT missing expiry
-	passiveCheckIDJWTCrypto = "PSV-JWTCRYPT" // JWT mixed signing algorithms
+	passiveCheckIDJWTAlg    = "PSV-JWTALG"   // #nosec G101 -- security check ID, not a credential
+	passiveCheckIDJWTExp    = "PSV-JWTEXP"   // #nosec G101 -- security check ID, not a credential
+	passiveCheckIDJWTCrypto = "PSV-JWTCRYPT" // #nosec G101 -- security check ID, not a credential
 	passiveCheckIDCache     = "PSV-CACHE"    // Cache-Control on sensitive responses
 	passiveCheckIDHost      = "PSV-HOST"     // Host header reflection
 	passiveCheckIDMeta      = "PSV-META"     // robots.txt / security.txt
 	passiveCheckIDArtifact  = "PSV-ARTIFACT" // exposed config/source artifacts
-	passiveCheckIDSrcMap    = "PSV-SRCMAP"   // exposed JavaScript source maps
+	passiveCheckIDSrcMap    = "PSV-SRCMAP"   // #nosec G101 -- security check ID, not a credential
 	passiveCheckIDMixed     = "PSV-MIXED"    // mixed content
 	passiveCheckIDSRI       = "PSV-SRI"      // missing Subresource Integrity
 	passiveCheckIDBanner    = "PSV-BANNER"   // server version banners
@@ -81,11 +81,11 @@ const (
 // OWASP Top 10 (2021) category strings. Same spelling as vuln_scanner.go so a
 // merged report groups them correctly.
 const (
-	passiveCategoryMisconfig = "A05:2021 Security Misconfiguration"
-	passiveCategoryCrypto    = "A02:2021 Cryptographic Failures"
-	passiveCategoryInjection = "A03:2021 Injection"
-	passiveCategoryAuth      = "A07:2021 Identification and Authentication Failures"
-	passiveCategoryIntegrity = "A08:2021 Software and Data Integrity Failures"
+	passiveCategoryMisconfig = "A05:2021 Security Misconfiguration" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveCategoryCrypto    = "A02:2021 Cryptographic Failures" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveCategoryInjection = "A03:2021 Injection" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveCategoryAuth      = "A07:2021 Identification and Authentication Failures" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveCategoryIntegrity = "A08:2021 Software and Data Integrity Failures" // #nosec G101 -- security reference/signature constant, not a credential
 )
 
 // Evidence confidence vocabulary. Vulnerability has no Confidence field, so the
@@ -166,7 +166,7 @@ const (
 	// with a matching <title> to recognise a themed 404.
 	passiveSoft404TolerancePct = 2
 	// passiveHostCanary is the hostname used by the Host header canary probes.
-	passiveHostCanary = "ss-canary.invalid"
+	passiveHostCanary = "ss-canary.invalid" // #nosec G101 -- security reference/signature constant, not a credential
 	// passiveHSTSMinAge is the HSTS max-age considered adequate (1 year).
 	passiveHSTSMinAge = 31536000
 	// passiveSensitiveCacheMaxAge is the Cache-Control max-age above which a
@@ -181,52 +181,52 @@ const (
 // References. Every URL here was fetched and confirmed to return HTTP 200
 // before it was added; do not add an unverified reference.
 const (
-	passiveRefTopA02 = "https://owasp.org/Top10/A02_2021-Cryptographic_Failures/"
-	passiveRefTopA03 = "https://owasp.org/Top10/A03_2021-Injection/"
-	passiveRefTopA05 = "https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"
-	passiveRefTopA07 = "https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/"
-	passiveRefTopA08 = "https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/"
+	passiveRefTopA02 = "https://owasp.org/Top10/A02_2021-Cryptographic_Failures/" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefTopA03 = "https://owasp.org/Top10/A03_2021-Injection/" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefTopA05 = "https://owasp.org/Top10/A05_2021-Security_Misconfiguration/" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefTopA07 = "https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefTopA08 = "https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/" // #nosec G101 -- security reference/signature constant, not a credential
 
-	passiveRefWSTGHeaders   = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/14-Other_HTTP_Security_Header_Misconfigurations"
-	passiveRefWSTGCSP       = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/12-Content_Security_Policy"
-	passiveRefWSTGHSTS      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/07-HTTP_Strict_Transport_Security"
-	passiveRefWSTGFiles     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/03-File_Extensions_Handling_for_Sensitive_Information"
-	passiveRefWSTGBackup    = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/04-Review_Old_Backup_and_Unreferenced_Files_for_Sensitive_Information"
-	passiveRefWSTGCache     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication/06-Browser_Cache_Weaknesses"
-	passiveRefWSTGMetafiles = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage"
-	passiveRefWSTGLEak      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Web_Page_Content_for_Information_Leakage"
-	passiveRefWSTGCookies   = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/02-Cookies_Attributes"
-	passiveRefWSTGJWT       = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/10-JSON_Web_Tokens"
-	passiveRefWSTGHost      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Injection/17-Host_Header_Injection"
-	passiveRefWSTGStack     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/08-Error_Handling/02-Stack_Traces"
-	passiveRefWSTGClickjack = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/09-Clickjacking"
-	passiveRefWSTGResource  = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/06-Client-side_Resource_Manipulation"
+	passiveRefWSTGHeaders   = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/14-Other_HTTP_Security_Header_Misconfigurations" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGCSP       = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/12-Content_Security_Policy" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGHSTS      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/07-HTTP_Strict_Transport_Security" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGFiles     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/03-File_Extensions_Handling_for_Sensitive_Information" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGBackup    = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/04-Review_Old_Backup_and_Unreferenced_Files_for_Sensitive_Information" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGCache     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication/06-Browser_Cache_Weaknesses" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGMetafiles = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGLEak      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Web_Page_Content_for_Information_Leakage" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGCookies   = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/02-Cookies_Attributes" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGJWT       = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management/10-JSON_Web_Tokens" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGHost      = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Injection/17-Host_Header_Injection" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGStack     = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/08-Error_Handling/02-Stack_Traces" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGClickjack = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/09-Clickjacking" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefWSTGResource  = "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side/06-Client-side_Resource_Manipulation" // #nosec G101 -- security reference/signature constant, not a credential
 
-	passiveRefCSHeaders   = "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html"
-	passiveRefCSCSP       = "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html"
-	passiveRefCSHSTS      = "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html"
-	passiveRefCSSession   = "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html"
-	passiveRefCSJWT       = "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html"
-	passiveRefCSClickjack = "https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html"
-	passiveRefCSErrors    = "https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html"
-	passiveRefCSTLS       = "https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html"
-	passiveRefCSWebCache  = "https://cheatsheetseries.owasp.org/cheatsheets/Web_Cache_Security_Cheat_Sheet.html"
-	passiveRefCSDocker    = "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+	passiveRefCSHeaders   = "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSCSP       = "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSHSTS      = "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSSession   = "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSJWT       = "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSClickjack = "https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSErrors    = "https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSTLS       = "https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSWebCache  = "https://cheatsheetseries.owasp.org/cheatsheets/Web_Cache_Security_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefCSDocker    = "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html" // #nosec G101 -- security reference/signature constant, not a credential
 
-	passiveRefMDNCookie = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
-	passiveRefMDNCSP    = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy"
-	passiveRefMDNXFO    = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options"
-	passiveRefMDNHSTS   = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security"
-	passiveRefMDNXCTO   = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options"
-	passiveRefMDNRP     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy"
-	passiveRefMDNPP     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy"
-	passiveRefMDNCC     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control"
-	passiveRefMDNSRI    = "https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity"
+	passiveRefMDNCookie = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNCSP    = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNXFO    = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNHSTS   = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNXCTO   = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNRP     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNPP     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNCC     = "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefMDNSRI    = "https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity" // #nosec G101 -- security reference/signature constant, not a credential
 
-	passiveRefRFC9116 = "https://www.rfc-editor.org/rfc/rfc9116"
-	passiveRefRFC6265 = "https://www.rfc-editor.org/rfc/rfc6265"
-	passiveRefRFC7234 = "https://www.rfc-editor.org/rfc/rfc7234"
-	passiveRefRFC7519 = "https://www.rfc-editor.org/rfc/rfc7519"
+	passiveRefRFC9116 = "https://www.rfc-editor.org/rfc/rfc9116" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefRFC6265 = "https://www.rfc-editor.org/rfc/rfc6265" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefRFC7234 = "https://www.rfc-editor.org/rfc/rfc7234" // #nosec G101 -- security reference/signature constant, not a credential
+	passiveRefRFC7519 = "https://www.rfc-editor.org/rfc/rfc7519" // #nosec G101 -- security reference/signature constant, not a credential
 )
 
 // ---------------------------------------------------------------------------

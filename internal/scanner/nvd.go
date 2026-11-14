@@ -126,7 +126,7 @@ func (n *NVDService) Available() bool {
 		return false
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	// 4xx still means the endpoint is reachable (e.g. rate limited).
 	n.available = resp.StatusCode >= 200 && resp.StatusCode < 500
 	return n.available
@@ -240,7 +240,7 @@ func (n *NVDService) get(vals url.Values) (*nvdEnvelope, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("nvd: unexpected status %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, nvdMaxBodyBytes))

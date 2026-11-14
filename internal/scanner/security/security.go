@@ -45,7 +45,7 @@ var SecurityHeaders = []struct {
 			maxAge := 0
 			re := regexp.MustCompile(`max-age=(\d+)`)
 			if matches := re.FindStringSubmatch(v); len(matches) > 1 {
-				fmt.Sscanf(matches[1], "%d", &maxAge)
+				_, _ = fmt.Sscanf(matches[1], "%d", &maxAge)
 			}
 			if maxAge < 31536000 {
 				return "weak", fmt.Sprintf("HSTS max-age=%d is less than 1 year", maxAge)

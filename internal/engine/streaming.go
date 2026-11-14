@@ -198,7 +198,7 @@ func (sr *StreamingResponse) Close() error {
 	sr.done = true
 
 	if sr.decompressor != nil {
-		sr.decompressor.Close()
+		_ = sr.decompressor.Close()
 	}
 
 	if sr.currentBuf != nil {

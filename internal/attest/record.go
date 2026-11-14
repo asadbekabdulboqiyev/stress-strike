@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -266,7 +267,7 @@ func VerifyReader(r io.Reader, opts SampleLoadOptions) (SampleLoadStats, error) 
 // count over the configured caps are all errors — the loader never returns
 // partial evidence as if it were complete.
 func LoadSamples(path string, opts SampleLoadOptions) (map[string][]Record, SampleLoadStats, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected sample sidecar file
 	if err != nil {
 		return nil, SampleLoadStats{}, err
 	}
@@ -333,11 +334,11 @@ func loadSamples(r io.Reader, opts SampleLoadOptions) (map[string][]Record, Samp
 		seqs[rec.Seq] = struct{}{}
 
 		if prev, ok := lastKey[rec.Worker]; ok {
-			if rec.StartNS < prev[0] || (rec.StartNS == prev[0] && int64(rec.Seq) < prev[1]) {
+			if rec.StartNS < prev[0] || (rec.StartNS == prev[0] && int64(rec.Seq) < prev[1]) { // #nosec G115 -- counters are expected to remain within int64 range
 				stats.UnsortedLines++
 			}
 		}
-		lastKey[rec.Worker] = [2]int64{rec.StartNS, int64(rec.Seq)}
+		lastKey[rec.Worker] = [2]int64{rec.StartNS, int64(rec.Seq)} // #nosec G115 -- counters are expected to remain within int64 range
 
 		if len(out[rec.Worker]) >= opts.MaxSamplesPerWorker {
 			return nil, stats, fmt.Errorf("samples: worker %q exceeds the %d record limit", rec.Worker, opts.MaxSamplesPerWorker)

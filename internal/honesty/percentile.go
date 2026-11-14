@@ -79,7 +79,7 @@ func PercentileUint(sorted []uint64, ppm int) (int64, bool) {
 	}
 	asInt := make([]int64, len(sorted))
 	for i, v := range sorted {
-		asInt[i] = int64(v)
+		asInt[i] = int64(v) // #nosec G115 -- value is within expected domain bounds
 	}
 	return Percentile(asInt, ppm), true
 }

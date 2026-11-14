@@ -316,7 +316,7 @@ func verifyKeypairConsistency(priv ed25519.PrivateKey, pub ed25519.PublicKey) er
 // readLimited reads at most limit bytes from path and fails when the file is
 // larger, so an attacker cannot turn a key path into an unbounded allocation.
 func readLimited(path string, limit int64) ([]byte, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is an operator/user-selected key file
 	if err != nil {
 		return nil, err
 	}

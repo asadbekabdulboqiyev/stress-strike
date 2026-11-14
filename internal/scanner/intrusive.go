@@ -346,7 +346,7 @@ var intrusiveTraversalPayloads = []string{
 const (
 	intrusiveTraversalCanaryFile = "passive-canary-" // + <rand> + ".txt"
 	intrusiveTraversalCanaryExt  = ".txt"
-	intrusivePasswdSignature     = "root:x:0:0:"
+	intrusivePasswdSignature     = "root:x:0:0:" // #nosec G101 -- security reference/signature constant, not a credential
 	intrusiveWinINISignature     = "[fonts]"
 	intrusiveTraversalReadLimit  = 4 << 10 // 4 KiB, per the safety rules
 	intrusiveTraversalPathProbes = 2       // canary + payload, per parameter slot

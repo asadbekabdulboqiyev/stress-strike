@@ -75,7 +75,7 @@ func Check(repoRoot string) error {
 // checkLicenseFile asserts that LICENSE is the Apache-2.0 text and not the
 // deprecated one.
 func checkLicenseFile(repoRoot string) error {
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "LICENSE"))
+	raw, err := os.ReadFile(filepath.Clean(filepath.Join(repoRoot, "LICENSE"))) // #nosec G304 -- LICENSE path is derived from operator-provided repo root
 	if err != nil {
 		return fmt.Errorf("read LICENSE: %w", err)
 	}
@@ -96,7 +96,7 @@ func checkLicenseFile(repoRoot string) error {
 func checkNoDeprecatedLicense(repoRoot string) error {
 	var offenders []string
 	for _, rel := range shippedFiles {
-		raw, err := os.ReadFile(filepath.Join(repoRoot, rel))
+		raw, err := os.ReadFile(filepath.Clean(filepath.Join(repoRoot, rel))) // #nosec G304 -- shipped file path is derived from operator-provided repo root and fixed allowlist entries
 		if err != nil {
 			return fmt.Errorf("read %s: %w", rel, err)
 		}
@@ -119,7 +119,7 @@ func checkNoticeModules(repoRoot string) error {
 		return err
 	}
 
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "NOTICE"))
+	raw, err := os.ReadFile(filepath.Clean(filepath.Join(repoRoot, "NOTICE"))) // #nosec G304 -- NOTICE path is derived from operator-provided repo root
 	if err != nil {
 		return fmt.Errorf("read NOTICE: %w", err)
 	}

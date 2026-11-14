@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/asadbekabdulboqiyev/sift/internal/cliux"
@@ -102,7 +103,7 @@ func resolveJWTInput(tokenFlag, fileFlag string) (string, error) {
 		return tok, nil
 	}
 	if path := strings.TrimSpace(fileFlag); path != "" {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-specified token file
 		if err != nil {
 			return "", fmt.Errorf("read %s: %w", path, err)
 		}

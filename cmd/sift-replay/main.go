@@ -305,7 +305,7 @@ Examples:
 
 	// Export JSON
 	if *outputJSON != "" {
-		if err := os.MkdirAll(*reportDir, 0755); err != nil {
+		if err := os.MkdirAll(*reportDir, 0o750); err != nil {
 			log.Printf("Failed to create report directory: %v", err)
 		}
 		jsonPath := *outputJSON
@@ -321,21 +321,21 @@ Examples:
 
 	// Export CSV
 	if *outputCSV != "" {
-		if err := os.MkdirAll(*reportDir, 0755); err != nil {
+		if err := os.MkdirAll(*reportDir, 0o750); err != nil {
 			log.Printf("Failed to create report directory: %v", err)
 		}
 		csvPath := *outputCSV
 		if !strings.Contains(csvPath, "/") {
 			csvPath = filepath.Join(*reportDir, csvPath)
 		}
-		f, err := os.Create(csvPath)
+		f, err := os.Create(filepath.Clean(csvPath)) // #nosec G304 -- path is an operator-selected output file
 		if err != nil {
 			log.Printf("Failed to create CSV: %v", err)
 		} else {
-			defer f.Close()
-			f.WriteString("index,latency_ms,status\n")
+			defer func() { _ = f.Close() }()
+			_, _ = f.WriteString("index,latency_ms,status\n")
 			for i, lat := range result.Latencies {
-				f.WriteString(fmt.Sprintf("%d,%.2f,ok\n", i+1, float64(lat.Microseconds())/1000.0))
+				_, _ = f.WriteString(fmt.Sprintf("%d,%.2f,ok\n", i+1, float64(lat.Microseconds())/1000.0))
 			}
 			fmt.Printf("  CSV report: %s\n", csvPath)
 		}

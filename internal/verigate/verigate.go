@@ -566,7 +566,7 @@ func (g *VeriGate) makePassCookie(ip string, secure bool) *http.Cookie {
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(g.opts.ChallengeTTL.Seconds()),
-	}
+	} // #nosec G124 -- Secure is set from the request TLS state; HttpOnly and SameSite are always enforced.
 }
 
 // hasValidCookie verifies the challenge cookie: it must be HMAC-signed, not

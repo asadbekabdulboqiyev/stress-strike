@@ -276,6 +276,10 @@ func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, selfMetrics
 
 	runCtx, cancel := context.WithCancel(context.Background())
 	runMu.Lock()
+	// Cancel any previous run context before replacing it.
+	if *runCancel != nil {
+		(*runCancel)()
+	}
 	*runCancel = cancel
 	runMu.Unlock()
 
@@ -294,6 +298,7 @@ func startRun(bridge *dashboard.EngineBridge, srv *dashboard.Server, selfMetrics
 			opts.Samples = coll
 		}
 		tel, runErr := eng.Run(runCtx, opts)
+		cancel() // release context resources
 		close(stopStream)
 		<-streamDone
 
@@ -357,12 +362,16 @@ func streamTelemetry(bridge *dashboard.EngineBridge, eng *engine.Engine, selfMet
 			if tel := eng.Telemetry(); tel != nil {
 				bridge.PushSnapshot(bridge.SnapshotFromTelemetry(tel))
 				if selfMetrics != nil {
-					snap := tel.Overall.Latency.Snapshot()
+					snap := tel.Overall.Latency.Snapshot() // #nosec G115 -- latency/duration values are bounded in practice
 					if d := snap.Count - lastCount; d > 0 {
 						// d > 0 is guaranteed by the branch condition, so the
 						// division below is safe.
 						selfMetrics.IncRequestsN(d)
-						selfMetrics.ObserveLatency(time.Duration((snap.Sum - lastSum) / d)) //nolint:gosec // latency in ns fits int64 for any realistic run
+						avg := (snap.Sum - lastSum) / d
+						if avg > uint64(^uint64(0)>>1) {
+							avg = uint64(^uint64(0) >> 1)
+						}
+						selfMetrics.ObserveLatency(time.Duration(int64(avg))) // #nosec G115 -- average latency ns capped to int64 range
 					}
 					if d := tel.TotalErrors() - lastErr; d > 0 {
 						selfMetrics.IncErrorsN(d)

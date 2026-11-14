@@ -163,9 +163,9 @@ func ScheduleAccuracyPPM(plannedMilli, achievedMilli int64) int64 {
 	// achievedMilli is negative.
 	var diff uint64
 	if achievedMilli >= plannedMilli {
-		diff = uint64(achievedMilli) - uint64(plannedMilli)
+		diff = uint64(achievedMilli) - uint64(plannedMilli) // #nosec G115 -- values are non-negative and within domain bounds
 	} else {
-		diff = uint64(plannedMilli) - uint64(achievedMilli)
+		diff = uint64(plannedMilli) - uint64(achievedMilli) // #nosec G115 -- values are non-negative and within domain bounds
 	}
 	deviation, err := mulDivRound(diff, uint64(ppmScale), uint64(plannedMilli))
 	if err != nil || deviation >= uint64(ppmScale) {

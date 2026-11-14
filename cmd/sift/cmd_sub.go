@@ -35,7 +35,7 @@ func runSubCommand(name string, args []string) {
 
 	if _, err := os.Stat(bin); err == nil {
 		// Found standalone binary — run it directly
-		cmd := exec.Command(bin, args...)
+		cmd := exec.Command(bin, args...) // #nosec G204 G702 -- subcommand name comes from trusted internal dispatch and bin is a sibling executable path.
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -47,7 +47,7 @@ func runSubCommand(name string, args []string) {
 
 	// Fallback: run via `go run`
 	goArgs := append([]string{"run", "./cmd/" + name}, args...)
-	cmd := exec.Command("go", goArgs...)
+	cmd := exec.Command("go", goArgs...) // #nosec G204 G702 -- subcommand name comes from trusted internal dispatch; args are forwarded CLI arguments.
 	cmd.Dir = findProjectRoot()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

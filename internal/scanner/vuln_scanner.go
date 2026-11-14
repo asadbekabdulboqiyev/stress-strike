@@ -265,7 +265,7 @@ func (vs *VulnScanner) scanSQLInjection() {
 				continue
 			}
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			bodyStr := string(body)
 
 			found := false
@@ -345,7 +345,7 @@ func (vs *VulnScanner) scanXSS() {
 				continue
 			}
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			bodyStr := string(body)
 
 			if strings.Contains(bodyStr, payload) {
@@ -415,7 +415,7 @@ func (vs *VulnScanner) scanDirectoryTraversal() {
 				continue
 			}
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			bodyStr := string(body)
 
 			if strings.Contains(bodyStr, p.signature) {
@@ -474,7 +474,7 @@ func (vs *VulnScanner) scanOpenRedirect() {
 			if err != nil {
 				continue
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			location := resp.Header.Get("Location")
 			if location == "" {
@@ -529,7 +529,7 @@ func (vs *VulnScanner) scanSecurityHeaders() {
 	if err != nil {
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	atomic.AddInt64(&vs.Results.URLsChecked, 1)
 
 	type headerCheck struct {
@@ -825,7 +825,7 @@ func (vs *VulnScanner) scanInfoDisclosure() {
 			continue
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		bodyStr := string(body)
 
 		if resp.StatusCode == 200 {
@@ -908,7 +908,7 @@ func (vs *VulnScanner) scanDefaultCredentials() {
 				continue
 			}
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			bodyStr := string(body)
 
 			// Check for successful login indicators
@@ -990,7 +990,7 @@ func (vs *VulnScanner) scanAPISecurity() {
 			continue
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		// Check for excessive data exposure
 		vs.checkSensitiveExposure(u.String(), body)
@@ -1009,12 +1009,12 @@ func (vs *VulnScanner) scanAPISecurity() {
 				continue
 			}
 			baselineBody, _ := io.ReadAll(io.LimitReader(baselineResp.Body, 1<<20))
-			baselineResp.Body.Close()
+			_ = baselineResp.Body.Close()
 
 			massResp, err := vs.postForm(u.String(), extraParams, nil)
 			if err == nil {
 				massBody, _ := io.ReadAll(io.LimitReader(massResp.Body, 1<<20))
-				massResp.Body.Close()
+				_ = massResp.Body.Close()
 				if massResp.StatusCode == 200 && len(massBody) > 0 &&
 					(massResp.StatusCode != baselineResp.StatusCode || !strings.EqualFold(string(massBody), string(baselineBody))) {
 					vs.addFinding(Vulnerability{
@@ -1057,14 +1057,14 @@ func (vs *VulnScanner) scanAPISecurity() {
 			continue
 		}
 		body1, _ := io.ReadAll(io.LimitReader(resp1.Body, 1<<20))
-		resp1.Body.Close()
+		_ = resp1.Body.Close()
 
 		resp2, err2 := vs.get(u2.String())
 		if err2 != nil {
 			continue
 		}
 		body2, _ := io.ReadAll(io.LimitReader(resp2.Body, 1<<20))
-		resp2.Body.Close()
+		_ = resp2.Body.Close()
 
 		if resp1.StatusCode == 200 && resp2.StatusCode == 200 && len(body1) > 0 && len(body2) > 0 {
 			vs.checkSensitiveExposure(u1.String(), body1)
@@ -1098,7 +1098,7 @@ func (vs *VulnScanner) scanAPISecurity() {
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != 429 {
 			rateLimitSuccess++
 		}
@@ -1166,7 +1166,7 @@ func (vs *VulnScanner) scanCookies() {
 	if err != nil {
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	atomic.AddInt64(&vs.Results.URLsChecked, 1)
 
 	cookies := resp.Cookies()
@@ -1291,7 +1291,7 @@ func (vs *VulnScanner) scanCORS() {
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		acao := resp.Header.Get("Access-Control-Allow-Origin")
 		acac := resp.Header.Get("Access-Control-Allow-Credentials")

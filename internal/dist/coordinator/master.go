@@ -406,7 +406,7 @@ func (m *Master) Connect(ctx context.Context, workers []string) ([]string, error
 		cancel()
 		if err != nil {
 			m.cfg.Logf("worker %s ping failed: %v", addr, err)
-			conn.Close()
+			_ = conn.Close()
 			continue
 		}
 		m.mu.Lock()
@@ -467,7 +467,7 @@ func (m *Master) StartRun(ctx context.Context, runID string) error {
 					RunId:        runID,
 					Scenario:     ScenarioToProto(workerScenario),
 					WorkerIndex:  int32(i),
-					TotalWorkers: int32(total),
+					TotalWorkers: int32(total), // #nosec G115 -- configuration/protocol values are within expected int32 range
 					MasterAddr:   m.cfg.ListenAddr,
 				},
 			},
@@ -713,7 +713,7 @@ func (m *Master) Close() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, conn := range m.conns {
-		conn.Close()
+		_ = conn.Close()
 	}
 	m.conns = make(map[string]*grpc.ClientConn)
 	m.clients = make(map[string]distproto.MasterWorkerClient)

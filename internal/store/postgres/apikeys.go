@@ -10,7 +10,7 @@ import (
 
 type apiKeyStore struct{ db *DB }
 
-const apiKeyCols = `id, tenant_id, user_id, key_hash, name, expires_at, revoked_at, created_at` //nolint:gosec // SQL column list, not a credential
+const apiKeyCols = `id, tenant_id, user_id, key_hash, name, expires_at, revoked_at, created_at` // #nosec G101 -- SQL column list, not a credential
 
 // Create inserts an API key. key_hash is UNIQUE, so re-issuing the same hash
 // yields ErrConflict; an unknown tenant/user yields ErrNotFound.

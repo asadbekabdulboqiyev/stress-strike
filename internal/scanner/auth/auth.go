@@ -366,7 +366,7 @@ func (r *reauthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		retry.AddCookie(ck)
 	}
 	if retry.Body != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if retry.GetBody == nil {
 			return nil, errors.New("auth: cannot replay request body for re-authenticated retry")
 		}

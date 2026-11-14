@@ -216,7 +216,7 @@ func (r Report) Render(w io.Writer) {
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				s.Name, formatCount(s.Requests), errDisplay, s.Avg, s.P50, s.P95, s.P99, s.Max)
 		}
-		tw.Flush()
+		_ = tw.Flush()
 		fmt.Fprintln(w)
 	}
 
@@ -289,7 +289,7 @@ func (r Report) Render(w io.Writer) {
 }
 
 func (r Report) SaveJSON(dir string) (string, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}
 	path := uniquePath(dir, reportFilename(r.Name, "json"))
@@ -304,7 +304,7 @@ func (r Report) SaveJSON(dir string) (string, error) {
 }
 
 func (r Report) SaveTXT(dir string) (string, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}
 	path := uniquePath(dir, reportFilename(r.Name, "txt"))
@@ -322,7 +322,7 @@ func (r Report) SaveCSV(dir string) (string, error) {
 	if len(r.Timeline) == 0 {
 		return "", nil
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}
 	path := uniquePath(dir, reportFilename(r.Name, "csv"))
@@ -343,7 +343,7 @@ func (r Report) SaveCSV(dir string) (string, error) {
 
 // LoadReport reads a previously saved JSON report (used by --compare).
 func LoadReport(path string) (*Report, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected report file
 	if err != nil {
 		return nil, err
 	}

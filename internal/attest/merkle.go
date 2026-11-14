@@ -100,7 +100,7 @@ func newHasher() *hasher { return &hasher{h: sha256.New()} }
 func (s *hasher) leaf(index int, data []byte) [hashSize]byte {
 	var prefix [9]byte
 	prefix[0] = leafDomain
-	binary.BigEndian.PutUint64(prefix[1:], uint64(index))
+	binary.BigEndian.PutUint64(prefix[1:], uint64(index)) // #nosec G115 -- index/size values are within expected range
 	s.h.Reset()
 	s.h.Write(prefix[:])
 	s.h.Write(data)

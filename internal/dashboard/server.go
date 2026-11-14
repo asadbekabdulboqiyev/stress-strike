@@ -602,7 +602,7 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			return
 		}
-		w.Write(dashboardCSS)
+		_, _ = w.Write(dashboardCSS)
 	case path == "/app.js":
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -615,7 +615,7 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			return
 		}
-		w.Write(dashboardJS)
+		_, _ = w.Write(dashboardJS)
 	case path == "/api" || strings.HasPrefix(path, "/api/"):
 		// An unknown API path must not fall through to the HTML shell. A client
 		// that mistypes an endpoint would otherwise get 200 and a page of
@@ -665,7 +665,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		delete(s.clients, conn)
 		s.mu.Unlock()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	// Bound the frame size so a malicious peer cannot stream an unbounded
@@ -700,13 +700,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"history": s.history,
 	})
 	s.mu.RUnlock()
-	conn.WriteMessage(websocket.TextMessage, initMsg)
+	_ = conn.WriteMessage(websocket.TextMessage, initMsg)
 
 	// Listen for commands
 	for {
 		// A stalled peer (partial frame, no pongs) is dropped after the
 		// idle timeout; a live peer refreshes the deadline on every read.
-		conn.SetReadDeadline(time.Now().Add(wsIdleTimeout))
+		_ = conn.SetReadDeadline(time.Now().Add(wsIdleTimeout))
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			return
@@ -728,21 +728,21 @@ func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.snapshot)
+	_ = json.NewEncoder(w).Encode(s.snapshot)
 }
 
 func (s *Server) handleRunAPI(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.runState)
+	_ = json.NewEncoder(w).Encode(s.runState)
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.history)
+	_ = json.NewEncoder(w).Encode(s.history)
 }
 
 func (s *Server) handleStartRun(w http.ResponseWriter, r *http.Request) {
@@ -783,7 +783,7 @@ func (s *Server) handleStartRun(w http.ResponseWriter, r *http.Request) {
 		s.onCommand("start", map[string]interface{}{"config": asMap})
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "started"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "started"})
 }
 
 func (s *Server) handleStopRun(w http.ResponseWriter, r *http.Request) {
@@ -801,7 +801,7 @@ func (s *Server) handleStopRun(w http.ResponseWriter, r *http.Request) {
 		s.onCommand("stop", nil)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "stopped"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "stopped"})
 }
 
 // --- Demo store control plane ------------------------------------------------
@@ -810,7 +810,7 @@ func (s *Server) handleStopRun(w http.ResponseWriter, r *http.Request) {
 // (and whether this dashboard spawned it).
 func (s *Server) handleDemoStoreStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.store.Status())
+	_ = json.NewEncoder(w).Encode(s.store.Status())
 }
 
 // handleDemoStoreStart launches the VoltStore demo (VeriGate protection ON)
@@ -830,11 +830,11 @@ func (s *Server) handleDemoStoreStart(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":              true,
 		"url":             url,
 		"already_running": alreadyRunning,
@@ -856,11 +856,11 @@ func (s *Server) handleDemoStoreStop(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.Stop(); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 // --- Security helpers -------------------------------------------------------
@@ -974,7 +974,7 @@ func (s *Server) broadcast() {
 	if len(dead) > 0 {
 		s.mu.Lock()
 		for _, c := range dead {
-			c.Close()
+			_ = c.Close()
 			delete(s.clients, c)
 		}
 		s.mu.Unlock()
@@ -1008,7 +1008,7 @@ func (s *Server) broadcastRunState() {
 	if len(dead) > 0 {
 		s.mu.Lock()
 		for _, c := range dead {
-			c.Close()
+			_ = c.Close()
 			delete(s.clients, c)
 		}
 		s.mu.Unlock()
@@ -1106,7 +1106,7 @@ func (s *Server) handleAttestationGet(w http.ResponseWriter, r *http.Request) {
 	info := s.attestInfo
 	s.attestMu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 func (s *Server) handleAttestationDownload(w http.ResponseWriter, r *http.Request) {
@@ -1167,7 +1167,7 @@ func (s *Server) handleAttestationVerify(w http.ResponseWriter, r *http.Request)
 	}
 	res := verifyAttestation(info.BundlePath, info.SamplesPath)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // handleAttestationVerifyUpload verifies an attestation bundle the operator
@@ -1199,7 +1199,7 @@ func (s *Server) handleAttestationVerifyUpload(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"valid":  false,
 			"reason": fmt.Sprintf("not an attestation bundle: %v", err),
 		})
@@ -1208,7 +1208,7 @@ func (s *Server) handleAttestationVerifyUpload(w http.ResponseWriter, r *http.Re
 
 	res := attest.Verify(bundle, nil)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(verifyResultMap(res))
+	_ = json.NewEncoder(w).Encode(verifyResultMap(res))
 }
 
 func getDashboardDataDir() (string, error) {

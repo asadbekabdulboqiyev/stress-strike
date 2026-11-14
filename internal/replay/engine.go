@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -439,7 +440,7 @@ func (re *ReplayEngine) Run() (*ReplayResult, error) {
 
 // ExportJSON writes results to JSON file
 func (re *ReplayResult) ExportJSONToFile(path string) error {
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected output file
 	if err != nil {
 		return err
 	}

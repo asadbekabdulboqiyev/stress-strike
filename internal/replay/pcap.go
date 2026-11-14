@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -128,7 +129,7 @@ func sniffCaptureFormat(r io.Reader) (captureFormat, error) {
 // github.com/google/gopacket/pcap package, so the replay tool compiles and
 // runs with CGO_ENABLED=0 (e.g. on machines without a working C toolchain).
 func (p *PCAPParser) ParseFile(path string) (*Capture, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected capture file
 	if err != nil {
 		return nil, fmt.Errorf("open pcap: %w", err)
 	}
@@ -350,9 +351,9 @@ func parseHTTPStream(src io.Reader, emit func(*Packet) bool) streamParseStats {
 		if len(body) == int(maxStreamBodyBytes) {
 			// Truncated (or exactly at the cap): drain the remainder so the
 			// parser stays aligned with the stream for the next request.
-			io.Copy(io.Discard, req.Body)
+			_, _ = io.Copy(io.Discard, req.Body)
 		}
-		req.Body.Close()
+		_ = req.Body.Close()
 
 		url := ""
 		if req.URL != nil {
@@ -383,7 +384,7 @@ type streamParseStats struct {
 // --- HAR Parser -------------------------------------------------------------
 
 func ParseHAR(path string) (*Capture, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path)) // #nosec G304 -- path is an operator-selected HAR capture file
 	if err != nil {
 		return nil, fmt.Errorf("open har: %w", err)
 	}

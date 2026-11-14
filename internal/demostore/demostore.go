@@ -91,7 +91,7 @@ func (d *DemoStore) Running() bool {
 	if err != nil {
 		return false
 	}
-	conn.Close()
+	_ = conn.Close()
 	return true
 }
 
@@ -212,8 +212,8 @@ func (d *DemoStore) Start() (string, bool, error) {
 		return "", false, err
 	}
 	args := append(append([]string{}, runArgs...), d.extra...)
-	cmd := exec.Command(bin, args...)
-	spawnProcessGroup(cmd) // go run fallback: kill reaps the whole tree
+	cmd := exec.Command(bin, args...) // #nosec G204 -- demo store binary path is resolved from trusted local locations by locate(); args are controlled demo options.
+	spawnProcessGroup(cmd)             // go run fallback: kill reaps the whole tree
 	cmd.Stdout = &prefixedLineWriter{prefix: "[demo-store] ", logger: d.logger}
 	cmd.Stderr = &prefixedLineWriter{prefix: "[demo-store] ", logger: d.logger}
 	if err := cmd.Start(); err != nil {

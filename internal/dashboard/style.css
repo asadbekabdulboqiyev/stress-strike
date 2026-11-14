@@ -966,6 +966,65 @@ kbd {
   fill: currentColor;
   vertical-align: -0.15em;
 }
+
+/* ----- TOOLTIP (tp-46: Top · No Arrow) ----- */
+.tip {
+  /* Theme tokens — override these to recolour the tooltip */
+  --tip-bg: #0F191E;     /* bubble + arrow */
+  --tip-fg: #E2F1F2;     /* bubble text */
+  --tip-radius: 6px;
+  --tip-gap: 8px;        /* distance from the trigger */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border: 1px solid var(--tip-bg);
+  border-radius: var(--tip-radius);
+  background: transparent;
+  color: var(--tip-bg);
+  cursor: pointer;
+}
+/* The bubble */
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 20;
+  padding: 6px 10px;
+  border-radius: var(--tip-radius);
+  background: var(--tip-bg);
+  color: var(--tip-fg);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* The arrow — a single coloured border edge on a transparent box */
+.tip::before {
+  content: "";
+  position: absolute;
+  z-index: 20;
+  border: 7px solid transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Reveal on hover or keyboard focus */
+.tip:hover::after, .tip:focus-visible::after,
+.tip:hover::before, .tip:focus-visible::before { opacity: 1; }
+
+.tp-46::before { display: none; }
+.tp-46::after { left: 50%; bottom: calc(100% + var(--tip-gap)); transform: translate(-50%, 6px); }
+.tp-46:hover::after, .tp-46:focus-visible::after { transform: translate(-50%, 0); }
 .btn .ico {
   width: 14px;
   height: 14px;

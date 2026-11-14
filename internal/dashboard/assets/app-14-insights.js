@@ -304,11 +304,20 @@
     var errPct = total > 0 ? (errs / total * 100) : 0;
     function msToNs(v) { v = Number(v || 0); return Math.round(v * 1e6); }
     var p50 = msToNs(res.p50_latency);
-    var p95 = msToNs(res.p95_latency || res.p50_latency);
-    var p99 = msToNs(res.p99_latency || res.p95_latency || res.p50_latency);
-    var avg = msToNs(res.avg_latency || res.p50_latency);
-    var max = msToNs(res.max_latency || res.p99_latency || res.p95_latency || res.p50_latency);
-    if (p50 <= 0) p50 = 1e6; if (p95 < p50) p95 = p50; if (p99 < p95) p99 = p95; if (avg <= 0) avg = p50; if (max < p99) max = p99;
+    var p95 = msToNs(res.p95_latency);
+    var p99 = msToNs(res.p99_latency);
+    var avg = msToNs(res.avg_latency);
+    var min = msToNs(res.min_latency || res.p50_latency);
+    var max = msToNs(res.max_latency);
+    if (!(total > 0) || !(p50 > 0) || !(p95 > 0) || !(p99 > 0)) {
+      throw new Error('latest run has no usable latency percentile evidence (need positive p50/p95/p99 and completed requests). Runs with all errors/zero-latency samples cannot be modeled; use a successful run report for Digital Twin fit.');
+    }
+    if (!(avg > 0)) avg = p50;
+    if (!(min > 0)) min = p50;
+    if (!(max > 0)) max = p99;
+    if (p95 < p50) p95 = p50;
+    if (p99 < p95) p99 = p95;
+    if (max < p99) max = p99;
     var ts = h.timestamp ? String(h.timestamp) : new Date().toISOString();
     return {
       name: h.id || cfg.target_url || 'run',
@@ -332,7 +341,7 @@
         errors: errs,
         status_codes: res.status_codes || {},
         error_types: {},
-        min: p50,
+        min: min,
         avg: avg,
         max: max,
         p50: p50,

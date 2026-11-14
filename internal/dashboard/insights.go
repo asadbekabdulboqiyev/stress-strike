@@ -469,8 +469,15 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 
 	// Write manifest into temp dir as bounty-package.json for consistency.
 	manifestPath := filepath.Join(tmpDir, "bounty-package.json")
-	mb, _ := json.MarshalIndent(m, "", "  ")
-	_ = os.WriteFile(manifestPath, mb, 0o600)
+	mb, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "failed to encode manifest: " + err.Error()})
+		return
+	}
+	if err := os.WriteFile(manifestPath, mb, 0o600); err != nil {
+		insightsJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "failed to write manifest: " + err.Error()})
+		return
+	}
 
 	// Ensure uploaded files are available at manifest-declared artifact paths.
 	// Browsers often provide basenames only; copy matched uploads to expected paths.

@@ -262,6 +262,12 @@ func (s *Server) handleInsightsXRayCorrelate(w http.ResponseWriter, r *http.Requ
 		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "samples and signals are required"})
 		return
 	}
+	const maxCorrelateSamples = 50000
+	const maxCorrelateSignals = 50000
+	if len(req.Samples) > maxCorrelateSamples || len(req.Signals) > maxCorrelateSignals {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "too many samples or signals"})
+		return
+	}
 
 	opts := hostxray.CorrelateOptions{}
 	if strings.TrimSpace(req.Window) != "" {

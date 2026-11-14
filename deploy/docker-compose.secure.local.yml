@@ -1,0 +1,16 @@
+# Local override for secure compose stack validation (no public DNS/ACME).
+# Exposes Caddy on localhost:8088 (HTTP) for quick end-to-end checks.
+services:
+  caddy:
+    ports:
+      - "127.0.0.1:8088:8088"
+    volumes:
+      - ./reverse-proxy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3

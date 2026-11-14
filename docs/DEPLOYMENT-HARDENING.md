@@ -16,6 +16,7 @@ This document provides practical guidance for deploying Sift securely in externa
 - `deploy/reverse-proxy/Caddyfile` — Caddy reverse proxy with automatic HTTPS (Let's Encrypt) and security headers.
 - `deploy/reverse-proxy/nginx.conf` — nginx TLS termination template (WebSocket-aware) for use with certbot/manual certs.
 - `deploy/docker-compose.secure.yml` — compose overlay that places Caddy in front of the dashboard and removes direct dashboard host port publishing.
+- `deploy/reverse-proxy/Caddyfile.local` + `deploy/docker-compose.secure.local.yml` — localhost validation overlay (no public DNS/ACME) for testing proxy wiring.
 - `deploy/charts/sift/templates/ingress.yaml` + `deploy/charts/sift/values.yaml` (`ingress.*`) — optional Kubernetes Ingress template for TLS-terminated HTTP exposure.
 
 ### 1.3 Docker Compose (HTTPS via Caddy)
@@ -31,6 +32,14 @@ This document provides practical guidance for deploying Sift securely in externa
    curl -I https://dashboard.example.com/healthz
    ```
 6. Keep dashboard credentials/tokens configured and rotate secrets regularly.
+
+### 1.3.1 Local validation (no public DNS)
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.secure.yml \
+  -f deploy/docker-compose.secure.local.yml up -d --build
+curl -I http://127.0.0.1:8088/
+```
+
 
 **Notes**
 - If the dashboard must bind non-loopback inside containers, use explicit auth configuration (tokens/credentials) per Sift dashboard behavior; do not rely on `-insecure` for public exposure.

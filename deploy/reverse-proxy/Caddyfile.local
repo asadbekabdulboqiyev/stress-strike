@@ -1,0 +1,29 @@
+# Local/test Caddy config (no public domain / no ACME required).
+# Useful for validating reverse-proxy wiring on a developer machine.
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.secure.yml \
+#     -f deploy/docker-compose.secure.local.yml up -d --build
+#
+# Then open: https://localhost  (you may need to trust Caddy's local CA inside
+# the container context is not applicable; for host browser access prefer the
+# HTTP variant below if certificate trust is inconvenient.)
+
+{
+	admin off
+}
+
+# HTTP-only local validation (recommended for quick local checks)
+:8088 {
+	encode zstd gzip
+	reverse_proxy dashboard:8888
+	log {
+		output stdout
+	}
+}
+
+# HTTPS with Caddy internal CA (for environments that trust the CA)
+# localhost {
+#   tls internal
+#   reverse_proxy dashboard:8888
+# }

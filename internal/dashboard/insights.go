@@ -448,9 +448,7 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 	defer os.RemoveAll(tmpDir)
 
 	// Persist all uploaded files into temp dir using sanitized relative paths.
-	// Prefer explicit "path" values from "artifact_path" parallel fields? Simpler:
-	// use each file part's filename as its relative path.
-	saved := map[string]string{}
+	saved := map[string]string{} // rel path as saved -> absolute path
 	for _, fhs := range r.MultipartForm.File {
 		for _, fh := range fhs {
 			if fh == nil {
@@ -460,7 +458,6 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 			if rel == "" {
 				continue
 			}
-			// Do not overwrite manifest content source unless explicitly an artifact path.
 			dst := filepath.Join(tmpDir, filepath.FromSlash(rel))
 			if err := saveMultipartFile(fh, tmpDir, dst); err != nil {
 				insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "save " + rel + ": " + err.Error()})
@@ -475,6 +472,34 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 	mb, _ := json.MarshalIndent(m, "", "  ")
 	_ = os.WriteFile(manifestPath, mb, 0o600)
 
+	// Ensure uploaded files are available at manifest-declared artifact paths.
+	// Browsers often provide basenames only; copy matched uploads to expected paths.
+	for _, art := range m.Artifacts {
+		want := filepath.ToSlash(art.Path)
+		wantAbs := filepath.Join(tmpDir, filepath.FromSlash(want))
+		if _, err := os.Stat(wantAbs); err == nil {
+			saved[want] = wantAbs
+			continue
+		}
+		var src string
+		if pth, ok := saved[want]; ok {
+			src = pth
+		} else {
+			for rel, pth := range saved {
+				if filepath.Base(rel) == filepath.Base(want) || rel == filepath.Base(want) {
+					src = pth
+					break
+				}
+			}
+		}
+		if src == "" {
+			continue
+		}
+		if err := copyFileTo(src, tmpDir, wantAbs); err == nil {
+			saved[want] = wantAbs
+		}
+	}
+
 	opts := bounty.VerifyOptions{
 		Target:       strings.TrimSpace(r.FormValue("target")),
 		PublicKeyHex: strings.TrimSpace(r.FormValue("key")),
@@ -486,47 +511,38 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 		}
 	}
 
-	// Auto-detect bundle/samples paths from uploaded artifacts matching manifest roles.
+	// Auto-detect bundle/samples paths from manifest artifact roles.
 	for _, art := range m.Artifacts {
-		dst, ok := saved[filepath.ToSlash(art.Path)]
-		if !ok {
-			// try basename match
-			for rel, p := range saved {
-				if filepath.Base(rel) == filepath.Base(art.Path) || rel == filepath.Base(art.Path) {
-					dst, ok = p, true
-					break
-				}
-			}
-		}
+		pth, ok := saved[filepath.ToSlash(art.Path)]
 		if !ok {
 			continue
 		}
 		switch art.Role {
 		case bounty.ArtifactBundle:
 			if opts.BundlePath == "" {
-				opts.BundlePath = dst
+				opts.BundlePath = pth
 			}
 		case bounty.ArtifactSamples:
 			if opts.SamplesPath == "" {
-				opts.SamplesPath = dst
+				opts.SamplesPath = pth
 			}
 		}
 	}
 	// Allow explicit upload field names "bundle"/"samples".
 	if opts.BundlePath == "" {
-		if p, ok := saved["bundle"]; ok {
-			opts.BundlePath = p
+		if pth, ok := saved["bundle"]; ok {
+			opts.BundlePath = pth
 		}
-		if p, ok := saved["bundle.json"]; ok && opts.BundlePath == "" {
-			opts.BundlePath = p
+		if pth, ok := saved["bundle.json"]; ok && opts.BundlePath == "" {
+			opts.BundlePath = pth
 		}
 	}
 	if opts.SamplesPath == "" {
-		if p, ok := saved["samples"]; ok {
-			opts.SamplesPath = p
+		if pth, ok := saved["samples"]; ok {
+			opts.SamplesPath = pth
 		}
-		if p, ok := saved["samples.jsonl"]; ok && opts.SamplesPath == "" {
-			opts.SamplesPath = p
+		if pth, ok := saved["samples.jsonl"]; ok && opts.SamplesPath == "" {
+			opts.SamplesPath = pth
 		}
 	}
 
@@ -546,6 +562,30 @@ func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http
 		"uploaded_artifacts": len(saved),
 		"note":               "Full package verification executed on uploaded artifacts. Evidence integrity does not by itself establish finding validity; human triage determines outcomes.",
 	})
+}
+
+func copyFileTo(src, baseDir, dst string) error {
+	base := filepath.Clean(baseDir)
+	cleanDst := filepath.Clean(dst)
+	rel, err := filepath.Rel(base, cleanDst)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes temp directory")
+	}
+	if err := os.MkdirAll(filepath.Dir(cleanDst), 0o700); err != nil {
+		return err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(cleanDst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, io.LimitReader(in, 16<<20))
+	return err
 }
 
 func readUploadedText(r *http.Request, field string) string {

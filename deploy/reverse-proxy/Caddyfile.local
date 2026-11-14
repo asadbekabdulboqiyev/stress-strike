@@ -16,7 +16,7 @@
 # HTTP-only local validation (recommended for quick local checks)
 :8088 {
 	encode zstd gzip
-	reverse_proxy dashboard:8888
+	reverse_proxy host.docker.internal:8888
 	log {
 		output stdout
 	}

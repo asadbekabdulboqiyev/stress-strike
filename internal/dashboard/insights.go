@@ -333,10 +333,15 @@ func (s *Server) handleInsightsBountyValidate(w http.ResponseWriter, r *http.Req
 	checks = append(checks, bounty.Check{Name: "package_digest", Status: bounty.StatusPass, Detail: "canonical digest matches"})
 
 	wantID := want
-	if len(wantID) > 16 {
-		wantID = wantID[:16]
+	const bountyIDPrefix = "bty_"
+	const bountyIDWidth = 26
+	if len(wantID) >= bountyIDWidth {
+		wantID = bountyIDPrefix + wantID[:bountyIDWidth]
+	} else {
+		wantID = bountyIDPrefix + wantID
 	}
-	if strings.TrimSpace(m.PackageID) != "" && !strings.EqualFold(strings.TrimSpace(m.PackageID), wantID) && !strings.EqualFold(strings.TrimSpace(m.PackageID), want) {
+	pid := strings.TrimSpace(m.PackageID)
+	if pid != "" && !strings.EqualFold(pid, wantID) && !strings.EqualFold(pid, want) && !strings.EqualFold(pid, "bty_"+want) {
 		checks = append(checks, bounty.Check{Name: "package_id", Status: bounty.StatusFail, Detail: "package id does not match digest"})
 		insightsJSON(w, http.StatusOK, map[string]any{"ok": true, "verdict": bounty.VerdictFailed, "checks": checks, "reasons": []string{"package id mismatch"}})
 		return

@@ -160,91 +160,102 @@
 
 
 
-  <!-- Controls -->
-  <form class="controls" id="controlsForm" novalidate autocomplete="off">
-    <div class="field field-url">
-      <label class="field-label" for="inpUrl">Target URL</label>
-      <input id="inpUrl" placeholder="e.g. http://127.0.0.1:8080/health" value="http://localhost:8080/health" title="Full URL of the endpoint to load test (Enter also starts the run)" spellcheck="false" autocomplete="off" aria-describedby="urlError">
-      <p class="field-error" id="urlError" role="alert"></p>
+  <!-- Run console -->
+  <section class="run-console" aria-label="Run configuration and live status">
+    <div class="run-console-head">
+      <div>
+        <p class="run-console-kicker">Run console</p>
+        <h2 class="run-console-title">Configure and monitor a load test</h2>
+      </div>
     </div>
-    <div class="field field-num">
-      <label class="field-label" for="inpUsers">Users</label>
-      <input id="inpUsers" type="number" value="10" min="1" max="100000" title="Number of virtual users (concurrent connections)" aria-describedby="hintUsers">
-      <input class="slider" id="rngUsers" type="range" min="1" max="500" step="1" value="10" title="Drag to adjust the number of virtual users" aria-label="Virtual users slider">
-      <span class="field-hint" id="hintUsers">10 users</span>
-    </div>
-    <div class="field field-num">
-      <label class="field-label" for="inpDuration">Duration</label>
-      <input id="inpDuration" type="number" value="30" min="1" max="86400" title="Run duration in seconds" aria-describedby="hintDuration">
-      <input class="slider" id="rngDuration" type="range" min="5" max="300" step="5" value="30" title="Drag to adjust the run duration" aria-label="Duration slider in seconds">
-      <span class="field-hint" id="hintDuration">30s</span>
-    </div>
-    <div class="field field-sm">
-      <label class="field-label" for="inpMethod">Method</label>
-      <select id="inpMethod" title="HTTP method sent to the target" aria-label="HTTP method">
-        <option>GET</option><option>POST</option><option>PUT</option>
-        <option>DELETE</option><option>PATCH</option><option>HEAD</option>
-      </select>
-    </div>
-    <div class="field field-sm">
-      <label class="field-label" for="inpRate">Rate Limit</label>
-      <input id="inpRate" type="number" value="0" min="0" placeholder="req/s" title="Maximum requests per second (0 = unlimited)" aria-label="Rate limit in requests per second">
-    </div>
-    <div class="field">
-      <label class="field-label" for="inpProfile">Profile</label>
-      <select id="inpProfile" title="Load shape applied over the run duration" aria-label="Load profile">
-        <option value="steady">steady</option>
-        <option value="soak">soak</option>
-        <option value="linear-ramp">linear-ramp</option>
-        <option value="spike">spike</option>
-        <option value="wave">wave</option>
-        <option value="constant-rps">constant-rps</option>
-      </select>
-    </div>
-    <div class="field">
-      <label class="field-label" for="inpFingerprint">TLS Fingerprint</label>
-      <select id="inpFingerprint" title="TLS client fingerprint used for the requests" aria-label="TLS fingerprint">
-        <option value="">default</option>
-        <option value="chrome">chrome</option>
-        <option value="chrome_120">chrome_120</option>
-        <option value="firefox">firefox</option>
-        <option value="safari">safari</option>
-        <option value="edge">edge</option>
-        <option value="ios">ios</option>
-        <option value="android_okhttp">android_okhttp</option>
-        <option value="golang">golang</option>
-      </select>
-    </div>
-    <button class="btn btn-start" id="btnStart" type="submit" title="Start the run (keyboard shortcut: S)">
-      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
-      <span id="btnStartLabel">Start</span>
-    </button>
-    <button class="btn btn-stop" id="btnStop" type="button" disabled title="Stop the running run — press twice to confirm (keyboard shortcut: E)" aria-label="Stop the current run. Press twice to confirm.">
-      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>
-      <span id="btnStopLabel">Stop</span>
-    </button>
-  </form>
 
-  <!-- Progress -->
-  <div class="progress-wrap">
-    <div class="progress-bar" id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Run progress">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
-    <div class="progress-text" id="progressText">0% | 0s / 30s</div>
-  </div>
+    <form class="controls" id="controlsForm" novalidate autocomplete="off">
+      <div class="field field-url">
+        <label class="field-label" for="inpUrl">Target URL</label>
+        <input id="inpUrl" placeholder="e.g. http://127.0.0.1:8080/health" value="http://localhost:8080/health" title="Full URL of the endpoint to load test (Enter also starts the run)" spellcheck="false" autocomplete="off" aria-describedby="urlError">
+        <p class="field-error" id="urlError" role="alert"></p>
+      </div>
+      <div class="field field-num">
+        <label class="field-label" for="inpUsers">Users</label>
+        <input id="inpUsers" type="number" value="10" min="1" max="100000" title="Number of virtual users (concurrent connections)" aria-describedby="hintUsers">
+        <input class="slider" id="rngUsers" type="range" min="1" max="500" step="1" value="10" title="Drag to adjust the number of virtual users" aria-label="Virtual users slider">
+        <span class="field-hint" id="hintUsers">10 users</span>
+      </div>
+      <div class="field field-num">
+        <label class="field-label" for="inpDuration">Duration</label>
+        <input id="inpDuration" type="number" value="30" min="1" max="86400" title="Run duration in seconds" aria-describedby="hintDuration">
+        <input class="slider" id="rngDuration" type="range" min="5" max="300" step="5" value="30" title="Drag to adjust the run duration" aria-label="Duration slider in seconds">
+        <span class="field-hint" id="hintDuration">30s</span>
+      </div>
+      <div class="field field-sm">
+        <label class="field-label" for="inpMethod">Method</label>
+        <select id="inpMethod" title="HTTP method sent to the target" aria-label="HTTP method">
+          <option>GET</option><option>POST</option><option>PUT</option>
+          <option>DELETE</option><option>PATCH</option><option>HEAD</option>
+        </select>
+      </div>
+      <div class="field field-sm">
+        <label class="field-label" for="inpRate">Rate Limit</label>
+        <input id="inpRate" type="number" value="0" min="0" placeholder="req/s" title="Maximum requests per second (0 = unlimited)" aria-label="Rate limit in requests per second">
+      </div>
+      <div class="field">
+        <label class="field-label" for="inpProfile">Profile</label>
+        <select id="inpProfile" title="Load shape applied over the run duration" aria-label="Load profile">
+          <option value="steady">steady</option>
+          <option value="soak">soak</option>
+          <option value="linear-ramp">linear-ramp</option>
+          <option value="spike">spike</option>
+          <option value="wave">wave</option>
+          <option value="constant-rps">constant-rps</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="inpFingerprint">TLS Fingerprint</label>
+        <select id="inpFingerprint" title="TLS client fingerprint used for the requests" aria-label="TLS fingerprint">
+          <option value="">default</option>
+          <option value="chrome">chrome</option>
+          <option value="chrome_120">chrome_120</option>
+          <option value="firefox">firefox</option>
+          <option value="safari">safari</option>
+          <option value="edge">edge</option>
+          <option value="ios">ios</option>
+          <option value="android_okhttp">android_okhttp</option>
+          <option value="golang">golang</option>
+        </select>
+      </div>
+      <div class="controls-actions">
+        <button class="btn btn-start" id="btnStart" type="submit" title="Start the run (keyboard shortcut: S)">
+          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
+          <span id="btnStartLabel">Start</span>
+        </button>
+        <button class="btn btn-stop" id="btnStop" type="button" disabled title="Stop the running run — press twice to confirm (keyboard shortcut: E)" aria-label="Stop the current run. Press twice to confirm.">
+          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>
+          <span id="btnStopLabel">Stop</span>
+        </button>
+      </div>
+    </form>
 
-  <!-- Live config + latency stats strip -->
-  <div class="stats-strip">
-    <div class="stat-item"><span class="stat-label">Profile</span><span class="stat-value" id="metaProfile">&#8212;</span></div>
-    <div class="stat-item"><span class="stat-label">Rate Limit</span><span class="stat-value" id="metaRate">&#8212;</span></div>
-    <div class="stat-item"><span class="stat-label">TLS Fingerprint</span><span class="stat-value" id="metaFingerprint">&#8212;</span></div>
-    <div class="stat-sep"></div>
-    <div class="stat-item"><span class="stat-label">P50</span><span class="stat-value" id="metaP50">0</span></div>
-    <div class="stat-item"><span class="stat-label">P95</span><span class="stat-value" id="metaP95">0</span></div>
-    <div class="stat-item"><span class="stat-label">P99</span><span class="stat-value" id="metaP99">0</span></div>
-    <div class="stat-item"><span class="stat-label">Avg</span><span class="stat-value" id="metaAvg">0</span></div>
-    <div class="stat-item"><span class="stat-label">Max</span><span class="stat-value" id="metaMax">0</span></div>
-  </div>
+    <div class="run-console-status">
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Run progress">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">0% | 0s / 30s</div>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-item"><span class="stat-label">Profile</span><span class="stat-value" id="metaProfile">&#8212;</span></div>
+        <div class="stat-item"><span class="stat-label">Rate Limit</span><span class="stat-value" id="metaRate">&#8212;</span></div>
+        <div class="stat-item"><span class="stat-label">TLS Fingerprint</span><span class="stat-value" id="metaFingerprint">&#8212;</span></div>
+        <div class="stat-sep"></div>
+        <div class="stat-item"><span class="stat-label">P50</span><span class="stat-value" id="metaP50">0</span></div>
+        <div class="stat-item"><span class="stat-label">P95</span><span class="stat-value" id="metaP95">0</span></div>
+        <div class="stat-item"><span class="stat-label">P99</span><span class="stat-value" id="metaP99">0</span></div>
+        <div class="stat-item"><span class="stat-label">Avg</span><span class="stat-value" id="metaAvg">0</span></div>
+        <div class="stat-item"><span class="stat-label">Max</span><span class="stat-value" id="metaMax">0</span></div>
+      </div>
+    </div>
+  </section>
 
   <!-- Metric Cards -->
   <div class="metrics">

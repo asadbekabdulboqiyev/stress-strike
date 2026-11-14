@@ -1,15 +1,18 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/asadbekabdulboqiyev/sift/internal/verigate"
@@ -21,9 +24,19 @@ import (
 
 // demoServer bundles the store and all HTTP routes.
 type demoServer struct {
-	store *Store
-	gate  *verigate.VeriGate
-	pages *template.Template
+	store      *Store
+	gate       *verigate.VeriGate
+	pages      *template.Template
+	adminToken string
+
+	authMu       sync.Mutex
+	authAttempts map[string]*authAttempt
+}
+
+type authAttempt struct {
+	failures int
+	until    time.Time
+	last     time.Time
 }
 
 // NewDemoServer builds the server, wiring the VeriGate protection middleware
@@ -41,7 +54,92 @@ func NewDemoServer(store *Store, gate *verigate.VeriGate) (*demoServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
-	return &demoServer{store: store, gate: gate, pages: pages}, nil
+	return &demoServer{
+		store:        store,
+		gate:         gate,
+		pages:        pages,
+		authAttempts: make(map[string]*authAttempt),
+	}, nil
+}
+
+// SetAdminToken enables optional control-plane authentication. When empty,
+// admin endpoints remain accessible for local/demo use (VeriGate toggleable
+// for VeriBench/testing). When set, requests must provide the token via
+// X-Admin-Token or Authorization: Bearer <token>.
+func (s *demoServer) SetAdminToken(token string) {
+	s.adminToken = strings.TrimSpace(token)
+}
+
+func (s *demoServer) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
+	if s.adminToken == "" {
+		return true
+	}
+	token := strings.TrimSpace(r.Header.Get("X-Admin-Token"))
+	if token == "" {
+		authz := strings.TrimSpace(r.Header.Get("Authorization"))
+		if strings.HasPrefix(strings.ToLower(authz), "bearer ") {
+			token = strings.TrimSpace(authz[7:])
+		}
+	}
+	if token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(s.adminToken)) == 1 {
+		return true
+	}
+	w.Header().Set("WWW-Authenticate", `Bearer realm="voltstore-admin"`)
+	http.Error(w, "admin authentication required", http.StatusUnauthorized)
+	return false
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	if err == nil && host != "" {
+		return host
+	}
+	if r.RemoteAddr != "" {
+		return r.RemoteAddr
+	}
+	return "unknown"
+}
+
+func (s *demoServer) authBlocked(key string) bool {
+	now := time.Now()
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	a := s.authAttempts[key]
+	if a == nil {
+		return false
+	}
+	// Cleanup stale entries opportunistically.
+	if now.Sub(a.last) > 30*time.Minute && now.After(a.until) {
+		delete(s.authAttempts, key)
+		return false
+	}
+	return now.Before(a.until)
+}
+
+func (s *demoServer) authFail(key string) {
+	now := time.Now()
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	a := s.authAttempts[key]
+	if a == nil {
+		a = &authAttempt{}
+		s.authAttempts[key] = a
+	}
+	a.last = now
+	a.failures++
+	// Progressive backoff/lockout for brute-force resistance.
+	switch {
+	case a.failures >= 10:
+		a.until = now.Add(5 * time.Minute)
+	case a.failures >= 5:
+		a.until = now.Add(30 * time.Second)
+	}
+}
+
+func (s *demoServer) authSuccess(key string) {
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	delete(s.authAttempts, key)
 }
 
 // Routes registers every endpoint on mux.
@@ -296,6 +394,9 @@ func (s *demoServer) handleAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *demoServer) handleAdminPage(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	v := s.baseView(w, r)
 	v.Title = "VeriGate Control — VoltStore Admin"
 	s.render(w, "admin.html", v, http.StatusOK)
@@ -340,11 +441,18 @@ func (s *demoServer) apiLogin(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	key := "login:" + clientIP(r) + ":" + strings.ToLower(strings.TrimSpace(req.Email))
+	if s.authBlocked(key) {
+		apiError(w, http.StatusTooManyRequests, "too many login attempts, please try again later")
+		return
+	}
 	token, user, err := s.store.Authenticate(req.Email, req.Password)
 	if err != nil {
+		s.authFail(key)
 		apiError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
+	s.authSuccess(key)
 	s.mergeGuestCart(r, token)
 	setSessionCookie(w, token, r.TLS != nil)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user})
@@ -353,6 +461,11 @@ func (s *demoServer) apiLogin(w http.ResponseWriter, r *http.Request) {
 func (s *demoServer) apiRegister(w http.ResponseWriter, r *http.Request) {
 	if !sameOrigin(r) {
 		apiError(w, http.StatusForbidden, "cross-origin request rejected")
+		return
+	}
+	key := "register:" + clientIP(r)
+	if s.authBlocked(key) {
+		apiError(w, http.StatusTooManyRequests, "too many registration attempts, please try again later")
 		return
 	}
 	var req authRequest
@@ -366,6 +479,8 @@ func (s *demoServer) apiRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := s.store.Register(req.Name, req.Email, req.Password)
 	if err != nil {
+		// Keep existing behavior/status for compatibility; failures also count toward abuse throttling.
+		s.authFail(key)
 		apiError(w, http.StatusConflict, err.Error())
 		return
 	}
@@ -374,6 +489,7 @@ func (s *demoServer) apiRegister(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusInternalServerError, "session error")
 		return
 	}
+	s.authSuccess(key)
 	s.mergeGuestCart(r, token)
 	setSessionCookie(w, token, r.TLS != nil)
 	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "user": u})
@@ -511,10 +627,16 @@ func (s *demoServer) apiProducts(w http.ResponseWriter, r *http.Request) {
 //------------------------------------------------------------------------------
 
 func (s *demoServer) adminProtectGet(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"enabled": s.gate.Enabled()})
 }
 
 func (s *demoServer) adminProtectSet(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	if !sameOrigin(r) {
 		apiError(w, http.StatusForbidden, "cross-origin request rejected")
 		return
@@ -532,6 +654,9 @@ func (s *demoServer) adminProtectSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *demoServer) adminReset(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	if !sameOrigin(r) {
 		apiError(w, http.StatusForbidden, "cross-origin request rejected")
 		return
@@ -541,6 +666,9 @@ func (s *demoServer) adminReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *demoServer) adminStats(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	up, down := s.gate.DifficultySteps()
 	schedule := s.gate.DifficultySchedule()
 	// The tail is enough for a live demo; the whole history is in the bundle

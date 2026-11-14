@@ -55,6 +55,7 @@ func main() {
 		adaptive     = flag.Bool("adaptive", false, "VeriGate: let the request rate raise the proof-of-work difficulty (never below -difficulty)")
 		adaptiveHigh = flag.Float64("adaptive-high-rps", 200, "VeriGate: request rate at which the difficulty rises")
 		adaptiveLow  = flag.Float64("adaptive-low-rps", 50, "VeriGate: request rate at which it falls back")
+		adminToken   = flag.String("admin-token", "", "optional token required for /admin control-plane endpoints (X-Admin-Token or Authorization: Bearer)")
 	)
 	flag.Parse()
 
@@ -90,6 +91,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("demo store: %v", err)
 	}
+	srv.SetAdminToken(*adminToken)
 
 	mux := http.NewServeMux()
 	srv.Routes(mux)
@@ -108,8 +110,11 @@ func main() {
 	if !strings.Contains(lnAddr, ":") {
 		lnAddr = ":" + lnAddr
 	}
-	log.Printf("VoltStore listening on http://%s  (VeriGate protection: %v)", *addr, gate.Enabled())
+	log.Printf("VoltStore (Sift v0.15.0 demo target) listening on http://%s  (VeriGate protection: %v)", *addr, gate.Enabled())
 	log.Printf("  admin control plane:  GET/POST http://%s/admin/protect", *addr)
+	if strings.TrimSpace(*adminToken) != "" {
+		log.Printf("  admin control plane auth: enabled (token required)")
+	}
 	if err := http.ListenAndServe(lnAddr, handler); err != nil {
 		log.Fatal(err)
 	}

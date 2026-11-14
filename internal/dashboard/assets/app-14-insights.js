@@ -173,8 +173,8 @@
       var checks = d.checks || [];
       var html = '<div class="ins-kv">' + kv('Verdict', d.verdict) + kv('Package ID', d.package_id) + '</div>';
       if (checks.length) { html += renderChecks(checks); }
-      if (d.reasons && d.reasons.length) html += '<ul class="ins-notes err"><li>' + d.reasons.map(esc).join('</li><li>') + '</li></ul>';
-      if (d.notes && d.notes.length) html += '<ul class="ins-notes">' + d.notes.map(esc).join('</li><li>') + '</li></ul>';
+      if (d.reasons && d.reasons.length) html += '<ul class="ins-notes err">' + d.reasons.map(function(x){return '<li>'+esc(x)+'</li>';}).join('') + '</ul>';
+      if (d.notes && d.notes.length) html += '<ul class="ins-notes">' + d.notes.map(function(x){return '<li>'+esc(x)+'</li>';}).join('') + '</ul>';
       var cls = d.verdict === 'failed' ? 'err' : (d.verdict === 'verified' ? 'ok' : 'warn');
       setOut('bountyValidateOut', html, cls);
     } catch (e) {
@@ -250,9 +250,9 @@
       var verdict = d.verdict || report.verdict || 'unknown';
       var html = '<div class="ins-kv">' + kv('Verdict', verdict) + kv('Package ID', report.package_id || d.package_id) + kv('Uploaded files', d.uploaded_artifacts) + '</div>';
       html += renderChecks(report.checks || d.checks || []);
-      if (report.reasons && report.reasons.length) html += '<ul class="ins-notes err"><li>' + report.reasons.map(esc).join('</li><li>') + '</li></ul>';
+      if (report.reasons && report.reasons.length) html += '<ul class="ins-notes err">' + report.reasons.map(function(x){return '<li>'+esc(x)+'</li>';}).join('') + '</ul>';
       var notes = (report.notes || []).concat(d.note ? [d.note] : []);
-      if (notes.length) html += '<ul class="ins-notes">' + notes.map(esc).join('</li><li>') + '</li></ul>';
+      if (notes.length) html += '<ul class="ins-notes">' + notes.map(function(x){return '<li>'+esc(x)+'</li>';}).join('') + '</ul>';
       if (report.attest) {
         html += '<details class="ins-details"><summary>Attestation summary</summary><pre>' + esc(JSON.stringify(report.attest, null, 2)) + '</pre></details>';
       }
@@ -377,9 +377,11 @@
       var indicators = d.indicators || [];
       var html = '<div class="ins-kv">' + kv('Indicators', indicators.length) + kv('Samples', samples.length) + kv('Signals', signals.length) + '</div>';
       if (indicators.length) {
-        html += '<table class="ins-table"><thead><tr><th>Type</th><th>Severity</th><th>Summary</th></tr></thead><tbody>' +
+        html += '<table class="ins-table"><thead><tr><th>Indicator</th><th>Severity</th><th>Confidence</th><th>Summary</th></tr></thead><tbody>' +
           indicators.map(function (it) {
-            return '<tr><td>' + esc(it.kind || it.type || '') + '</td><td>' + esc(it.severity || '') + '</td><td>' + esc(it.summary || it.detail || it.message || JSON.stringify(it)) + '</td></tr>';
+            var summary = it.title || it.summary || it.detail || it.message || '';
+            if (it.explanation) summary += (summary ? ' — ' : '') + it.explanation;
+            return '<tr><td>' + esc(it.id || it.kind || it.type || '') + '</td><td>' + esc(it.severity || '') + '</td><td>' + esc(it.confidence || '') + '</td><td>' + esc(summary || JSON.stringify(it)) + '</td></tr>';
           }).join('') + '</tbody></table>';
       } else {
         html += '<p class="ins-note">No indicators produced for the provided window/data.</p>';
@@ -394,6 +396,8 @@
   }
 
   function wire() {
+    if (wired) return;
+    wired = true;
     var b;
     b = document.getElementById('btnXrayCaps'); if (b) b.addEventListener('click', loadXrayCaps);
     b = document.getElementById('btnTwinFit'); if (b) b.addEventListener('click', doTwinFit);
@@ -418,7 +422,7 @@
   var wired = false;
   var capsLoaded = false;
   function onShow() {
-    if (!wired) { wire(); wired = true; }
+    if (!wired) wire();
     if (!capsLoaded) { capsLoaded = true; loadXrayCaps(); }
   }
 

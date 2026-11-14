@@ -9,50 +9,50 @@
   color-scheme: dark;
 
   /* Layers (depth, not flat black) */
-  --bg-0: #0b1220;   /* page canvas */
-  --bg-1: #111827;   /* surface / card */
-  --bg-2: #162033;   /* elevated surface */
-  --bg-3: #1e293b;   /* input / hover surface */
-  --bg-4: #273449;   /* active / selected surface */
+  --bg-0: #141414;   /* page canvas */
+  --bg-1: #1b1b1b;   /* surface / card */
+  --bg-2: #242424;   /* elevated surface */
+  --bg-3: #2d2d2d;   /* input / hover surface */
+  --bg-4: #383838;   /* active / selected surface */
 
   /* Borders */
-  --border: #243244;
-  --border-hover: #334155;
-  --border-focus: #2dd4bf;
+  --border: #3a3a3a;
+  --border-hover: #606060;
+  --border-focus: #D6ED17;
 
   /* Text */
-  --text-0: #e6edf6;   /* primary */
-  --text-1: #b8c4d6;   /* secondary */
-  --text-2: #8fa1b8;   /* tertiary (AA-safe on bg-1) */
-  --text-3: #6b7f99;   /* muted */
+  --text-0: #f2f2f2;   /* primary */
+  --text-1: #d0d0d0;   /* secondary */
+  --text-2: #a8a8a8;   /* tertiary */
+  --text-3: #606060;   /* muted */
 
-  /* Accent — harmonious teal/blue family */
-  --green: #2dd4bf;
-  --green-dim: rgba(45, 212, 191, 0.14);
-  --green-glow: rgba(45, 212, 191, 0.08);
-  --green-strong: #5eead4;
+  /* Accent — requested colors */
+  --green: #D6ED17;
+  --green-dim: rgba(214, 237, 23, 0.16);
+  --green-glow: rgba(214, 237, 23, 0.08);
+  --green-strong: #e4f75a;
 
-  --red: #f87171;
-  --red-dim: rgba(248, 113, 113, 0.14);
-  --red-glow: rgba(248, 113, 113, 0.08);
+  --red: #ff6b6b;
+  --red-dim: rgba(255, 107, 107, 0.16);
+  --red-glow: rgba(255, 107, 107, 0.08);
 
-  --yellow: #fbbf24;
-  --yellow-dim: rgba(251, 191, 36, 0.14);
+  --yellow: #D6ED17;
+  --yellow-dim: rgba(214, 237, 23, 0.16);
 
-  --blue: #60a5fa;
-  --blue-dim: rgba(96, 165, 250, 0.14);
+  --blue: #8ab4f8;
+  --blue-dim: rgba(138, 180, 248, 0.16);
 
-  --cyan: #22d3ee;
-  --purple: #a78bfa;
-  --indigo: #818cf8;
-  --teal: #2dd4bf;
-  --orange: #fb923c;
-  --pink: #f472b6;
+  --cyan: #D6ED17;
+  --purple: #b39ddb;
+  --indigo: #9fa8da;
+  --teal: #D6ED17;
+  --orange: #ffb74d;
+  --pink: #f48fb1;
 
-  /* Status text tints (AA on dim badge backgrounds) */
-  --sky: #7dd3fc;
-  --rose: #fda4af;
-  --sand: #fcd34d;
+  /* Status text tints */
+  --sky: #b3d4ff;
+  --rose: #ff9aa2;
+  --sand: #e4f75a;
 
   /* Radius & motion */
   --radius: 10px;
@@ -172,7 +172,7 @@ body {
   flex-direction: column;
   gap: 14px;
   padding: 16px;
-  background: rgba(17, 24, 39, 0.88);
+  background: rgba(27, 27, 27, 0.92);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -350,7 +350,7 @@ body {
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 2px;
-  background: rgba(17, 24, 39, 0.78);
+  background: rgba(27, 27, 27, 0.82);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -518,7 +518,7 @@ kbd {
 }
 
 .run-console {
-  background: linear-gradient(180deg, rgba(22, 32, 51, 0.92), rgba(17, 24, 39, 0.96));
+  background: linear-gradient(180deg, rgba(36, 36, 36, 0.95), rgba(27, 27, 27, 0.98));
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 16px;
@@ -2811,7 +2811,7 @@ kbd {
 .page-head {
   margin: 0 0 18px;
   padding: 18px 20px;
-  background: linear-gradient(180deg, var(--bg-1), rgba(17, 24, 39, 0.7));
+  background: linear-gradient(180deg, var(--bg-1), rgba(27, 27, 27, 0.75));
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
@@ -2856,7 +2856,7 @@ kbd {
   gap: 8px;
   padding: 10px;
   margin: 0 0 18px;
-  background: rgba(17, 24, 39, 0.88);
+  background: rgba(27, 27, 27, 0.92);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

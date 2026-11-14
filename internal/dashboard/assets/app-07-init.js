@@ -51,6 +51,38 @@ document.addEventListener('keydown', function(e) {
 });
 
 /* ==========================================================================
+   LOADING BARS (auto-inject into .btn.loading)
+   ========================================================================== */
+function ensureLoadingBars(btn) {
+  if (!btn || !btn.classList || !btn.classList.contains('btn')) return;
+  var bars = btn.querySelector('.ld-bars');
+  if (btn.classList.contains('loading')) {
+    if (!bars) {
+      bars = document.createElement('div');
+      bars.className = 'ld-bars';
+      bars.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
+      bars.setAttribute('aria-hidden', 'true');
+      btn.appendChild(bars);
+    }
+  } else if (bars) {
+    bars.remove();
+  }
+}
+try {
+  var mo = new MutationObserver(function(muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var m = muts[i];
+      if (m.type === 'attributes' && m.target && m.target.classList && m.target.classList.contains('btn')) {
+        ensureLoadingBars(m.target);
+      }
+    }
+  });
+  mo.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class'] });
+  var existing = document.querySelectorAll('.btn.loading');
+  for (var j = 0; j < existing.length; j++) ensureLoadingBars(existing[j]);
+} catch (e) {}
+
+/* ==========================================================================
    INIT
    ========================================================================== */
 restoreLastConfig();

@@ -909,7 +909,7 @@ kbd {
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
-/* Loading spinner (uses ::after because ::before is reserved by base effect) */
+/* Loading (bars loader) */
 .btn.loading {
   color: transparent !important;
   pointer-events: none;
@@ -917,34 +917,38 @@ kbd {
 .btn.loading > * {
   visibility: hidden;
 }
-.btn.loading::after {
-  content: '';
+.btn.loading .ld-bars {
+  visibility: visible;
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 16px;
-  height: 16px;
-  margin-top: -8px;
-  margin-left: -8px;
-  border-radius: 50%;
-  border: 2px solid rgba(96, 96, 96, 0.35);
-  border-top-color: var(--primary);
-  animation: spin 0.8s linear infinite;
+  transform: translate(-50%, -50%);
   z-index: 3;
 }
-.btn-stop.loading::after,
-.btn-start.loading::after,
-.btn-primary.loading::after {
-  border-color: rgba(17, 17, 17, 0.25);
-  border-top-color: #111;
-}
-.btn-demo.loading::after {
-  border-color: rgba(96, 96, 96, 0.35);
-  border-top-color: var(--primary);
-}
+.btn-stop.loading .ld-bars,
+.btn-start.loading .ld-bars,
+.btn-primary.loading .ld-bars { --ink: #111; }
+.btn-ghost.loading .ld-bars,
+.btn-demo.loading .ld-bars { --ink: var(--primary); }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ld-bars (equalizer bars loader) */
+:root { --r-pill: 999px; }
+.ld-bars { --ink: currentColor; display: inline-flex; gap: 4px; align-items: center; height: 16px; }
+.ld-bars i {
+  width: 4px; height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  animation: bars 1s ease-in-out infinite;
+  display: block;
+}
+.ld-bars i:nth-child(1) { animation-delay: 0s; }
+.ld-bars i:nth-child(2) { animation-delay: .12s; }
+.ld-bars i:nth-child(3) { animation-delay: .24s; }
+.ld-bars i:nth-child(4) { animation-delay: .36s; }
+.ld-bars i:nth-child(5) { animation-delay: .48s; }
+@keyframes bars {
+  0%, 100% { transform: scaleY(.3); opacity: .35; }
+  50%      { transform: scaleY(1);  opacity: 1; }
 }
 
 /* Stop: two-step confirm */

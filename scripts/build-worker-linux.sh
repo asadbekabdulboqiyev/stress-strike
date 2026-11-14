@@ -18,13 +18,13 @@
 #   dist/linux-worker/sha256sums.txt
 #
 # Environment overrides:
-#   VERSION    version injected via ldflags (default 0.14.0)
+#   VERSION    version injected via ldflags (default 0.15.1)
 #   DIST_DIR   alternative dist/ root (default: <repo>/dist)
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${1:-${VERSION:-0.14.0}}"
+VERSION="${1:-${VERSION:-0.15.1}}"
 DIST_ROOT="${DIST_DIR:-${REPO_ROOT}/dist}"
 OUT_DIR="${DIST_ROOT}/linux-worker"
 LDFLAGS="-s -w -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=${VERSION}"

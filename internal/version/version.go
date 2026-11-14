@@ -4,9 +4,9 @@
 // Dockerfiles:
 //
 //	go build -ldflags "\
-//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=0.14.5 \
-//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=af13f15 \
-//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Date=2026-10-01T00:00:00Z"
+//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=0.15.1 \
+//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=<commit> \
+//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Date=<date>"
 //
 // Keeping this in one package (instead of a per-main `var version`) means all
 // six binaries report the same value and a forgotten ldflag degrades to "dev"
@@ -16,7 +16,7 @@ package version
 import "runtime/debug"
 
 var (
-	// Version is the semantic version, e.g. "0.14.5". Overridden at link time.
+	// Version is the semantic version, e.g. "0.15.1". Overridden at link time.
 	Version = "dev"
 
 	// Commit is the git commit SHA the binary was built from.

@@ -110,7 +110,7 @@ func main() {
 	if !strings.Contains(lnAddr, ":") {
 		lnAddr = ":" + lnAddr
 	}
-	log.Printf("VoltStore (Sift v0.15.0 demo target) listening on http://%s  (VeriGate protection: %v)", *addr, gate.Enabled())
+	log.Printf("VoltStore (Sift v0.15.1 demo target) listening on http://%s  (VeriGate protection: %v)", *addr, gate.Enabled())
 	log.Printf("  admin control plane:  GET/POST http://%s/admin/protect", *addr)
 	if strings.TrimSpace(*adminToken) != "" {
 		log.Printf("  admin control plane auth: enabled (token required)")

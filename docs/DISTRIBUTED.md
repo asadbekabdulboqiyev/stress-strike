@@ -36,7 +36,7 @@ virtual users and streams live telemetry back.
 ### 1. Build the Linux worker packages
 
 ```bash
-./scripts/build-worker-linux.sh 0.15.0
+./scripts/build-worker-linux.sh 0.15.1
 # -> dist/linux-worker/Sift-worker-v0.14.0-linux-amd64.tar.gz
 #    dist/linux-worker/Sift-worker-v0.14.0-linux-arm64.tar.gz
 ```
@@ -386,13 +386,13 @@ Sift-worker -listen 0.0.0.0:50061 -id w1 \
 ## Docker
 
 ```bash
-docker build -f Dockerfile.worker -t Sift-worker:0.15.0 .
+docker build -f Dockerfile.worker -t Sift-worker:0.15.1 .
 docker network create strike
 docker run -d --name master --network strike -p 50051:50051 \
   Sift-master...            # or run the master on a host
 docker run -d --name worker-1 --network strike \
   --ulimit nofile=1048576:1048576 \
-  Sift-worker:0.15.0 \
+  Sift-worker:0.15.1 \
   -listen 0.0.0.0:50061 -advertise worker-1:50061 \
   -master master:50051 -id worker-1
 ```

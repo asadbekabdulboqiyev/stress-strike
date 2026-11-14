@@ -14,7 +14,7 @@
 #   make run         Build and run demo server
 #   make help        List all targets
 
-VERSION ?= 0.15.0
+VERSION ?= 0.15.1
 
 GO      ?= go
 GOFLAGS ?=

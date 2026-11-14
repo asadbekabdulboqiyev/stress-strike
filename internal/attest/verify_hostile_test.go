@@ -30,7 +30,7 @@ func TestVerifyHostileAggregateCountDoesNotPanic(t *testing.T) {
 	raw := `{
 	  "format": "vpmp/v1",
 	  "created_at": "2026-10-13T18:00:00Z",
-	  "tool": {"name": "Sift", "version": "0.15.0"},
+	  "tool": {"name": "Sift", "version": "0.15.1"},
 	  "run": {
 	    "target": "http://127.0.0.1:8080/",
 	    "profile": "constant-rps",

@@ -143,7 +143,7 @@ Performed by the verifier, offline, with no network access (§6).
   "format": "vpmp/v1",
   "bundle_id": "vb-1f7c9a3d5e21",
   "created_at": "2026-10-13T10:15:04Z",
-  "tool": { "name": "Sift", "binary": "Sift", "version": "0.15.0", "protocol": "vpmp/v1" },
+  "tool": { "name": "Sift", "binary": "Sift", "version": "0.15.1", "protocol": "vpmp/v1" },
   "signer": {
     "alg": "Ed25519",
     "key_id": "<hex SHA-256 of public key>",

@@ -784,118 +784,140 @@ kbd {
   border-radius: 3px;
 }
 
-/* Buttons */
+/* Buttons (press/fx-10 style, adapted to dashboard theme) */
 .btn {
-  padding: 10px 26px;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-family: inherit;
-  font-weight: 700;
-  cursor: pointer;
+  /* Theme tokens — override these to recolour the button */
+  --primary: #D6ED17;
+  --secondary: #606060;
+  --surface: var(--bg-2);
+  --bink: var(--secondary);
+  --bsurf: var(--surface);
+  position: relative;
+  isolation: isolate;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
-  transition: all var(--transition);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 11px 18px;
+  border: 1px solid var(--bink);
+  border-radius: 8px;
+  background: var(--bsurf);
+  color: var(--text-0);
+  cursor: pointer;
+  overflow: visible;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  white-space: nowrap;
+  box-shadow: 0 4px 0 0 color-mix(in srgb, var(--bink) 45%, transparent);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  transform: none;
+.btn-label, .btn > span {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  transition: inherit;
 }
-
-.btn:disabled:hover {
-  box-shadow: none;
-  background: var(--green);
-  color: #000;
+/* Shared sliding panel used by many fill effects */
+.btn::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: var(--bink);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+  display: none;
 }
-
-.btn:active:not(:disabled) {
-  transform: scale(0.97);
+.btn:is(:hover, :focus-visible, [data-preview]) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--bink) 45%, transparent);
 }
-
 .btn:focus-visible {
-  outline: 2px solid var(--green);
-  outline-offset: 2px;
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
 }
-.btn-start {
-  background: var(--green);
-  color: #000;
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: 0 2px 0 0 color-mix(in srgb, var(--bink) 30%, transparent);
 }
-.btn-start:hover:not(:disabled) {
+.btn:disabled::before,
+.btn:disabled::after { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn *, .btn::before, .btn::after,
+  .btn *::before, .btn *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Variants */
+.btn-start,
+.btn-primary {
+  --bink: color-mix(in srgb, var(--primary) 70%, #606060);
+  --bsurf: var(--primary);
+  background: var(--primary);
+  color: #111;
+  border-color: color-mix(in srgb, var(--primary) 60%, #606060);
+}
+.btn-start:is(:hover, :focus-visible, [data-preview]):not(:disabled),
+.btn-primary:is(:hover, :focus-visible, [data-preview]):not(:disabled) {
   background: var(--green-strong);
-  box-shadow: 0 0 0 1px rgba(0, 232, 123, 0.2), 0 8px 20px -6px rgba(0, 232, 123, 0.5);
+  color: #111;
 }
 .btn-stop {
+  --bink: color-mix(in srgb, var(--red) 70%, #606060);
+  --bsurf: var(--red);
   background: var(--red);
   color: #fff;
+  border-color: color-mix(in srgb, var(--red) 60%, #606060);
 }
-.btn-stop:hover:not(:disabled) {
-  background: #ff5555;
-  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 8px 20px -6px rgba(239, 68, 68, 0.5);
+.btn-stop:is(:hover, :focus-visible, [data-preview]):not(:disabled) {
+  background: #ff7b7b;
 }
-.btn-ghost {
+.btn-ghost,
+.btn-demo {
+  --bink: #606060;
+  --bsurf: var(--bg-2);
   background: var(--bg-2);
   color: var(--text-0);
-  border: 1px solid var(--border-hover);
+  border-color: #606060;
 }
-.btn-ghost:hover:not(:disabled) {
-  background: #23233a;
-  border-color: var(--green);
-  box-shadow: 0 0 0 1px var(--green-glow);
-}
-.btn-primary {
-  background: var(--green);
-  color: #000;
-  font-weight: 700;
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--green-strong);
-  box-shadow: 0 0 0 1px rgba(0, 232, 123, 0.2), 0 8px 20px -6px rgba(0, 232, 123, 0.5);
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--green);
-  outline-offset: 2px;
+.btn-ghost:is(:hover, :focus-visible, [data-preview]):not(:disabled),
+.btn-demo:is(:hover, :focus-visible, [data-preview]):not(:disabled) {
+  border-color: var(--primary);
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
 /* Demo store launcher (header, compact) */
 .btn-demo {
   margin-top: 0;
-  padding: 8px 16px;
+  padding: 8px 14px;
   font-size: 12.5px;
-  background: var(--bg-2);
-  color: var(--text-0);
-  border: 1px solid var(--border-hover);
-}
-.btn-demo:hover:not(:disabled) {
-  background: #23233a;
-  border-color: var(--blue);
-  color: #fff;
 }
 .btn-demo.demo-running {
-  border-color: var(--green);
-  color: var(--green);
+  border-color: var(--primary);
+  color: var(--primary);
 }
-.btn-demo.demo-running:hover:not(:disabled) {
-  box-shadow: 0 0 16px var(--green-dim);
-  color: var(--green);
-}
-.btn-demo.loading::before {
-  border-color: rgba(255, 255, 255, 0.2);
-  border-top-color: var(--blue);
+.btn-demo.demo-running:is(:hover, :focus-visible):not(:disabled) {
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
-/* Loading spinner */
+/* Loading spinner (uses ::after because ::before is reserved by base effect) */
 .btn.loading {
-  position: relative;
   color: transparent !important;
   pointer-events: none;
 }
-
-.btn.loading::before {
+.btn.loading > * {
+  visibility: hidden;
+}
+.btn.loading::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -905,39 +927,34 @@ kbd {
   margin-top: -8px;
   margin-left: -8px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.25);
-  border-top-color: var(--green);
+  border: 2px solid rgba(96, 96, 96, 0.35);
+  border-top-color: var(--primary);
   animation: spin 0.8s linear infinite;
+  z-index: 3;
 }
-
-.btn.loading .ico {
-  display: none;
+.btn-stop.loading::after,
+.btn-start.loading::after,
+.btn-primary.loading::after {
+  border-color: rgba(17, 17, 17, 0.25);
+  border-top-color: #111;
 }
-
-.btn-demo.loading::before {
-  border-color: rgba(255, 255, 255, 0.2);
-  border-top-color: var(--blue);
+.btn-demo.loading::after {
+  border-color: rgba(96, 96, 96, 0.35);
+  border-top-color: var(--primary);
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 /* Stop: two-step confirm */
 .btn-stop.armed {
-  background: #ff2d2d;
-  box-shadow: 0 0 0 2px var(--red-dim);
+  background: #ff4d4d;
   animation: armed-pulse 0.7s ease-in-out infinite alternate;
 }
 @keyframes armed-pulse {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.05);
-  }
+  from { transform: translateY(0); }
+  to { transform: translateY(2px); }
 }
 
 /* ----- ICONS ----- */

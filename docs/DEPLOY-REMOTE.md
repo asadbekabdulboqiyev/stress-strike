@@ -54,7 +54,7 @@ available for scripting.
 
 ### Build the packages once (optional — deploy-fleet does it automatically)
 ```bash
-./scripts/build-worker-linux.sh 0.15.1
+./scripts/build-worker-linux.sh 0.15.2
 # -> dist/linux-worker/Sift-worker-v0.14.0-linux-amd64.tar.gz
 ```
 
@@ -135,7 +135,7 @@ Tune `users`/`duration` inside `deploy/docker-compose.yml`. For very high
 connection counts use `network_mode: host` on the workers (bridge NAT
 throttles ephemeral sockets).
 
-Note: both Dockerfiles tag `0.15.1` by default. The compose setup builds from
+Note: both Dockerfiles tag `0.15.2` by default. The compose setup builds from
 source, so it always reflects the current checkout.
 
 ---

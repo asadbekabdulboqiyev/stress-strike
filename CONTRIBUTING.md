@@ -42,7 +42,7 @@ Coverage target: **80%+** for the project over time. New changes should not redu
 
 ## 6. Release process
 
-- **Versioning:** semantic versioning (for example, `v0.14.5` → `v0.15.1`).
+- **Versioning:** semantic versioning (for example, `v0.14.5` → `v0.15.2`).
 - **Changelog:** update `CHANGELOG.md` for user-visible changes.
 - **Tagging:** releases are tagged with `git tag`.
 - **Builds:** release builds are produced via `./scripts/build-all.sh` (and project release workflows where applicable).

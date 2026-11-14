@@ -16,7 +16,7 @@ package version
 import "runtime/debug"
 
 var (
-	// Version is the semantic version, e.g. "0.15.1". Overridden at link time.
+	// Version is the semantic version, e.g. "0.15.2". Overridden at link time.
 	Version = "dev"
 
 	// Commit is the git commit SHA the binary was built from.

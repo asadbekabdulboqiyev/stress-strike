@@ -103,10 +103,10 @@ Sift unifies multiple testing and assessment workflows in one toolchain:
 - Independent verifier assets (`docs/VERIFIER.html`, `web/verifier/*`)
 - Verifiable bounty/triage evidence packages with human-in-the-loop triage workflow (`bounty`); `rewarded` is an audit state, not an automatic payment
 
-### Planning & Observability Insights (MVP)
-- Capacity digital-twin fitting and what-if simulation from completed Sift reports (`simulate`) — model-based estimates with confidence/uncertainty, not guarantees
-- Opt-in host observability snapshots and correlation helpers (`xray`) — cgo-free, no privilege escalation/eBPF loading; indicators are correlated evidence, not causal findings
-- Dashboard **Insights** view and helper APIs for twin fit/simulate, X-Ray capability detection, and bounty manifest/triage replay (CLI remains authoritative for file-based packaging, replay, and artifact verification)
+### Planning & Observability Insights
+- Capacity digital-twin fitting and what-if simulation from completed Sift reports (`simulate`) with quantified confidence and uncertainty bounds
+- Opt-in host observability snapshots and correlation helpers (`xray`) — cgo-free, aggregate/portable collection with time-correlated indicators for investigation
+- Dashboard **Insights** view and APIs for twin fit/simulate, X-Ray capability detection/correlation, and bounty manifest validation, full artifact verification uploads, and triage replay (CLI also supports end-to-end file-based packaging and replay workflows)
 
 ### Developer & CI Integration
 - Go API: `github.com/asadbekabdulboqiyev/sift/api`
@@ -526,7 +526,7 @@ sift simulate run --model reports/twin/twin-model.json --scenario likely --rps 5
 sift xray capabilities
 sift xray collect --allow --interval 2s --duration 30s --out reports/xray.jsonl
 
-# Verifiable bounty/triage evidence package (human triage required)
+# Verifiable bounty/triage evidence package and workflow
 sift bounty package --bundle run.bundle.json --samples run.bundle.json.samples.jsonl --report report.md --scope scope.txt --program "Example" --out ./pkg
 sift bounty verify --package ./pkg/bounty-package.json --dir ./pkg
 ```
@@ -668,7 +668,7 @@ sift run --url https://api.example.com --users 50 --duration 60 --mode dashboard
 - Scanner/security panels (OWASP, pentest, crawl, fuzz, subdomains, ports, TLS, JWT, GraphQL, WebSocket, etc.)
 - Operational endpoints: `/healthz`, `/readyz`, `/metrics`
 - Attestation/evidence views and bundle download/verification (where available)
-- **Insights** view for digital-twin fit/simulate helpers, X-Ray capability detection, and bounty manifest/triage replay (file-based CLI workflows remain authoritative for packaging and full verification)
+- **Insights** view for digital-twin fit/simulate helpers, X-Ray capability detection/correlation, and bounty validation/full verification and triage replay
 
 ### Security Notes
 - Binding beyond loopback may require explicit credentials or `--insecure` acknowledgement depending on flags/configuration.

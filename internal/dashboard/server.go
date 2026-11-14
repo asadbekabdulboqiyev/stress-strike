@@ -600,6 +600,8 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleInsightsXRayCorrelate(w, r)
 	case path == "/api/insights/bounty/validate":
 		s.handleInsightsBountyValidate(w, r)
+	case path == "/api/insights/bounty/verify-upload":
+		s.handleInsightsBountyVerifyUpload(w, r)
 	case path == "/api/insights/bounty/status":
 		s.handleInsightsBountyStatus(w, r)
 	case path == "/style.css":

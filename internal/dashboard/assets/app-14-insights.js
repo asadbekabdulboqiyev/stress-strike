@@ -172,11 +172,7 @@
       if (!d) throw new Error('no response');
       var checks = d.checks || [];
       var html = '<div class="ins-kv">' + kv('Verdict', d.verdict) + kv('Package ID', d.package_id) + '</div>';
-      if (checks.length) {
-        html += '<table class="ins-table"><thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead><tbody>' +
-          checks.map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td class="st-' + esc(c.status) + '">' + esc(c.status) + '</td><td>' + esc(c.detail || '') + '</td></tr>'; }).join('') +
-          '</tbody></table>';
-      }
+      if (checks.length) { html += renderChecks(checks); }
       if (d.reasons && d.reasons.length) html += '<ul class="ins-notes err"><li>' + d.reasons.map(esc).join('</li><li>') + '</li></ul>';
       if (d.notes && d.notes.length) html += '<ul class="ins-notes">' + d.notes.map(esc).join('</li><li>') + '</li></ul>';
       var cls = d.verdict === 'failed' ? 'err' : (d.verdict === 'verified' ? 'ok' : 'warn');
@@ -208,12 +204,74 @@
     }
   }
 
+  function renderChecks(checks) {
+    checks = checks || [];
+    if (!checks.length) return '';
+    return '<table class="ins-table"><thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead><tbody>' +
+      checks.map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td class="st-' + esc(c.status) + '">' + esc(c.status) + '</td><td>' + esc(c.detail || '') + '</td></tr>'; }).join('') +
+      '</tbody></table>';
+  }
+
+  async function doBountyVerifyUpload() {
+    setOut('bountyValidateOut', 'Running full verification…');
+    try {
+      var mf = document.getElementById('bountyManifestFile');
+      var af = document.getElementById('bountyArtifactFiles');
+      var manifestText = '';
+      if (mf && mf.files && mf.files[0]) {
+        manifestText = await mf.files[0].text();
+      } else {
+        var ta = document.getElementById('bountyManifestJson');
+        manifestText = ta ? (ta.value || '').trim() : '';
+      }
+      if (!manifestText) throw new Error('manifest JSON is required (paste or upload manifest file)');
+
+      var fd = new FormData();
+      fd.append('manifest', manifestText);
+      var files = (af && af.files) ? af.files : [];
+      for (var i = 0; i < files.length; i++) {
+        // Use filename (may include relative path in some browsers); server sanitizes.
+        fd.append('files', files[i], files[i].name);
+      }
+      var target = (document.getElementById('bountyTarget') || {}).value || '';
+      var key = (document.getElementById('bountyKey') || {}).value || '';
+      var skipCI = (document.getElementById('bountySkipCI') || {}).checked;
+      if (target) fd.append('target', target);
+      if (key) fd.append('key', key);
+      if (skipCI) fd.append('skip_ci_check', 'true');
+
+      var r = await fetch(API + '/api/insights/bounty/verify-upload', { method: 'POST', body: fd });
+      if (typeof guardStatus === 'function' && guardStatus(r)) throw new Error('locked');
+      var ct = (r.headers.get('content-type') || '');
+      var d = ct.indexOf('application/json') >= 0 ? await r.json() : { ok: r.ok, error: await r.text() };
+      if (!d) throw new Error('no response');
+
+      var report = d.report || {};
+      var verdict = d.verdict || report.verdict || 'unknown';
+      var html = '<div class="ins-kv">' + kv('Verdict', verdict) + kv('Package ID', report.package_id || d.package_id) + kv('Uploaded files', d.uploaded_artifacts) + '</div>';
+      html += renderChecks(report.checks || d.checks || []);
+      if (report.reasons && report.reasons.length) html += '<ul class="ins-notes err"><li>' + report.reasons.map(esc).join('</li><li>') + '</li></ul>';
+      var notes = (report.notes || []).concat(d.note ? [d.note] : []);
+      if (notes.length) html += '<ul class="ins-notes">' + notes.map(esc).join('</li><li>') + '</li></ul>';
+      if (report.attest) {
+        html += '<details class="ins-details"><summary>Attestation summary</summary><pre>' + esc(JSON.stringify(report.attest, null, 2)) + '</pre></details>';
+      }
+      html += '<details class="ins-details"><summary>Verification report JSON</summary><pre>' + esc(JSON.stringify(report, null, 2)) + '</pre></details>';
+      var cls = verdict === 'failed' ? 'err' : (verdict === 'verified' ? 'ok' : 'warn');
+      setOut('bountyValidateOut', html, cls);
+    } catch (e) {
+      if (e && e.message === 'locked') return;
+      setText('bountyValidateOut', 'Error: ' + (e && e.message ? e.message : String(e)), 'err');
+    }
+  }
+
   function wire() {
     var b;
     b = document.getElementById('btnXrayCaps'); if (b) b.addEventListener('click', loadXrayCaps);
     b = document.getElementById('btnTwinFit'); if (b) b.addEventListener('click', doTwinFit);
     b = document.getElementById('btnTwinSim'); if (b) b.addEventListener('click', doTwinSim);
     b = document.getElementById('btnBountyValidate'); if (b) b.addEventListener('click', doBountyValidate);
+    b = document.getElementById('btnBountyVerifyUpload'); if (b) b.addEventListener('click', doBountyVerifyUpload);
     b = document.getElementById('btnBountyStatus'); if (b) b.addEventListener('click', doBountyStatus);
     b = document.getElementById('btnTwinUseModel'); if (b) b.addEventListener('click', function () {
       if (window.__twinLastModel) {

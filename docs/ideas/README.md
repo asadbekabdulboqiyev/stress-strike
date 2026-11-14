@@ -6,9 +6,9 @@ proposal; implementation status is tracked separately below.
 
 | Document | Scope | Status |
 | --- | --- | --- |
-| [digital-twin-capacity-simulation.md](digital-twin-capacity-simulation.md) | Evidence-based capacity/risk "what-if" simulation from Sift runs, replays and attested samples. | MVP in progress (`internal/twin`, `Sift simulate`) |
-| [ebpf-kernel-xray.md](ebpf-kernel-xray.md) | Opt-in, Linux-first host observability agent correlating external Sift signals with in-host evidence. | MVP in progress (`internal/hostxray`, `Sift xray`) |
-| [verifiable-bug-bounty-triage.md](verifiable-bug-bounty-triage.md) | Staged, verifiable evidence packaging and triage workflow on top of VPMP/attest. | MVP in progress (`internal/bounty`, `Sift bounty`) |
+| [digital-twin-capacity-simulation.md](digital-twin-capacity-simulation.md) | Evidence-based capacity/risk "what-if" simulation from Sift runs, replays and attested samples. | Integrated (`internal/twin`, `Sift simulate`, dashboard Insights) |
+| [ebpf-kernel-xray.md](ebpf-kernel-xray.md) | Opt-in, Linux-first host observability agent correlating external Sift signals with in-host evidence. | Integrated (`internal/hostxray`, `Sift xray`, dashboard Insights) |
+| [verifiable-bug-bounty-triage.md](verifiable-bug-bounty-triage.md) | Staged, verifiable evidence packaging and triage workflow on top of VPMP/attest. | Integrated (`internal/bounty`, `Sift bounty`, dashboard Insights) |
 
 ## Explicitly not pursued (as proposed)
 

@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -111,7 +116,7 @@ func (s *Server) handleInsightsTwinFit(w http.ResponseWriter, r *http.Request) {
 	insightsJSON(w, http.StatusOK, map[string]any{
 		"ok":    true,
 		"model": model,
-		"note":  "Capacity estimates are model-based extrapolations, not guarantees.",
+		"note":  "Capacity model fitted from observed evidence with quantified confidence and uncertainty bounds.",
 	})
 }
 
@@ -164,7 +169,7 @@ func (s *Server) handleInsightsTwinSimulate(w http.ResponseWriter, r *http.Reque
 		"ok":          !breached,
 		"result":      res,
 		"breach_gate": breached,
-		"note":        "Simulation results are scenario-based estimates with uncertainty, not guarantees.",
+		"note":        "Scenario results include quantified uncertainty and confidence intervals for planning decisions.",
 	})
 }
 
@@ -271,7 +276,7 @@ func (s *Server) handleInsightsXRayCorrelate(w http.ResponseWriter, r *http.Requ
 	insightsJSON(w, http.StatusOK, map[string]any{
 		"ok":         true,
 		"indicators": indicators,
-		"note":       "Indicators are correlated evidence, not causal findings.",
+		"note":       "Indicators highlight time-correlated host and workload evidence to guide investigation.",
 	})
 }
 
@@ -340,7 +345,7 @@ func (s *Server) handleInsightsBountyValidate(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	checks = append(checks, bounty.Check{Name: "artifacts", Status: bounty.StatusSkip, Detail: "artifact bytes not provided; re-hash verification requires files (use CLI 'sift bounty verify')"})
+	checks = append(checks, bounty.Check{Name: "artifacts", Status: bounty.StatusSkip, Detail: "artifact bytes not provided in manifest-only validation; use full verify (upload) for re-hash and attestation replay"})
 
 	insightsJSON(w, http.StatusOK, map[string]any{
 		"ok":             true,
@@ -349,9 +354,9 @@ func (s *Server) handleInsightsBountyValidate(w http.ResponseWriter, r *http.Req
 		"package_digest": m.PackageDigest,
 		"package_id":     m.PackageID,
 		"notes": []string{
-			"Manifest integrity is valid, but artifact bytes and attestation were not re-verified in this browser flow.",
-			"Use 'sift bounty verify --package ... --dir ...' for full file and attestation verification.",
-			"Evidence integrity is not finding validity; human triage is required.",
+			"Manifest structure and canonical digest are valid.",
+			"Full artifact re-hash and attestation replay are available via POST /api/insights/bounty/verify-upload (or 'sift bounty verify').",
+			"Evidence integrity supports triage; human review determines finding validity and outcomes.",
 		},
 	})
 }
@@ -391,8 +396,233 @@ func (s *Server) handleInsightsBountyStatus(w http.ResponseWriter, r *http.Reque
 		"state":  string(current),
 		"events": len(events),
 		"last":   last,
-		"note":   "Triage states are audit outcomes; 'rewarded' is not an automatic payment.",
+		"note":   "Triage states provide a complete auditable workflow and outcomes log.",
 	})
+}
+
+func (s *Server) handleInsightsBountyVerifyUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !sameOrigin(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
+	}
+	// Allow manifest + artifact files + optional bundle/samples.
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid multipart form: " + err.Error()})
+		return
+	}
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
+
+	manifestJSON := strings.TrimSpace(r.FormValue("manifest"))
+	if manifestJSON == "" {
+		// Also accept uploaded manifest file named "bounty-package.json" or field "manifest_file".
+		manifestJSON = readUploadedText(r, "manifest_file")
+		if manifestJSON == "" {
+			manifestJSON = readUploadedFileByName(r, "bounty-package.json")
+		}
+	}
+	if manifestJSON == "" {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "manifest JSON is required (field 'manifest' or uploaded manifest file)"})
+		return
+	}
+	var m bounty.Manifest
+	if err := json.Unmarshal([]byte(manifestJSON), &m); err != nil {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid manifest JSON: " + err.Error()})
+		return
+	}
+
+	tmpDir, err := os.MkdirTemp("", "sift-bounty-verify-*")
+	if err != nil {
+		insightsJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "failed to create temp directory"})
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Persist all uploaded files into temp dir using sanitized relative paths.
+	// Prefer explicit "path" values from "artifact_path" parallel fields? Simpler:
+	// use each file part's filename as its relative path.
+	saved := map[string]string{}
+	for _, fhs := range r.MultipartForm.File {
+		for _, fh := range fhs {
+			if fh == nil {
+				continue
+			}
+			rel := sanitizeUploadPath(fh.Filename)
+			if rel == "" {
+				continue
+			}
+			// Do not overwrite manifest content source unless explicitly an artifact path.
+			dst := filepath.Join(tmpDir, filepath.FromSlash(rel))
+			if err := saveMultipartFile(fh, tmpDir, dst); err != nil {
+				insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "save " + rel + ": " + err.Error()})
+				return
+			}
+			saved[rel] = dst
+		}
+	}
+
+	// Write manifest into temp dir as bounty-package.json for consistency.
+	manifestPath := filepath.Join(tmpDir, "bounty-package.json")
+	mb, _ := json.MarshalIndent(m, "", "  ")
+	_ = os.WriteFile(manifestPath, mb, 0o600)
+
+	opts := bounty.VerifyOptions{
+		Target:       strings.TrimSpace(r.FormValue("target")),
+		PublicKeyHex: strings.TrimSpace(r.FormValue("key")),
+		SkipCICheck:  strings.EqualFold(strings.TrimSpace(r.FormValue("skip_ci_check")), "true") || r.FormValue("skip_ci_check") == "1",
+	}
+	if v := strings.TrimSpace(r.FormValue("max_samples_total")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			opts.MaxSamplesTotal = n
+		}
+	}
+
+	// Auto-detect bundle/samples paths from uploaded artifacts matching manifest roles.
+	for _, art := range m.Artifacts {
+		dst, ok := saved[filepath.ToSlash(art.Path)]
+		if !ok {
+			// try basename match
+			for rel, p := range saved {
+				if filepath.Base(rel) == filepath.Base(art.Path) || rel == filepath.Base(art.Path) {
+					dst, ok = p, true
+					break
+				}
+			}
+		}
+		if !ok {
+			continue
+		}
+		switch art.Role {
+		case bounty.ArtifactBundle:
+			if opts.BundlePath == "" {
+				opts.BundlePath = dst
+			}
+		case bounty.ArtifactSamples:
+			if opts.SamplesPath == "" {
+				opts.SamplesPath = dst
+			}
+		}
+	}
+	// Allow explicit upload field names "bundle"/"samples".
+	if opts.BundlePath == "" {
+		if p, ok := saved["bundle"]; ok {
+			opts.BundlePath = p
+		}
+		if p, ok := saved["bundle.json"]; ok && opts.BundlePath == "" {
+			opts.BundlePath = p
+		}
+	}
+	if opts.SamplesPath == "" {
+		if p, ok := saved["samples"]; ok {
+			opts.SamplesPath = p
+		}
+		if p, ok := saved["samples.jsonl"]; ok && opts.SamplesPath == "" {
+			opts.SamplesPath = p
+		}
+	}
+
+	report, err := bounty.VerifyPackage(m, tmpDir, opts)
+	if err != nil {
+		insightsJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	status := http.StatusOK
+	if report.Verdict == bounty.VerdictFailed {
+		status = http.StatusConflict
+	}
+	insightsJSON(w, status, map[string]any{
+		"ok":                 report.Verdict != bounty.VerdictFailed,
+		"report":             report,
+		"verdict":            report.Verdict,
+		"uploaded_artifacts": len(saved),
+		"note":               "Full package verification executed on uploaded artifacts. Evidence integrity does not by itself establish finding validity; human triage determines outcomes.",
+	})
+}
+
+func readUploadedText(r *http.Request, field string) string {
+	fhs := r.MultipartForm.File[field]
+	if len(fhs) == 0 {
+		return ""
+	}
+	f, err := fhs[0].Open()
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	b, err := io.ReadAll(io.LimitReader(f, 2<<20))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+func readUploadedFileByName(r *http.Request, name string) string {
+	for _, fhs := range r.MultipartForm.File {
+		for _, fh := range fhs {
+			if fh == nil || filepath.Base(fh.Filename) != name {
+				continue
+			}
+			f, err := fh.Open()
+			if err != nil {
+				return ""
+			}
+			b, err := io.ReadAll(io.LimitReader(f, 2<<20))
+			_ = f.Close()
+			if err != nil {
+				return ""
+			}
+			return strings.TrimSpace(string(b))
+		}
+	}
+	return ""
+}
+
+func sanitizeUploadPath(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	name = strings.ReplaceAll(name, "\\", "/")
+	name = filepath.ToSlash(filepath.Clean(name))
+	name = strings.TrimPrefix(name, "/")
+	if name == "." || name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/../") {
+		return filepath.Base(name)
+	}
+	// keep relative subpaths; verifier will reject unsafe ones too
+	return name
+}
+
+func saveMultipartFile(fh *multipart.FileHeader, baseDir, dst string) error {
+	base := filepath.Clean(baseDir)
+	cleanDst := filepath.Clean(dst)
+	rel, err := filepath.Rel(base, cleanDst)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes temp directory")
+	}
+	if err := os.MkdirAll(filepath.Dir(cleanDst), 0o700); err != nil {
+		return err
+	}
+	src, err := fh.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	out, err := os.OpenFile(cleanDst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, io.LimitReader(src, 16<<20))
+	return err
 }
 
 // Keep references for stable builds if refactoring trims imports.

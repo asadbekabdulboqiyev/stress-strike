@@ -930,10 +930,20 @@
 
     <div class="ins-cols" style="margin-top:16px;">
       <div class="card">
-        <div class="card-header"><div><div class="card-title">Bounty — manifest integrity</div><div class="card-subtitle">Validate <code>bounty-package.json</code> structure and canonical digest. Full artifact/attestation replay requires CLI file access.</div></div></div>
-        <label class="ins-label" for="bountyManifestJson">Manifest JSON</label>
+        <div class="card-header"><div><div class="card-title">Bounty — verify evidence package</div><div class="card-subtitle">Validate manifest integrity or run full artifact re-hash and attestation replay by uploading package files.</div></div></div>
+        <label class="ins-label" for="bountyManifestJson">Manifest JSON (for quick validate)</label>
         <textarea id="bountyManifestJson" class="ins-textarea" spellcheck="false" placeholder='Paste bounty-package.json'></textarea>
-        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnBountyValidate" type="button">Validate manifest</button></div>
+        <div class="ins-actions"><button class="btn btn-ghost btn-sm" id="btnBountyValidate" type="button">Validate manifest</button></div>
+        <hr class="ins-hr">
+        <div class="ins-label">Full verify (upload files)</div>
+        <div class="ins-row"><label class="ins-label" for="bountyManifestFile">Manifest file</label><input id="bountyManifestFile" type="file" accept=".json,application/json"></div>
+        <div class="ins-row"><label class="ins-label" for="bountyArtifactFiles">Artifact files (select all package files)</label><input id="bountyArtifactFiles" type="file" multiple></div>
+        <div class="ins-row ins-row-3">
+          <div><label class="ins-label" for="bountyTarget">Target (optional)</label><input id="bountyTarget" type="text" placeholder="https://example.com"></div>
+          <div><label class="ins-label" for="bountyKey">Pinned public key (optional)</label><input id="bountyKey" type="text" placeholder="hex ed25519 key"></div>
+          <div class="ins-check"><label><input id="bountySkipCI" type="checkbox"> Skip CI check</label></div>
+        </div>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnBountyVerifyUpload" type="button">Run full verification</button></div>
         <div id="bountyValidateOut" class="ins-out"></div>
       </div>
 

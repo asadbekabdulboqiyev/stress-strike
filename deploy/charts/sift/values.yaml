@@ -155,3 +155,31 @@ worker:
 service:
   type: ClusterIP
   port: 8080
+
+# Optional Ingress for exposing an HTTP service (e.g. dashboard or API gateway)
+# in front of the cluster. TLS termination is typically handled by the ingress
+# controller (cert-manager / cloud load balancer). This chart does not deploy a
+# dashboard service by default; set serviceName/servicePort per path as needed.
+ingress:
+  enabled: false
+  className: ""
+  nameSuffix: "ingress"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  labels: {}
+  hosts:
+    - host: dashboard.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          # Target service/port (dashboard service is deployment-specific)
+          serviceName: sift-dashboard
+          servicePort: 8888
+          # servicePortName: http
+  tls: []
+    # - secretName: sift-dashboard-tls
+    #   hosts:
+    #     - dashboard.example.com

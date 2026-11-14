@@ -1,0 +1,55 @@
+# Caddy reverse proxy for Sift dashboard with automatic HTTPS (TLS termination).
+#
+# Requirements:
+#   - A public DNS name (example: dashboard.example.com) pointing to this host
+#   - Ports 80/tcp and 443/tcp reachable from the internet (for ACME HTTP-01)
+#   - Dashboard running on an internal address (default: dashboard:8888 in Docker network)
+#
+# Usage (standalone):
+#   1) Replace dashboard.example.com with your real hostname
+#   2) Ensure Sift dashboard is running and reachable from Caddy
+#   3) Run: caddy run --config /path/to/Caddyfile
+#
+# Caddy will automatically obtain and renew Let's Encrypt certificates.
+# For internal/testing environments, replace the site block with:
+#   https://dashboard.internal.example {
+#     tls internal
+#     reverse_proxy dashboard:8888
+#   }
+
+{
+	# Send admin API to localhost only (optional hardening)
+	admin 127.0.0.1:2019
+}
+
+dashboard.example.com {
+	encode zstd gzip
+
+	# Security headers (adjust CSP as needed for your deployment)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
+	# Optional: restrict access by IP/CIDR (uncomment and adjust)
+	# @allowed remote_ip 203.0.113.0/24 198.51.100.10
+	# handle @allowed {
+	#   reverse_proxy dashboard:8888
+	# }
+	# respond 403
+
+	# Reverse proxy to Sift dashboard (WebSocket upgrade supported automatically)
+	reverse_proxy dashboard:8888 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

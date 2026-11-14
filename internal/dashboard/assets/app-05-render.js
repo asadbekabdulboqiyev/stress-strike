@@ -239,38 +239,61 @@ function renderWorkers(workers) {
 }
 
 /* ==========================================================================
-   HISTORY (DOM-built, all values textContent-escaped)
+   REPORT (latest run, rendered inline)
    ========================================================================== */
 function renderHistory() {
   var section = document.getElementById('historySection');
   if (!section) return;
-  if (!S.history || S.history.length === 0) {
-    section.classList.add('hidden');
-    return;
-  }
-  section.classList.remove('hidden');
   var body = document.getElementById('historyBody');
   if (!body) return;
-  body.textContent = '';
 
-  S.history.forEach(function(h) {
-    var cfg = h.config || {};
-    var res = h.result || {};
-    var tr = document.createElement('tr');
+  var hist = S.history || [];
+  if (!hist.length) {
+    section.classList.remove('hidden');
+    body.innerHTML = '<div class="empty-note">No run report yet — start a run from Overview.</div>';
+    return;
+  }
 
-    var tdId = document.createElement('td'); tdId.className = 't-dim'; tdId.textContent = h.id;
-    var tdTime = document.createElement('td');
-    try { tdTime.textContent = new Date(h.timestamp).toLocaleTimeString(); } catch (e) { tdTime.textContent = '-'; }
-    var tdUrl = document.createElement('td'); tdUrl.textContent = cfg.target_url || '-';
-    var tdUsers = document.createElement('td'); tdUsers.textContent = cfg.users || '-';
-    var tdDur = document.createElement('td'); tdDur.textContent = (cfg.duration_seconds || '-') + 's';
-    var tdRps = document.createElement('td'); tdRps.className = 't-green'; tdRps.textContent = (res.rps || 0).toFixed(0);
-    var tdP50 = document.createElement('td'); tdP50.textContent = (res.p50_latency || 0).toFixed(1) + 'ms';
-    var tdP99 = document.createElement('td'); tdP99.textContent = (res.p99_latency || 0).toFixed(1) + 'ms';
-    var tdErr = document.createElement('td'); tdErr.className = 't-red'; tdErr.textContent = String(res.total_errors || 0);
+  section.classList.remove('hidden');
+  // Show the latest run report (most recent entry).
+  var h = hist[hist.length - 1];
+  var cfg = h.config || {};
+  var res = h.result || {};
+  var codes = res.status_codes || {};
+  var codeKeys = Object.keys(codes).sort(function(a,b){ return Number(a)-Number(b); });
+  var codesText = codeKeys.length ? codeKeys.map(function(k){ return k + ': ' + codes[k]; }).join(', ') : '—';
 
-    tr.appendChild(tdId); tr.appendChild(tdTime); tr.appendChild(tdUrl); tr.appendChild(tdUsers);
-    tr.appendChild(tdDur); tr.appendChild(tdRps); tr.appendChild(tdP50); tr.appendChild(tdP99); tr.appendChild(tdErr);
-    body.appendChild(tr);
-  });
+  function esc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\x22/g,'&quot;'); }
+  function fmtNum(v, digits){ if (v == null || !isFinite(v)) return '—'; return Number(v).toFixed(digits == null ? 2 : digits); }
+  function row(k,v){ return '<div class="ins-kv-row"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v == null || v === '' ? '—' : v)+'</span></div>'; }
+
+  var when = h.timestamp || '';
+  try { when = new Date(h.timestamp).toLocaleString(); } catch(e) {}
+
+  var html = '' +
+    '<div class="ins-kv">' +
+      row('Run ID', h.id) +
+      row('Time', when) +
+      row('Duration', h.duration || ((cfg.duration_seconds || 0) + 's')) +
+      row('Target', cfg.target_url) +
+      row('Method', cfg.method || 'GET') +
+      row('Users', cfg.users) +
+      row('Profile', cfg.profile) +
+      row('TLS fingerprint', cfg.tls_fingerprint) +
+      row('Rate limit', cfg.rate_limit ? (cfg.rate_limit + ' req/s') : '—') +
+    '</div>' +
+    '<div class="ins-kv" style="margin-top:10px">' +
+      row('Total requests', fmt(res.total_requests || 0)) +
+      row('Total errors', fmt(res.total_errors || 0)) +
+      row('RPS', fmtNum(res.rps, 2)) +
+      row('Avg latency', fmtNum(res.avg_latency, 2) + ' ms') +
+      row('P50 latency', fmtNum(res.p50_latency, 2) + ' ms') +
+      row('P95 latency', fmtNum(res.p95_latency, 2) + ' ms') +
+      row('P99 latency', fmtNum(res.p99_latency, 2) + ' ms') +
+      row('Max latency', fmtNum(res.max_latency, 2) + ' ms') +
+      row('Status codes', codesText) +
+    '</div>' +
+    '<details class="ins-details" open><summary>Full report JSON</summary><pre>' + esc(JSON.stringify(h, null, 2)) + '</pre></details>';
+
+  body.innerHTML = html;
 }

@@ -3072,3 +3072,5 @@ html {
 .ins-hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
 .ins-check { display:flex; align-items:flex-end; padding-bottom:6px; color:var(--text-2); font-size:12.5px; }
 .ins-check label { display:flex; gap:8px; align-items:center; }
+.report-view { padding: 4px 2px; }
+.report-view .ins-kv { margin-bottom: 4px; }

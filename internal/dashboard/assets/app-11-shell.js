@@ -48,18 +48,6 @@ function showView(id, opts) {
 
   if (id === 'viewHistory') {
     renderHistory();
-    var sec = document.getElementById('historySection');
-    if (sec) sec.classList.remove('hidden');
-    var body = document.getElementById('historyBody');
-    if (body && (!S.history || S.history.length === 0) && body.children.length === 0) {
-      var tr = document.createElement('tr');
-      var td = document.createElement('td');
-      td.colSpan = 9;
-      td.className = 'empty-note';
-      td.textContent = 'No runs yet — start one from Overview.';
-      tr.appendChild(td);
-      body.appendChild(tr);
-    }
   }
   if (id === 'viewCertificate') {
     certRefreshReset();

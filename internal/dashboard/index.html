@@ -29,7 +29,7 @@
         <span class="sb-ico" aria-hidden="true">✥</span><span>Certificate</span><span class="sb-key">3</span>
       </button>
       <button class="sb-link" type="button" data-view="viewHistory">
-        <span class="sb-ico" aria-hidden="true">↻</span><span>History</span><span class="sb-key">4</span>
+        <span class="sb-ico" aria-hidden="true">↻</span><span>Report</span><span class="sb-key">4</span>
       </button>
       <button class="sb-link sb-link--admin" type="button" data-view="viewAdmin" id="navAdmin">
         <span class="sb-ico" aria-hidden="true">⚙</span><span>Admin</span><span class="sb-key">A</span>
@@ -116,7 +116,7 @@
     </div>
     <div class="summary-stats" id="summaryStats"></div>
     <div class="summary-actions">
-      <button class="btn btn-ghost" id="btnViewReport" type="button" title="Jump to the Run History table with this run's report">View report</button>
+      <button class="btn btn-ghost" id="btnViewReport" type="button" title="Jump to the latest run report">View report</button>
       <button class="btn btn-start" id="btnRunAgain" type="button" title="Start the same run again (keyboard shortcut: S)">
         <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>
         <span>Run again</span>
@@ -1022,11 +1022,11 @@ sift bounty status --log triage.jsonl</code></pre>
     </div>
   </section>
 
-  <section class="view hidden" id="viewHistory" aria-label="History">
+  <section class="view hidden" id="viewHistory" aria-label="Report">
     <div class="page-head">
       <p class="page-kicker">Runs &amp; fleet</p>
-      <h1 class="page-title">History</h1>
-      <p class="page-sub">Review completed runs and connected worker nodes. Use this view to compare outcomes and inspect recent activity.</p>
+      <h1 class="page-title">Report</h1>
+      <p class="page-sub">Latest completed run report, shown inline in the dashboard (no report file required).</p>
     </div>
 
   <!-- Workers Table -->
@@ -1042,15 +1042,12 @@ sift bounty status --log triage.jsonl</code></pre>
     </div>
   </div>
 
-  <!-- History -->
+  <!-- Latest run report -->
   <div class="history-section hidden" id="historySection">
     <div class="panel">
-      <div class="panel-title"><span class="dot dot-orange"></span> Run History</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>ID</th><th>Time</th><th>Target</th><th>Users</th><th>Duration</th><th>RPS</th><th>P50</th><th>P99</th><th>Errors</th></tr></thead>
-          <tbody id="historyBody"></tbody>
-        </table>
+      <div class="panel-title"><span class="dot dot-orange"></span> Latest Run Report</div>
+      <div id="historyBody" class="report-view">
+        <div class="empty-note">No run report yet — start a run from Overview.</div>
       </div>
     </div>
   </div>

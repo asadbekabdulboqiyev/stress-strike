@@ -84,7 +84,7 @@ function buildNote(lead) {
   var code = document.createElement('code');
   code.textContent = 'reports/';
   note.appendChild(code);
-  note.appendChild(document.createTextNode(' (CLI mode) \u00b7 Run History below refreshed automatically.'));
+  note.appendChild(document.createTextNode(' (CLI mode) \u00b7 Latest report view refreshed automatically.'));
   return note;
 }
 function showSummary(kind) {
@@ -134,11 +134,14 @@ function hideSummary() {
   S.summaryVisible = false;
 }
 function viewReport() {
-  var sec = document.getElementById('historySection');
-  if (!sec || sec.classList.contains('hidden')) {
-    toast('No history yet — reports appear here after a run', 'info');
+  if (!S.history || S.history.length === 0) {
+    toast('No report yet — run a test first', 'info');
+    showView('viewHistory');
     return;
   }
+  showView('viewHistory');
+  var sec = document.getElementById('historySection');
+  if (!sec) return;
   sec.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
   sec.classList.add('flash');
   var panel = sec.querySelector('.panel');

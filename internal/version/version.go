@@ -4,7 +4,7 @@
 // Dockerfiles:
 //
 //	go build -ldflags "\
-//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=0.15.1 \
+//	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Version=0.15.2 \
 //	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Commit=<commit> \
 //	  -X github.com/asadbekabdulboqiyev/sift/internal/version.Date=<date>"
 //

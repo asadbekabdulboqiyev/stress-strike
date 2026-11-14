@@ -3,4 +3,4 @@ name: Sift
 description: Sift distributed load testing
 type: application
 version: 0.1.0
-appVersion: "0.15.1"
+appVersion: "0.15.2"

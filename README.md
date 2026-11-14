@@ -3,7 +3,7 @@
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/Version-0.15.1-green.svg)](https://github.com/asadbekabdulboqiyev/sift/releases/tag/v0.15.1)
+[![Version](https://img.shields.io/badge/Version-0.15.2-green.svg)](https://github.com/asadbekabdulboqiyev/sift/releases/tag/v0.15.2)
 
 **Sift** is a professional, self-hostable toolkit written in Go for **multi-protocol load testing**, **traffic replay**, **security scanning/pentest workflows**, **verifiable (cryptographically attestable) evidence**, and **planning/triage insights**.
 
@@ -17,7 +17,7 @@ It is designed for engineers, QA teams, and security practitioners who need a un
 
 - [Overview](#overview)
 - [Key Capabilities](#key-capabilities)
-- [What's Included in 0.15.1](#whats-included-in-0151)
+- [What's Included in 0.15.2](#whats-included-in-0151)
 - [Comparison with Paid Alternatives](#comparison-with-paid-alternatives)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
@@ -125,8 +125,9 @@ Sift unifies multiple testing, assessment, and evidence workflows in one toolcha
 
 ---
 
-## What's Included in 0.15.1
+## What's Included in 0.15.2
 
+- **5th dashboard section — Insights (New Features)**: visible sidebar section (`Insights`, shortcut `5`) bringing Digital Twin, Host X-Ray, and Bounty workflows into one place
 - **Digital Twin (`simulate`)**: `fit`, `run`, and `compare` workflows for evidence-based capacity estimates with uncertainty/confidence and optional breach gates
 - **Host X-Ray (`xray`)**: `capabilities`, `collect --allow`, and `report` for opt-in, aggregate observability and signal correlation
 - **Bounty/Triage (`bounty`)**: `package`, `verify`, `triage`, and `status` for verifiable evidence packaging and staged, auditable triage
@@ -185,7 +186,7 @@ Sift can be installed in multiple ways depending on your environment and operati
 ```bash
 git clone https://github.com/asadbekabdulboqiyev/sift.git
 cd sift
-./scripts/install-local.sh 0.15.1
+./scripts/install-local.sh 0.15.2
 # or: make install
 ```
 This builds all binaries, installs them to `$(go env GOBIN)` (or `$SIFT_INSTALL_DIR`), and performs macOS signing/launch checks.
@@ -199,9 +200,9 @@ sift version
 
 #### Option C: Release installer script (review before running)
 ```bash
-curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.15.1/scripts/install.sh
+curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.15.2/scripts/install.sh
 less install.sh
-./install.sh v0.15.1
+./install.sh v0.15.2
 ```
 Notes:
 - The script downloads release archives, verifies checksums (and can verify signatures if `cosign` is installed), installs binaries, and performs macOS signature/launch validation.
@@ -211,7 +212,7 @@ Notes:
 ```bash
 git clone https://github.com/asadbekabdulboqiyev/sift.git
 cd sift
-./scripts/build-all.sh 0.15.1
+./scripts/build-all.sh 0.15.2
 # binaries in ./bin
 ```
 
@@ -221,7 +222,7 @@ cd sift
 ```bash
 git clone https://github.com/asadbekabdulboqiyev/sift.git
 cd sift
-./scripts/install-local.sh 0.15.1
+./scripts/install-local.sh 0.15.2
 # or: make build && copy ./bin/* to a PATH directory
 ```
 
@@ -233,9 +234,9 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 
 #### Option C: Release installer script
 ```bash
-curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.15.1/scripts/install.sh
+curl -fsSL -o install.sh https://raw.githubusercontent.com/asadbekabdulboqiyev/sift/v0.15.2/scripts/install.sh
 less install.sh
-./install.sh v0.15.1
+./install.sh v0.15.2
 ```
 
 #### Option D: Release archives (manual)
@@ -273,12 +274,12 @@ git clone https://github.com/asadbekabdulboqiyev/sift.git
 cd sift
 
 # Build all binaries for current platform
-./scripts/build-all.sh 0.15.1
+./scripts/build-all.sh 0.15.2
 # or
 make build
 
 # Optional: install locally (with macOS signing/launch checks on Darwin)
-./scripts/install-local.sh 0.15.1
+./scripts/install-local.sh 0.15.2
 ```
 
 Produced binaries (local build): `Sift`, `Sift-dashboard`, `Sift-master`, `Sift-worker`, `Sift-replay`, `Sift-scan` (canonical names). Build/install scripts also create lowercase aliases: `sift`, `sift-dashboard`, `sift-master`, `sift-worker`, `sift-replay`, `sift-scan` for cross-platform CLI usage.
@@ -317,20 +318,20 @@ Always download from the official repository release page and verify integrity b
 #### Build images from source
 ```bash
 # Main/all-in-one image (per Dockerfile)
-docker build -t sift:0.15.1 .
+docker build -t sift:0.15.2 .
 
 # Distributed images
-docker build -f Dockerfile.master -t sift-master:0.15.1 .
-docker build -f Dockerfile.worker -t sift-worker:0.15.1 .
+docker build -f Dockerfile.master -t sift-master:0.15.2 .
+docker build -f Dockerfile.worker -t sift-worker:0.15.2 .
 ```
 
 #### Run examples
 ```bash
 # CLI help
-docker run --rm sift:0.15.1 sift --help
+docker run --rm sift:0.15.2 sift --help
 
 # Dashboard (bind to localhost on host)
-docker run --rm -p 127.0.0.1:8888:8888 sift:0.15.1 sift dashboard -listen 0.0.0.0:8888 --insecure
+docker run --rm -p 127.0.0.1:8888:8888 sift:0.15.2 sift dashboard -listen 0.0.0.0:8888 --insecure
 ```
 
 > Container defaults, entrypoints, and exposed ports may differ by image. Review the corresponding `Dockerfile`/compose configuration before production use.
@@ -426,9 +427,9 @@ sift --help | rg "simulate|xray|bounty"
 # 2) Rebuild and install latest local build (from repo root)
 cd /path/to/sift
 git pull
-./scripts/build-all.sh 0.15.1
-SIFT_INSTALL_DIR="$HOME/.local/bin" ./scripts/install-local.sh 0.15.1
-./scripts/install-local.sh 0.15.1
+./scripts/build-all.sh 0.15.2
+SIFT_INSTALL_DIR="$HOME/.local/bin" ./scripts/install-local.sh 0.15.2
+./scripts/install-local.sh 0.15.2
 
 # 3) Verify again
 sift version
@@ -473,7 +474,7 @@ sift run --url http://localhost:8080/health --users 50 --duration 60 --mode dash
 # Open http://127.0.0.1:8888
 ```
 
-New 0.15.1 workflows:
+New workflows (0.15.2, also available in Insights dashboard section):
 ```bash
 # Digital twin (from a completed report)
 sift simulate fit --report reports/run.json --out reports/twin
@@ -737,7 +738,7 @@ sift run --url https://api.example.com --users 50 --duration 60 --mode dashboard
 
 ### UI Tips
 - After upgrading binaries, restart the dashboard process and hard refresh the browser (`Cmd+Shift+R` on macOS).
-- Common shortcuts: **Report** (`4`), **Insights** (`5`) in the dashboard UI.
+- Common shortcuts: **Report** (`4`), **Insights** (`5`, 5th section — new features) in the dashboard UI.
 
 ### Security Notes
 - Binding beyond loopback may require explicit credentials or `--insecure` acknowledgement depending on flags/configuration.
@@ -1110,7 +1111,7 @@ See `docs/DEPLOYMENT-HARDENING.md` for detailed checklists and examples.
 ### Build
 ```bash
 make build
-./scripts/build-all.sh 0.15.1
+./scripts/build-all.sh 0.15.2
 ```
 
 ### Test and Validation
@@ -1151,7 +1152,7 @@ make verifier
 
 ### Latest version or new features not visible (macOS/CLI/dashboard)
 - Check installed binaries and version: `which -a sift && sift version`.
-- Rebuild/reinstall: `./scripts/build-all.sh 0.15.1 && ./scripts/install-local.sh 0.15.1`.
+- Rebuild/reinstall: `./scripts/build-all.sh 0.15.2 && ./scripts/install-local.sh 0.15.2`.
 - If another copy is earlier in `PATH` (e.g. `~/go/bin` vs `~/.local/bin`), update/remove the stale one or adjust `PATH`.
 - For dashboard UI, restart the dashboard process and hard refresh the browser (`Cmd+Shift+R`).
 - Confirm the running dashboard serves latest APIs: `curl -sS http://127.0.0.1:8888/api/version`.

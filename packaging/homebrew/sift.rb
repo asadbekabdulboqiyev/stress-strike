@@ -8,8 +8,8 @@
 class Sift < Formula
   desc "Distributed load testing and network simulator written in Go"
   homepage "https://github.com/asadbekabdulboqiyev/sift"
-  url "https://github.com/asadbekabdulboqiyev/sift/releases/download/v0.15.1/Sift_0.15.1_darwin_arm64.tar.gz"
-  version "0.15.1"
+  url "https://github.com/asadbekabdulboqiyev/sift/releases/download/v0.15.2/Sift_0.15.2_darwin_arm64.tar.gz"
+  version "0.15.2"
   license "Apache-2.0"
   head "https://github.com/asadbekabdulboqiyev/sift.git", branch: "main"
 

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-06-charts.js — part 06 of 13 of the dashboard bundle.
+   app-06-charts.js — part 06 of 14 of the dashboard bundle.
 
    CANVAS CHARTS, helpers
 

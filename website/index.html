@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sift — real multi-node load testing on hardware you already own</title>
-  <meta name="description" content="Sift runs browser-grade TLS-fingerprinted load against any site, across machines you already have. Two paths: a Docker fleet on one box, or real VPS workers over SSH. No SaaS, no cloud account, no signup.">
+  <title>Sift — self-hosted load testing, security workflows, and verifiable evidence</title>
+  <meta name="description" content="Sift is a self-hosted toolkit for browser-grade load testing, traffic replay, security workflows, verifiable evidence, and evidence-based insights (digital twin, host X-Ray, bounty triage). Run from hardware you own.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sift">
-  <meta property="og:title" content="Sift — real multi-node load testing on hardware you already own">
-  <meta property="og:description" content="Browser-grade TLS-fingerprinted load testing from machines you already have. Docker fleet or VPS workers over SSH. No SaaS, no cloud account, no signup.">
+  <meta property="og:title" content="Sift — self-hosted load testing, security workflows, and verifiable evidence">
+  <meta property="og:description" content="Self-hosted load testing, replay, security workflows, verifiable evidence, and evidence-based insights — from hardware you own. No SaaS, no signup.">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Sift — real multi-node load testing on hardware you already own">
-  <meta name="twitter:description" content="Browser-grade TLS-fingerprinted load testing from machines you already have. No SaaS, no cloud account, no signup.">
+  <meta name="twitter:title" content="Sift — self-hosted load testing, security workflows, and verifiable evidence">
+  <meta name="twitter:description" content="Self-hosted load testing, replay, security workflows, verifiable evidence, and evidence-based insights — from hardware you own.">
   <link rel="stylesheet" href="assets/css/styles.css">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230d0f0e'/%3E%3Cpath d='M3 3h6v3H6v3H3V3zm4 7h6v3H7v-3z' fill='%23ffb454'/%3E%3C/svg%3E">
 </head>
@@ -28,6 +28,7 @@
       </a>
       <nav class="site-nav" aria-label="Primary">
         <a href="#paths">Two paths</a>
+        <a href="#capabilities">Capabilities</a>
         <a href="#output">What you see</a>
         <a href="#compare">Compare</a>
         <a href="#faq">FAQ</a>
@@ -37,6 +38,7 @@
     </div>
     <nav class="site-nav" id="mobileNav" aria-label="Mobile">
       <a href="#paths">Two paths</a>
+      <a href="#capabilities">Capabilities</a>
       <a href="#output">What you see</a>
       <a href="#compare">Compare</a>
       <a href="#faq">FAQ</a>
@@ -50,8 +52,8 @@
     <section class="hero" id="top">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <h1>Load-test a real site with machines you already have.</h1>
-          <p class="lede">Sift sends browser-grade HTTPS connections at any target and reports what the server can actually take. Run it on one laptop, or stretch it across every VPS and home server you own.</p>
+          <h1>Load-test, assess, and verify &mdash; on hardware you already own.</h1>
+          <p class="lede">Sift is a self-hosted CLI and web dashboard for browser-grade load testing, traffic replay, authorized security workflows, and verifiable evidence. New MVP insights add capacity digital-twin simulation, opt-in host X-Ray correlation, and verifiable bounty/triage workflows &mdash; all evidence-honest and defensive by design.</p>
           <p class="hero-cta">
             <a class="btn btn-primary" href="#run">One command &mdash; run it now</a>
             <a class="btn btn-ghost" href="#output">See a real run</a>
@@ -59,7 +61,8 @@
           <p class="hero-note">No account. No cloud. No dependencies beyond what&rsquo;s listed on this page.</p>
           <ul class="hero-badges" aria-label="Project facts">
             <li>Open source &middot; Apache-2.0</li>
-            <li>Runs on hardware you own</li>
+            <li>CLI + web dashboard</li>
+            <li>Verifiable evidence &amp; insights (MVP)</li>
             <li>No SaaS &middot; no signup</li>
           </ul>
         </div>
@@ -355,6 +358,45 @@ token (any secret string): ****************" type="button" aria-label="Copy comm
       </div>
     </section>
 
+    <!-- capabilities -->
+    <section class="section-pad capabilities" id="capabilities">
+      <div class="wrap">
+        <h2 class="sec-title">Beyond load testing</h2>
+        <p class="sec-sub">Sift unifies performance, authorized security assessment, verifiable evidence, and planning insights in one self-hosted toolkit &mdash; available from the CLI and the dashboard.</p>
+        <div class="cap-grid">
+          <article class="cap-card">
+            <p class="cap-k">Performance</p>
+            <h3>Load, replay, and scale</h3>
+            <p>Multi-protocol load testing, PCAP/HAR replay, profiles, scenarios, SLA/regression gates, and distributed master/worker execution from hardware you control.</p>
+            <pre class="cap-code"><code>sift run --url https://api.example.com --users 100 --duration 60
+sift replay -input traffic.har -base-url https://staging.example.com</code></pre>
+          </article>
+          <article class="cap-card">
+            <p class="cap-k">Security (authorized)</p>
+            <h3>Scan and assess with guardrails</h3>
+            <p>Integrated scan/pentest workflows and scoped scanners with authorization, audit trails, and explicit &ldquo;NOT TESTED&rdquo; boundaries for authorized defensive use.</p>
+            <pre class="cap-code"><code>sift scan -target example.com -all
+sift pentest --target https://example.com --authorized SEC-77</code></pre>
+          </article>
+          <article class="cap-card">
+            <p class="cap-k">Trust &amp; evidence</p>
+            <h3>Verifiable artifacts</h3>
+            <p>VPMP v1 attestations, signatures, Merkle proofs, and a staged bounty/triage workflow for verifiable evidence packaging with human review. <code>rewarded</code> is an audit state, not automatic payment.</p>
+            <pre class="cap-code"><code>sift verify --bundle run.bundle.json --samples run.bundle.json.samples.jsonl
+sift bounty package|verify|triage|status</code></pre>
+          </article>
+          <article class="cap-card">
+            <p class="cap-k">Insights (MVP)</p>
+            <h3>Plan and correlate</h3>
+            <p><strong>Digital Twin</strong> fits what-if capacity estimates from reports (not guarantees). <strong>Host X-Ray</strong> collects opt-in aggregate host signals and correlates them as evidence (no eBPF loading, not causation). Available in CLI and dashboard <em>Insights</em>.</p>
+            <pre class="cap-code"><code>sift simulate fit|run|compare
+sift xray capabilities|collect --allow|report</code></pre>
+          </article>
+        </div>
+        <p class="cap-note">All capabilities are intended for systems you own or are explicitly authorized to test. Predictions and correlations are explanatory evidence with stated assumptions and uncertainty.</p>
+      </div>
+    </section>
+
     <!-- faq -->
     <section class="section-pad faq" id="faq">
       <div class="wrap narrow">
@@ -412,7 +454,7 @@ token (any secret string): ****************" type="button" aria-label="Copy comm
         <a href="https://github.com/asadbekabdulboqiyev/sift/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
         <a href="https://github.com/asadbekabdulboqiyev/sift/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
       </p>
-      <p class="foot-notes">Built as a dev-tools site. Test against authorized targets only.</p>
+      <p class="foot-notes">Self-hosted dev &amp; security toolkit. Use only against systems you own or are explicitly authorized to test.</p>
     </div>
   </footer>
 

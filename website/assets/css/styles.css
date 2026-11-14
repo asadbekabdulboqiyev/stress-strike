@@ -580,3 +580,50 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
     }
   }
 }
+
+/* ---------- capabilities / insights ---------- */
+
+.cap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+@media (max-width: 860px) { .cap-grid { grid-template-columns: 1fr; } }
+.cap-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 1.1rem 1.1rem 1rem;
+}
+.cap-k {
+  margin: 0 0 .35rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cap-card h3 { margin: 0 0 .45rem; font-size: 1.05rem; line-height: 1.25; }
+.cap-card p { margin: 0; color: var(--dim); font-size: .93rem; line-height: 1.55; }
+.cap-card p + p { margin-top: .5rem; }
+.cap-code {
+  margin: .75rem 0 0;
+  padding: .7rem .8rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.cap-code code {
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre;
+}
+.cap-note {
+  margin: 1rem 0 0;
+  color: var(--mut);
+  font-size: .9rem;
+}

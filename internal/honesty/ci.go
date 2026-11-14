@@ -165,7 +165,7 @@ func CI95OrderStatistic(sorted []int64, ppm int) (int64, int64) {
 	meanS := nn * fp
 	// (sd scaled by 1e6)^2 = n * ppm * (1e6 - ppm).
 	varSq := uint64(nn) * uint64(fp) * uint64(ppmScale-ppm)
-	sdS := int64(isqrt(varSq)) // #nosec G115 -- values are non-negative and within domain bounds
+	sdS := int64(isqrt(varSq))                                       // #nosec G115 -- values are non-negative and within domain bounds
 	delta := int64(mulDivRoundU(uint64(z95), uint64(sdS), ppmScale)) // #nosec G115 -- values are non-negative and within domain bounds
 
 	loRank := ceilScale(meanS-delta, ppmScale)

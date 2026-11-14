@@ -254,9 +254,9 @@ func bucketIndexOf(v uint64) int {
 	if v < subBucketCount {
 		return int(v)
 	}
-	e := bits.Len64(v) - 1           // highest set bit
-	shift := e - (subBucketBits - 1) // >= 1
-	mantissa := v >> uint(shift)     // in [subBucketHalf, subBucketCount)
+	e := bits.Len64(v) - 1                                                        // highest set bit
+	shift := e - (subBucketBits - 1)                                              // >= 1
+	mantissa := v >> uint(shift)                                                  // in [subBucketHalf, subBucketCount)
 	idx := subBucketCount + (shift-1)*subBucketHalf + int(mantissa-subBucketHalf) // #nosec G115 -- index/size values are within expected range
 	if idx >= histogramBuckets {
 		idx = histogramBuckets - 1

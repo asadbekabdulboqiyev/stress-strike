@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-13-admin.js — part 13 of 13 of the dashboard bundle.
+   app-13-admin.js — part 13 of 14 of the dashboard bundle.
 
    ADMIN page — status, unlock, lock, countdown
 

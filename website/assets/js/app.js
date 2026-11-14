@@ -6,8 +6,8 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- theme ---------- */
-  /* Sayt Always dark theme (aligned with VeriGate premium styling)
-     tashlandi). Toggle/override yo'q — `:root` da faqat dark token'lar. */
+  /* Site always uses the dark theme (aligned with VeriGate premium styling).
+     No toggle/override — `:root` defines dark tokens only. */
 
   /* ---------- mobile nav toggle ---------- */
   const navToggle = $('#navToggle');

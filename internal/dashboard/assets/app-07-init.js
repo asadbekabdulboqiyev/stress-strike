@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-07-init.js — part 07 of 13 of the dashboard bundle.
+   app-07-init.js — part 07 of 14 of the dashboard bundle.
 
    POLLING FALLBACK, keyboard shortcuts, init
 

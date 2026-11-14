@@ -5,6 +5,7 @@
 #   make test        Run tests with the race detector
 #   make lint        go vet + gofmt check
 #   make verifier    Verify the browser verifier (tests + drift guard + Go<=>JS parity)
+#   make verify      Full local gate: build, vet, gofmt, tests, linux build, gosec
 #   make gosec       Run the gosec ratchet (new error-level findings fail)
 #   make gosec-test  Self-test the ratchet's own logic (no gosec needed)
 #   make clean       Remove bin/ and reports/
@@ -72,6 +73,34 @@ gosec: ## Run the gosec ratchet: new error-level findings outside G204/G304 fail
 	}
 	$(GOSEC) -no-fail -fmt sarif -out gosec.sarif ./...
 	bash scripts/gosec-ratchet.sh gosec.sarif
+
+.PHONY: verify
+verify: ## Full local gate: build, vet, gofmt, tests, linux build, zero gosec findings
+	$(GO) build ./...
+	$(GO) vet ./...
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "gofmt: unformatted files found:"; \
+		echo "$$unformatted"; \
+		exit 1; \
+	fi
+	@echo "gofmt: all files formatted"
+	$(GO) test ./...
+	GOOS=linux $(GO) build ./...
+	@command -v $(GOSEC) >/dev/null || { \
+		echo "gosec: not on PATH. Install the version CI pins (v2.29.0):"; \
+		echo "  GOBIN=$$(go env GOPATH)/bin go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0"; \
+		exit 1; \
+	}
+	@tmp=$$(mktemp); \
+	$(GOSEC) -fmt=json -exclude-generated ./... > "$$tmp" 2>/dev/null || true; \
+	count=$$(jq -r '.Issues | length // 0' "$$tmp" 2>/dev/null || echo 0); \
+	rm -f "$$tmp"; \
+	if [ "$$count" != "0" ] && [ "$$count" != "null" ] && [ -n "$$count" ]; then \
+		echo "gosec: $$count finding(s) — run 'gosec -exclude-generated ./...' for details"; \
+		exit 1; \
+	fi; \
+	echo "gosec: 0 findings"
 
 .PHONY: clean
 clean: ## Remove bin/ and reports/

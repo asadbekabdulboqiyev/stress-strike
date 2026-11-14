@@ -91,7 +91,7 @@ Sift unifies multiple testing and assessment workflows in one toolchain:
 - Safety controls: authorization tickets/policy, allowlists, dry-run, rate/budget controls, audit logging; untested categories are reported as `NOT TESTED` (not `PASS`)
 
 ### Dashboard & Distribution
-- Real-time dashboard with run control/history and scanner panels
+- Real-time dashboard with run control/history, scanner panels, and an **Insights** view
 - Operational endpoints: `/healthz`, `/readyz`, `/metrics`
 - Distributed `master`/`worker` over gRPC (static fleet or auto-discovery, depending on setup)
 - Deployment assets for Docker, Docker Compose, Kubernetes/Helm, and systemd
@@ -101,6 +101,12 @@ Sift unifies multiple testing and assessment workflows in one toolchain:
 - `keygen`, `verify`, and `certificate` workflows
 - Dashboard-generated attestations/bundles for run verification
 - Independent verifier assets (`docs/VERIFIER.html`, `web/verifier/*`)
+- Verifiable bounty/triage evidence packages with human-in-the-loop triage workflow (`bounty`); `rewarded` is an audit state, not an automatic payment
+
+### Planning & Observability Insights (MVP)
+- Capacity digital-twin fitting and what-if simulation from completed Sift reports (`simulate`) — model-based estimates with confidence/uncertainty, not guarantees
+- Opt-in host observability snapshots and correlation helpers (`xray`) — cgo-free, no privilege escalation/eBPF loading; indicators are correlated evidence, not causal findings
+- Dashboard **Insights** view and helper APIs for twin fit/simulate, X-Ray capability detection, and bounty manifest/triage replay (CLI remains authoritative for file-based packaging, replay, and artifact verification)
 
 ### Developer & CI Integration
 - Go API: `github.com/asadbekabdulboqiyev/sift/api`
@@ -446,6 +452,9 @@ sift <command> --help
 | `dashboard` | Real-time web dashboard |
 | `master` | Distributed coordinator |
 | `worker` | Distributed worker node |
+| `simulate` | Capacity digital-twin / what-if simulation from Sift reports (estimates) |
+| `xray` | Opt-in host observability snapshots and correlation (aggregate, no eBPF loading) |
+| `bounty` | Verifiable bug-bounty/triage evidence package workflow |
 
 ### Individual Security Scanners
 
@@ -508,6 +517,18 @@ sift run --config examples/login-flow.yaml
 
 # Dashboard-backed run
 sift run --url https://api.example.com --users 50 --duration 60 --mode dashboard --listen 127.0.0.1:8888
+
+# Capacity planning (digital twin, estimates)
+sift simulate fit --report reports/run.json --out reports/twin
+sift simulate run --model reports/twin/twin-model.json --scenario likely --rps 500
+
+# Opt-in host observability correlation (authorized hosts only)
+sift xray capabilities
+sift xray collect --allow --interval 2s --duration 30s --out reports/xray.jsonl
+
+# Verifiable bounty/triage evidence package (human triage required)
+sift bounty package --bundle run.bundle.json --samples run.bundle.json.samples.jsonl --report report.md --scope scope.txt --program "Example" --out ./pkg
+sift bounty verify --package ./pkg/bounty-package.json --dir ./pkg
 ```
 
 ### Common `run` Flags (high-level)
@@ -647,6 +668,7 @@ sift run --url https://api.example.com --users 50 --duration 60 --mode dashboard
 - Scanner/security panels (OWASP, pentest, crawl, fuzz, subdomains, ports, TLS, JWT, GraphQL, WebSocket, etc.)
 - Operational endpoints: `/healthz`, `/readyz`, `/metrics`
 - Attestation/evidence views and bundle download/verification (where available)
+- **Insights** view for digital-twin fit/simulate helpers, X-Ray capability detection, and bounty manifest/triage replay (file-based CLI workflows remain authoritative for packaging and full verification)
 
 ### Security Notes
 - Binding beyond loopback may require explicit credentials or `--insecure` acknowledgement depending on flags/configuration.

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-11-shell.js — part 11 of 13 of the dashboard bundle.
+   app-11-shell.js — part 11 of 14 of the dashboard bundle.
 
    SHELL — view switching and the hidden admin reveal
 
@@ -14,7 +14,7 @@
    SHELL — sidebar view switching
    ========================================================================== */
 var VIEW_KEY = 'ss_view';
-var VIEW_IDS = ['viewOverview', 'viewSecurity', 'viewCertificate', 'viewHistory', 'viewAdmin'];
+var VIEW_IDS = ['viewOverview', 'viewSecurity', 'viewCertificate', 'viewInsights', 'viewHistory', 'viewAdmin'];
 
 function rememberView(id) {
   try { localStorage.setItem(VIEW_KEY, id); } catch (e) {}
@@ -98,11 +98,11 @@ function wireNav() {
     });
   }
 
-  // Alt+1..4 / Alt+A. Alt avoids fighting the existing S/E run shortcuts and
+  // Alt+1..5 / Alt+A. Alt avoids fighting the existing S/E run shortcuts and
   // normal typing inside the URL and token fields.
   document.addEventListener('keydown', function(ev) {
     if (!ev.altKey || ev.ctrlKey || ev.metaKey) return;
-    var map = { '1': 'viewOverview', '2': 'viewSecurity', '3': 'viewCertificate', '4': 'viewHistory' };
+    var map = { '1': 'viewOverview', '2': 'viewSecurity', '3': 'viewCertificate', '4': 'viewHistory', '5': 'viewInsights' };
     var id = map[String(ev.key).toLowerCase()];
     if (!id) return;
     ev.preventDefault();

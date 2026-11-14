@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-08-scan-panels.js — part 08 of 13 of the dashboard bundle.
+   app-08-scan-panels.js — part 08 of 14 of the dashboard bundle.
 
    Scan panels — OWASP Top 10, demo store
 

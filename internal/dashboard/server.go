@@ -590,6 +590,18 @@ func (s *Server) serveApp(w http.ResponseWriter, r *http.Request) {
 		s.handleGraphQLScan(w, r)
 	case path == "/api/websocket/scan":
 		s.handleWebSocketScan(w, r)
+	case path == "/api/insights/xray/capabilities":
+		s.handleInsightsXRayCapabilities(w, r)
+	case path == "/api/insights/twin/fit":
+		s.handleInsightsTwinFit(w, r)
+	case path == "/api/insights/twin/simulate":
+		s.handleInsightsTwinSimulate(w, r)
+	case path == "/api/insights/xray/correlate":
+		s.handleInsightsXRayCorrelate(w, r)
+	case path == "/api/insights/bounty/validate":
+		s.handleInsightsBountyValidate(w, r)
+	case path == "/api/insights/bounty/status":
+		s.handleInsightsBountyStatus(w, r)
 	case path == "/style.css":
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")

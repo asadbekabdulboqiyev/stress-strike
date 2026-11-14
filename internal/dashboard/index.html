@@ -890,6 +890,79 @@
     </div>
   </section>
 
+  <section class="view hidden" id="viewInsights" aria-label="Insights">
+    <div class="page-head">
+      <p class="page-kicker">Analysis &amp; evidence workflows</p>
+      <h1 class="page-title">Insights</h1>
+      <p class="page-sub">Capacity simulation, opt-in host observability correlation, and verifiable triage helpers — evidence-honest, authorized, and defensive by design.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><div><div class="card-title">Host X-Ray capabilities</div><div class="card-subtitle">Read-only capability detection on the dashboard host. No eBPF programs are loaded and no privileges are requested.</div></div>
+        <button class="btn btn-ghost" id="btnXrayCaps" type="button">Refresh</button>
+      </div>
+      <div id="xrayCapsOut" class="ins-out">Loading…</div>
+    </div>
+
+    <div class="ins-cols">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Digital Twin — fit model</div><div class="card-subtitle">Paste a Sift report JSON to derive a capacity model (estimate, not a guarantee).</div></div></div>
+        <label class="ins-label" for="twinReportJson">Report JSON</label>
+        <textarea id="twinReportJson" class="ins-textarea" spellcheck="false" placeholder='Paste report JSON (e.g. reports/*.json)'></textarea>
+        <div class="ins-row"><label class="ins-label" for="twinTargetP99">Target p99 (ms, optional)</label><input id="twinTargetP99" type="number" min="0" step="1" placeholder="0"></div>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnTwinFit" type="button">Fit model</button><button class="btn btn-ghost btn-sm" id="btnTwinUseModel" type="button">Use fitted model →</button></div>
+        <div id="twinFitOut" class="ins-out"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Digital Twin — simulate</div><div class="card-subtitle">Run a seeded what-if scenario against a fitted model.</div></div></div>
+        <label class="ins-label" for="twinModelJson">Model JSON</label>
+        <textarea id="twinModelJson" class="ins-textarea" spellcheck="false" placeholder='Paste twin-model.json'></textarea>
+        <div class="ins-row ins-row-3">
+          <div><label class="ins-label" for="twinScenario">Scenario</label><select id="twinScenario"><option value="likely">likely</option><option value="best">best</option><option value="worst">worst</option><option value="custom">custom</option></select></div>
+          <div><label class="ins-label" for="twinRps">Target RPS</label><input id="twinRps" type="number" min="0" step="1" placeholder="auto"></div>
+          <div><label class="ins-label" for="twinIters">Iterations</label><input id="twinIters" type="number" min="1" max="10000" step="1" value="200"></div>
+        </div>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnTwinSim" type="button">Simulate</button></div>
+        <div id="twinSimOut" class="ins-out"></div>
+      </div>
+    </div>
+
+    <div class="ins-cols" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Bounty — manifest integrity</div><div class="card-subtitle">Validate <code>bounty-package.json</code> structure and canonical digest. Full artifact/attestation replay requires CLI file access.</div></div></div>
+        <label class="ins-label" for="bountyManifestJson">Manifest JSON</label>
+        <textarea id="bountyManifestJson" class="ins-textarea" spellcheck="false" placeholder='Paste bounty-package.json'></textarea>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnBountyValidate" type="button">Validate manifest</button></div>
+        <div id="bountyValidateOut" class="ins-out"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Bounty — triage status</div><div class="card-subtitle">Replay a triage JSONL log (as a JSON array). States are audit outcomes; “rewarded” is not an automatic payment.</div></div></div>
+        <label class="ins-label" for="bountyEventsJson">Events JSON array</label>
+        <textarea id="bountyEventsJson" class="ins-textarea" spellcheck="false" placeholder='Paste events array'></textarea>
+        <div class="ins-actions"><button class="btn btn-primary btn-sm" id="btnBountyStatus" type="button">Replay status</button></div>
+        <div id="bountyStatusOut" class="ins-out"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header"><div><div class="card-title">CLI reference</div><div class="card-subtitle">Authoritative workflows for file-based artifacts, evidence replay, and opt-in host collection.</div></div></div>
+      <pre class="ins-pre"><code>sift simulate fit --report reports/run.json --out reports/twin
+sift simulate run --model reports/twin/twin-model.json --scenario likely --rps 500
+sift simulate compare --model reports/twin/twin-model.json --out reports/twin
+
+sift xray capabilities
+sift xray collect --allow --interval 2s --duration 30s --out reports/xray.jsonl
+sift xray report --input reports/xray.jsonl --signals signals.json --out reports/xray-report.md
+
+sift bounty package --bundle bundle.json --samples samples.jsonl --report report.md --scope scope.txt --program "Acme" --out ./pkg
+sift bounty verify --package ./pkg/bounty-package.json --dir ./pkg
+sift bounty triage --package ./pkg/bounty-package.json --log triage.jsonl --to triaged --actor alice --role triager --reason "confirmed"
+sift bounty status --log triage.jsonl</code></pre>
+    </div>
+  </section>
+
   <section class="view hidden" id="viewAdmin" aria-label="Admin">
     <div class="page-head">
       <p class="page-kicker">Local control</p>

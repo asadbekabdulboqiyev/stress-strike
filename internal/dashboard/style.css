@@ -3036,3 +3036,36 @@ html {
 .cert-result-panel .cert-facts {
   margin-bottom: 12px;
 }
+
+/* ==========================================================================
+   INSIGHTS (Digital Twin / X-Ray / Bounty helpers)
+   ========================================================================== */
+.ins-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 980px) { .ins-cols { grid-template-columns: 1fr; } }
+.ins-label { display:block; font-size:12px; font-weight:700; color:var(--text-2); margin:10px 0 6px; }
+.ins-textarea { width:100%; min-height:140px; resize:vertical; background:var(--bg-1); color:var(--text-0); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; font: 12.5px/1.5 var(--font-mono); }
+.ins-row { margin-top:8px; }
+.ins-row-3 { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+@media (max-width: 720px) { .ins-row-3 { grid-template-columns: 1fr; } }
+.ins-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.ins-out { margin-top:12px; font-size:13px; color:var(--text-1); }
+.ins-out.err { color: var(--red, #f87171); }
+.ins-out.warn { color: #fbbf24; }
+.ins-out.ok { color: var(--text-1); }
+.ins-table { width:100%; border-collapse: collapse; margin-top:8px; font-size:12.5px; }
+.ins-table th, .ins-table td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+.ins-table th { color:var(--text-2); font-weight:700; width:38%; }
+.ins-notes { margin:8px 0 0; padding-left:18px; color:var(--text-2); font-size:12.5px; }
+.ins-notes.err { color: var(--red, #f87171); }
+.ins-note { margin:8px 0 0; color:var(--text-2); font-size:12.5px; }
+.ins-note.err { color: var(--red, #f87171); }
+.ins-pre { margin:0; padding:12px 14px; background:var(--bg-1); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:auto; font:12.5px/1.55 var(--font-mono); color:var(--text-1); }
+.ins-kv { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:6px 12px; }
+.ins-kv-row { display:flex; justify-content:space-between; gap:12px; padding:6px 8px; background:var(--bg-1); border:1px solid var(--border); border-radius:8px; }
+.ins-kv-row .k { color:var(--text-2); font-size:12px; }
+.ins-kv-row .v { color:var(--text-0); font-weight:700; font-size:12.5px; }
+.ins-details { margin-top:8px; }
+.ins-details pre { margin-top:6px; max-height:260px; overflow:auto; padding:10px; background:var(--bg-1); border:1px solid var(--border); border-radius:8px; font:12px/1.5 var(--font-mono); }
+.st-pass { color:#34d399; font-weight:700; }
+.st-fail { color:#f87171; font-weight:700; }
+.st-skip { color:#fbbf24; font-weight:700; }

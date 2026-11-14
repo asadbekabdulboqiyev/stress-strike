@@ -18,7 +18,8 @@ var buildVersion = version.Version
 // "unknown command" listing. Keep in sync with the switch in main().
 var knownCommands = []string{
 	"run", "replay", "scan", "dashboard", "master", "worker",
-	"demo-store", "pentest", "fuzz", "dirbust", "jwt", "graphql", "websocket",
+	"demo-store", "pentest", "simulate", "xray", "bounty",
+	"fuzz", "dirbust", "jwt", "graphql", "websocket",
 	"crawl", "subdomain", "portscan", "sslscan",
 	"authorize", "audit", "healthcheck", "keygen", "verify", "certificate", "admin", "help", "version",
 }
@@ -49,6 +50,15 @@ func main() {
 			return
 		case "pentest":
 			cmdPentest()
+			return
+		case "simulate":
+			cmdSimulate()
+			return
+		case "xray":
+			cmdXray()
+			return
+		case "bounty":
+			cmdBounty()
 			return
 		case "fuzz":
 			cmdFuzz()
@@ -168,6 +178,9 @@ Sift %s — Ultra-Fast Load Testing & Security Suite
    demo-store  Launch bundled VoltStore demo (VeriGate ON)
                subcommands: status | stop
    pentest     1-click professional security assessment
+   simulate    Capacity digital twin / what-if simulation from Sift reports
+   xray        Opt-in host observability (aggregate /proc or runtime) and correlation
+   bounty      Verifiable bug-bounty/triage evidence package workflow
    authorize   Manage target authorizations (allow-list + approvals)
    audit       Show or verify the authorization audit trail
    keygen      Create a Sift coordinator keypair (Ed25519, PEM)

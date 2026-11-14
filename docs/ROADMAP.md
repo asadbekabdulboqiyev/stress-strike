@@ -51,6 +51,14 @@ This roadmap is based on current project review findings. Items are grouped by c
 - **Planned improvements:** CDP/Chromium-based browser execution path for JS-heavy app scenarios (targeted use cases).
 - **Estimate:** ~6 weeks (2 senior engineers).
 
+## Category 2.5 — Planning & Evidence Insights (MVP, in progress)
+
+- **Digital Twin capacity simulation (`sift simulate`):** evidence-based what-if simulation from completed Sift reports with confidence/uncertainty and explicit assumptions. Estimates only — not guarantees.
+- **Host X-Ray observability (`sift xray`, MVP):** opt-in, cgo-free aggregate host snapshots and correlation helpers (Linux `/proc` + portable runtime fallback). Correlated evidence only — not causation. No privilege escalation or eBPF program loading.
+- **Verifiable bug-bounty/triage workflow (`sift bounty`, MVP):** verifiable evidence packaging, integrity checks, and staged human triage built on attest/VPMP artifacts. No smart contracts, wallets, or automatic payout/oracle.
+
+Dashboard integration: **Insights** view and helper APIs for fit/simulate, capability detection, and manifest/triage replay. CLI remains authoritative for file-based packaging, replay, and full artifact verification.
+
 ## Category 3 — Adoption and ecosystem
 
 - **VPMP standardization:** VPMP v1 exists in-project; broader external review/adoption and spec evolution may be needed.

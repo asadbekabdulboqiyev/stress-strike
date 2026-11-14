@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-03-actions.js — part 03 of 13 of the dashboard bundle.
+   app-03-actions.js — part 03 of 14 of the dashboard bundle.
 
    ACTIONS — run control over the control API
 

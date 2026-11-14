@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-04-onboarding.js — part 04 of 13 of the dashboard bundle.
+   app-04-onboarding.js — part 04 of 14 of the dashboard bundle.
 
    ONBOARDING, run summary, toast, sliders
 

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-10-scanners.js — part 10 of 13 of the dashboard bundle.
+   app-10-scanners.js — part 10 of 14 of the dashboard bundle.
 
    Crawler, fuzz, subdomain, port, dir, TLS, JWT, GraphQL, WebSocket
 

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app-12-certificate.js — part 12 of 13 of the dashboard bundle.
+   app-12-certificate.js — part 12 of 14 of the dashboard bundle.
 
    CERTIFICATE page — issue, verify, history
 

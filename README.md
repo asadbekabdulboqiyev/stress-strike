@@ -11,13 +11,15 @@ It is designed for engineers, QA teams, and security practitioners who need a un
 
 > **Authorized testing only.** Use Sift only against systems you own or have explicit written permission to test. Unauthorized load generation, scanning, or exploitation attempts may be illegal and harmful.
 
+![Sift Dashboard](docs/images/dashboard-ui.png)
+
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Key Capabilities](#key-capabilities)
-- [What's Included in 0.15.2](#whats-included-in-0151)
+- [What's Included in 0.15.2](#whats-included-in-0152)
 - [Comparison with Paid Alternatives](#comparison-with-paid-alternatives)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
@@ -712,6 +714,8 @@ sift pentest --target https://example.com --dry-run
 ---
 
 ## Web Dashboard
+
+![Sift Dashboard UI](docs/images/dashboard-ui.png)
 
 Start the dashboard:
 ```bash

@@ -243,9 +243,13 @@ func (s *demoServer) cartKey(w http.ResponseWriter, r *http.Request) string {
 	}
 	id := randomHex(12)
 	http.SetCookie(w, &http.Cookie{
-		Name: guestCookie, Value: id, Path: "/",
-		HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		MaxAge: int((30 * 24 * time.Hour).Seconds()),
+		Name:     guestCookie,
+		Value:    id,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
 	})
 	return id
 }

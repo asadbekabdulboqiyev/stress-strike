@@ -109,7 +109,7 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(adminStatusPayload())
+	_ = json.NewEncoder(w).Encode(adminStatusPayload())
 }
 
 type adminUnlockRequest struct {
@@ -131,7 +131,7 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 	if blocked, secs := adminAttempts.blocked(now); blocked {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":       "too many wrong codes — try again later",
 			"retry_after": secs,
 		})
@@ -178,7 +178,7 @@ func (s *Server) handleAdminUnlock(w http.ResponseWriter, r *http.Request) {
 	auditAdminSwitch("admin-unlock", true, "bypass window opened for "+humanSecondsDash(st.SecondsLeft))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  adminStatusPayload(),
 		"warning": "Admin bypass is ON: scans run without an authorization ticket until " + st.ExpiresAt.Local().Format("15:04:05") + ". Cloud metadata stays denied.",
 	})
@@ -195,7 +195,7 @@ func (s *Server) handleAdminLock(w http.ResponseWriter, r *http.Request) {
 	}
 	if !adminStateExists() {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"status": adminStatusPayload()})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": adminStatusPayload()})
 		return
 	}
 	store, err := adminlock.Open(adminlock.DefaultPath())
@@ -212,7 +212,7 @@ func (s *Server) handleAdminLock(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  adminStatusPayload(),
 		"warning": "",
 	})
@@ -221,7 +221,7 @@ func (s *Server) handleAdminLock(w http.ResponseWriter, r *http.Request) {
 func writeAdminError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 // auditAdminSwitch records a switch change in the shared hash-chained trail, so

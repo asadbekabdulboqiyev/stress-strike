@@ -8,30 +8,18 @@
 # Run:
 #   docker compose -f deploy/docker-compose.yml up -d
 #
-# The workers self-register with the master via auto-discovery. Start a run
-# from the master container:
-#   docker compose -f deploy/docker-compose.yml exec master \
-#     /usr/local/bin/Sift-master -listen 0.0.0.0:50051 \
-#       -wait-workers 2 -wait-timeout 30 \
-#       -url https://example.com -users 500 -duration 60
+# The workers self-register with the master. This compose setup starts the
+# master with a sample run configuration and waits for the workers to join;
+# adjust -url/-users/-duration/-wait-workers as needed for your environment.
 #
 # IMPORTANT: the default bridge network adds NAT; for maximum connection
 # counts use `network_mode: host` and expose the ports appropriately. The
 # compose file below keeps it simple and functional.
 #
-# Health: every service declares an HTTP healthcheck against its /healthz
-# endpoint (master :9090, worker :9091, dashboard :8888) and the workers wait
-# for `master: condition: service_healthy` before starting.
-#
-# TODO(lead): this file needs TWO changes in cmd/sift-master|worker,
-# neither of which exists yet:
-#   1. an HTTP health/metrics server bound via `-http-addr` (defaults :9090 /
-#      :9091) serving GET /healthz, /readyz and /metrics; and
-#   2. a `healthcheck --addr <url>` subcommand (exits 0 on 2xx). `Sift
-#      healthcheck` already exists on the all-in-one binary but NOT on the
-#      master/worker standalone binaries used by this file.
-# Until (2) lands the master never reports healthy, so the workers (which wait
-# on `service_healthy`) will not start.
+# Health: master/worker images expose HTTP ops endpoints (/healthz, /readyz,
+# /metrics) via -http-addr and provide a `healthcheck` subcommand for
+# distroless-friendly probes. Dashboard uses its own /healthz endpoint.
+# Workers depend on `master: condition: service_healthy` before starting.
 
 services:
   master:
@@ -42,8 +30,7 @@ services:
       - /usr/local/bin/Sift-master
       - -listen
       - 0.0.0.0:50051
-      # HTTP health/metrics server: /healthz, /readyz, /metrics
-      # (see the header note: the master `-http-addr` flag is not implemented yet).
+      # HTTP ops server: /healthz, /readyz, /metrics
       - -http-addr
       - 0.0.0.0:9090
       - -url
@@ -69,10 +56,8 @@ services:
         limits:
           memory: 512m
           cpus: "1.0"
-    # The master image is distroless (no shell, no wget/curl), so the probe has
-    # to be the binary itself (see the header note: the `healthcheck`
-    # subcommand does not exist on this binary yet, so it never reports
-    # healthy and the workers below, which wait on `service_healthy`, block).
+    # The master image is distroless (no shell, no wget/curl), so the probe uses
+    # the built-in `healthcheck` subcommand.
     healthcheck:
       test: ["CMD", "/usr/local/bin/Sift-master", "healthcheck", "--addr", "http://127.0.0.1:9090/healthz"]
       interval: 30s
@@ -91,8 +76,7 @@ services:
       - /usr/local/bin/Sift-worker
       - -listen
       - 0.0.0.0:50061
-      # HTTP health/metrics server: /healthz, /readyz, /metrics
-      # (see the header note: the worker `-http-addr` flag is not implemented yet).
+      # HTTP ops server: /healthz, /readyz, /metrics
       - -http-addr
       - 0.0.0.0:9091
       - -id
@@ -112,8 +96,7 @@ services:
         limits:
           memory: 512m
           cpus: "1.0"
-    # distroless image: probe via the worker binary, not a shell
-    # (see the header note: the `healthcheck` subcommand is not implemented yet).
+    # distroless image: probe via the worker binary's `healthcheck` subcommand.
     healthcheck:
       test: ["CMD", "/usr/local/bin/Sift-worker", "healthcheck", "--addr", "http://127.0.0.1:9091/healthz"]
       interval: 30s

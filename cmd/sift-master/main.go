@@ -474,7 +474,7 @@ func formatRPS(rps float64) string {
 
 func saveReports(r *report.Report, name string) {
 	dir := "./reports"
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		log.Printf("Failed to create reports dir: %v", err)
 		return
 	}

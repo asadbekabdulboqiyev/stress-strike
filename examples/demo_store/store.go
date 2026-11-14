@@ -255,6 +255,9 @@ func verifyPassword(hash, pw string) bool {
 	if err != nil {
 		return false
 	}
+	if len(want) == 0 || len(want) > 1024 {
+		return false
+	}
 	got := argon2.IDKey([]byte(pw), salt, iterations, memory, uint8(parallelism), uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
